@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo apt install calibre virtualbox gimp telegram-desktop -y
+sudo apt install remmina calibre virtualbox gimp telegram-desktop -y
