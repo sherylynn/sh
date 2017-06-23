@@ -10,7 +10,7 @@ NODE_ARCH=arm64
 sudo apt update
 sudo apt install ssh tofrodos htop ncdu lrzsz vim -y
 
-#base debian 9 has software-properties-common instead of python-software-properties
+#base debian 9 has python3-software-properties instead of python-software-properties
 sudo apt install software-properties-common -y
 sudo apt install wget curl git build-essential -y
 sudo apt install python-software-properties -y
