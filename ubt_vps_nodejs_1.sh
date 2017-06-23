@@ -14,6 +14,7 @@ sudo apt install ssh tofrodos htop ncdu lrzsz vim -y
 sudo apt install software-properties-common -y
 sudo apt install wget curl git build-essential -y
 sudo apt install python-software-properties -y
+sudo apt install python3-software-properties -y
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
