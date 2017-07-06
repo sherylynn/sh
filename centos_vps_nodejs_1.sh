@@ -14,7 +14,7 @@ sudo yum install ssh dos2unix htop ncdu lrzsz vim -y
 #base debian 9 has python3-software-properties instead of python-software-properties
 sudo yum install wget curl git -y
 sudo yum groupinstall "Development Tools" -y
-sudo apt install python -y
+sudo yum install python -y
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
