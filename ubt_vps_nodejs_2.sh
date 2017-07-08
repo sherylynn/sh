@@ -14,7 +14,7 @@ yarn config set cache-folder "/home/lynn/yarn-cache"
 npm i -g yrm
 yrm use taobao
 #npm i -g pouchdb-server webpack yarn http-server j json dva-cli babel-cli code-push express-cli flow-bin  rundev
-npm i -g webpack yarn http-server j json dva-cli babel-cli code-push express-cli pm2
+npm i -g webpack yarn http-server j json dva-cli babel-cli code-push express-cli vue-cli pm2
 #-----------------------
 # git clone project
 #-----------------------
