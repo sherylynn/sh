@@ -4,9 +4,9 @@ lynn=$HOME
 NODE_VERSION=7.10.0
 #arm64 x64
 #NODE_ARCH=armv7l
-#NODE_ARCH=x64
+NODE_ARCH=x64
 #NODE_ARCH=arm64
-NODE_ARCH=x86
+#NODE_ARCH=x86
 #常用工具
 sudo apt update
 sudo apt install ssh tofrodos htop ncdu lrzsz vim -y
