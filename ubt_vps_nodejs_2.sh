@@ -22,3 +22,4 @@ npm i -g webpack http-server j json babel-cli code-push pm2 typescript
 #git clone https://github.com/sherylynn/sign_admin.git ~/sign_admin
 #git clone https://github.com/sherylynn/sign_server.git ~/sign_server
 #git clone https://github.com/sherylynn/sign_db.git ~/sign_db
+#git clone https://github.com/sherylynn/plugins4rmmv.git ~/plugins4rmmv
