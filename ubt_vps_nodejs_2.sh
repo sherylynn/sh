@@ -17,7 +17,7 @@ yrm use taobao
 #x64
 #npm i -g react-native-cli rnpm pm2 pouchdb-server npm webpack yrm http-server j json dva-cli babel-cli code-push express-cli flow-bin vue-cli rundev eslint tslint ts-node typescript cordova
 #arm
-npm i -g webpack http-server j json babel-cli code-push pm2 typescript ts-node tslint
+npm i -g webpack http-server babel-cli pm2 typescript ts-node tslint eslint
 #-----------------------
 # git clone project
 #-----------------------
