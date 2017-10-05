@@ -15,9 +15,9 @@ npm i -g yrm
 yrm use taobao
 #npm i -g pouchdb-server webpack yarn http-server j json dva-cli babel-cli code-push express-cli flow-bin  rundev
 #x64
-npm i -g react-native-cli rnpm pm2 pouchdb-server npm webpack yrm http-server j json dva-cli babel-cli code-push express-cli flow-bin vue-cli rundev eslint tslint ts-node typescript cordova
+#npm i -g react-native-cli rnpm pm2 pouchdb-server npm webpack yrm http-server j json dva-cli babel-cli code-push express-cli flow-bin vue-cli rundev eslint tslint ts-node typescript cordova
 #arm
-#npm i -g webpack http-server j json babel-cli code-push pm2 typescript
+npm i -g webpack http-server j json babel-cli code-push pm2 typescript ts-node tslint
 #-----------------------
 # git clone project
 #-----------------------
