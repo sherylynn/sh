@@ -1,6 +1,6 @@
 /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
-brew install nodejs yarn
+brew install nodejs yarn ncdu
 
 mkdir ~/node-global
 mkdir ~/node-cache
