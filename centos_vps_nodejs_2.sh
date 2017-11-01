@@ -1,13 +1,13 @@
 #!/bin/bash
 #sudo apt update
-lynn=$HOME
+lynn=~
 
 #----------------------------
 # Set Global packages path
 #----------------------------
-npm config set prefix "/home/lynn/node-global"
-npm config set cache "/home/lynn/node-cache"
-yarn config set cache-folder "/home/lynn/yarn-cache"
+npm config set prefix "~/node-global"
+npm config set cache "~/node-cache"
+yarn config set cache-folder "~/yarn-cache"
 #----------------------------
 # Install Basic cli packages
 #----------------------------
