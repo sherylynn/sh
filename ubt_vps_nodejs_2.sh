@@ -25,3 +25,6 @@ npm i -g webpack http-server babel-cli pm2 typescript ts-node tslint eslint
 #git clone https://github.com/sherylynn/sign_server.git ~/sign_server
 #git clone https://github.com/sherylynn/sign_db.git ~/sign_db
 #git clone https://github.com/sherylynn/plugins4rmmv.git ~/plugins4rmmv
+
+
+sudo ln -s /home/lynn/node/bin/node /usr/local/bin/node
