@@ -1,7 +1,7 @@
 #!/bin/bash
 #sudo apt update
 lynn=$HOME
-NODE_VERSION=8.6.0
+NODE_VERSION=8.9.3
 #arm64 x64
 #NODE_ARCH=armv7l
 NODE_ARCH=x64
