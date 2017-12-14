@@ -13,14 +13,15 @@ sudo apt install ssh tofrodos htop ncdu lrzsz vim -y
 
 #base debian 9 has python3-software-properties instead of python-software-properties
 sudo apt install software-properties-common -y
-sudo apt install wget curl git build-essential -y
+sudo apt install axel wget curl git build-essential -y
 sudo apt install python-software-properties -y
 sudo apt install python -y
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
 
-wget -q http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
+#wget -q http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
+axel -n 10 http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
     tar -xzf node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
 sudo mv node-v${NODE_VERSION}-linux-${NODE_ARCH} ~/node && \
     rm node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz
