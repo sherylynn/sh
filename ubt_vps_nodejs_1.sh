@@ -22,9 +22,9 @@ sudo apt install python -y
 
 wget -q http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
     tar -xzf node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
-sudo mv node-v${NODE_VERSION}-linux-${NODE_ARCH} /home/lynn/node && \
+sudo mv node-v${NODE_VERSION}-linux-${NODE_ARCH} ~/node && \
     rm node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz
-echo 'export PATH=$PATH:/home/lynn/node/bin'>>~/.bashrc
+echo 'export PATH=$PATH:~/node/bin'>>~/.bashrc
 source ~/.bashrc
 
 #curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
