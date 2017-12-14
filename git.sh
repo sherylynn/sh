@@ -6,9 +6,9 @@ git config --global credential.helper store
 #-----------------------
 # git clone project
 #-----------------------
-#git clone https://github.com/sherylynn/sign_admin.git ~/sign_admin
+git clone https://github.com/sherylynn/sign_admin.git ~/sign_admin
 git clone https://github.com/sherylynn/sign.git ~/sign
-#git clone https://github.com/sherylynn/sign_server.git ~/sign_server
-#git clone https://github.com/sherylynn/sign_db.git ~/sign_db
+git clone https://github.com/sherylynn/sign_server.git ~/sign_server
+git clone https://github.com/sherylynn/sign_db.git ~/sign_db
 git clone --recursive https://github.com/sherylynn/plugins4rmmv ~/plugins4rmmv
-git clone https://github.com/sherylynn/server4rmmv.git
+git clone https://github.com/sherylynn/server4rmmv.git ~/server4rmmv
