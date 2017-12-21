@@ -26,3 +26,12 @@ echo 9993|sudo tee /var/lib/zerotier-one/zerotier-one.port
 sudo zerotier-idtool getpublic /var/lib/zerotier-one/identity.secret |sudo tee /var/lib/zerotier-one/identity.public
 
 缺少 authtoken
+
+sudo apt install rinetd -y
+
+echo 0.0.0.0 2333 172.30.0.3 2333 |sudo tee -a /etc/rinetd.conf
+
+
+
+iptables -t nat -A PREROUTING -d 111.231.90.43 -p tcp --dport 2333 -j DNAT --to-destination 172.30.0.3:2333
+
