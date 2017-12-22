@@ -24,7 +24,7 @@ done
 
 shift $(($OPTIND - 1))
 
-if [ ! -d "~/frp" ]; then
+if [ ! -d "$HOME/frp" ]; then
 aria2c https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/frp_${FRP_VERSION}_linux_${FRP_ARCH}.tar.gz && \
 #axel -n 10 https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/frp_${FRP_VERSION}_linux_${FRP_ARCH}.tar.gz && \
     tar -xzf frp_${FRP_VERSION}_linux_${FRP_ARCH}.tar.gz && \
