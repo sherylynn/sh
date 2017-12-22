@@ -1,6 +1,5 @@
 #!/bin/bash
 sudo apt install axel wget aria2 -y
-#!/bin/bash
 FRP_VERSION=0.14.1
 FRP_ARCH=amd64
 Server=n
