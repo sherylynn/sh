@@ -5,6 +5,7 @@ FRP_VERSION=0.14.1
 FRP_ARCH=amd64
 Server=n
 Client=n
+Just_Install=n
 #FRP_ARCH=arm
 while getopts 'v:a:sc' OPT; do
   case $OPT in
@@ -23,13 +24,17 @@ done
 
 shift $(($OPTIND - 1))
 
+if [ ! -d "~/frp" ]; then
 aria2c https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/frp_${FRP_VERSION}_linux_${FRP_ARCH}.tar.gz && \
 #axel -n 10 https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/frp_${FRP_VERSION}_linux_${FRP_ARCH}.tar.gz && \
     tar -xzf frp_${FRP_VERSION}_linux_${FRP_ARCH}.tar.gz && \
 sudo mv frp_${FRP_VERSION}_linux_${FRP_ARCH} ~/frp && \
     rm frp_${FRP_VERSION}_linux_${FRP_ARCH}.tar.gz
+fi
 
+if [ ! -d "/etc/frp" ]; then
 sudo mkdir /etc/frp
+fi
 sudo cp ~/frp/frps.ini /etc/frp/frps.ini
 sudo cp ~/frp/frpc.ini /etc/frp/frpc.ini
 
