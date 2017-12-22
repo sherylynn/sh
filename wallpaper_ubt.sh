@@ -10,7 +10,7 @@ wget $Url -O ${WALLS_PATH}/${Size}.jpg
 
 gsettings set org.gnome.desktop.background picture-uri "file://${WALLS_PATH}/${Size}.jpg"
 EOF
-
+sudo systemctl start autowallpaper.timer
 sudo tee /etc/systemd/system/autowallpaper.service <<-'EOF'
 [Unit]
 Description=autowallpaper Service
