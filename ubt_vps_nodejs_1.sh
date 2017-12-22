@@ -8,6 +8,20 @@ NODE_ARCH=x64
 #NODE_ARCH=arm64
 #NODE_ARCH=x86
 #常用工具
+
+while getopts 'v:a:' OPT; do
+  case $OPT in
+    v)
+      NODE_VERSION="$OPTARG";;
+    a)
+      NODE_ARCH="$OPTARG";;
+    ?)
+      echo "Usage: `basename $0` [options] filename"
+  esac
+done
+
+shift $(($OPTIND - 1))
+
 sudo apt update
 sudo apt install ssh tofrodos htop ncdu lrzsz vim -y
 
