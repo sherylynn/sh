@@ -34,11 +34,11 @@ fi
 if [ ! -d "/etc/frp" ]; then
 sudo mkdir /etc/frp
 fi
-sudo cp ~/frp/frps.ini /etc/frp/frps.ini
-sudo cp ~/frp/frpc.ini /etc/frp/frpc.ini
+sudo ln -sf ~/frp/frps.ini /etc/frp/frps.ini
+sudo ln -sf ~/frp/frpc.ini /etc/frp/frpc.ini
 
-sudo ln -s ~/frp/frps /usr/local/bin/frps
-sudo ln -s ~/frp/frpc /usr/local/bin/frpc
+sudo ln -sf ~/frp/frps /usr/local/bin/frps
+sudo ln -sf ~/frp/frpc /usr/local/bin/frpc
 if [ ${Server} = "y" ]; then  
 sudo tee /etc/systemd/system/frps.service <<-'EOF'
 [Unit]
