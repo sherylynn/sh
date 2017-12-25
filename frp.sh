@@ -68,7 +68,7 @@ Wants=network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/frpc -c /etc/frp/frpc.ini
-Restart=on-abnormal
+Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
