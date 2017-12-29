@@ -19,7 +19,7 @@ sudo add-apt-repository \
     stable"
 #安装并启动docker服务
 sudo apt update
-sudo apt install docker-engine -y
+sudo apt install docker-ce -y
 sudo service docker start
 #建立docker用户
 sudo groupadd docker
