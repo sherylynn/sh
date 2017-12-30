@@ -21,9 +21,9 @@ shift $(($OPTIND - 1))
 
 if [ ! -d "$HOME/gogs" ]; then
 aria2c https://dl.gogs.io/${GOGS_VERSION}/linux_${GOGS_ARCH}.tar.gz && \
-    mv linux_${GOGS_ARCH}.tar.gz ~/linux_${GOGS_ARCH}.tar.gz && \
-    tar -xzf linux_${GOGS_ARCH}.tar.gz && \
-    rm linux_${GOGS_ARCH}.tar.gz
+    mv linux_${GOGS_ARCH}.tar.gz ~/gogs.tar.gz && \
+    tar -xzf gogs.tar.gz && \
+    rm gogs.tar.gz
 fi
 
 if [ ! -d "/etc/gogs" ]; then
