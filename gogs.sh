@@ -30,8 +30,6 @@ if [ ! -d "/etc/gogs" ]; then
 sudo mkdir /etc/gogs
 fi
 
-sudo ln -sf ~/gogs /usr/local/bin/gogs
-
 sudo tee /etc/systemd/system/gogs.service <<-'EOF'
 [Unit]
 Description=gogs Service
@@ -40,7 +38,7 @@ Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/gogs/gogs web
+ExecStart=/home/'${USER}'/gogs/gogs web
 Restart=on-abnormal
 [Install]
 WantedBy=multi-user.target
