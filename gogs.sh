@@ -38,7 +38,10 @@ Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/home/'${USER}'/gogs/gogs web
+EOF
+echo 'ExecStart=/home/'${USER}'/gogs/gogs web'|sudo tee -a /etc/systemd/system/gogs.service
+
+sudo tee -a /etc/systemd/system/gogs.service <<-'EOF'
 Restart=on-abnormal
 [Install]
 WantedBy=multi-user.target
