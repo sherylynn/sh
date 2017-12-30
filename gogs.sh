@@ -34,15 +34,18 @@ sudo tee /etc/systemd/system/gogs.service <<-'EOF'
 [Unit]
 Description=gogs Service
 After=network.target
+After=syslog.target
 Wants=network.target
 
 [Service]
 Type=simple
 EOF
 echo 'ExecStart=/home/'${USER}'/gogs/gogs web'|sudo tee -a /etc/systemd/system/gogs.service
+echo 'WorkingDirectory=/home/'${USER}'/gogs'|sudo tee -a /etc/systemd/system/gogs.service
+echo 'Environment=USER='${USER}' HOME=/home/'${USER}''|sudo tee -a /etc/systemd/system/gogs.service
 
 sudo tee -a /etc/systemd/system/gogs.service <<-'EOF'
-Restart=on-abnormal
+Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
