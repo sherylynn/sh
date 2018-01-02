@@ -37,7 +37,7 @@ fi
 
 sudo tee /etc/systemd/system/drone.service <<-'EOF'
 [Unit]
-Description=frps Service
+Description=drone Service
 After=docker.service
 Wants=network.target
 
