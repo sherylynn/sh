@@ -6,7 +6,7 @@ if [ ! -d "/etc/drone" ]; then
     sudo mkdir /etc/drone
 fi
 
-sudo cp ~/sh/docker-compose.yml /etc/drone/
+sudo ln -sf ~/sh/docker-compose.yml /etc/drone/
 
 sudo tee /etc/drone/drone.env <<-"EOF"
 DRONE_HOST=http://111.231.90.43/
@@ -35,4 +35,4 @@ else
     echo export DRONE_GOGS_URL=http://111.231.90.43:3000/|sudo tee -a $HOME/.bashrc
 fi 
 
-docker-compose -f /etc/drone/docker-compose.yml up
+docker-compose -d -f /etc/drone/docker-compose.yml up
