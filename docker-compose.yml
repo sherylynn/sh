@@ -9,15 +9,17 @@ services:
     volumes:
       - /etc/drone:/var/lib/drone/
     restart: always
+    env_file:
+      - ./drone.env
     environment:
       - DRONE_OPEN=true
-      - DRONE_HOST=${DRONE_HOST}
+      - DRONE_HOST=${DRONE_ENV_HOST}
 #      - DRONE_GITHUB=false
 #      - DRONE_GITHUB_CLIENT=${DRONE_GITHUB_CLIENT}
 #      - DRONE_GITHUB_SECRET=${DRONE_GITHUB_SECRET}
-      - DRONE_SECRET=${DRONE_SECRET}
+      - DRONE_SECRET=${DRONE_ENV_SECRET}
       - DRONE_GOGS=true
-      - DRONE_GOGS_URL=${DRONE_HOST}
+      - DRONE_GOGS_URL=${GOGS_HOST}
   drone-agent:
     image: drone/drone:0.8
 
@@ -27,7 +29,9 @@ services:
       - drone-server
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - ./drone.env
     environment:
 #      - DRONE_SERVER=ws://drone-server:8000/ws/broker
       - DRONE_SERVER=drone-server:9000
-      - DRONE_SECRET=${DRONE_SECRET}
+      - DRONE_SECRET=${DRONE_ENV_SECRET}
