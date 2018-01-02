@@ -35,4 +35,20 @@ else
     echo export DRONE_GOGS_URL=http://111.231.90.43:3000/|sudo tee -a $HOME/.bashrc
 fi 
 
-docker-compose -d -f /etc/drone/docker-compose.yml up
+sudo tee /etc/systemd/system/drone.service <<-'EOF'
+[Unit]
+Description=frps Service
+After=docker.service
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/docker-compose -f /etc/drone/docker-compose.yml up
+ExecStop=/usr/local/bin/docker-compose -f /etc/drone/docker-compose.yml stop
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable drone.service
+sudo systemctl start drone.service
