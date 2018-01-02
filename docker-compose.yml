@@ -17,7 +17,9 @@ services:
 #      - DRONE_GITHUB_CLIENT=${DRONE_GITHUB_CLIENT}
 #      - DRONE_GITHUB_SECRET=${DRONE_GITHUB_SECRET}
       - DRONE_GOGS=true
-#      - DRONE_GOGS_URL=${GOGS_HOST}  ${}没法获取到.env里设定的环境变量
+      - DRONE_HOST=${DRONE_HOST}
+      - DRONE_SECRET=${DRONE_SECRET}
+      - DRONE_GOGS_URL=${DRONE_GOGS_URL}
   drone-agent:
     image: drone/drone:0.8
 
@@ -32,3 +34,4 @@ services:
     environment:
 #      - DRONE_SERVER=ws://drone-server:8000/ws/broker
       - DRONE_SERVER=drone-server:9000
+      - DRONE_SECRET=${DRONE_SECRET}
