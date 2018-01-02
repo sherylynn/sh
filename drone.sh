@@ -45,7 +45,7 @@ Wants=network.target
 Type=simple
 ExecStart=/usr/local/bin/docker-compose -f /etc/drone/docker-compose.yml up
 ExecStop=/usr/local/bin/docker-compose -f /etc/drone/docker-compose.yml stop
-Restart=always
+Restart=on-abnormal
 [Install]
 WantedBy=multi-user.target
 EOF
