@@ -17,6 +17,7 @@ sudo ln -sf ~/sh/docker-compose.yml /etc/drone/
 
 sudo tee /etc/drone/drone.env <<-"EOF"
 DRONE_HOST=http://111.231.90.43:3800/
+DRONE_GOGS=true
 DRONE_GOGS_URL=http://111.231.90.43:3000/
 EOF
 
