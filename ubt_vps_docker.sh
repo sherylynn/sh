@@ -25,3 +25,5 @@ sudo service docker start
 sudo groupadd docker
 sudo usermod -aG docker $USER
 sudo service docker restart
+
+echo DOCKER_OPTS="--registry-mirror=https://mirror.ccs.tencentyun.com" |sudo tee -a /etc/default/docker
