@@ -7,7 +7,7 @@ services:
       - 3800:8000
       - 9000
     volumes:
-      - /var/lib/drone:/var/lib/drone/
+      - /etc/drone:/var/lib/drone/
     restart: always
     environment:
       - DRONE_OPEN=true
