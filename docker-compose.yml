@@ -10,7 +10,7 @@ services:
       - /etc/drone:/var/lib/drone/
     restart: always
     env_file:
-      - ./drone.env
+      - /etc/drone/drone.env
     environment:
       - DRONE_OPEN=true
       - DRONE_HOST=${DRONE_ENV_HOST}
@@ -30,7 +30,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
-      - ./drone.env
+      - /etc/drone/drone.env
     environment:
 #      - DRONE_SERVER=ws://drone-server:8000/ws/broker
       - DRONE_SERVER=drone-server:9000
