@@ -3,8 +3,12 @@
 #pip install docker-compose
 #sudo ln -sf $HOME/.local/bin/docker-compose /usr/local/bin/docker-compose
 # pip安装的docker-compose有问题
-sudo curl -L https://github.com/docker/compose/releases/download/1.18.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-sudo chmod 777 /usr/local/bin/docker-compose
+
+if [ ! -f "/usr/local/bin/docker-compose" ]; then
+    sudo curl -L https://github.com/docker/compose/releases/download/1.18.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+    sudo chmod 777 /usr/local/bin/docker-compose
+fi
+
 if [ ! -d "/etc/drone" ]; then
     sudo mkdir /etc/drone
 fi
