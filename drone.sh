@@ -1,6 +1,6 @@
 #!/bin/bash
 sudo apt install python-pip
-pip install docker-compose
+sudo pip install docker-compose
 
 if [ ! -d "/etc/drone" ]; then
     sudo mkdir /etc/drone
