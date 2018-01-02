@@ -2,7 +2,7 @@ version: '2'
 
 services:
   drone-server:
-    image: drone/drone:0.8.3
+    image: drone/drone:0.8.2
     ports:
       - 3800:8000
       - 9000
@@ -17,7 +17,7 @@ services:
 #      - DRONE_GITHUB_CLIENT=${DRONE_GITHUB_CLIENT}
 #      - DRONE_GITHUB_SECRET=${DRONE_GITHUB_SECRET}
   drone-agent:
-    image: drone/drone:0.8
+    image: drone/drone:0.8.2
 
     command: agent
     restart: always
