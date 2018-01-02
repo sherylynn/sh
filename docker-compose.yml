@@ -2,7 +2,7 @@ version: '2'
 
 services:
   drone-server:
-    image: drone/drone:0.8
+    image: drone/drone:0.8.3
     ports:
       - 3800:8000
       - 9000
