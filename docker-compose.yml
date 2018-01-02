@@ -35,3 +35,6 @@ services:
       - DRONE_SERVER=ws://drone-server:9000/ws/broker
 #      - DRONE_SERVER=drone-server:9000
       - DRONE_SECRET=${DRONE_SECRET}
+      - DRONE_GOGS=true
+      - DRONE_GOGS_URL=${DRONE_GOGS_URL}
+      

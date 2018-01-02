@@ -1,7 +1,10 @@
 #!/bin/bash
-sudo apt install python-pip
-sudo pip install docker-compose
-
+#sudo apt install python-pip
+#pip install docker-compose
+#sudo ln -sf $HOME/.local/bin/docker-compose /usr/local/bin/docker-compose
+# pip安装的docker-compose有问题
+sudo curl -L https://github.com/docker/compose/releases/download/1.18.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+sudo chmod 777 /usr/local/bin/docker-compose
 if [ ! -d "/etc/drone" ]; then
     sudo mkdir /etc/drone
 fi
@@ -9,7 +12,7 @@ fi
 sudo ln -sf ~/sh/docker-compose.yml /etc/drone/
 
 sudo tee /etc/drone/drone.env <<-"EOF"
-DRONE_HOST=http://111.231.90.43/
+DRONE_HOST=http://111.231.90.43:3800/
 DRONE_GOGS_URL=http://111.231.90.43:3000/
 EOF
 
@@ -25,7 +28,7 @@ fi
 if [ $DRONE_HOST ];then  
     echo DRONE_HOST=$DRONE_HOST |sudo tee -a /etc/drone/drone.env
 else
-    echo export DRONE_HOST=http://111.231.90.43/|sudo tee -a $HOME/.bashrc
+    echo export DRONE_HOST=http://111.231.90.43:3800/|sudo tee -a $HOME/.bashrc
 fi 
 
 
