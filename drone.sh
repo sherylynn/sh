@@ -15,8 +15,11 @@ EOF
 
 if [ $DRONE_SECRET ];then  
     echo DRONE_SECRET=$DRONE_SECRET |sudo tee -a /etc/drone/drone.env
-else  
-    echo DRONE_SECRET="$(LC_ALL=C </dev/urandom tr -dc A-Za-z0-9 | head -c 65)" |sudo tee -a /etc/drone/drone.env
+else
+    DRONE_ENV_SECRET="$(LC_ALL=C </dev/urandom tr -dc A-Za-z0-9 | head -c 65)"
+    echo DRONE_SECRET=${DRONE_ENV_SECRET}|sudo tee -a /etc/drone/drone.env
+    #echo DRONE_SECRET="$(LC_ALL=C </dev/urandom tr -dc A-Za-z0-9 | head -c 65)" |sudo tee -a /etc/drone/drone.env
+    echo export DRONE_SECRET=${DRONE_SECRET}|sudo tee -a $HOME/.bashrc
 fi 
 
 
