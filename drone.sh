@@ -1,7 +1,11 @@
 #!/bin/bash
 sudo apt install python-pip
 pip install docker-compose
-sudo mkdir /etc/drone
+
+if [ ! -d "/etc/drone" ]; then
+    sudo mkdir /etc/drone
+fi
+
 sudo cp ~/sh/docker-compose.yml /etc/drone/
 
 sudo tee /etc/drone/drone.env <<-"EOF"
