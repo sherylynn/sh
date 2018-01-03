@@ -13,6 +13,7 @@ services:
       - /etc/drone/drone.env
     environment:
       - DRONE_OPEN=true
+      DRONE_ADMIN: sherylynn
 #      - DRONE_GITHUB=false
 #      - DRONE_GITHUB_CLIENT=${DRONE_GITHUB_CLIENT}
 #      - DRONE_GITHUB_SECRET=${DRONE_GITHUB_SECRET}
