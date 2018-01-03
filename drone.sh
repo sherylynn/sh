@@ -4,6 +4,12 @@
 #sudo ln -sf $HOME/.local/bin/docker-compose /usr/local/bin/docker-compose
 # pip安装的docker-compose有问题
 
+if [ ! -f "/usr/local/bin/drone" ]; then
+    curl -L https://github.com/drone/drone-cli/releases/download/v0.8.0/drone_linux_amd64.tar.gz | tar zx
+    sudo install -t /usr/local/bin drone
+fi
+
+
 if [ ! -f "/usr/local/bin/docker-compose" ]; then
     sudo curl -L https://github.com/docker/compose/releases/download/1.18.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
     sudo chmod 777 /usr/local/bin/docker-compose
