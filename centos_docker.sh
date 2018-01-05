@@ -14,7 +14,7 @@ sudo yum-config-manager \
   https://download.docker.com/linux/centos/docker-ce.repo
 
 #安装并启动docker服务
-sudo yum install docker-ce
+sudo yum install -y docker-ce
 sudo systemctl start docker
 
 #加速
