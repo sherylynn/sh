@@ -1,5 +1,5 @@
 #!/bin/bash
-sudo yum groupinstall 'Development Tools' && sudo yum install curl file git
+sudo yum groupinstall -y 'Development Tools' && sudo yum install -y curl file git
 git clone https://github.com/Linuxbrew/brew.git ~/.linuxbrew
 sudo tee -a ~/.bashrc <<-"EOF"
 PATH="$HOME/.linuxbrew/bin:$PATH"
