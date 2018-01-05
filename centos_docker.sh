@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #常用工具
-sudo yum update
+sudo yum update -y
 sudo yum install epel-release -y
 sudo yum install ssh dos2unix htop ncdu lrzsz vim -y
 
@@ -11,7 +11,7 @@ sudo yum install -y yum-utils \
   lvm2
 sudo yum-config-manager \
   --add-repo \
-  https://download.docker.com/linux/centos/docker-ce.repo
+  https://download.docker.com/linux/centos/docker-ce.repo -y
 
 #安装并启动docker服务
 sudo yum install -y docker-ce
