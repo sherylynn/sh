@@ -22,5 +22,5 @@ Restart=on-abnormal
 WantedBy=multi-user.target
 EOF
 sudo systemctl daemon-reload
-sudo systemctl enable aria2s.service
-sudo systemctl start aria2s.service
+sudo systemctl enable aria2c.service
+sudo systemctl start aria2c.service
