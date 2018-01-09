@@ -24,10 +24,11 @@ done
 shift $(($OPTIND - 1))
 
 if [ ! -f "/usr/local/bin/caddy" ]; then
-aria2c https://github.com/mholt/caddy/releases/download/v${CADDY_VERSION}/caddy_v${CADDY_VERSION}_linux_${CADDY_ARCH}.tar.gz && \
-  tar -xzf caddy_v${CADDY_VERSION}_linux_${CADDY_ARCH}.tar.gz && \
-  sudo install -t /usr/local/bin caddy \
-  rm caddy_v${CADDY_VERSION}_linux_${CADDY_ARCH}.tar.gz caddy
+curl https://getcaddy.com | bash -s personal http.filemanager
+#aria2c https://github.com/mholt/caddy/releases/download/v${CADDY_VERSION}/caddy_v${CADDY_VERSION}_linux_${CADDY_ARCH}.tar.gz && \
+#  tar -xzf caddy_v${CADDY_VERSION}_linux_${CADDY_ARCH}.tar.gz && \
+#  sudo install -t /usr/local/bin caddy \
+#  rm caddy_v${CADDY_VERSION}_linux_${CADDY_ARCH}.tar.gz caddy 
 fi
 sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/caddy
 if [ ! -d "/etc/caddy" ]; then
