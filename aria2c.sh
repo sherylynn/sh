@@ -24,4 +24,3 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable aria2s.service
 sudo systemctl start aria2s.service
-fi  
