@@ -13,7 +13,9 @@ services:
     container_name: cloud_app
     depends_on:
       - db
-    image: nextcloud
+    #image: nextcloud
+    #官方原版没有samba
+    image: wonderfall/nextcloud
     volumes:
       - ~/data/cloud/config:/var/www/html/config
       - ~/data/cloud/data:/var/www/html/data
