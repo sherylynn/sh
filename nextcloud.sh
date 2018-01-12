@@ -2,7 +2,7 @@
 mkdir ~/data
 mkdir ~/data/cloud
 mkdir ~/data/cloud/mysql
-mkdir ~/data/cloud/cofig
+mkdir ~/data/cloud/config
 mkdir ~/data/cloud/apps
 mkdir ~/data/cloud/data
 
