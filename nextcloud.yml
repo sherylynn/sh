@@ -7,7 +7,7 @@ services:
       - "~/data/cloud/mysql:/var/lib/mysql"
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 这里填写你的密码
+      MYSQL_ROOT_PASSWORD: nextcloud
       MYSQL_DATABASE: nextcloud
   app:
     container_name: cloud_app
