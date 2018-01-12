@@ -4,7 +4,7 @@ services:
     container_name: cloud_db
     image: mysql
     volumes:
-      - "./data/cloud/mysql:/var/lib/mysql"
+      - "~/data/cloud/mysql:/var/lib/mysql"
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 这里填写你的密码
@@ -15,9 +15,9 @@ services:
       - db
     image: nextcloud
     volumes:
-      - ./data/cloud/config:/var/www/html/config
-      - ./data/cloud/data:/var/www/html/data
-      - ./data/cloud/apps:/var/www/html/apps
+      - ~/data/cloud/config:/var/www/html/config
+      - ~/data/cloud/data:/var/www/html/data
+      - ~/data/cloud/apps:/var/www/html/apps
     links:
       - db
     ports:
