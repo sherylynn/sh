@@ -1,7 +1,8 @@
 #!/bin/bash
 #注意hgfs挂载时候的权限问题
 COMMAND="n"
-while getopts 'v:a:sc' OPT; do
+#先在getopts里设好要用的参数
+while getopts 'rs' OPT; do
   case $OPT in
     r)
       COMMAND="y";;
