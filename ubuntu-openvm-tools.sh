@@ -16,7 +16,7 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=
 ExecStart=/usr/bin/vmhgfs-fuse -o allow_other -o auto_unmount .host:/ /mnt/hgfs
-
+;-o umask=007专门的权限给770
 [Install]
 WantedBy=multi-user.target
 EOF
