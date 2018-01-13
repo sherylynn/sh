@@ -1,4 +1,5 @@
 #!/bin/bash
+#注意hgfs挂载时候的权限问题
 COMMAND="n"
 while getopts 'v:a:sc' OPT; do
   case $OPT in
