@@ -21,6 +21,7 @@ services:
       - /mnt/hgfs/nextcloud/data/cloud/config:/var/www/html/config
       - /mnt/hgfs/nextcloud/data/cloud/data:/var/www/html/data
       - /mnt/hgfs/nextcloud/data/cloud/apps:/var/www/html/apps
+      - /mnt/hgfs:/hgfs
     links:
       - db
     ports:
