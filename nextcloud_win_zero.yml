@@ -4,7 +4,7 @@ services:
     container_name: cloud_db
     image: mysql
     volumes:
-      - "F:/nextcloud/data/cloud/mysql:/var/lib/mysql"
+      - "F:/nextcloud/mysql:/var/lib/mysql"
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: nextcloud
@@ -18,11 +18,8 @@ services:
     #image: wonderfall/nextcloud
     #第三方参数不一样,麻烦
     volumes:
-      - C:/Users/lynn/Downloads/nextcloud:/var/www/html
-      - C:/Users/lynn/Downloads/nextcloud:/usr/src/nextcloud
-      - F:/nextcloud/data/cloud/config:/var/www/html/config
-      - F:/nextcloud/data/cloud/data:/var/www/html/data
-      - F:/nextcloud/data/cloud/apps:/var/www/html/apps
+      - F:/nextcloud/nextcloud:/var/www/html
+      - F:/nextcloud/nextcloud:/usr/src/nextcloud
     links:
       - db
     ports:
