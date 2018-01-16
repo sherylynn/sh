@@ -14,7 +14,7 @@ services:
     depends_on:
       - db
     image: nextcloud
-    command: /bin/bash
+    entrypoint: /bin/bash
     tty: true
     #官方原版没有samba
     #直接共享nextcloud目录
