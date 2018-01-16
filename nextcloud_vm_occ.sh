@@ -9,4 +9,6 @@ docker run -itd --name occ --restart=always \
   -v /mnt/hgfs/nextcloud/nextcloud:/usr/src/nextcloud \
   --link cloud_db:db \
   nextcloud /bin/bash
+
+#php /var/www/html/occ files:scan --path="/sherylynn/files/photoslibrary"
   
