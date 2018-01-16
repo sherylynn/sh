@@ -4,8 +4,9 @@ docker run -itd --name cloud_db --restart=always \
   -e MYSQL_ROOT_PASSWORD="nextcloud" \
   -e MYSQL_DATABASE="nextcloud" \
   mysql
-docker run -it --name occ --restart=always \
+docker run -itd --name occ --restart=always \
   -v /mnt/hgfs/nextcloud/nextcloud:/var/www/html \
   -v /mnt/hgfs/nextcloud/nextcloud:/usr/src/nextcloud \
   --link cloud_db:db \
-  nextcloud
+  nextcloud /bin/bash
+  
