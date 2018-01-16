@@ -16,6 +16,7 @@ services:
     image: nextcloud
     entrypoint: /bin/bash
     tty: true
+    # 没有--interactive=false 所以连不上
     #官方原版没有samba
     #直接共享nextcloud目录
     volumes:
