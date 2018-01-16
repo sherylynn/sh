@@ -7,4 +7,5 @@ docker run -itd --name cloud_db --restart=always \
 docker run -it --name occ --restart=always \
   -v /mnt/hgfs/nextcloud/nextcloud:/var/www/html \
   -v /mnt/hgfs/nextcloud/nextcloud:/usr/src/nextcloud \
-  --link cloud_db:db
+  --link cloud_db:db \
+  nextcloud
