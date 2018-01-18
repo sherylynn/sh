@@ -7,10 +7,12 @@ zerotier-idtool genmoon moon.json
 sudo mkdir /var/lib/zerotier-one/moons.d
 sudo cp 000000e64d65a908.moon /var/lib/zerotier-one/moons.d/
 cp
-sudo zerotier-cli listpeers
+sudo zerotier-cli listpeers |grep MOON
 sudo zerotier-cli orbit e64d65a908 111.231.90.43
 sudo zerotier-cli orbit 020ae11ef1 67.216.203.21
+sudo zerotier-cli orbit c55a6f9842 69.171.67.139
 sudo zerotier-cli deorbit 020ae11ef1
+sudo zerotier-cli deorbit e64d65a908
 sudo zerotier-cli join 12ac4a1e71394190
 sudo zerotier-cli set 12ac4a1e71394190 allowGlobal=1
 
