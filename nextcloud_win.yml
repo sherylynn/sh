@@ -18,8 +18,6 @@ services:
     #image: wonderfall/nextcloud
     #第三方参数不一样,麻烦
     volumes:
-      - C:/Users/lynn/Downloads/nextcloud:/var/www/html
-      - C:/Users/lynn/Downloads/nextcloud:/usr/src/nextcloud
       - F:/nextcloud/data/cloud/config:/var/www/html/config
       - F:/nextcloud/data/cloud/data:/var/www/html/data
       - F:/nextcloud/data/cloud/apps:/var/www/html/apps
