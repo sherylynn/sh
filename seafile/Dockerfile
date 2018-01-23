@@ -14,3 +14,4 @@ WORKDIR /home/haiwen
 EXPOSE 8082
 EXPOSE 8000
 CMD [ "/bin/bash" ]
+#python2.7 ./seafile-server-6.2.4/setup-seafile-mysql.py
