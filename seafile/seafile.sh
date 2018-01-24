@@ -1,4 +1,4 @@
-docker build -t seafile .
+#/bin/bash
 docker run -itd --name seafile_db --restart=always -v /mnt/hgfs/seafile/mysql:/var/lib/mysql -e MYSQL_ROOT_PASSWORD="seafile" -e MYSQL_DATABASE="seafile" mysql
 docker run -itd --name seafile_app --restart=always -p 8000:8000 -p 8082:8082 \
   -v /mnt/hgfs/seafile/ccnet:/home/haiwen/ccnet \
