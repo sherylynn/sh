@@ -4,6 +4,7 @@ LABEL Author=sherylynn@outlook.com
 WORKDIR /home
 COPY seafile_install_ubt.sh \
      /home/
+COPY sources.list /etc/apt/sources.list
 
 RUN bash seafile_install_ubt.sh && \
     ls
