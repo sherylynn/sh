@@ -12,8 +12,8 @@ mv seafile-server_* installed
 
 #base tool
 apt-get update -y
-apt-get install python -y
-apt-get install python2.7 libpython2.7 python-setuptools python-imaging python-ldap python-urllib3 ffmpeg python-pip python-mysqldb python-memcache -y
+apt-get install -y python
+apt-get install -y python2.7 libpython2.7 python-setuptools python-imaging python-ldap python-urllib3 ffmpeg python-pip python-mysqldb python-memcache
 pip install pillow moviepy
 
 #clean
