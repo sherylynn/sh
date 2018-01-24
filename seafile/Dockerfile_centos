@@ -1,11 +1,11 @@
-FROM ubuntu
+FROM centos
 LABEL Author=sherylynn@outlook.com
 
 WORKDIR /home
-COPY seafile_install_ubt.sh \
+COPY seafile_install.sh \
      /home/
 
-RUN bash seafile_install_ubt.sh && \
+RUN bash seafile_install.sh && \
     ls
 
 ADD seafile_config.sh /home/haiwen/seafile_config.sh
