@@ -8,8 +8,9 @@ docker run -itd --name seafile_app --restart=always -p 8000:8000 -p 8082:8082 \
 #或许下次直接从构建文件的时候就引入进去
 docker run -itd --name seafile_app --restart=always -p 8000:8000 -p 8082:8082 \
   -v /mnt/hgfs/seafile/seafile-data:/home/haiwen/seafile-data \
-  -v /mnt/hgfs/seafile/ccnet:/home/haiwen/ccnet \
-  -v /mnt/hgfs/seafile/conf:/home/haiwen/conf \
-  -v /mnt/hgfs/seafile/seahub-data:/home/haiwen/seahub-data \
+  -v /mnt/hgfs/seafile/seafile-data/ccnet:/home/haiwen/ccnet \
+  -v /mnt/hgfs/seafile/seafile-data/conf:/home/haiwen/conf \
+  -v /mnt/hgfs/seafile/seafile-data/logs:/home/haiwen/logs \
+  -v /mnt/hgfs/seafile/seafile-data/seahub-data:/home/haiwen/seahub-data \
   --link seafile_db:db seafile /bin/bash
 #docker run -itd --name seafile_app --restart=always -p 8000:8000 -p 8082:8082 -v /mnt/hgfs/seafile/haiwen:/home/haiwen --link seafile_db:db seafile /bin/bash
