@@ -2,7 +2,7 @@ FROM ubuntu
 LABEL Author=sherylynn@outlook.com
 
 WORKDIR /home
-COPY sources.cn99.list /etc/apt/sources.list
+COPY sources.aliyun.list /etc/apt/sources.list
 
 #RUN bash seafile_install_ubt.sh 
 #apt的命令还是要集成在run中好，不然会出事
