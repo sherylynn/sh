@@ -22,8 +22,15 @@ RUN apt update -y && \
 RUN pip install pillow moviepy
 
 #ADD seafile_config.sh /home/haiwen/seafile_config.sh
-COPY build /home/build
+ADD build/backup.sh   /home/haiwen/backup.sh
+ADD build/recovery.sh /home/haiwen/recovery.sh
+ADD build/start.sh    /home/haiwen/start.sh
+ADD build/stop.sh     /home/haiwen/stop.sh
+
 WORKDIR /home/haiwen
+
+RUN chmod 777 backup.sh recovery.sh start.sh stop.sh
+
 EXPOSE 8082
 EXPOSE 8000
 CMD [ "/bin/bash" ]
