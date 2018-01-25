@@ -3,6 +3,7 @@ docker run -itd --name seafile_db --restart=always -v /mnt/hgfs/seafile/mysql:/v
 docker run -itd --name seafile_app --restart=always -p 8000:8000 -p 8082:8082 \
   -v /mnt/hgfs/seafile/seafile-data:/home/haiwen/seafile-data \
   --link seafile_db:db seafile /bin/bash
+docker attach seafile_app
 #第一次初始化用上面的进 seafile-server-* 运行 setup-mysql 然后把后面的文件拷贝下来
 #不然初始化时傻逼检测会说已经存在
 #或许下次直接从构建文件的时候就引入进去
