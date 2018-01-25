@@ -1,0 +1,1 @@
+tar -xzf seafile-data/backup.tar.gz

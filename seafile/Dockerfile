@@ -2,8 +2,6 @@ FROM ubuntu
 LABEL Author=sherylynn@outlook.com
 
 WORKDIR /home
-COPY seafile_install_ubt.sh \
-     /home/
 COPY sources.cn99.list /etc/apt/sources.list
 
 #RUN bash seafile_install_ubt.sh 
@@ -23,8 +21,8 @@ RUN apt update -y && \
 
 RUN pip install pillow moviepy
 
-ADD seafile_config.sh /home/haiwen/seafile_config.sh
-
+#ADD seafile_config.sh /home/haiwen/seafile_config.sh
+COPY build /home/build
 WORKDIR /home/haiwen
 EXPOSE 8082
 EXPOSE 8000
