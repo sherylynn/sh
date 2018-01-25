@@ -26,10 +26,11 @@ ADD build/backup.sh   /home/haiwen/backup.sh
 ADD build/recovery.sh /home/haiwen/recovery.sh
 ADD build/start.sh    /home/haiwen/start.sh
 ADD build/stop.sh     /home/haiwen/stop.sh
+ADD build/init.sh     /home/haiwen/init.sh
 
 WORKDIR /home/haiwen
 
-RUN chmod 777 backup.sh recovery.sh start.sh stop.sh
+RUN chmod 777 backup.sh recovery.sh start.sh stop.sh init.sh
 
 EXPOSE 8082
 EXPOSE 8000
