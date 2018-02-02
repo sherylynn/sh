@@ -56,5 +56,8 @@ sed -i '3c DRONE_GOGS_URL=gogs:3000' $HOME/drone/drone.env
 #fi 
 
 sudo ln -sf ~/sh/gogs_drone/gogs_drone.yml $HOME/drone/
-
+#关停原来的gogs服务
+docker stop gogs
+docker rm gogs
+#拉起新服务
 docker-compose -f $HOME/drone/gogs_drone.yml up
