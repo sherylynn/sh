@@ -29,7 +29,7 @@ if [ -f "$HOME/drone/drone.env" ]; then
 tee $HOME/drone/drone.env <<-"EOF"
 DRONE_HOST=http://111.231.90.43:3800/
 DRONE_GOGS=true
-DRONE_GOGS_URL=gogs:3000
+DRONE_GOGS_URL=http://gogs:3000
 DRONE_SECRET=""
 EOF
   #如果已经有密钥就导入，如果没有就生成并存在.bashrc
@@ -48,7 +48,7 @@ EOF
   fi
 fi
 #统一修改gogs地址
-sed -i '3c DRONE_GOGS_URL=gogs:3000' $HOME/drone/drone.env
+sed -i '3c DRONE_GOGS_URL=http://gogs:3000' $HOME/drone/drone.env
 #if [ $DRONE_GOGS_URL ];then
 #  sed -i '3c DRONE_GOGS_URL='$DRONE_GOGS_URL'' $HOME/drone/drone.env
 #else
