@@ -17,4 +17,44 @@ if [ -d "/etc/drone" ]; then
     docker rm drone_drone-server_1
     docker rm drone_drone-agent_1
     sudo mv /etc/drone $HOME/drone
+    sudo chown -R ${USER} $HOME/drone
+    sudo chgrp -R ${USER} $HOME/drone
+    rm docker-compose.yml
 fi
+if [ -d "$HOME/drone"]; then
+   mkdir $HOME/drone
+fi
+#如果配置文件不存在，则生成
+if [ -f "$HOME/drone/drone.env"]; then
+tee $HOME/drone/drone.env <<-"EOF"
+DRONE_HOST=http://111.231.90.43:3800/
+DRONE_GOGS=true
+DRONE_GOGS_URL=gogs:3000
+DRONE_SECRET=""
+EOF
+  #如果已经有密钥就导入，如果没有就生成并存在.bashrc
+  if [ $DRONE_SECRET ];then  
+    sed -i '4c DRONE_SECRET='$DRONE_SECRET'' $HOME/drone/drone.env
+  else
+    DRONE_ENV_SECRET="$(LC_ALL=C </dev/urandom tr -dc A-Za-z0-9 | head -c 65)"
+    sed -i '4c DRONE_SECRET='${DRONE_ENV_SECRET}'' $HOME/drone/drone.env
+    echo export DRONE_SECRET=${DRONE_ENV_SECRET}|tee -a $HOME/.bashrc
+  fi 
+
+  if [ $DRONE_HOST ];then
+    sed -i '1c DRONE_HOST='$DRONE_HOST'' $HOME/drone/drone.env
+  else
+    echo export DRONE_HOST=http://111.231.90.43:3800/|tee -a $HOME/.bashrc
+  fi
+fi
+#统一修改gogs地址
+sed -i '3c DRONE_GOGS_URL=gogs:3000' $HOME/drone/drone.env
+#if [ $DRONE_GOGS_URL ];then
+#  sed -i '3c DRONE_GOGS_URL='$DRONE_GOGS_URL'' $HOME/drone/drone.env
+#else
+#  echo export DRONE_GOGS_URL=gogs:3000|tee -a $HOME/.bashrc
+#fi 
+
+sudo ln -sf ~/sh/gogs_drone/gogs_drone.yml $HOME/drone/
+
+docker-compose -f $HOME/drone/gogs_drone.yml up
