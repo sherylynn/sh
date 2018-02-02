@@ -21,11 +21,11 @@ if [ -d "/etc/drone" ]; then
     sudo chgrp -R ${USER} $HOME/drone
     rm docker-compose.yml
 fi
-if [ -d "$HOME/drone"]; then
+if [ -d "$HOME/drone" ]; then
    mkdir $HOME/drone
 fi
 #如果配置文件不存在，则生成
-if [ -f "$HOME/drone/drone.env"]; then
+if [ -f "$HOME/drone/drone.env" ]; then
 tee $HOME/drone/drone.env <<-"EOF"
 DRONE_HOST=http://111.231.90.43:3800/
 DRONE_GOGS=true
