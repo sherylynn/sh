@@ -60,4 +60,6 @@ sudo ln -sf ~/sh/gogs_drone/gogs_drone.yml $HOME/drone/
 docker stop gogs
 docker rm gogs
 #拉起新服务
-docker-compose -f $HOME/drone/gogs_drone.yml up
+docker-compose -f $HOME/drone/gogs_drone.yml up --force-recreate
+#删除容器
+#docker-compose down 
