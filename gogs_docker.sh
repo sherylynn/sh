@@ -11,7 +11,7 @@ sudo chgrp -R ${USER} $HOME/gogs
 sudo chgrp -R ${USER} $HOME/gogs-repositories
 mv $HOME/gogs/custom $HOME/gogs_data/gogs
 mv $HOME/gogs/data $HOME/gogs_data/gogs/
-mv $HOME/gogs/logs $HOME/gogs_data/gogs/
+mv $HOME/gogs/log $HOME/gogs_data/gogs/
 sed 's/${USER}/git/g' /gogs_data/gogs/conf/app.ini
 sed 's/home/data/g' /gogs_data/gogs/conf/app.ini
 sed '46c ROOT_PATH = /app/gogs/log' /gogs_data/gogs/conf/app.ini  
