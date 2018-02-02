@@ -16,6 +16,8 @@ services:
       - 9000
     volumes:
       - ~/drone:/var/lib/drone/
+    links:
+      - gogs
     restart: always
     depends_on:
       - gogs
@@ -36,6 +38,8 @@ services:
       - drone-server
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    links:
+      - gogs
     env_file:
       - ~/drone/drone.env
     environment:
