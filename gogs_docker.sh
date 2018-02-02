@@ -18,7 +18,7 @@ sed -i 's/home/data/g' $HOME/gogs_data/gogs/conf/app.ini
 sed -i '46c ROOT_PATH = /app/gogs/log' $HOME/gogs_data/gogs/conf/app.ini  
 fi
 if [ -d "$HOME/gogs-repositories" ];then
-mv $HOME/gogs-repositories $HOME/gogs_data/git/
+mv $HOME/gogs-repositories $HOME/gogs_data/git/gogs-repositories
 fi
 docker run -itd --name gogs --restart=always -p 22000:22 -p 3000:3000 -v $HOME/gogs_data:/data gogs/gogs
 
