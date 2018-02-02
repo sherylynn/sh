@@ -1,0 +1,3 @@
+先build_img.sh
+再seafile.sh
+docker attach进去后再考虑是recover还是start还是init

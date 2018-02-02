@@ -1,0 +1,4 @@
+gogs.sh是单独安装gogs
+gogs_docker.sh是安装docker形式的gogs(如果原先已经安装会自动迁移)
+drone.sh是单独安装drone
+gogs_drone.sh是把drone和gogs放一起(如果原先分别安装会停止并自动迁移)

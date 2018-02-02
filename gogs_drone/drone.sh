@@ -19,7 +19,7 @@ if [ ! -d "/etc/drone" ]; then
     sudo mkdir /etc/drone
 fi
 
-sudo ln -sf ~/sh/docker-compose.yml /etc/drone/
+sudo ln -sf ~/sh/gogs_drone/docker-compose.yml /etc/drone/
 
 sudo tee /etc/drone/drone.env <<-"EOF"
 DRONE_HOST=http://111.231.90.43:3800/
