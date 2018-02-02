@@ -60,6 +60,7 @@ sudo ln -sf ~/sh/gogs_drone/gogs_drone.yml $HOME/drone/
 docker stop gogs
 docker rm gogs
 #拉起新服务
-docker-compose -f $HOME/drone/gogs_drone.yml up --force-recreate
+docker-compose -f $HOME/drone/gogs_drone.yml up --force-recreate -d
 #删除容器
-#docker-compose down 
+#docker-compose down
+#有待解决的是是否一定是http协议的gogs,能否其他协议?试过直接gogs:3000不行
