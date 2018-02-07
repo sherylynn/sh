@@ -3,8 +3,8 @@ version: '2'
 services:
   cloud_db:
     container_name: cloud_db
-    image: mariadb
-    #image: mysql
+    #image: mariadb
+    image: mysql
     restart: always
     volumes:
       - /mnt/hgfs/nextcloud/mysql:/var/lib/mysql
