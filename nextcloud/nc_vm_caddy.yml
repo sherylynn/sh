@@ -18,3 +18,15 @@ services:
     volumes:
       - /mnt/hgfs/nextcloud/html:/var/www/html
     restart: always
+  
+  web:
+    image: caddy
+    ports:
+      - 8080:80
+    links:
+      - app
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    volumes_from:
+      - app
+    restart: always
