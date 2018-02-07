@@ -4,7 +4,7 @@ services:
     container_name: cloud_db
     image: mysql
     volumes:
-      - /mnt/hgfs/nextcloud/data/cloud/mysql:/var/lib/mysql
+      - /mnt/hgfs/nextcloud/mysql:/var/lib/mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: nextcloud
@@ -18,9 +18,7 @@ services:
     #image: wonderfall/nextcloud
     #第三方参数不一样,麻烦
     volumes:
-      - /mnt/hgfs/nextcloud/data/cloud/config:/var/www/html/config
-      - /mnt/hgfs/nextcloud/data/cloud/data:/var/www/html/data
-      - /mnt/hgfs/nextcloud/data/cloud/apps:/var/www/html/apps
+      - /mnt/hgfs/nextcloud/html:/var/www/html
       - /mnt/hgfs:/hgfs
     links:
       - db
