@@ -13,8 +13,6 @@ services:
     image: nextcloud:fpm
     links:
       - db
-    ports:
-      - "9000:9000"
     volumes:
       - /mnt/hgfs/nextcloud/html:/var/www/html
     restart: always
