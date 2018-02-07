@@ -1,7 +1,7 @@
 version: '2'
 
 services:
-  cloud_db:
+  db:
     container_name: cloud_db
     #image: mariadb
     image: mysql
@@ -9,16 +9,18 @@ services:
     volumes:
       - /mnt/hgfs/nextcloud/mysql:/var/lib/mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=nextcloud
-      - MYSQL_PASSWORD=nextcloud
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
+    #  - MYSQL_ROOT_PASSWORD=nextcloud
+    #  - MYSQL_PASSWORD=nextcloud
+    #  - MYSQL_DATABASE=nextcloud
+    #  - MYSQL_USER=nextcloud
+      MYSQL_ROOT_PASSWORD: nextcloud
+      MYSQL_DATABASE: nextcloud
 
   app:
     container_name: cloud_app
     image: nextcloud:fpm
     links:
-      - cloud_db
+      - db
     ports:
       - "9000:9000"
     volumes:
