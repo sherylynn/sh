@@ -27,7 +27,7 @@ services:
       - app
     #this docker path is /etc/Caddyfile
     volumes:
-      - ./Caddyfile:/etc/Caddyfile
+      - ./Caddyfile:/etc/Caddyfile:ro
     volumes_from:
       - app
     restart: always
