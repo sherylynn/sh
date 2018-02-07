@@ -1,10 +1,10 @@
 version: '2'
 
 services:
-  db:
+  cloud_db:
     container_name: cloud_db
-    #image: mariadb
-    image: mysql
+    image: mariadb
+    #image: mysql
     restart: always
     volumes:
       - /mnt/hgfs/nextcloud/mysql:/var/lib/mysql
@@ -18,7 +18,7 @@ services:
     container_name: cloud_app
     image: nextcloud:fpm
     links:
-      - db
+      - cloud_db
     ports:
       - "9000:9000"
     volumes:
