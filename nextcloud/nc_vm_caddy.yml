@@ -20,13 +20,14 @@ services:
     restart: always
   
   web:
-    image: caddy
+    image: abiosoft/caddy
     ports:
       - 8080:80
     links:
       - app
+    #this docker path is /etc/Caddyfile
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/Caddyfile
     volumes_from:
       - app
     restart: always
