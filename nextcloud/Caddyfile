@@ -4,7 +4,7 @@
 	log    /var/log/nextcloud_access.log
 	errors /var/log/nextcloud_errors.log
 
-	fastcgi / 127.0.0.1:9000 php {
+	fastcgi / app:9000 php {
 		env PATH /bin
 	}
 	
