@@ -13,6 +13,8 @@ firewall-cmd --zone=public --add-port=29000/tcp --permanent
 firewall-cmd --zone=public --add-port=7000/tcp --permanent
 firewall-cmd --zone=public --add-port=8000/tcp --permanent
 firewall-cmd --zone=public --add-port=8082/tcp --permanent
+firewall-cmd --zone=public --add-port=80/tcp --permanent
+firewall-cmd --zone=public --add-port=443/tcp --permanent
 firewall-cmd --reload
 
 yum update -y

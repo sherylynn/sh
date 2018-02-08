@@ -1,5 +1,5 @@
 #/bin/bash
-if [ ! -d "$HOME/nextcloud"]; then
+if [ ! -d "$HOME/nextcloud" ]; then
 mkdir $HOME/nextcloud
 fi
 
