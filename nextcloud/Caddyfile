@@ -1,6 +1,6 @@
 0.0.0.0:80 {
 
-	root   /var/www/nextcloud
+	root   /var/www/html
 	log    /var/log/nextcloud_access.log
 	errors /var/log/nextcloud_errors.log
 
