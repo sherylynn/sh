@@ -1,2 +1,8 @@
 不管是vm还是docker的用caddy和nextcloud搭配的方式目前都失败了
 nginx 也是错误，我崩溃了，会是docker本身就有问题么？
+
+原来是路径问题，caddy与 nginx中路径应该为docker中内设路径 /var/root/html
+而不是 /var/root/nextcloud
+
+caddy性能感觉一般，但网页刷新效果似乎比apacha略好
+图片缓冲性能不怎么样
