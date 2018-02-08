@@ -21,6 +21,7 @@ services:
     restart: always
 
   web:
+    container_name: cloud_web
     image: nginx
     ports:
       - 8080:80
