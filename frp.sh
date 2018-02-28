@@ -62,8 +62,8 @@ if [ ${Client} = "y" ]; then
 sudo tee /etc/systemd/system/frpc.service <<-'EOF'
 [Unit]
 Description=frpc Service
-After=network.target
-Wants=network.target
+After=NetworkManager-wait-online.service network.target network-online.target 
+Wants=NetworkManager-wait-online.service network.target network-online.target 
 
 [Service]
 Type=simple
