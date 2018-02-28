@@ -7,4 +7,5 @@ wget https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
   tar -xzf go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
   rm go${GO_VERSION}.linux-${GO_ARCH}.tar.gz
 echo 'export GOROOT=$HOME/go'>>~/.bashrc
+echo 'export GOPATH=$HOME/go'>>~/.bashrc
 echo 'export PATH=$PATH:$GOROOT/bin'>>~/.bashrc
