@@ -1,3 +1,5 @@
 pkg install apt openssh -y
-cat id_rsa.pub >> $HOME/.ssh/authorized_keys
+pkg install htop coreutils
+cat $HOME/id_rsa.pub >> $HOME/.ssh/authorized_keys
+cat bashrc >> $HOME/.bashrc
 sshd
