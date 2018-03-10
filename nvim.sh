@@ -4,9 +4,10 @@ sudo yum --enablerepo=epel -y install fuse-sshfs # install from EPEL
 user="$(whoami)"
 usermod -a -G fuse "$user" 
 
-yum -y install epel-release
-curl -o /etc/yum.repos.d/dperson-neovim-epel-7.repo https://copr.fedorainfracloud.org/coprs/dperson/neovim/repo/epel-7/dperson-neovim-epel-7.repo 
-yum -y install neovim
+#包依赖方法不知道为什么不灵 说有些包获取不到
+#sudo yum -y install epel-release
+#curl -o /etc/yum.repos.d/dperson-neovim-epel-7.repo https://copr.fedorainfracloud.org/coprs/dperson/neovim/repo/epel-7/dperson-neovim-epel-7.repo 
+#sudo yum -y install neovim
 
 if [ ! -d "$HOME/nvim" ]; then
 sudo mkdir $HOME/nvim
