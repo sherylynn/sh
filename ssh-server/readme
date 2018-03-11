@@ -1,0 +1,3 @@
+先build_img.sh
+再ssh-server.sh
+docker attach ssh-server
