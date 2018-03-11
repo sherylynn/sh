@@ -2,6 +2,9 @@
 FROM alpine
 MAINTAINER Sherylynn <352281674@qq.com>
 
+# set apk mirror on aliyun mirror for china users
+RUN echo "http://mirrors.aliyun.com/alpine/latest-stable/main/" > /etc/apk/repositories
+
 # install openssl and the complete wget
 RUN apk --update add --no-cache bash
 RUN sed -i -e "s/bin\/ash/bin\/bash/" /etc/passwd
