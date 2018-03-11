@@ -11,8 +11,9 @@ ENV LANG zh_CN.UTF-8
 RUN apk --update add --no-cache openssh openssh-sftp-server byobu tmux && \
     /bin/sed -i -e 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     /usr/bin/ssh-keygen -A && \
-    echo "source /etc/profile.d/color_prompt" > /etc/skel/.bashrc && \
-    cp /etc/skel/.bashrc /root/.bashrc && \
+    #echo "source /etc/profile.d/color_prompt" > /etc/skel/.bashrc && \
+    echo "source /etc/profile.d/color_prompt" > /root/.bashrc && \
+    #cp /etc/skel/.bashrc /root/.bashrc && \
     echo "root:fuck" | chpasswd && \
     su - root -c "byobu-launcher-install"
 
