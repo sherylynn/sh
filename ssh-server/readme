@@ -1,3 +1,4 @@
 先build_img.sh
 再ssh-server.sh
-docker attach ssh-server
+ssh root@host -p 22001 
+./normal.sh
