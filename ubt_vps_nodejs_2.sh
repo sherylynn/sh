@@ -27,4 +27,4 @@ npm i -g webpack http-server babel-cli pm2 typescript ts-node tslint eslint
 #git clone https://github.com/sherylynn/plugins4rmmv.git ~/plugins4rmmv
 
 
-sudo ln -s ${INSTALL_PATH}/node/bin/node /usr/local/bin/node
+sudo ln -s -f ${INSTALL_PATH}/node/bin/node /usr/local/bin/node
