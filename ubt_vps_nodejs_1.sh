@@ -1,6 +1,7 @@
 #!/bin/bash
 #sudo apt update
 lynn=$HOME
+INSTALL_PATH=$HOME/tools
 NODE_VERSION=8.9.3
 #arm64 x64
 #NODE_ARCH=armv7l
@@ -33,13 +34,16 @@ sudo apt install python -y
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
+if [ ! -d "${INSTALL_PATH}" ]; then
+  mkdir $INSTALL_PATH
+fi
 
 #wget -q http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
 axel -n 10 http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
     tar -xzf node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
-sudo mv node-v${NODE_VERSION}-linux-${NODE_ARCH} ~/node && \
+sudo mv node-v${NODE_VERSION}-linux-${NODE_ARCH} $INSTALL_PATH/node && \
     rm node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz
-echo 'export PATH=$PATH:~/node/bin'>>~/.bashrc
+echo 'export PATH=$PATH:'${INSTALL_PATH}'/node/bin'>>~/.bashrc
 source ~/.bashrc
 
 #curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
@@ -48,11 +52,17 @@ source ~/.bashrc
 #----------------------------
 # Set Global packages path
 #----------------------------
-mkdir ~/node-global
-mkdir ~/node-cache
-mkdir ~/yarn-cache
-echo 'export PATH="~/node-global/bin:$PATH"' >> ~/.bashrc
-echo 'NPM_CONFIG_PREFIX=~/node-global' >> ~/.bashrc
-echo 'NPM_CONFIG_CACHE=~/node-cache' >> ~/.bashrc
-echo 'YARN_CACHE_FOLDER=~/yarn-cache' >> ~/.bashrc
+if [ ! -d "$INSTALL_PATH/node-global" ]; then
+  mkdir $INSTALL_PATH/node-global
+fi
+if [ ! -d "$INSTALL_PATH/node-cache" ]; then
+  mkdir $INSTALL_PATH/node-cache
+fi
+if [ ! -d "$INSTALL_PATH/yarn-cache" ]; then
+  mkdir $INSTALL_PATH/yarn-cache
+fi
+echo 'export PATH='$INSTALL_PATH'/node-global/bin:$PATH' >> ~/.bashrc
+echo 'NPM_CONFIG_PREFIX='$INSTALL_PATH'/node-global' >> ~/.bashrc
+echo 'NPM_CONFIG_CACHE='$INSTALL_PATH'/node-cache' >> ~/.bashrc
+echo 'YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache' >> ~/.bashrc
 source ~/.bashrc

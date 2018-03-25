@@ -1,13 +1,13 @@
 #!/bin/bash
 #sudo apt update
 lynn=$HOME
-
+INSTALL_PATH=$HOME/tools
 #----------------------------
 # Set Global packages path
 #----------------------------
-npm config set prefix "~/node-global"
-npm config set cache "~/node-cache"
-yarn config set cache-folder "~/yarn-cache"
+npm config set prefix "${INSTALL_PATH}/node-global"
+npm config set cache "${INSTALL_PATH}/node-cache"
+yarn config set cache-folder "${INSTALL_PATH}/yarn-cache"
 #----------------------------
 # Install Basic cli packages
 #----------------------------
@@ -27,4 +27,4 @@ npm i -g webpack http-server babel-cli pm2 typescript ts-node tslint eslint
 #git clone https://github.com/sherylynn/plugins4rmmv.git ~/plugins4rmmv
 
 
-sudo ln -s ~/node/bin/node /usr/local/bin/node
+sudo ln -s ${INSTALL_PATH}/node/bin/node /usr/local/bin/node
