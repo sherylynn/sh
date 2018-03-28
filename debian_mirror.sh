@@ -6,4 +6,5 @@ sudo vi /etc/apt/sources.list +%s/main$/main\ contrib\ non-free/g +wq!
 sudo vi /etc/apt/sources.list +%s/mirror\./mirrors/g +wq!
 #sudo vi /etc/apt/sources.list +%s#mirror.aliyun.com#mirrors.ustc.edu.cn#g +wq!
 #sudo vi /etc/apt/sources.list +%s#deb.debian.org#mirrors.ustc.edu.cn#g +wq!
+sudo vi /etc/apt/sources.list +%s/stretch/testing/g +wq!
 sudo apt update
