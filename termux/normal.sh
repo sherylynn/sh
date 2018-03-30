@@ -1,4 +1,4 @@
-apt install vim htop neovim curl ncdu -y
+apt install vim-python htop neovim curl ncdu -y
 apt install termux-tools -y
 #wget https://xeffyr.github.io/termux-x-repository/pubkey.gpg
 #apt-key add pubkey.gpg
