@@ -11,7 +11,7 @@ sudo apt install xrdp -y
 #安装 xfce4 language-selector-gnome
 #gsettings set org.gnome.desktop.input-sources  sources "[('xkb', 'us'),('xkb','es'),('xkb','zh')]"
 sudo apt update
-sudo apt install xfce4 xfce4-terminal xterm language-pack-zh-hans language-selector-gnome update-manager chromium-browser -y
+sudo apt install xfce4 xfce4-terminal xterm chromium -y
 
 sudo sed -i 's/port=3389/port=3390/g' /etc/xrdp/xrdp.ini
 sudo echo xfce4-session >~/.xsession
@@ -20,4 +20,4 @@ sudo service xrdp restart
 
 #start gui on boot
 #sudo systemctl set-default graphical.target
-sudo gnome-language-selector 
+#sudo gnome-language-selector 
