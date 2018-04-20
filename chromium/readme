@@ -1,0 +1,6 @@
+其实想直接把depot_tools直接下好的，奈何国内下不了
+1.build_img.sh
+2.docker_run.sh
+进入后先cd ..
+proxy.sh source ~/.bashrc 然后init.sh
+proxy.sh的代理根据自己的需求
