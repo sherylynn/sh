@@ -7,7 +7,7 @@ COPY sources.aliyun.list /etc/apt/sources.list
 #RUN bash seafile_install_ubt.sh 
 #apt的命令还是要集成在run中好，不然会出事
 RUN apt update -y && \
-    apt install -y git curl wget  python && \
+    apt install -y git curl wget vim python && \
     apt-get clean
 
 #need proxy
