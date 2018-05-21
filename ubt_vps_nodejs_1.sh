@@ -2,7 +2,7 @@
 #sudo apt update
 lynn=$HOME
 INSTALL_PATH=$HOME/tools
-NODE_VERSION=8.9.3
+NODE_VERSION=8.11.2
 #arm64 x64
 #NODE_ARCH=armv7l
 NODE_ARCH=x64
