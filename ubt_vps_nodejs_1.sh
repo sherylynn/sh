@@ -41,6 +41,7 @@ fi
 #wget -q http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
 axel -n 10 http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
     tar -xzf node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
+    rm $INSTALL_PATH/node && \
 sudo mv node-v${NODE_VERSION}-linux-${NODE_ARCH} $INSTALL_PATH/node && \
     rm node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz
 echo 'export PATH=$PATH:'${INSTALL_PATH}'/node/bin'>>~/.bashrc
