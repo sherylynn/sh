@@ -1,4 +1,4 @@
-#!/bin/bash
+# source
 INSTALL_PATH=$HOME/tools
 NODE_VERSION=8.11.2
 NODE_ARCH=x64
@@ -38,10 +38,11 @@ echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ~/.bash_profile
 #windows下和linux下的不同
 if [ ${OS}=='win' ]; then
   echo 'export PATH=$PATH:'${INSTALL_PATH}'/node'>~/.toolsrc
+  echo 'export PATH='$INSTALL_PATH'/node-global:$PATH' >> ~/.toolsrc
 elif [ ${OS}=='linux' ]; then
   echo 'export PATH=$PATH:'${INSTALL_PATH}'/node/bin'>~/.toolsrc
+  echo 'export PATH='$INSTALL_PATH'/node-global/bin:$PATH' >> ~/.toolsrc
 fi
-echo 'export PATH='$INSTALL_PATH'/node-global/bin:$PATH' >> ~/.toolsrc
 echo 'NPM_CONFIG_PREFIX='$INSTALL_PATH'/node-global' >> ~/.toolsrc
 echo 'NPM_CONFIG_CACHE='$INSTALL_PATH'/node-cache' >> ~/.toolsrc
 source ~/.bashrc
