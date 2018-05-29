@@ -35,8 +35,17 @@ if [ ! -d "$INSTALL_PATH/node-cache" ]; then
 fi
 #--------------new .toolsrc-----------------------
 echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ~/.bash_profile
-echo 'export PATH=$PATH:'${INSTALL_PATH}'/node/bin'>~/.toolsrc
+#windows下和linux下的不同
+if [ ${OS}=='win' ]; then
+  echo 'export PATH=$PATH:'${INSTALL_PATH}'/node'>~/.toolsrc
+elif [ ${OS}=='linux' ]; then
+  echo 'export PATH=$PATH:'${INSTALL_PATH}'/node/bin'>~/.toolsrc
+fi
 echo 'export PATH='$INSTALL_PATH'/node-global/bin:$PATH' >> ~/.toolsrc
 echo 'NPM_CONFIG_PREFIX='$INSTALL_PATH'/node-global' >> ~/.toolsrc
 echo 'NPM_CONFIG_CACHE='$INSTALL_PATH'/node-cache' >> ~/.toolsrc
 source ~/.bashrc
+#--------------new .npmrc ---------------------
+#会安装到奇怪的地方
+#echo 'prefix='$INSTALL_PATH'/node-global' > ~/.npmrc
+#echo 'cache='$INSTALL_PATH'/node-cache' >> ~/.npmrc
