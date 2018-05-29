@@ -20,8 +20,8 @@ fi
 if [ ! -d "${NODE_FILE_NAME}" ]; then
   unzip ${NODE_FILE_PACK}
 fi
-  rm -f $INSTALL_PATH/node && \
+  rm -rf $INSTALL_PATH/node && \
   mv ${NODE_FILE_NAME} $INSTALL_PATH/node && \
-  rm ${NODE_FILE_PACK}
+  rm -rf ${NODE_FILE_PACK}
 echo 'export PATH=$PATH:'${INSTALL_PATH}'/node/bin'>>~/.bashrc
 source ~/.bashrc
