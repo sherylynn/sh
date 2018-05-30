@@ -14,6 +14,7 @@ if [ ! -d "${INSTALL_PATH}" ]; then
 fi
 
 if [ ! -f "${EMACS_FILE_PACK}" ]; then
+  #curl -o ${EMACS_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
   curl -o ${EMACS_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
 fi
 
