@@ -14,8 +14,11 @@ if [ ! -d "${INSTALL_PATH}" ]; then
 fi
 
 if [ ! -f "${EMACS_FILE_PACK}" ]; then
+  curl -o ${EMACS_FILE_PACK} http://mirrors.ustc.edu.cn/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
   #curl -o ${EMACS_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
-  curl -o ${EMACS_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
+  #curl -o ${EMACS_FILE_PACK} http://ftp.gnu.org/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
+  #curl -o emacs.zip http://iso.mirrors.ustc.edu.cn/gnu/emacs/windows/emacs-25.3_1-x86_64.zip
+  #curl -o emacs.zip http://ftp.gnu.org/gnu/emacs/windows/emacs-25.3_1-x86_64.zip
 fi
 
 if [ ! -d "${EMACS_FILE_NAME}" ]; then
