@@ -1,9 +1,9 @@
 # source
 INSTALL_PATH=$HOME/tools
-PYTHON_VERSION=25.3_1
-PYTHON_ARCH=x86_64
+PYTHON_VERSION=3.7.0
+PYTHON_ARCH=amd64
 OS=windows
-PYTHON_FILE_NAME=python-${PYTHON_VERSION}-${PYTHON_ARCH}
+PYTHON_FILE_NAME=python-${PYTHON_VERSION}-embed-${PYTHON_ARCH}
 PYTHON_FILE_PACK=${PYTHON_FILE_NAME}.zip
 cd ~
 #--------------------------------------
@@ -14,11 +14,9 @@ if [ ! -d "${INSTALL_PATH}" ]; then
 fi
 
 if [ ! -f "${PYTHON_FILE_PACK}" ]; then
-  curl -o ${PYTHON_FILE_PACK} http://mirrors.ustc.edu.cn/gnu/python/${OS}/${PYTHON_FILE_PACK} 
-  #curl -o ${PYTHON_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/python/${OS}/${PYTHON_FILE_PACK} 
-  #curl -o ${PYTHON_FILE_PACK} http://ftp.gnu.org/gnu/python/${OS}/${PYTHON_FILE_PACK} 
-  #curl -o python.zip http://iso.mirrors.ustc.edu.cn/gnu/python/windows/python-25.3_1-x86_64.zip
-  #curl -o python.zip http://ftp.gnu.org/gnu/python/windows/python-25.3_1-x86_64.zip
+  #淘宝源没法用curl下载
+  #curl -o ${PYTHON_FILE_PACK} https://npm.taobao.org/mirrors/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
+  curl -o ${PYTHON_FILE_PACK} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
 fi
 
 if [ ! -d "${PYTHON_FILE_NAME}" ]; then
@@ -32,4 +30,4 @@ fi
 #--------------new .toolsrc-----------------------
 echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
 #windows下和linux下的不同
-echo 'export PATH=$PATH:'${INSTALL_PATH}'/python/bin'>~/.pythonrc
+echo 'export PATH=$PATH:'${INSTALL_PATH}'/python'>~/.pythonrc
