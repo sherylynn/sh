@@ -1,4 +1,4 @@
-sudo pip3 install jupyter numpy
+pip3 install --user jupyter numpy
 cd ~
 if [ ! -d "$HOME/.jupyter" ]; then
   mkdir $HOME/.jupyter
