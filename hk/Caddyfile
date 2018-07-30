@@ -1,6 +1,17 @@
 jupyter.sherylynn.win {
-  proxy / localhost:8887 {
-    websocket
-    transparent
-  }
+    proxy /proxy/ 0.0.0.0:10000 {
+      header_upstream X-Real-IP {remote}
+      header_upstream Host {host}
+      websocket
+      without /proxy/
+    }
+    proxy / 0.0.0.0:10000 {
+      header_upstream X-Real-IP {remote}
+      header_upstream Host {host}
+      websocket
+    }
+    rewrite {
+      r "~* /(api/kernels/[^/]+/(channels|iopub|shell|stdin)|terminals/websocket)/?"
+      to /proxy/{uri}
+    }
 }

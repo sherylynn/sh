@@ -1,0 +1,1 @@
+docker中的caddy无法监听非绑定的主机服务器，估计除非要host=net才
