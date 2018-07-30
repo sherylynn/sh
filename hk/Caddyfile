@@ -1,0 +1,6 @@
+jupyter.sherylynn.win {
+  proxy / localhost:8887 {
+    websocket
+    transparent
+  }
+}
