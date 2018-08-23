@@ -1,0 +1,18 @@
+
+
+# deb cdrom:[Debian GNU/Linux 9.4.0 _Stretch_ - Official amd64 NETINST 20180310-11:21]/ testing non-free contrib main  
+
+# deb cdrom:[Debian GNU/Linux 9.4.0 _Stretch_ - Official amd64 NETINST 20180310-11:21]/ testing non-free contrib main  
+
+deb http://mirrors.163.com/debian/ testing non-free contrib main    
+deb-src http://mirrors.163.com/debian/ testing non-free contrib main   
+
+deb http://mirrors.163.com/debian-security/ testing/updates non-free contrib main   
+deb-src http://mirrors.163.com/debian-security/ testing/updates non-free contrib main  
+
+# testing-updates, previously known as 'volatile'
+deb http://mirrors.163.com/debian/ testing-updates non-free contrib main    
+deb-src http://mirrors.163.com/debian/ testing-updates non-free contrib main   
+deb [arch=amd64] https://download.docker.com/linux/debian/ stretch stable  
+# deb-src [arch=amd64] https://download.docker.com/linux/debian/ testing stable  
+
