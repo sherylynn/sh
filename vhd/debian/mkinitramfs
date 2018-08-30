@@ -1,0 +1,9 @@
+# util-linux
+copy_exec /sbin/blkid /sbin
+copy_exec /sbin/losetup /sbin
+copy_exec /sbin/kpartx /sbin
+copy_exec /bin/ntfs-3g /bin
+copy_exec /sbin/vgscan /sbin
+copy_exec /sbin/shutdown /shutdown
+touch ${DESTDIR}/etc/initrd-release
+touch ${DESTDIR}/version
