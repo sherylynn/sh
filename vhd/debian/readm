@@ -1,0 +1,7 @@
+对一个新安装在vhd内的debian 用户名deb
+首先切换到su 然后执行 run_me_as_root_first
+然后退出到deb用户
+and debian_remove.sh
+然后 vhd_boot.sh 仅一次
+然后auto_initrd_debian.sh
+获取vmlinuz和initrd.img
