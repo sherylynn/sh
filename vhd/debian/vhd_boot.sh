@@ -17,6 +17,6 @@ cd ~/ntfs*
 make
 sudo make install
 
-cd ~/debian
+cd ~/sh/vhd/debian
 sudo cp /usr/share/initramfs-tools/scripts/local-bottom/ntfs_3g ~/ntfs_3g.backup
 sudo vi /usr/share/initramfs-tools/scripts/local-bottom/ntfs_3g  -c 'normal dd=G' -c 'read ./ntfs_3g' -c 'wq!'
