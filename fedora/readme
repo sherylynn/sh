@@ -1,1 +1,10 @@
 just for fedora 28
+--------------------------
+#lxde autologin
+--------------------------
+vi /etc/lxdm/lxdm.conf 
+
+[base]
+## uncomment and set autologin username to enable auto login
+autologin=lynn
+
