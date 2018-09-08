@@ -5,6 +5,7 @@ sudo dnf config-manager \
 sudo dnf config-manager --set-enabled docker-ce-edge
 sudo dnf config-manager --set-enabled docker-ce-test
 sudo dnf install docker-ce
+sudo systemctl enable docker
 sudo systemctl start docker
 sudo usermod -aG docker $(whoami)
 sudo systemctl restart docker
