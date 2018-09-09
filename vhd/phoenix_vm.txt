@@ -1,0 +1,6 @@
+#virtualbox
+sudo VBoxManage internalcommands createrawvmdk -filename ~/phoenix.vmdk -rawdisk /dev/sda
+sudo virtualbox
+记得把虚拟机的鼠标勾选取消集成
+#vmware
+记得选上监视显示器
