@@ -1,6 +1,6 @@
 #!/bin/bash
 #sudo apt update
-lynn=/home/lynn
+lynn=$HOME
 
 #常用工具
 sudo apt install ssh tofrodos htop ncdu vim aria2 -y
@@ -15,7 +15,7 @@ curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 sudo apt-key fingerprint 0EBFCD88
 sudo add-apt-repository \
     "deb [arch=amd64] https://download.docker.com/linux/debian \
-    $(lsb_release -cs) \
+    buster \
     stable"
 #安装并启动docker服务
 sudo apt update
@@ -24,6 +24,7 @@ sudo service docker start
 #建立docker用户
 sudo groupadd docker
 sudo usermod -aG docker $USER
+sudo usermod -aG docker $(whoami)
 sudo service docker restart
 
 if [ ! -f "/usr/local/bin/docker-compose" ]; then
