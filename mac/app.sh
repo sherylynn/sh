@@ -7,4 +7,4 @@ brew cask install clover-configurator kext-utility hwsensors
 #cli app
 brew install nodejs go htop
 #gnu
-brew install evince 
+brew install evince macvim

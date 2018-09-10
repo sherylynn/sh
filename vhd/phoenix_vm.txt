@@ -1,6 +1,10 @@
-#virtualbox
+#virtualbox for linux
 sudo VBoxManage internalcommands createrawvmdk -filename ~/phoenix.vmdk -rawdisk /dev/sda
 sudo virtualbox
 记得把虚拟机的鼠标勾选取消集成
 #vmware
 记得选上监视显示器
+
+#virtualbox for mac
+sudo VBoxManage internalcommands createrawvmdk -filename ~/phoenix.vmdk -rawdisk /dev/disk2
+sudo virtualbox
