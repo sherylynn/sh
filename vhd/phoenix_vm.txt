@@ -7,4 +7,5 @@ sudo virtualbox
 
 #virtualbox for mac
 sudo VBoxManage internalcommands createrawvmdk -filename ~/phoenix.vmdk -rawdisk /dev/disk2
+#--:记得卸载磁盘后才能添加
 sudo virtualbox
