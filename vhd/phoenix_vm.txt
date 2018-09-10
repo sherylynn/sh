@@ -12,4 +12,10 @@ sudo diskutil unmount /dev/disk2
 sudo virtualbox
 
 #qemu for mac
-sudo qemu-system-x86_64 -hda /dev/disk2
+sudo qemu-system-x86_64 -hda /dev/disk2 -accel hvf
+
+#hvf =apple's hypervisor.framework whpx = windows hypervisor platform extension(需要在功能里打开)
+#amd cpu 的机器，qemu没haxm加速，很吃亏，这个时候vm最佳
+#查阅了qemu的用户说明，除了支持intel的 -accel hax 外,还新增了 -accel hvf 的苹果加速 -accel whpx 的微软加速 应该就是新版谷歌用的android加速了
+#intel处理器，windows and mac有haxm加速，linux有kvm加速，qemu挺好
+#linux 下virtualbox都有kvm加速 其他平台的virtualbox未知
