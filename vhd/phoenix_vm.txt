@@ -8,4 +8,8 @@ sudo virtualbox
 #virtualbox for mac
 sudo VBoxManage internalcommands createrawvmdk -filename ~/phoenix.vmdk -rawdisk /dev/disk2
 #--:记得卸载磁盘后才能添加
+sudo diskutil unmount /dev/disk2
 sudo virtualbox
+
+#qemu for mac
+sudo qemu-system-x86_64 -hda /dev/disk2
