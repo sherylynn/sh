@@ -16,6 +16,11 @@ git submodule update --init ui/keycodemapdb
 git submodule update --init capstone
 git submodule update --init dtc
 
-./configure --cross-prefix=x86_64-w64-mingw32- --enable-gtk --enable-sdl \
---enable-whpx --python=python3 --target-list=x86_64-softmmu
+./configure --cross-prefix=x86_64-w64-mingw32- --enable-gtk --enable-sdl --enable-whpx --python=python3 --target-list=x86_64-softmmu --disable-werror 
+#可以查看./configure --help
+ln -sf /mingw64/bin/ar /mingw64/bin/x86_64-w64-mingw32-ar
+ln -sf /mingw64/bin/nm /mingw64/bin/x86_64-w64-mingw32-nm
+ln -sf /mingw64/bin/objcopy /mingw64/bin/x86_64-w64-mingw32-objcopy
+ln -sf /mingw64/bin/windres /mingw64/bin/x86_64-w64-mingw32-windres
+ln -sf /mingw64/bin/ranlib /mingw64/bin/x86_64-w64-mingw32-ranlib
 make -j
