@@ -10,12 +10,12 @@ cp -Rf x86_64-w64-mingw32-4.8/x86_64-w64-mingw32/lib/libWinHv*.a /mingw64/x86_64
 
 git clone git://git.qemu-project.org/qemu.git
 cd qemu
-git checkout v2.12.1
+git checkout v3.0.0
 git submodule update --init ui/keycodemapdb
 git submodule update --init capstone
 git submodule update --init dtc
 #./configure --prefix=/qemu --cross-prefix=x86_64-w64-mingw32- --enable-gtk --enable-sdl --enable-whpx --python=python3 --target-list=x86_64-softmmu --disable-werror
-./configure --prefix=/qemu --enable-gtk --enable-sdl --enable-whpx --python=python3 --target-list=x86_64-softmmu --disable-werror 
+./configure --prefix=/qemu --enable-gtk --enable-sdl --enable-whpx --target-list=x86_64-softmmu --disable-werror 
 #可以查看./configure --help
 ln -sf /mingw64/bin/ar /mingw64/bin/x86_64-w64-mingw32-ar
 ln -sf /mingw64/bin/nm /mingw64/bin/x86_64-w64-mingw32-nm
