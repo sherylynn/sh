@@ -7,7 +7,7 @@ git config http.proxy http://${HOST}:${PORT}/
 
 git clone git://git.qemu-project.org/qemu.git
 cd qemu
-git checkout v3.0.0
+git checkout v2.12.1
 git submodule update --init ui/keycodemapdb
 git submodule update --init capstone
 git submodule update --init dtc
@@ -15,7 +15,7 @@ git submodule update --init dtc
 #git clone --depth 1 https://github.com/qemu/dtc
 
 ./configure --enable-gtk --enable-sdl \
-	    --enable-whpx --static
+	    --enable-whpx --static --disable-werror
 #--disable-capstone
 #make -j 后跟数字就是限制进程最大数目 不跟数字就是直接最大
 make -j
