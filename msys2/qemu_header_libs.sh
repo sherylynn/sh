@@ -11,6 +11,7 @@ cp -Rf x86_64-w64-mingw32-4.8/x86_64-w64-mingw32/lib/libWinHv*.a /mingw64/x86_64
 
 git clone git://git.qemu-project.org/qemu.git
 cd qemu
+git checkout v3.0.0
 git submodule update --init ui/keycodemapdb
 git submodule update --init capstone
 git submodule update --init dtc
