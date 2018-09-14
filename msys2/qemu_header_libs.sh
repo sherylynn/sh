@@ -24,3 +24,7 @@ ln -sf /mingw64/bin/objcopy /mingw64/bin/x86_64-w64-mingw32-objcopy
 ln -sf /mingw64/bin/windres /mingw64/bin/x86_64-w64-mingw32-windres
 ln -sf /mingw64/bin/ranlib /mingw64/bin/x86_64-w64-mingw32-ranlib
 make -j
+cd /mingw64/bin/
+
+cp -f libgdk_pixbuf-2.0-0.dll libglib-2.0-0.dll libgobject-2.0-0.dll libjpeg-8.dll liblzo2-2.dll libgtk-3-0.dll libpixman-1-0.dll SDL2.dll libpng16-16.dll libgio-2.0-0.dll libgmodule-2.0-0.dll libfontconfig-1.dll libfreetype-6.dll libcairo-gobject-2.dll libepoxy-0.dll libgdk-3-0.dll libcairo-2.dll  ~/qemu/x86_64-softmmu/
+cp -rf *.dll ~/qemu/x86_64-softmmu/
