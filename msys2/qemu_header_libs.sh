@@ -15,7 +15,8 @@ git submodule update --init ui/keycodemapdb
 git submodule update --init capstone
 git submodule update --init dtc
 #./configure --prefix=/qemu --cross-prefix=x86_64-w64-mingw32- --enable-gtk --enable-sdl --enable-whpx --python=python3 --target-list=x86_64-softmmu --disable-werror
-./configure --prefix=/qemu --enable-gtk --enable-sdl --enable-whpx --target-list=x86_64-softmmu --disable-werror 
+make clean
+./configure --prefix=/qemu --enable-gtk --enable-sdl --target-list=x86_64-softmmu --disable-werror
 #可以查看./configure --help
 ln -sf /mingw64/bin/ar /mingw64/bin/x86_64-w64-mingw32-ar
 ln -sf /mingw64/bin/nm /mingw64/bin/x86_64-w64-mingw32-nm
@@ -23,6 +24,7 @@ ln -sf /mingw64/bin/objcopy /mingw64/bin/x86_64-w64-mingw32-objcopy
 ln -sf /mingw64/bin/windres /mingw64/bin/x86_64-w64-mingw32-windres
 ln -sf /mingw64/bin/ranlib /mingw64/bin/x86_64-w64-mingw32-ranlib
 ln -sf /mingw64/bin/strip /mingw64/bin/x86_64-w64-mingw32-strip
+rm -rf /mingw64/bin/x86_64-w64-mingw32-ar /mingw64/bin/x86_64-w64-mingw32-nm /mingw64/bin/x86_64-w64-mingw32-objcopy /mingw64/bin/x86_64-w64-mingw32-windres /mingw64/bin/x86_64-w64-mingw32-ranlib /mingw64/bin/x86_64-w64-mingw32-strip
 make -j
 make install
 cd /mingw64/bin/
