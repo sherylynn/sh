@@ -17,3 +17,4 @@ git submodule update --init dtc
 
 ./configure --cross-prefix=x86_64-w64-mingw32- --enable-gtk --enable-sdl \
 --enable-whpx --python=python3 --target-list=x86_64-softmmu
+make -j
