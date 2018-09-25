@@ -11,7 +11,8 @@ yarn config set cache-folder "${INSTALL_PATH}/yarn-cache"
 #----------------------------
 # Install Basic cli packages
 #----------------------------
-npm i -g yrm
+#npm i -g yrm --registry=https://registry.npm.taobao.org
+npm i -g yrm --registry=http://r.cnpmjs.org
 yrm use taobao
 #npm i -g pouchdb-server webpack yarn http-server j json dva-cli babel-cli code-push express-cli flow-bin  rundev
 #x64

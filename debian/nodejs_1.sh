@@ -2,7 +2,9 @@
 #sudo apt update
 lynn=$HOME
 INSTALL_PATH=$HOME/tools
-NODE_VERSION=8.11.2
+NODE_VERSION=8.12.0
+#MIRROR=http://nodejs.org/dist
+MIRROR=http://npm.taobao.org/mirrors/node
 #arm64 x64
 #NODE_ARCH=armv7l
 NODE_ARCH=x64
@@ -39,7 +41,8 @@ if [ ! -d "${INSTALL_PATH}" ]; then
 fi
 
 #wget -q http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
-axel -n 10 http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
+#axel -n 10 http://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
+axel -n 10 ${MIRROR}/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
     tar -xzf node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.gz && \
     rm -rf $INSTALL_PATH/node && \
 sudo mv node-v${NODE_VERSION}-linux-${NODE_ARCH} $INSTALL_PATH/node && \

@@ -1,6 +1,6 @@
 #!/bin/bash
 lynn=$HOME
-GO_VERSION=1.10
+GO_VERSION=1.11
 GO_ARCH=amd64
 #arm64
 cd $HOME
