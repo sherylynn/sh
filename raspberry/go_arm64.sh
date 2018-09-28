@@ -1,9 +1,7 @@
 #!/bin/bash
 lynn=$HOME
 GO_VERSION=1.11
-GO_ARCH=amd64
-#GO_ARCH=arm64
-#GO_ARCH=armv6l
+GO_ARCH=arm64
 #arm64
 cd $HOME
 if [ ! -d "$HOME/tools" ]; then
