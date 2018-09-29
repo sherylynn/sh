@@ -4,6 +4,12 @@ git config --global credential.helper cache
 git config --global credential.helper 'cache --timeout=2678400'
 git config --global credential.helper store
 
+git config --global alias.gca 'commit -a'
+git config --global alias.gaa 'add --all'
+#git config --global alias.gc. 'checkout .'
+git config --global alias.gs 'status'
+git config --global alias.gp 'push'
+
 #echo "alias lynn ='git clone https://github/sherylynn/'" >> ~/.bashrc
 #-----------------------
 # git clone project
