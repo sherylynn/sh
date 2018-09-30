@@ -10,6 +10,8 @@ git config --global alias.gaa 'add --all'
 git config --global alias.gs 'status'
 git config --global alias.gp 'push'
 
+git config --global core.editor vim
+
 #echo "alias lynn ='git clone https://github/sherylynn/'" >> ~/.bashrc
 #-----------------------
 # git clone project
