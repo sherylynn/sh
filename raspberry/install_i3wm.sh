@@ -17,7 +17,7 @@ sudo apt install xfce4-terminal -y
 
 #---------or wicd
 sudo apt install wicd -y
-mkdir $HOME/.i3
+mkdir -p $HOME/.i3
 cat /etc/i3/config > $HOME/.i3/config
 vi $HOME/.i3/config -c "normal Gdd" -c ":%s/Mod1/Mod4/g" -c "wq!"
 echo "exec --no-startup-id wicd-gtk -t ">> $HOME/.i3/config
