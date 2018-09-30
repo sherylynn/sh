@@ -17,9 +17,12 @@ sudo apt install xfce4-terminal -y
 
 #---------or wicd
 sudo apt install wicd -y
-sudo echo "exec --no-startup-id wicd-gtk -t "> $HOME/.i3/config
-sudo echo 'export GTK_IM_MODULE=fcitx' > $HOME/.xinitrc
-sudo echo 'export QT_IM_MODULE=fcitx' >> $HOME/.xinitrc
-sudo echo 'export XMODIFIERS="@im=fcitx"' >> $HOME/.xinitrc
-sudo echo 'exec i3' >> $HOME/.xinitrc
+mkdir $HOME/.i3
+cat /etc/i3/config > $HOME/.i3/config
+vi $HOME/.i3/config -c "normal Gdd" -c ":%s/Mod1/Mod4/g" -c "wq!"
+echo "exec --no-startup-id wicd-gtk -t ">> $HOME/.i3/config
+echo 'export GTK_IM_MODULE=fcitx' > $HOME/.xinitrc
+echo 'export QT_IM_MODULE=fcitx' >> $HOME/.xinitrc
+echo 'export XMODIFIERS="@im=fcitx"' >> $HOME/.xinitrc
+echo 'exec i3' >> $HOME/.xinitrc
 
