@@ -1,0 +1,2 @@
+install archlinux in raspberry
+#uboot need to change fstab to /dev/sda1 boot /dev/sda2 root
