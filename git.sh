@@ -10,6 +10,7 @@ git config --global alias.gaa 'add --all'
 #git config --global alias.gc. 'checkout .'
 git config --global alias.gs 'status'
 git config --global alias.gp 'push'
+git config --global alias.gl 'pull'
 
 git config --global core.editor vim
 
