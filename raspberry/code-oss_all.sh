@@ -4,4 +4,5 @@ sudo apt install -f
 rm -f code-oss_armhf.deb
 sudo ln -sf /usr/bin/code-oss /usr/bin/code
 #suit for sync extension
-sudo ln -sf /usr/bin/code-oss /usr/share/code/bin/code
+sudo mkdir -p /usr/share/code/bin
+sudo ln -sf /usr/share/code-oss/bin/code-oss /usr/share/code/bin/code
