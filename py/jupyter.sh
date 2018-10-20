@@ -1,4 +1,5 @@
 #just for termux ,so it is lack of sudo
+echo "add .local/bin to path first"
 apt install libcrypt-dev libzmq libzmq-dev
 pip3 install --user jupyter numpy 
 cd ~

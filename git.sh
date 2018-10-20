@@ -1,3 +1,4 @@
+#git config --global http.proxy http://127.0.0.1:10808
 git config --global user.name "sherylynn"
 git config --global user.email "352281674@qq.com"
 git config --global credential.helper cache
