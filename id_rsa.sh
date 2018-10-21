@@ -1,3 +1,4 @@
+sudo apt install sshpass -y
 mkdir ~/.ssh
 cat ~/id_rsa >> ~/.ssh/id_rsa
 chmod 700 ~/.ssh
