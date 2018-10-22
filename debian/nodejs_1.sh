@@ -69,5 +69,5 @@ echo 'export PATH='$INSTALL_PATH'/node-global/bin:$PATH' >> ~/.bashrc
 echo 'NPM_CONFIG_PREFIX='$INSTALL_PATH'/node-global' >> ~/.bashrc
 echo 'NPM_CONFIG_CACHE='$INSTALL_PATH'/node-cache' >> ~/.bashrc
 echo 'YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache' >> ~/.bashrc
-echo 'ELECTRON_MIRROR=http://npm.taobao.org/mirrors/electron/' >> ~/.bashrc
+echo 'export ELECTRON_MIRROR=http://npm.taobao.org/mirrors/electron/' >> ~/.bashrc
 source ~/.bashrc
