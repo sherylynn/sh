@@ -8,6 +8,7 @@ git config --global credential.helper store
 git config --global alias.gco 'checkout .'
 git config --global alias.gca 'commit -a'
 git config --global alias.gaa 'add --all'
+git config --global alias.gcf 'commit -m "fix" -a'
 #git config --global alias.gc. 'checkout .'
 git config --global alias.gs 'status'
 git config --global alias.gp 'push'
