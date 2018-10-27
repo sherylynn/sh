@@ -71,4 +71,5 @@ echo 'NPM_CONFIG_CACHE='$INSTALL_PATH'/node-cache' >> ~/.bashrc
 echo 'YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache' >> ~/.bashrc
 echo 'export ELECTRON_MIRROR=http://npm.taobao.org/mirrors/electron/' >> ~/.bashrc
 echo 'export SQLITE3_BINARY_SITE=http://npm.taobao.org/mirrors/sqlite3' >> ~/.bashrc
+echo 'export PHANTOMJS_CDNURL=http://npm.taobao.org/mirrors/phantomjs' >> ~/.bashrc
 source ~/.bashrc
