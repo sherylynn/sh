@@ -5,7 +5,7 @@ brew cask install onyx skim iina firefox chromium calibre v2rayx qq wechat anyde
 #macx86 app
 brew cask install clover-configurator kext-utility hwsensors
 #cli app
-brew install nodejs go htop proxychains-ng #/usr/local/etc/proxychains.conf
+brew install nodejs go htop proxychains-ng mit-scheme #/usr/local/etc/proxychains.conf
 #docker for amd-osx amd not support docker-ce
 brew cask install docker-toolbox
 #gnu
