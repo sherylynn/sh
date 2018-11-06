@@ -1,1 +1,1 @@
-sudo apt install mit-schemea -y
+sudo apt install mit-scheme -y
