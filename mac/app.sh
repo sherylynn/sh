@@ -10,3 +10,5 @@ brew install nodejs go htop proxychains-ng mit-scheme #/usr/local/etc/proxychain
 brew cask install docker-toolbox
 #gnu
 brew install evince macvim qemu
+# android
+brew cask install android-studio android-ndk android-sdk
