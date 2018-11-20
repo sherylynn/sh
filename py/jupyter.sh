@@ -2,6 +2,9 @@
 echo "add .local/bin to path first"
 apt install libcrypt-dev libzmq libzmq-dev
 pip3 install --user jupyter numpy 
+# env
+export PATH=$PATH:$HOME/.local/bin
+echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc
 cd ~
 if [ ! -d "$HOME/.jupyter" ]; then
   mkdir $HOME/.jupyter
