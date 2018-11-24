@@ -11,3 +11,4 @@ tar -xzf dotnet-sdk-latest-linux-${DOTNET_ARCH}.tar.gz -C ${DOTNET_PATH}
 rm -rf dotnet-sdk-latest-linux-${DOTNET_ARCH}.tar.gz
 export PATH=$PATH:${DOTNET_PATH} 
 echo 'export PATH=$PATH:'${DOTNET_PATH} >>~/.bashrc
+echo 'export DOTNET_ROOT='${DOTNET_PATH} >>~/.bashrc
