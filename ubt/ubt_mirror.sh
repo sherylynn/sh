@@ -1,4 +1,2 @@
-#
-sudo vi /etc/apt/sources.list +%s#archive.ubuntu.com#mirror.aliyun.com#g +wq!
-sudo vi /etc/apt/sources.list +%s#security.ubuntu.com#mirror.aliyun.com#g +wq!
+sudo cp ~/sh/ubt/sources.list /etc/apt/sources.list
 sudo apt update
