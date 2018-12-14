@@ -1,0 +1,2 @@
+for amd osx
+docker-machine create default --virtualbox-no-vtx-check
