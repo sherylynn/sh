@@ -1,2 +1,3 @@
 for amd osx
 docker-machine create default --virtualbox-no-vtx-check
+docker-machine create --engine-registry-mirror=https://mirror.ccs.tencentyun.com --virtualbox-no-vtx-check
