@@ -14,3 +14,9 @@ brew install evince macvim qemu
 brew cask install android-studio # android-ndk android-sdk
 # dotnet
 brew cask install dotnet-sdk
+# v2ray
+brew tap v2ray/v2ray
+brew install v2ray-core
+# need to add sudo before brew services
+sudo brew services start v2ray-core
+cp ~/config.json /usr/local/etc/v2ray/config.json
