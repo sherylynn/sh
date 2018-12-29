@@ -39,15 +39,17 @@ echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ~/.bash_profile
 if [ ${OS}=='win' ]; then
   echo 'export PATH=$PATH:'${INSTALL_PATH}'/node'>~/.toolsrc
   echo 'export PATH='$INSTALL_PATH'/node-global:$PATH' >> ~/.toolsrc
+  export PATH=$PATH:'${INSTALL_PATH}'/node
+  export PATH='$INSTALL_PATH'/node-global:$PATH
 elif [ ${OS}=='linux' ]; then
   echo 'export PATH=$PATH:'${INSTALL_PATH}'/node/bin'>~/.toolsrc
   echo 'export PATH='$INSTALL_PATH'/node-global/bin:$PATH' >> ~/.toolsrc
+  export PATH=$PATH:'${INSTALL_PATH}'/node/bin
+  export PATH='$INSTALL_PATH'/node-global/bin:$PATH
 fi
 echo 'NPM_CONFIG_PREFIX='$INSTALL_PATH'/node-global' >> ~/.toolsrc
 echo 'NPM_CONFIG_CACHE='$INSTALL_PATH'/node-cache' >> ~/.toolsrc
 #-----env--------------------------------------------------
-export PATH=$PATH:'${INSTALL_PATH}'/node/bin
-export PATH='$INSTALL_PATH'/node-global/bin:$PATH
 export NPM_CONFIG_PREFIX='$INSTALL_PATH'/node-global
 export NPM_CONFIG_CACHE='$INSTALL_PATH'/node-cache
 export YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache
