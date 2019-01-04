@@ -14,6 +14,11 @@ brew install evince macvim qemu
 brew cask install android-studio # android-ndk android-sdk
 # dotnet
 brew cask install dotnet-sdk
+# frp
+brew tap sherylynn/frp
+brew install frp
+cp ~/frpc.ini /usr/local/etc/frp/frpc.ini
+brew services start frp
 # v2ray
 brew tap v2ray/v2ray
 brew install v2ray-core
