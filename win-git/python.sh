@@ -48,7 +48,7 @@ echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
 # linux下 PIP_PATH=$(python -m site --user-base)"/bin"
 # win下
 export PATH=$PATH:${PYTHON_HOME}
-export PYTHONUSERBASE="'"$USERPROFILE\\tools\\python-pip"'"
+export PYTHONUSERBASE=$USERPROFILE\\tools\\python-pip
 python -m site
 # userbase 变量需要在 python -m site 前
 PIP_BIN_PATH=$(python -m site --user-site)
