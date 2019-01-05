@@ -50,6 +50,19 @@ echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
 export PATH=$PATH:${PYTHON_HOME}
 export PYTHONUSERBASE=$USERPROFILE\\tools\\python-pip
 python -m site
+#-----------pip install path-----------------------------------
+if [ ! -d "${PIP_USERBASE}" ]; then
+  mkdir ${PIP_USERBASE}
+fi
+<<readme
+--------------确保后续代码可以执行需要先删除------------
+调试时候适合用<<的注释来屏蔽代码查看效果
+类似run_module_ 的错误一般是路径问题，就是下述没删除的
+readme
+cd $INSTALL_PATH/python
+mv python*._pth python._pth.save
+#---------------------------------------------  需要有路径不然没user-site
+python -m site --user-site
 # userbase 变量需要在 python -m site 前
 PIP_BIN_PATH=$(python -m site --user-site)
 echo show_PIP_PATH:$PIP_BIN_PATH
@@ -62,15 +75,8 @@ echo 'export PATH=$PATH:'"'"$PIP_BIN_PATH\\..\\Scripts"'">>~/.pythonrc
 echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}>>~/.pythonrc
 echo "export PYTHONUSERBASE="'$USERPROFILE\\tools\\python-pip'>>~/.pythonrc
 
-#-----------pip install path-----------------------------------
-if [ ! -d "${PIP_USERBASE}" ]; then
-  mkdir ${PIP_USERBASE}
-fi
-
 #-------get pip-------------------------------------------
-cd $INSTALL_PATH/python
 if [ ! -f "${GET_PIP_PATH}" ]; then
   curl -o ${GET_PIP} https://bootstrap.pypa.io/get-pip.py
 fi
 python ${GET_PIP} --user
-mv python*._pth python._pth.save
