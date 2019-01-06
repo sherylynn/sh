@@ -79,4 +79,22 @@ echo "export PYTHONUSERBASE="'$USERPROFILE\\tools\\python-pip'>>~/.pythonrc
 if [ ! -f "${GET_PIP_PATH}" ]; then
   curl -o ${GET_PIP} https://bootstrap.pypa.io/get-pip.py
 fi
-python ${GET_PIP} --user
+echo Install pip
+if [ "$(pip --version)" == "*from*" ]; then
+  python ${GET_PIP} --user
+fi
+
+#  ----windows bat----
+setx PYTHONHOME $USERPROFILE\\tools\\python
+setx PYTHONPATH '%PYTHONHOME%;%PYTHONHOME%\Lib;%PYTHONHOME%\site-packages'
+setx PYTHONUSERBASE $USERPROFILE\\tools\\python-pip
+setx PYTHON_TEST ${PYTHON_HOME}
+#  没法setx path 因为git bash 中的path是冒号间隔的
+# setx PATH ${PATH//:/;}
+#cmd //c setx PATH %PATH%;test
+start cmd '/c setx test_env "%PATH%";%PYTHONHOME%'
+# ~PATH~不能对path自己使用
+# cmd "/c setx PATH ~PATH~;test"
+# setx test_env "$(cmd //c echo %PATH%)"
+# setx有一个1024数字的截断问题，没法解决
+# setx PATH '%PATH%;%PYTHONHOME%;'${PYTHON_SCRIPTS};$PIP_BIN_PATH\\..\\Scripts
