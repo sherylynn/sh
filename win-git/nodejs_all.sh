@@ -34,7 +34,9 @@ if [ ! -d "$INSTALL_PATH/node-cache" ]; then
   mkdir $INSTALL_PATH/node-cache
 fi
 #--------------new .toolsrc-----------------------
-echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ~/.bash_profile
+if [ $(cat ~/.bash_profile) == *toolsrc* ]; then
+  echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ~/.bash_profile
+ fi
 #windows下和linux下的不同
 if [ ${OS}=='win' ]; then
   echo 'export PATH=$PATH:'${INSTALL_PATH}'/node'>~/.toolsrc

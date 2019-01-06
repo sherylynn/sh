@@ -37,7 +37,9 @@ if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
   rm -rf ${PYTHON_FILE_PACK}
 fi
 #--------------new .toolsrc-----------------------
-echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
+if [ $(cat ~/.bash_profile) == *pythonrc* ]; then
+  echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
+fi
 #windows下和linux下的不同
 # windows 下pip user时候的bin也不一样，不在 --user-base下 ,或者说
 # bin即script的位置会随着bash执行时候的位置改变，如在~
@@ -85,14 +87,23 @@ if [ "$(pip --version)" == "*from*" ]; then
 fi
 
 #  ----windows bat----
+winPath(){
+  #return ${1////\\}
+  # shell 函数只能返回整数
+  local x=$1
+  local x_drive=${x///c/C:}
+  local x_backsplash=${x_drive////\\}
+  echo $x_backsplash
+}
 setx PYTHONHOME $USERPROFILE\\tools\\python
 setx PYTHONPATH '%PYTHONHOME%;%PYTHONHOME%\Lib;%PYTHONHOME%\site-packages'
 setx PYTHONUSERBASE $USERPROFILE\\tools\\python-pip
-setx PYTHON_TEST ${PYTHON_HOME}
+setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(winPath ${PIP_BIN_PATH}/../Scripts)
 #  没法setx path 因为git bash 中的path是冒号间隔的
 # setx PATH ${PATH//:/;}
 #cmd //c setx PATH %PATH%;test
-start cmd '/c setx test_env "%PATH%";%PYTHONHOME%'
+start cmd '/k setx test_env "%PATH%"'
+# git bash 中获取的 python是已经变态了的path,首先不能正常使用
 # ~PATH~不能对path自己使用
 # cmd "/c setx PATH ~PATH~;test"
 # setx test_env "$(cmd //c echo %PATH%)"
