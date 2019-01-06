@@ -110,7 +110,9 @@ setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(win
 #cmd //c setx PATH %PATH%;test
 start cmd '/k setx test_env "%PATH%"'
 echo $(dirname "$0")
-start $(cd $(dirname "$0");pwd)/setPath.bat
+cd $(dirname "$0")
+pwd
+start setPath.bat
 # git bash 中获取的 python是已经变态了的path,首先不能正常使用
 # ~PATH~不能对path自己使用
 # cmd "/c setx PATH ~PATH~;test"
