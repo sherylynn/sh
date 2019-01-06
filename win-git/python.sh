@@ -2,10 +2,13 @@
 # source
 INSTALL_PATH=$HOME/tools
 PYTHON_HOME=$INSTALL_PATH/python
+PYTHON_VERSION=3.6.8
+PYTHON_SHOTVERSION=${PYTHON_VERSION//./}
+PYTHON_PREFIX=${PYTHON_SHOTVERSION:0:2}
 PYTHON_LIB=$PYTHON_HOME/Lib
+PYTHON_ZIP=$PYTHONHOME/python${PYTHON_PREFIX}.zip
 PYTHON_PACKAGES=$PYTHON_LIB/site-packages
 PYTHON_SCRIPTS=$PYTHON_HOME/Scripts
-PYTHON_VERSION=3.6.8
 PYTHON_ARCH=amd64
 GET_PIP=get-pip.py
 GET_PIP_PATH=$PYTHON_HOME/$GET_PIP
@@ -37,7 +40,7 @@ if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
   rm -rf ${PYTHON_FILE_PACK}
 fi
 #--------------new .toolsrc-----------------------
-if [ $(cat ~/.bash_profile) == *pythonrc* ]; then
+if [ "$(cat ~/.bash_profile)" == "*pythonrc*" ]; then
   echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
 fi
 #windows下和linux下的不同
@@ -70,11 +73,11 @@ PIP_BIN_PATH=$(python -m site --user-site)
 echo show_PIP_PATH:$PIP_BIN_PATH
 export PATH=$PATH:${PYTHON_SCRIPTS}
 export PATH=$PATH:'$PIP_BIN_PATH\\..\\Scripts'
-export PYTHONPATH=${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}
+export PYTHONPATH=${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}
 echo 'export PATH=$PATH:'${PYTHON_HOME}>~/.pythonrc
 echo 'export PATH=$PATH:'${PYTHON_SCRIPTS}>>~/.pythonrc
 echo 'export PATH=$PATH:'"'"$PIP_BIN_PATH\\..\\Scripts"'">>~/.pythonrc
-echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}>>~/.pythonrc
+echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}>>~/.pythonrc
 echo "export PYTHONUSERBASE="'$USERPROFILE\\tools\\python-pip'>>~/.pythonrc
 
 #-------get pip-------------------------------------------
@@ -93,10 +96,13 @@ winPath(){
   local x=$1
   local x_drive=${x///c/C:}
   local x_backsplash=${x_drive////\\}
-  echo $x_backsplash
+  local x_semicolon=${x_backsplash//:/;}
+  local x_c=${x_semicolon//C;/C:}
+  echo $x_c
 }
 setx PYTHONHOME $USERPROFILE\\tools\\python
-setx PYTHONPATH '%PYTHONHOME%;%PYTHONHOME%\Lib;%PYTHONHOME%\site-packages'
+#setx PYTHONPATH '%PYTHONHOME%;%PYTHONHOME%\Lib;%PYTHONHOME%\site-packages;%PYTHONHOME%\python36.zip'
+setx PYTHONPATH $(winPath ${PYTHONPATH})
 setx PYTHONUSERBASE $USERPROFILE\\tools\\python-pip
 setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(winPath ${PIP_BIN_PATH}/../Scripts)
 #  没法setx path 因为git bash 中的path是冒号间隔的
