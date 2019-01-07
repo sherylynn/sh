@@ -34,7 +34,7 @@ if [ ! -d "$INSTALL_PATH/node-cache" ]; then
   mkdir $INSTALL_PATH/node-cache
 fi
 #--------------new .toolsrc-----------------------
-if [ $(cat ~/.bash_profile) == *toolsrc* ]; then
+if [[ $(cat ~/.bash_profile) != *toolsrc* ]]; then
   echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ~/.bash_profile
  fi
 #windows下和linux下的不同

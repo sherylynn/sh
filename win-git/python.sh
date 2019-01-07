@@ -40,7 +40,7 @@ if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
   rm -rf ${PYTHON_FILE_PACK}
 fi
 #--------------new .toolsrc-----------------------
-if [ "$(cat ~/.bash_profile)" == "*pythonrc*" ]; then
+if [[ "$(cat ~/.bash_profile)" != *pythonrc* ]]; then
   echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
 fi
 #windows下和linux下的不同
@@ -85,7 +85,7 @@ if [ ! -f "${GET_PIP_PATH}" ]; then
   curl -o ${GET_PIP} https://bootstrap.pypa.io/get-pip.py
 fi
 echo Install pip
-if [ "$(pip --version)" == "*from*" ]; then
+if [[ "$(pip --version)" != *from* ]]; then
   python ${GET_PIP} --user
 fi
 
@@ -105,10 +105,12 @@ setx PYTHONHOME $USERPROFILE\\tools\\python
 setx PYTHONPATH $(winPath ${PYTHONPATH})
 setx PYTHONUSERBASE $USERPROFILE\\tools\\python-pip
 setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(winPath ${PIP_BIN_PATH}/../Scripts)
+<<windows环境变量 直接在git-bash 中code ./打开是有path的。这对于start 或者cmd是污染的path
+但是正好可以利用来code
 #  没法setx path 因为git bash 中的path是冒号间隔的
 # setx PATH ${PATH//:/;}
 #cmd //c setx PATH %PATH%;test
-start cmd '/k setx test_env "%PATH%"'
+#start cmd '/k setx test_env "%PATH%"'
 cd $(winPath $(dirname "$0"))
 echo $0
 cd $(dirname "$0")
@@ -120,3 +122,4 @@ start $(winPath $(dirname "$0")/setPath.bat)
 # setx test_env "$(cmd //c echo %PATH%)"
 # setx有一个1024数字的截断问题，没法解决
 # setx PATH '%PATH%;%PYTHONHOME%;'${PYTHON_SCRIPTS};$PIP_BIN_PATH\\..\\Scripts
+windows环境变量
