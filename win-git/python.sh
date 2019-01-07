@@ -97,4 +97,6 @@ setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(win
 winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -)"
 #cygpath 是 msys带的处理路径的工具
 echo $winENV
-powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", 'User')"
+powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::User)"
+#powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::Machine)"
+#这样设置后的环境变量莫名其妙不能用 ,可能由于回车没去掉
