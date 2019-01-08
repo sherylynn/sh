@@ -1,6 +1,9 @@
-cp kernel /Volumes/macSSD/System/Library/Kernels
-cp -R IONetworkingFamily.kext /Volumes/macSSD/System/Library/Extensions
-chmod -R 755 /Volumes/macSSD/System/Library/Extensions/IONetworkingFamily.kext
-chown -R root:wheel /Volumes/macSSD/System/Library/Extensions/IONetworkingFamily.kext
-rm -Rf /Volumes/macSSD/System/Library/PrelinkedKernels/prelinkedkernel
-kextcache -u /Volumes/macSSD/
+Volumes_name=macSSD
+patch_kext=$(ls *.kext)
+cp kernel /Volumes/${volumes_name}/System/Library/Kernels
+cp -R $patch_kext /Volumes/${volumes_name}/System/Library/Extensions
+cd /Volumes/${volumes_name}/System/Library/Extensions/
+chmod -R 755 $patch_kext
+chown -R root:wheel $patch_kext
+rm -Rf /Volumes/${volumes_name}/System/Library/PrelinkedKernels/prelinkedkernel
+kextcache -u /Volumes/${volumes_name}/
