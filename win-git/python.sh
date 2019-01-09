@@ -14,6 +14,7 @@ GET_PIP=get-pip.py
 GET_PIP_PATH=$PYTHON_HOME/$GET_PIP
 PIP_USERBASE=$INSTALL_PATH/python-pip
 PIP_BIN_PATH=$PIP_USERBASE/Python$PYTHON_PREFIX/Scripts
+PIP_PACKAGES=$PIP_USERBASE/Python$PYTHON_PREFIX/site-packages
 OS=windows
 PYTHON_FILE_NAME=python-${PYTHON_VERSION}-embed-${PYTHON_ARCH}
 PYTHON_FILE_PACK=${PYTHON_FILE_NAME}.zip
@@ -28,6 +29,17 @@ winPath(){
   local x_semicolon=${x_backsplash//:/;}
   local x_c=${x_semicolon//C;/C:}
   echo $x_c
+}
+DoubleBackSlash(){
+  local y=$1
+  local y_double=${y//\\/\\\\}
+  echo $y_double
+}
+winDoublePath(){
+  local x=$1
+  local z_winPath=$(winPath $x)
+  local z_winPath_Double=$(DoubleBackSlash $z_winPath)
+  echo $z_winPath_Double
 }
 #--------------------------------------
 #安装 python
@@ -66,8 +78,9 @@ export PATH=$PATH:${PYTHON_HOME}
 export PATH=$PATH:${PYTHON_SCRIPTS}
 export PATH=$PATH:${PIP_BIN_PATH}
 export PYTHONPATH=${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}
-export PYTHONUSERBASE=$(winPath $PIP_USERBASE)
+export PYTHONUSERBASE=$(winDoublePath $PIP_USERBASE)
 #------------------------------------
+echo $(winDoublePath $PIP_USERBASE)
 python -m site
 python -m site --user-site
 #--------------------------------
@@ -75,7 +88,7 @@ echo 'export PATH=$PATH:'${PYTHON_HOME}>~/.pythonrc
 echo 'export PATH=$PATH:'${PYTHON_SCRIPTS}>>~/.pythonrc
 echo 'export PATH=$PATH:'${PIP_BIN_PATH}>>~/.pythonrc
 echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}>>~/.pythonrc
-echo 'export PYTHONUSERBASE='$(winPath ${PIP_USERBASE})>>~/.pythonrc
+echo 'export PYTHONUSERBASE='$(winDoublePath ${PIP_USERBASE})>>~/.pythonrc
 
 #-------get pip-------------------------------------------
 if [ ! -f "${GET_PIP_PATH}" ]; then
@@ -90,7 +103,7 @@ fi
 
 setx PYTHONHOME $(winPath ${PYTHON_HOME})
 setx PYTHONPATH $(winPath ${PYTHONPATH})
-setx PYTHONUSERBASE $(winPath ${PYTHONUSERBASE})
+setx PYTHONUSERBASE $(winPath ${PIP_USERBASE})
 setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(winPath ${PIP_BIN_PATH}/../Scripts)
 
 # 替换掉linux path中:为;因为最后一个$PATH中的值是没有:分隔符的，这里补充一个; 用sort排序 uniq 去重 cypath换win字符 tr去换行
