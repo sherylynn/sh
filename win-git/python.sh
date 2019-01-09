@@ -112,5 +112,6 @@ winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
 #cygpath 是 msys带的处理路径的工具
 echo $winENV
 powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::User)"
+setx test_env "$winENV"
 #powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::Machine)"
 #这样设置后的环境变量莫名其妙不能用 ,可能由于回车没去掉
