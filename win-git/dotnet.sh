@@ -5,7 +5,7 @@ INSTALL_PATH=$HOME/tools
 DOTNET_HOME=$INSTALL_PATH/dotnet
 
 VERSION=2.1.6
-DOTNET_VERSION=release/${VERSON}xx
+DOTNET_VERSION=release/${VERSION}xx
 
 #DOTNET_VERSION=master
 DOTNET_ARCH=x64
@@ -29,6 +29,8 @@ if [[ "$(dotnet --version)" != *${VERSION}* ]]; then
 
   if [ ! -f "${DOTNET_FILE_PACK}" ]; then
     curl -o ${DOTNET_FILE_PACK} https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${DOTNET_VERSION}/${DOTNET_FILE_PACK}
+    echo dowload-url https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${DOTNET_VERSION}/${DOTNET_FILE_PACK}
+    #https://dotnetcli.blob.core.windows.net/dotnet/Sdk/release/2.1.6xx/dotnet-sdk-latest-win-x64.zip
   fi
 
   if [ ! -d "${DOTNET_FILE_NAME}" ]; then
