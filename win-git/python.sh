@@ -2,7 +2,8 @@
 # source
 INSTALL_PATH=$HOME/tools
 PYTHON_HOME=$INSTALL_PATH/python
-PYTHON_VERSION=3.6.8
+#PYTHON_VERSION=3.6.8
+PYTHON_VERSION=3.7.1
 PYTHON_SHOTVERSION=${PYTHON_VERSION//./}
 PYTHON_PREFIX=${PYTHON_SHOTVERSION:0:2}
 PYTHON_LIB=$PYTHON_HOME/Lib
@@ -18,6 +19,9 @@ PIP_PACKAGES=$PIP_USERBASE/Python$PYTHON_PREFIX/site-packages
 OS=windows
 PYTHON_FILE_NAME=python-${PYTHON_VERSION}-embed-${PYTHON_ARCH}
 PYTHON_FILE_PACK=${PYTHON_FILE_NAME}.zip
+PYLINT_ON=1
+PYTHON_SOURCE_NAME=Python-${PYTHON_VERSION}
+PYTHON_SOURCE_FILE=${PYTHON_SOURCE_NAME}.tar.xz
 cd ~
 #------------------win function-----------------
 winPath(){
@@ -54,7 +58,7 @@ if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
     #curl -o ${PYTHON_FILE_PACK} https://npm.taobao.org/mirrors/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
     curl -o ${PYTHON_FILE_PACK} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
   fi
-
+  
   if [ ! -d "${PYTHON_FILE_NAME}" ]; then
     #指定解压到python_file_name 文件夹
     unzip -q ${PYTHON_FILE_PACK} -d ${PYTHON_FILE_NAME}
@@ -62,6 +66,19 @@ if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
   rm -rf ${PYTHON_HOME} && \
   mv ${PYTHON_FILE_NAME} ${PYTHON_HOME} && \
   rm -rf ${PYTHON_FILE_PACK}
+fi
+#--------------安装 python Lib-----pylint 会用到-------------
+if [ ! -d "${PYTHON_LIB}" ]; then
+  #下载源文件，会用到里面的lib
+  if [ ! -f "${PYTHON_SOURCE_FILE}" ]; then
+    curl -o ${PYTHON_SOURCE_FILE} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_SOURCE_FILE}
+  fi
+  if [ ! -d "${PYTHON_SOURCE_NAME}" ]; then
+    tar -xf ${PYTHON_SOURCE_FILE}
+  fi
+
+  mv ${PYTHON_SOURCE_NAME}/Lib ${PYTHON_LIB} && \
+  rm -rf ${PYTHON_SOURCE_NAME} ${PYTHON_SOURCE_FILE}
 fi
 #--------------new .toolsrc-----------------------
 if [[ "$(cat ~/.bash_profile)" != *pythonrc* ]]; then
