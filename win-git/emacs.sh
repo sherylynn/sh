@@ -1,6 +1,7 @@
-# source
+#! bash`:x
 INSTALL_PATH=$HOME/tools
-EMACS_VERSION=25.3_1
+#EMACS_VERSION=25.3_1
+EMACS_VERSION=26.1
 EMACS_ARCH=x86_64
 OS=windows
 EMACS_FILE_NAME=emacs-${EMACS_VERSION}-${EMACS_ARCH}
@@ -33,3 +34,4 @@ fi
 echo 'test -f ~/.emacsrc && . ~/.emacsrc' >> ~/.bash_profile
 #windows下和linux下的不同
 echo 'export PATH=$PATH:'${INSTALL_PATH}'/emacs/bin'>~/.emacsrc
+#windows 下还需要增加一个HOME的环境变量去系统
