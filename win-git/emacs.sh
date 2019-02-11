@@ -1,4 +1,4 @@
-#! bash`:x
+#! bash
 INSTALL_PATH=$HOME/tools
 #EMACS_VERSION=25.3_1
 EMACS_VERSION=26.1
@@ -15,8 +15,10 @@ if [ ! -d "${INSTALL_PATH}" ]; then
 fi
 
 if [ ! -f "${EMACS_FILE_PACK}" ]; then
-  curl -o ${EMACS_FILE_PACK} http://mirrors.ustc.edu.cn/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
-  #curl -o ${EMACS_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
+  #地址变更，需要前置emacs-26
+  curl -o ${EMACS_FILE_PACK} http://mirrors.nju.edu.cn/gnu/emacs/${OS}/emacs-$(echo ${EMACS_VERSION}|cut -d '.' -f 1)/${EMACS_FILE_PACK} 
+  #curl -o ${EMACS_FILE_PACK} http://mirrors.ustc.edu.cn/gnu/emacs/${OS}/emacs-$(echo ${EMACS_VERSION}|cut -d '.' -f 1)/${EMACS_FILE_PACK} 
+  #curl -o ${EMACS_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/emacs/${OSkkEMACS_FILE_PACK} 
   #curl -o ${EMACS_FILE_PACK} http://ftp.gnu.org/gnu/emacs/${OS}/${EMACS_FILE_PACK} 
   #curl -o emacs.zip http://iso.mirrors.ustc.edu.cn/gnu/emacs/windows/emacs-25.3_1-x86_64.zip
   #curl -o emacs.zip http://ftp.gnu.org/gnu/emacs/windows/emacs-25.3_1-x86_64.zip
