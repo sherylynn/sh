@@ -1,4 +1,4 @@
-#! bash
+#!/bin/bash
 #git config --global http.proxy http://127.0.0.1:10808
 git config --global user.name "sherylynn"
 git config --global user.email "352281674@qq.com"
@@ -14,6 +14,7 @@ git config --global alias.gcf 'commit -m "fix" -a'
 git config --global alias.gs 'status'
 git config --global alias.gp 'push'
 git config --global alias.gl 'pull'
+git config --global alias.F 'pull'
 
 git config --global core.editor vim
 
