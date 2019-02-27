@@ -11,7 +11,7 @@ DOTNET_VERSION=release/${VERSION}xx
 DOTNET_ARCH=x64
 
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-if [[ "$(uname)" == *MINGW64* ]]; then
+if [[ "$(uname)" == *MINGW* ]]; then
   BASH_FILE=~/.bash_profile
   PLATFORM=win
 elif [[ "$(uname)" == *Linux* ]]; then
