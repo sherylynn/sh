@@ -1,9 +1,10 @@
 #!/bin/bash
 INSTALL_PATH=$HOME/tools
-GO_HOME=$INSTALL_PATH/go
+GO_HOME=$INSTALL_PATH/goroot
+GO_ROOT=$GO_HOME/go
 GO_PATH=$INSTALL_PATH/gopath
 GO_PATH_BIN=${GO_PATH}/bin
-GO_HOME_BIN=$GO_HOME/bin
+GO_ROOT_BIN=$GO_ROOT/bin
 GO_VERSION=1.10
 GO_ARCH=amd64
 #GO_ARCH=arm64
@@ -22,14 +23,15 @@ elif [[ "$(uname)" == *Darwin* ]]; then
   PLATFORM=osx
 fi
 
-GO_FILE_NAME=go${GO_VERSION}.${PLATFORM}-${GO_ARCH}
-if [[ ${PLATFORM} == win ]]; then
-  GO_FILE_PACK=${GO_FILE_NAME}.zip
-else
-  GO_FILE_PACK=${GO_FILE_NAME}.tar.gz
+if [[ "$(uname -a)" == *x86_64* ]]; then
+  GO_ARCH=amd64
+elif [[ "$(uname -a)" == *i686* ]]; then
+  GO_ARCH=386
+elif [[ "$(uname -a)" == *armv8l* ]]; then
+  GO_ARCH=arm64
+elif [[ "$(uname -a)" == *aarch64* ]]; then
+  GO_ARCH=arm64
 fi
-# init pwd
-cd $HOME
 while getopts 'v:a:sc' OPT; do
   case $OPT in
     v)
@@ -45,6 +47,15 @@ while getopts 'v:a:sc' OPT; do
   esac
 done
 
+GO_FILE_NAME=go${GO_VERSION}.${PLATFORM}-${GO_ARCH}
+if [[ ${PLATFORM} == win ]]; then
+  GO_FILE_PACK=${GO_FILE_NAME}.zip
+else
+  GO_FILE_PACK=${GO_FILE_NAME}.tar.gz
+fi
+# init pwd
+cd $HOME
+
 shift $(($OPTIND - 1))
 
 if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${GO_ARCH}" ]; then
@@ -53,11 +64,12 @@ if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${GO_ARCH}" ]; t
   fi
 
   if [ ! -f "${GO_FILE_PACK}" ]; then
+    echo ${GO_FILE_PACK}
     curl -o ${GO_FILE_PACK} https://dl.google.com/go/${GO_FILE_PACK}
   fi
   
   if [ ! -d "${GO_FILE_NAME}" ]; then
-    if [ ${PLATFORM}==win ]; then
+    if [ ${PLATFORM} == win ]; then
       unzip -q ${GO_FILE_PACK} -d ${GO_FILE_NAME}
     else
       mkdir ${GO_FILE_NAME}
@@ -79,13 +91,13 @@ export PATH=$PATH:${GO_HOME_BIN}
 export PATH=$PATH:${GO_PATH_BIN}
 
 echo 'export GOPATH='${GO_PATH}>~/.golangrc
-echo 'export GOROOT='${GO_HOME}>>~/.golangrc
-echo 'export PATH=$PATH:'${GO_HOME_BIN}>>~/.golangrc
+echo 'export GOROOT='${GO_ROOT}>>~/.golangrc
+echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>~/.golangrc
 echo 'export PATH=$PATH:'${GO_PATH_BIN}>>~/.golangrc
 
 #  ----windows bat----
 if [[ $PLATFORM == win ]]; then
-  setx GOROOT $(cygpath -w ${GO_HOME})
+  setx GOROOT $(cygpath -w ${GO_ROOT})
   setx GOPATH $(cygpath -w ${GO_PATH})
   winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
   echo $winENV
