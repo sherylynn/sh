@@ -14,7 +14,7 @@ GO_ARCH=amd64
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ "$(uname)" == *MINGW* ]]; then
   BASH_FILE=~/.bash_profile
-  PLATFORM=win
+  PLATFORM=windows
 elif [[ "$(uname)" == *Linux* ]]; then
   BASH_FILE=~/.bashrc
   PLATFORM=linux
@@ -48,7 +48,7 @@ while getopts 'v:a:sc' OPT; do
 done
 
 GO_FILE_NAME=go${GO_VERSION}.${PLATFORM}-${GO_ARCH}
-if [[ ${PLATFORM} == win ]]; then
+if [[ ${PLATFORM} == windows ]]; then
   GO_FILE_PACK=${GO_FILE_NAME}.zip
 else
   GO_FILE_PACK=${GO_FILE_NAME}.tar.gz
@@ -69,7 +69,7 @@ if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${GO_ARCH}" ]; t
   fi
   
   if [ ! -d "${GO_FILE_NAME}" ]; then
-    if [ ${PLATFORM} == win ]; then
+    if [ ${PLATFORM} == windows ]; then
       unzip -q ${GO_FILE_PACK} -d ${GO_FILE_NAME}
     else
       mkdir ${GO_FILE_NAME}
@@ -96,10 +96,10 @@ echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>~/.golangrc
 echo 'export PATH=$PATH:'${GO_PATH_BIN}>>~/.golangrc
 
 #  ----windows bat----
-if [[ $PLATFORM == win ]]; then
+if [[ $PLATFORM == windows ]]; then
   setx GOROOT $(cygpath -w ${GO_ROOT})
   setx GOPATH $(cygpath -w ${GO_PATH})
-  winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
-  echo $winENV
-  setx Path "$winENV"
+  windowsENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
+  echo $windowsENV
+  setx Path "$windowsENV"
 fi
