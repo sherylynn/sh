@@ -86,8 +86,8 @@ if [[ "$(cat ${BASH_FILE})" != *golangrc* ]]; then
 fi
 
 export GOPATH=${GO_PATH}
-export GOROOT=${GO_HOME}
-export PATH=$PATH:${GO_HOME_BIN}
+export GOROOT=${GO_ROOT}
+export PATH=$PATH:${GO_ROOT_BIN}
 export PATH=$PATH:${GO_PATH_BIN}
 
 echo 'export GOPATH='${GO_PATH}>~/.golangrc
