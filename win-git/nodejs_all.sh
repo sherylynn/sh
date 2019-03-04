@@ -5,11 +5,36 @@ NODE_HOME=$INSTALL_PATH/node
 NODE_GLOBAL=$INSTALL_PATH/node-global
 NODE_CACHE=$INSTALL_PATH/node-cache
 NODE_VERSION=10.15.0
-NODE_ARCH=x64
-OS=win
-NODE_FILE_NAME=node-v${NODE_VERSION}-${OS}-${NODE_ARCH}
-NODE_FILE_PACK=${NODE_FILE_NAME}.zip
 cd ~
+# uname Linux .bashrc uname Darwin MINGW64 .bash_profile
+if [[ "$(uname)" == *MINGW* ]]; then
+  BASH_FILE=~/.bash_profile
+  PLATFORM=win
+elif [[ "$(uname)" == *Linux* ]]; then
+  BASH_FILE=~/.bashrc
+  PLATFORM=linux
+elif [[ "$(uname)" == *Darwin* ]]; then
+  BASH_FILE=~/.bash_profile
+  PLATFORM=darwin
+fi
+
+if [[ "$(uname -a)" == *x86_64* ]]; then
+  NODE_ARCH=x64
+elif [[ "$(uname -a)" == *i686* ]]; then
+  NODE_ARCH=x86
+elif [[ "$(uname -a)" == *armv8l* ]]; then
+  NODE_ARCH=arm64
+elif [[ "$(uname -a)" == *aarch64* ]]; then
+  NODE_ARCH=arm64
+fi
+
+NODE_FILE_NAME=node-v${NODE_VERSION}-${PLATFORM}-${NODE_ARCH}
+
+if [[ ${PLATFORM} == win ]]; then
+  NODE_FILE_PACK=${NODE_FILE_NAME}.zip
+else
+  NODE_FILE_PACK=${NODE_FILE_NAME}.tar.gz
+fi
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
@@ -23,8 +48,14 @@ if [[ "$(node --version)" != *${NODE_VERSION}* ]]; then
   fi
 
   if [ ! -d "${NODE_FILE_NAME}" ]; then
-    unzip -q ${NODE_FILE_PACK}
+    if [[ ${PLATFORM} == win ]]; then
+      unzip -q ${NODE_FILE_PACK} -d ${NODE_FILE_NAME}
+    else
+      mkdir ${NODE_FILE_NAME}
+      tar -xzf ${NODE_FILE_PACK} -C ${NODE_FILE_NAME}
+    fi
   fi
+
   rm -rf $NODE_HOME && \
   mv ${NODE_FILE_NAME} $NODE_HOME && \
   rm -rf ${NODE_FILE_PACK}
@@ -39,19 +70,20 @@ if [ ! -d "${NODE_CACHE}" ]; then
   mkdir ${NODE_CACHE}
 fi
 #--------------new .toolsrc-----------------------
-if [[ $(cat ~/.bash_profile) != *toolsrc* ]]; then
-  echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ~/.bash_profile
+if [[ $(cat ${BASH_FILE}) != *toolsrc* ]]; then
+  echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ${BASH_FILE}
  fi
 #windows下和linux下的不同
-if [ ${OS}=='win' ]; then
-  echo 'export PATH=$PATH:'${NODE_HOME} >~/.toolsrc
+NODE_ROOT=${NODE_HOME}/${NODE_FILE_NAME}
+if [[ ${PLATFORM} == win ]]; then
+  echo 'export PATH=$PATH:'${NODE_ROOT} >~/.toolsrc
   echo 'export PATH=$PATH:'${NODE_GLOBAL} >> ~/.toolsrc
-  export PATH=$PATH:$NODE_HOME
+  export PATH=$PATH:$NODE_ROOT
   export PATH=$PATH:$NODE_GLOBAL
-elif [ ${OS}=='linux' ]; then
-  echo 'export PATH=$PATH:'${NODE_HOME}'/bin'>~/.toolsrc
+else
+  echo 'export PATH=$PATH:'${NODE_ROOT}'/bin'>~/.toolsrc
   echo 'export PATH=$PATH:'${NODE_GLOBAL}'/bin' >> ~/.toolsrc
-  export PATH=$PATH:${NODE_HOME}/bin
+  export PATH=$PATH:${NODE_ROOT}/bin
   export PATH=$PATH:${NODE_GLOBAL}/bin
 fi
 echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >> ~/.toolsrc
@@ -81,7 +113,7 @@ yrm use taobao
 #arm
 npm i -g webpack http-server babel-cli pm2 typescript ts-node tslint eslint
 #-----------------------
-if [ ${OS}=='win' ]; then
+if [[ ${PLATFORM} == win ]]; then
   setx NPM_CONFIG_PREFIX $(cygpath -w $NPM_CONFIG_PREFIX)
   setx NPM_CONFIG_CACHE $(cygpath -w $NPM_CONFIG_CACHE)
   setx YARN_CACHE_FOLDER $(cygpath -w $YARN_CACHE_FOLDER)
