@@ -3,7 +3,7 @@ INSTALL_PATH=$HOME/tools
 NVIM_HOME=$INSTALL_PATH/nvim
 NVIM_ROOT=$NVIM_HOME/Neovim
 NVIM_ROOT_BIN=$NVIM_ROOT/bin
-NVIM_VERSION=0.4.0
+NVIM_VERSION=0.3.4
 NVIM_ARCH=64
 #NVIM_ARCH=arm64
 #NVIM_ARCH=armv6l
@@ -45,7 +45,7 @@ while getopts 'v:a:sc' OPT; do
   esac
 done
 
-NVIM_FILE_NAME=nvim-${PLATFORM}-${NVIM_ARCH}
+NVIM_FILE_NAME=nvim-${PLATFORM}${NVIM_ARCH}
 if [[ ${PLATFORM} == win ]]; then
   NVIM_FILE_PACK=${NVIM_FILE_NAME}.zip
 else
@@ -62,8 +62,9 @@ if [[ "$(nvim --version)" != *NVIM*v${NVIM_VERSION}* ]]; then
   fi
 
   if [ ! -f "${NVIM_FILE_PACK}" ]; then
-    echo ${NVIM_FILE_PACK}
-    curl -o ${NVIM_FILE_PACK} https://github.com/neovim/releases/download/nightly/${NVIM_FILE_PACK}
+    Download_URL=https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/${NVIM_FILE_PACK}
+    echo ${Download_URL}
+    curl -o ${NVIM_FILE_PACK} -L ${Download_URL}
   fi
   
   if [ ! -d "${NVIM_FILE_NAME}" ]; then
@@ -83,10 +84,10 @@ if [[ "$(cat ${BASH_FILE})" != *nvimrc* ]]; then
   echo 'test -f ~/.nvimrc&& . ~/.nvimrc' >> ${BASH_FILE}
 fi
 
-export XDG_CONFIG_HOME=$HOME/config/nvim 
+export XDG_CONFIG_HOME=$HOME/.config
 export PATH=$PATH:${NVIM_ROOT_BIN}
 
-echo 'export XDG_CONFIG_HOME=$HOME/config/nvim'>~/.nvimrc
+echo 'export XDG_CONFIG_HOME='${XDG_CONFIG_HOME}>~/.nvimrc
 echo 'export PATH=$PATH:'${NVIM_ROOT_BIN}>>~/.nvimrc
 
 #  ----windows bat----
