@@ -88,10 +88,11 @@ else
 fi
 echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >> ~/.toolsrc
 echo 'NPM_CONFIG_CACHE='$NODE_CACHE >> ~/.toolsrc
+echo 'YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache' >> ~/.toolsrc
 #-----env--------------------------------------------------
 export NPM_CONFIG_PREFIX=$NODE_GLOBAL
 export NPM_CONFIG_CACHE=$NODE_CACHE
-export YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache
+export YARN_CACHE_FOLDER=$INSTALL_PATH/yarn-cache
 export ELECTRON_MIRROR=http://npm.taobao.org/mirrors/electron/
 export SQLITE3_BINARY_SITE=http://npm.taobao.org/mirrors/sqlite3
 export PHANTOMJS_CDNURL=http://npm.taobao.org/mirrors/phantomjs
@@ -111,7 +112,8 @@ yrm use taobao
 #x64
 #npm i -g react-native-cli rnpm pm2 pouchdb-server npm webpack yrm http-server j json dva-cli babel-cli code-push express-cli flow-bin vue-cli rundev eslint tslint ts-node typescript cordova
 #arm
-npm i -g webpack http-server babel-cli pm2 typescript ts-node tslint eslint
+npm i -g yarn webpack http-server babel-cli pm2 typescript ts-node tslint eslint
+yarn config set cache-folder "${INSTALL_PATH}/yarn-cache"
 #-----------------------
 if [[ ${PLATFORM} == win ]]; then
   setx NPM_CONFIG_PREFIX $(cygpath -w $NPM_CONFIG_PREFIX)
