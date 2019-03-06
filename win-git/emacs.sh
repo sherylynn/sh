@@ -1,6 +1,9 @@
 #! bash
 INSTALL_PATH=$HOME/tools
 #EMACS_VERSION=25.3_1
+BASH_DIR=$INSTALL_PATH/rc
+TOOLSRC_NAME=emacsrc
+TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 EMACS_VERSION=26.1
 EMACS_ARCH=x86_64
 OS=windows
@@ -33,7 +36,12 @@ fi
   rm -rf ${EMACS_FILE_PACK}
 
 #--------------new .toolsrc-----------------------
-echo 'test -f ~/.emacsrc && . ~/.emacsrc' >> ~/.bash_profile
+if [ ! -d "${BASH_DIR}" ]; then
+  mkdir $BASH_DIR
+fi
+if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
+  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
+fi
 #windows下和linux下的不同
-echo 'export PATH=$PATH:'${INSTALL_PATH}'/emacs/bin'>~/.emacsrc
+echo 'export PATH=$PATH:'${INSTALL_PATH}'/emacs/bin'>${TOOLSRC}
 #windows 下还需要增加一个HOME的环境变量去系统

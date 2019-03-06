@@ -1,5 +1,8 @@
 #!/bin/bash
 INSTALL_PATH=$HOME/tools
+BASH_DIR=$INSTALL_PATH/rc
+TOOLSRC_NAME=golangrc
+TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 GO_HOME=$INSTALL_PATH/goroot
 GO_ROOT=$GO_HOME/go
 GO_PATH=$INSTALL_PATH/gopath
@@ -81,8 +84,11 @@ if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${GO_ARCH}" ]; t
   rm -rf ${GO_FILE_PACK}
 fi
 #--------------new .toolsrc-----------------------
-if [[ "$(cat ${BASH_FILE})" != *golangrc* ]]; then
-  echo 'test -f ~/.golangrc && . ~/.golangrc' >> ${BASH_FILE}
+if [ ! -d "${BASH_DIR}" ]; then
+  mkdir $BASH_DIR
+fi
+if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
+  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
 
 export GOPATH=${GO_PATH}
@@ -90,10 +96,10 @@ export GOROOT=${GO_ROOT}
 export PATH=$PATH:${GO_ROOT_BIN}
 export PATH=$PATH:${GO_PATH_BIN}
 
-echo 'export GOPATH='${GO_PATH}>~/.golangrc
-echo 'export GOROOT='${GO_ROOT}>>~/.golangrc
-echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>~/.golangrc
-echo 'export PATH=$PATH:'${GO_PATH_BIN}>>~/.golangrc
+echo 'export GOPATH='${GO_PATH}>${TOOLSRC}
+echo 'export GOROOT='${GO_ROOT}>>${TOOLSRC}
+echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>${TOOLSRC}
+echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
 
 #  ----windows bat----
 if [[ $PLATFORM == windows ]]; then

@@ -1,6 +1,9 @@
 #!/bin/bash
 # source
 INSTALL_PATH=$HOME/tools
+BASH_DIR=$INSTALL_PATH/rc
+TOOLSRC_NAME=noderc
+TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 NODE_HOME=$INSTALL_PATH/node
 NODE_GLOBAL=$INSTALL_PATH/node-global
 NODE_CACHE=$INSTALL_PATH/node-cache
@@ -70,25 +73,28 @@ if [ ! -d "${NODE_CACHE}" ]; then
   mkdir ${NODE_CACHE}
 fi
 #--------------new .toolsrc-----------------------
-if [[ $(cat ${BASH_FILE}) != *toolsrc* ]]; then
-  echo 'test -f ~/.toolsrc && . ~/.toolsrc' >> ${BASH_FILE}
- fi
+if [ ! -d "${BASH_DIR}" ]; then
+  mkdir $BASH_DIR
+fi
+if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
+  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
+fi
 #windows下和linux下的不同
 NODE_ROOT=${NODE_HOME}/${NODE_FILE_NAME}
 if [[ ${PLATFORM} == win ]]; then
-  echo 'export PATH=$PATH:'${NODE_ROOT} >~/.toolsrc
-  echo 'export PATH=$PATH:'${NODE_GLOBAL} >> ~/.toolsrc
+  echo 'export PATH=$PATH:'${NODE_ROOT} > ${TOOLSRC}
+  echo 'export PATH=$PATH:'${NODE_GLOBAL} >> ${TOOLSRC}
   export PATH=$PATH:$NODE_ROOT
   export PATH=$PATH:$NODE_GLOBAL
 else
-  echo 'export PATH=$PATH:'${NODE_ROOT}'/bin'>~/.toolsrc
-  echo 'export PATH=$PATH:'${NODE_GLOBAL}'/bin' >> ~/.toolsrc
+  echo 'export PATH=$PATH:'${NODE_ROOT}'/bin'> ${TOOLSRC}
+  echo 'export PATH=$PATH:'${NODE_GLOBAL}'/bin' >> ${TOOLSRC}
   export PATH=$PATH:${NODE_ROOT}/bin
   export PATH=$PATH:${NODE_GLOBAL}/bin
 fi
-echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >> ~/.toolsrc
-echo 'NPM_CONFIG_CACHE='$NODE_CACHE >> ~/.toolsrc
-echo 'YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache' >> ~/.toolsrc
+echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >> ${TOOLSRC}
+echo 'NPM_CONFIG_CACHE='$NODE_CACHE >> ${TOOLSRC}
+echo 'YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache' >> ${TOOLSRC}
 #-----env--------------------------------------------------
 export NPM_CONFIG_PREFIX=$NODE_GLOBAL
 export NPM_CONFIG_CACHE=$NODE_CACHE
