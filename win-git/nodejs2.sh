@@ -1,4 +1,3 @@
-#!/bin/bash
 #sudo apt update
 lynn=$HOME
 INSTALL_PATH=$HOME/tools
