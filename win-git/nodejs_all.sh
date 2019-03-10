@@ -26,7 +26,10 @@ if [[ "$(uname -a)" == *x86_64* ]]; then
 elif [[ "$(uname -a)" == *i686* ]]; then
   NODE_ARCH=x86
 elif [[ "$(uname -a)" == *armv8l* ]]; then
-  NODE_ARCH=arm64
+  case $(getconf LONG_BIT) in 
+    32) NODE_ARCH=armv7l;;
+    64) NODE_ARCH=arm64;;
+  esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
   NODE_ARCH=arm64
 fi
