@@ -22,8 +22,8 @@ elif [[ "$(uname)" == *Linux* ]]; then
   BASH_FILE=~/.bashrc
   PLATFORM=linux
 elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=osx
+  BASH_FILE=~/.bsh_profile
+  PLATFORM=darwin
 fi
 
 if [[ "$(uname -a)" == *x86_64* ]]; then
