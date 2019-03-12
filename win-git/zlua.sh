@@ -17,7 +17,11 @@ fi
 if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
   echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
-echo 'eval "$(lua '${zluaHOME}'/z.lua --init bash enhanced)"' > $TOOLSRC
+echo 'eval "$(lua '${zluaHOME}'/z.lua --init bash enhanced once echo fzf)"' > $TOOLSRC
+echo "alias zc='z -c'" >> $TOOLSRC
+echo "alias zz='z -i'" >> $TOOLSRC
+echo "alias zf='z -I'" >> $TOOLSRC
+echo "alias zb='z -b'" >> $TOOLSRC
 cd $INSTALL_PATH
 git clone https://github.com/skywind3000/z.lua $zluaHOME
 cd $zluaHOME
