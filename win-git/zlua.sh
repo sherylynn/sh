@@ -17,6 +17,11 @@ fi
 if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
   echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
+eval '"$(lua '${zluaHOME}'/z.lua --init bash enhanced once echo fzf)"'
+export alias zc='z -c'
+export alias zz='z -i'
+export alias zf='z -I'
+export alias zb='z -b'
 echo 'eval "$(lua '${zluaHOME}'/z.lua --init bash enhanced once echo fzf)"' > $TOOLSRC
 echo "alias zc='z -c'" >> $TOOLSRC
 echo "alias zz='z -i'" >> $TOOLSRC
