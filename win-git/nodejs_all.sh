@@ -4,7 +4,7 @@ INSTALL_PATH=$HOME/tools
 BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=noderc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
-NODE_HOME=$INSTALL_PATH/node
+SOFTHOME=$INSTALL_PATH/node
 NODE_GLOBAL=$INSTALL_PATH/node-global
 NODE_CACHE=$INSTALL_PATH/node-cache
 NODE_VERSION=10.15.0
@@ -32,14 +32,16 @@ elif [[ "$(uname -a)" == *armv8l* ]]; then
   esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
   NODE_ARCH=arm64
+elif [[ "$(uname -a)" == *armv7l* ]]; then
+  NODE_ARCH=armv7l
 fi
 
-NODE_FILE_NAME=node-v${NODE_VERSION}-${PLATFORM}-${NODE_ARCH}
+SOFT_FILE_NAME=node-v${NODE_VERSION}-${PLATFORM}-${NODE_ARCH}
 
 if [[ ${PLATFORM} == win ]]; then
-  NODE_FILE_PACK=${NODE_FILE_NAME}.zip
+  SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
 else
-  NODE_FILE_PACK=${NODE_FILE_NAME}.tar.gz
+  SOFT_FILE_PACK=${SOFT_FILE_NAME}.tar.gz
 fi
 #--------------------------------------
 #安装 nodejs
@@ -49,22 +51,22 @@ if [[ "$(node --version)" != *${NODE_VERSION}* ]]; then
     mkdir $INSTALL_PATH
   fi
 
-  if [ ! -f "${NODE_FILE_PACK}" ]; then
-    curl -o ${NODE_FILE_PACK} http://cdn.npm.taobao.org/dist/node/v${NODE_VERSION}/${NODE_FILE_PACK} 
+  if [ ! -f "${SOFT_FILE_PACK}" ]; then
+    curl -o ${SOFT_FILE_PACK} http://cdn.npm.taobao.org/dist/node/v${NODE_VERSION}/${SOFT_FILE_PACK} 
   fi
 
-  if [ ! -d "${NODE_FILE_NAME}" ]; then
+  if [ ! -d "${SOFT_FILE_NAME}" ]; then
     if [[ ${PLATFORM} == win ]]; then
-      unzip -q ${NODE_FILE_PACK} -d ${NODE_FILE_NAME}
+      unzip -q ${SOFT_FILE_PACK} -d ${SOFT_FILE_NAME}
     else
-      mkdir ${NODE_FILE_NAME}
-      tar -xzf ${NODE_FILE_PACK} -C ${NODE_FILE_NAME}
+      mkdir ${SOFT_FILE_NAME}
+      tar -xzf ${SOFT_FILE_PACK} -C ${SOFT_FILE_NAME}
     fi
   fi
 
-  rm -rf $NODE_HOME && \
-  mv ${NODE_FILE_NAME} $NODE_HOME && \
-  rm -rf ${NODE_FILE_PACK}
+  rm -rf $SOFTHOME && \
+  mv ${SOFT_FILE_NAME} $SOFTHOME && \
+  rm -rf ${SOFT_FILE_PACK}
 fi
 #----------------------------
 # Set Global packages path
@@ -83,7 +85,7 @@ if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
   echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
 #windows下和linux下的不同
-NODE_ROOT=${NODE_HOME}/${NODE_FILE_NAME}
+NODE_ROOT=${SOFTHOME}/${SOFT_FILE_NAME}
 if [[ ${PLATFORM} == win ]]; then
   echo 'export PATH=$PATH:'${NODE_ROOT} > ${TOOLSRC}
   echo 'export PATH=$PATH:'${NODE_GLOBAL} >> ${TOOLSRC}
