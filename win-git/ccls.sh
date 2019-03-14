@@ -69,11 +69,14 @@ if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
 fi
 export PATH="$SOFT_HOME/Release:$PATH"
 echo "export PATH=$SOFT_HOME/Release:"'$PATH' >> $TOOLSRC
-sudo apt install clang-7 libclang-7-dev cmake
+#sudo apt install clang-7 libclang-7-dev cmake
+#just for debian
 cd $INSTALL_PATH
 git clone --depth=1 --recursive https://github.com/MaskRay/ccls
 cd $SOFT_HOME
 git pull
-cmake -H. -BRelease -DCMAKE_PREFIX_PATH=/usr/lib/llvm-7
+cmake -H. -BRelease -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${LIBS_HOME}/${LIBS_FILE_NAME}
+#cmake -H. -BRelease -DCMAKE_PREFIX_PATH=/usr/lib/llvm-7
+#just for debian
 cmake --build Release
 #cmake --build Release --target install
