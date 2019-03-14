@@ -39,7 +39,8 @@ fi
 # Install LIBS
 #--------------------------
 
-if [ ! -d "${INSTALL_PATH}" ]; then
+if [ ! -d "${LIBS_HOME}/${LIBS_FILE_NAME}" ]; then
+  if [ ! -d "${INSTALL_PATH}" ]; then
     mkdir $INSTALL_PATH
   fi
 
@@ -59,7 +60,7 @@ if [ ! -d "${INSTALL_PATH}" ]; then
   rm -rf $LIBS_HOME && \
   mv ${LIBS_FILE_NAME} $LIBS_HOME && \
   rm -rf ${LIBS_FILE_PACK}
-
+fi
 #--------------------------
 if [ ! -d "${BASH_DIR}" ]; then
   mkdir $BASH_DIR
