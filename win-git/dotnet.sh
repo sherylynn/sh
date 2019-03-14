@@ -1,14 +1,16 @@
 #!/bin/bash
 #sudo apt update
-lynn=$HOME
 INSTALL_PATH=$HOME/tools
-DOTNET_HOME=$INSTALL_PATH/dotnet
+BASH_DIR=$INSTALL_PATH/rc
+TOOLSRC_NAME=dotnetrc
+TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
+SOFT_HOME=$INSTALL_PATH/dotnet
 
 VERSION=2.1.6
-DOTNET_VERSION=release/${VERSION}xx
+SOFT_VERSION=release/${VERSION}xx
 
-#DOTNET_VERSION=master
-DOTNET_ARCH=x64
+#SOFT_VERSION=master
+SOFT_ARCH=x64
 
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ "$(uname)" == *MINGW* ]]; then
@@ -22,11 +24,27 @@ elif [[ "$(uname)" == *Darwin* ]]; then
   PLATFORM=osx
 fi
 
-DOTNET_FILE_NAME=dotnet-sdk-latest-${PLATFORM}-${DOTNET_ARCH}
+if [[ "$(uname -a)" == *x86_64* ]]; then
+  SOFT_ARCH=x64
+elif [[ "$(uname -a)" == *i686* ]]; then
+  SOFT_ARCH=x86
+elif [[ "$(uname -a)" == *armv8l* ]]; then
+  case $(getconf LONG_BIT) in 
+    32) SOFT_ARCH=arm;;
+    64) SOFT_ARCH=arm64;;
+  esac
+elif [[ "$(uname -a)" == *aarch64* ]]; then
+  SOFT_ARCH=arm64
+elif [[ "$(uname -a)" == *armv7l* ]]; then
+  SOFT_ARCH=arm
+fi
+
+SOFT_FILE_NAME=dotnet-sdk-latest-${PLATFORM}-${SOFT_ARCH}
+
 if [[ ${PLATFORM} == win ]]; then
-  DOTNET_FILE_PACK=${DOTNET_FILE_NAME}.zip
+  SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
 else
-  DOTNET_FILE_PACK=${DOTNET_FILE_NAME}.tar.gz
+  SOFT_FILE_PACK=${SOFT_FILE_NAME}.tar.gz
 fi
 # init pwd
 cd ~
@@ -39,37 +57,39 @@ if [[ "$(dotnet --version)" != *${VERSION}* ]]; then
     mkdir $INSTALL_PATH
   fi
 
-  if [ ! -f "${DOTNET_FILE_PACK}" ]; then
-    curl -o ${DOTNET_FILE_PACK} https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${DOTNET_VERSION}/${DOTNET_FILE_PACK}
-    echo dowload-url https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${DOTNET_VERSION}/${DOTNET_FILE_PACK}
+  if [ ! -f "${SOFT_FILE_PACK}" ]; then
+    curl -o ${SOFT_FILE_PACK} https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${SOFT_VERSION}/${SOFT_FILE_PACK}
+    echo dowload-url https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${SOFT_VERSION}/${SOFT_FILE_PACK}
     #https://dotnetcli.blob.core.windows.net/dotnet/Sdk/release/2.1.6xx/dotnet-sdk-latest-win-x64.zip
   fi
 
-  if [ ! -d "${DOTNET_FILE_NAME}" ]; then
+  if [ ! -d "${SOFT_FILE_NAME}" ]; then
     if [ $PLATFORM == win ]; then
-      unzip -q ${DOTNET_FILE_PACK} -d ${DOTNET_FILE_NAME}
+      unzip -q ${SOFT_FILE_PACK} -d ${SOFT_FILE_NAME}
     else
-      mkdir ${DOTNET_FILE_NAME}
-      tar -xzf ${DOTNET_FILE_PACK} -C ${DOTNET_FILE_NAME}
+      mkdir ${SOFT_FILE_NAME}
+      tar -xzf ${SOFT_FILE_PACK} -C ${SOFT_FILE_NAME}
     fi
   fi
-  rm -rf ${DOTNET_HOME} && \
-  mv ${DOTNET_FILE_NAME} ${DOTNET_HOME} && \
-  rm -rf ${DOTNET_FILE_PACK}
+  rm -rf ${SOFT_HOME} && \
+  mv ${SOFT_FILE_NAME} ${SOFT_HOME} && \
+  rm -rf ${SOFT_FILE_PACK}
 fi
-#--------------new .dotnetrc-----------------------
-
-if [[ "$(cat ${BASH_FILE})" != *dotnetrc* ]]; then
-  echo 'test -f ~/.dotnetrc && . ~/.dotnetrc' >> ${BASH_FILE}
+#--------------new .toolsrc-----------------------
+if [ ! -d "${BASH_DIR}" ]; then
+  mkdir $BASH_DIR
 fi
-export PATH=$PATH:${DOTNET_HOME} 
-export DOTNET_ROOT=${DOTNET_HOME} 
-echo 'export PATH=$PATH:'${DOTNET_HOME} >~/.dotnetrc
-echo 'export DOTNET_ROOT='${DOTNET_HOME} >>~/.dotnetrc
+if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
+  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
+fi
+export PATH=$PATH:${SOFT_HOME} 
+export DOTNET_ROOT=${SOFT_HOME} 
+echo 'export PATH=$PATH:'${SOFT_HOME} >${TOOLSRC}
+echo 'export DOTNET_ROOT='${SOFT_HOME} >>${TOOLSRC}
 
 #  ----windows bat----
 if [[ $PLATFORM == win ]]; then
-  setx DOTNET_ROOT $(cygpath -w ${DOTNET_HOME})
+  setx DOTNET_ROOT $(cygpath -w ${SOFT_HOME})
   winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
   echo $winENV
   setx Path "$winENV"

@@ -4,10 +4,10 @@ INSTALL_PATH=$HOME/tools
 BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=noderc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
-SOFTHOME=$INSTALL_PATH/node
+SOFT_HOME=$INSTALL_PATH/node
 NODE_GLOBAL=$INSTALL_PATH/node-global
 NODE_CACHE=$INSTALL_PATH/node-cache
-NODE_VERSION=10.15.0
+SOFT_VERSION=10.15.0
 cd ~
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ "$(uname)" == *MINGW* ]]; then
@@ -22,21 +22,21 @@ elif [[ "$(uname)" == *Darwin* ]]; then
 fi
 
 if [[ "$(uname -a)" == *x86_64* ]]; then
-  NODE_ARCH=x64
+  SOFT_ARCH=x64
 elif [[ "$(uname -a)" == *i686* ]]; then
-  NODE_ARCH=x86
+  SOFT_ARCH=x86
 elif [[ "$(uname -a)" == *armv8l* ]]; then
   case $(getconf LONG_BIT) in 
-    32) NODE_ARCH=armv7l;;
-    64) NODE_ARCH=arm64;;
+    32) SOFT_ARCH=armv7l;;
+    64) SOFT_ARCH=arm64;;
   esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
-  NODE_ARCH=arm64
+  SOFT_ARCH=arm64
 elif [[ "$(uname -a)" == *armv7l* ]]; then
-  NODE_ARCH=armv7l
+  SOFT_ARCH=armv7l
 fi
 
-SOFT_FILE_NAME=node-v${NODE_VERSION}-${PLATFORM}-${NODE_ARCH}
+SOFT_FILE_NAME=node-v${SOFT_VERSION}-${PLATFORM}-${SOFT_ARCH}
 
 if [[ ${PLATFORM} == win ]]; then
   SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
@@ -46,13 +46,13 @@ fi
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
-if [[ "$(node --version)" != *${NODE_VERSION}* ]]; then
+if [[ "$(node --version)" != *${SOFT_VERSION}* ]]; then
   if [ ! -d "${INSTALL_PATH}" ]; then
     mkdir $INSTALL_PATH
   fi
 
   if [ ! -f "${SOFT_FILE_PACK}" ]; then
-    curl -o ${SOFT_FILE_PACK} http://cdn.npm.taobao.org/dist/node/v${NODE_VERSION}/${SOFT_FILE_PACK} 
+    curl -o ${SOFT_FILE_PACK} http://cdn.npm.taobao.org/dist/node/v${SOFT_VERSION}/${SOFT_FILE_PACK} 
   fi
 
   if [ ! -d "${SOFT_FILE_NAME}" ]; then
@@ -64,8 +64,8 @@ if [[ "$(node --version)" != *${NODE_VERSION}* ]]; then
     fi
   fi
 
-  rm -rf $SOFTHOME && \
-  mv ${SOFT_FILE_NAME} $SOFTHOME && \
+  rm -rf $SOFT_HOME && \
+  mv ${SOFT_FILE_NAME} $SOFT_HOME && \
   rm -rf ${SOFT_FILE_PACK}
 fi
 #----------------------------
@@ -85,7 +85,7 @@ if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
   echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
 #windows下和linux下的不同
-NODE_ROOT=${SOFTHOME}/${SOFT_FILE_NAME}
+NODE_ROOT=${SOFT_HOME}/${SOFT_FILE_NAME}
 if [[ ${PLATFORM} == win ]]; then
   echo 'export PATH=$PATH:'${NODE_ROOT} > ${TOOLSRC}
   echo 'export PATH=$PATH:'${NODE_GLOBAL} >> ${TOOLSRC}
