@@ -37,6 +37,8 @@ elif [[ "$(uname -a)" == *armv8l* ]]; then
   esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
   GO_ARCH=arm64
+elif [[ "$(uname -a)" == *armv7l* ]]; then
+  GO_ARCH=armv6l
 fi
 while getopts 'v:a:sc' OPT; do
   case $OPT in
