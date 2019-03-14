@@ -1,7 +1,8 @@
 INSTALL_PATH=$HOME/tools
 SOFT_HOME=$INSTALL_PATH/ccls
+LIBS_HOME=$INSTALL_PATH/clang_llvm
+LIBS_VERSION=7.0.1
 BASH_DIR=$INSTALL_PATH/rc
-SOFT_VERSION=7.0.1
 TOOLSRC_NAME=cclsrc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 if [[ "$(uname)" == *MINGW* ]]; then
@@ -15,28 +16,51 @@ elif [[ "$(uname)" == *Darwin* ]]; then
   PLATFORM=darwin
 fi
 if [[ "$(uname -a)" == *x86_64* ]]; then
-  SOFT_ARCH=x64
+  LIBS_ARCH=x86_64-linux-gnu-ubuntu-16.04
 elif [[ "$(uname -a)" == *i686* ]]; then
-  SOFT_ARCH=x86
+  LIBS_ARCH=x86
 elif [[ "$(uname -a)" == *armv8l* ]]; then
   case $(getconf LONG_BIT) in 
-    32) SOFT_ARCH=armv7l;;
-    64) SOFT_ARCH=arm64;;
+    32) LIBS_ARCH=armv7a-linux-gnueabihf;; 
+    64) LIBS_ARCH=aarch64-linux-gnu;;
   esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
-  SOFT_ARCH=arm64
+  LIBS_ARCH=aarch64-linux-gnu
 elif [[ "$(uname -a)" == *armv7l* ]]; then
-  SOFT_ARCH=armv7a
+  LIBS_ARCH=armv7a-linux-gnueabihf
 fi
-
-SOFT_FILE_NAME=node-v${SOFT_VERSION}-${PLATFORM}-${SOFT_ARCH}
-https://releases.llvm.org/${SOFT_VERSION}/clang+llvm-${SOFT_VERSION}-${SOFT_ARCH}-linux-gnueabihf.tar.xz
-https://releases.llvm.org/7.0.1/clang+llvm-7.0.1-aarch64-linux-gnu.tar.xz
+LIBS_FILE_NAME=clang+llvm-${LIBS_VERSION}-${LIBS_ARCH}
 if [[ ${PLATFORM} == win ]]; then
-  SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
+  LIBS_FILE_PACK=${LIBS_FILE_NAME}.zip
 else
-  SOFT_FILE_PACK=${SOFT_FILE_NAME}.tar.gz
+  LIBS_FILE_PACK=${LIBS_FILE_NAME}.tar.xz
 fi
+#--------------------------
+# Install LIBS
+#--------------------------
+
+if [ ! -d "${INSTALL_PATH}" ]; then
+    mkdir $INSTALL_PATH
+  fi
+
+  if [ ! -f "${LIBS_FILE_PACK}" ]; then
+    curl -o ${LIBS_FILE_PACK} https://releases.llvm.org/${LIBS_VERSION}/${LIBS_FILE_PACK}
+  fi
+
+  if [ ! -d "${LIBS_FILE_NAME}" ]; then
+    if [[ ${PLATFORM} == win ]]; then
+      unzip -q ${LIBS_FILE_PACK} -d ${LIBS_FILE_NAME}
+    else
+      mkdir ${SOFT_FILE_NAME}
+      tar -xzf ${LIBS_FILE_PACK} -C ${LIBS_FILE_NAME}
+    fi
+  fi
+
+  rm -rf $LIBS_HOME && \
+  mv ${LIBS_FILE_NAME} $LIBS_HOME && \
+  rm -rf ${LIBS_FILE_PACK}
+
+#--------------------------
 if [ ! -d "${BASH_DIR}" ]; then
   mkdir $BASH_DIR
 fi
