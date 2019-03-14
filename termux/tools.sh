@@ -10,3 +10,7 @@ ln -s ~/storage/external-1 ~/tools
 #tar -czf file.img file.img.tar.gz
 #tar -xzf file.img.tar.gz
 #/system/bin/mount -o loop -t ext2 file.img dir
+
+
+#即使是单纯的不映射tools直接用go.sh，也会发生can't found 的错误提示
+#结合temux奇葩的ndk版golang和难以直接删除的$HOME/go猜测是termux本身的锅
