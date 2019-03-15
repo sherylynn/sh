@@ -43,7 +43,7 @@ if [ ! -d "${LIBS_HOME}" ]; then
     if [[ ${PLATFORM} == win ]]; then
       unzip -q ${LIBS_FILE_PACK} -d ${LIBS_FILE_NAME}
     else
-      mkdir ${SOFT_FILE_NAME}
+      mkdir ${LIBS_FILE_NAME}
       tar -xzf ${LIBS_FILE_PACK} -C ${LIBS_FILE_NAME}
     fi
   fi
