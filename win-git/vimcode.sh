@@ -11,7 +11,7 @@ elif [[ "$(uname)" == *Darwin* ]]; then
   BASH_FILE=~/.bash_profile
 fi
 if [ ! -d "${BASH_DIR}" ]; then
-  mkdir $BASH_DIR
+  mkdir -p $BASH_DIR
 fi
 if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
   echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
@@ -30,4 +30,6 @@ cp $HOME/.vimrc $XDG_CONFIG_HOME/nvim/init.vim
 
 mkdir autoload
 cd autoload
-curl -fLo plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+if [! -f plug.vim]; then
+  curl -fLo plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+fi

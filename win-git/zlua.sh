@@ -69,7 +69,16 @@ fi
 if [[ "$(uname -a)" =~ (x86_64)|(i686) ]]; then
   echo $LIBS_HOME
   echo "export PATH=$LIBS_HOME:"'$PATH'> $TOOLSRC
-  echo 'eval "$(lua53 '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
+  echo "export PATH=$SOFT_HOME:"'$PATH'>> $TOOLSRC
+  if [ -f $LIBS_HOME/lua53.exe ];then
+    cp $LIBS_HOME/lua53.exe $LIBS_HOME/lua.exe
+    #z.cmd本身在git-bash下跑不起来
+    #echo "alias z='z.cmd'" >> $TOOLSRC
+    echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
+  else
+    cp $LIBS_HOME/lua53 $LIBS_HOME/lua
+    echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
+  fi
 else
   sudo apt install lua5.3 -y
   echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' > $TOOLSRC
