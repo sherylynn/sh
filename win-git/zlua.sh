@@ -13,7 +13,8 @@ if [[ "$(uname)" == *MINGW* ]]; then
 elif [[ "$(uname)" == *Linux* ]]; then
   BASH_FILE=~/.bashrc
   PLATFORM=Linux
-  LIBS_ARCH=Linux44_64_bin
+  #LIBS_ARCH=Linux44_64_bin
+  LIBS_ARCH=Linux415_64_bin
 elif [[ "$(uname)" == *Darwin* ]]; then
   BASH_FILE=~/.bash_profile
   PLATFORM=MacOS
@@ -24,18 +25,19 @@ LIBS_FILE_NAME=lua-${LIBS_VERSION}_${LIBS_ARCH}
 if [[ ${PLATFORM} == win ]]; then
   LIBS_FILE_PACK=${LIBS_FILE_NAME}.zip
 else
-  LIBS_FILE_PACK=${LIBS_FILE_NAME}.tar.xz
+  LIBS_FILE_PACK=${LIBS_FILE_NAME}.tar.gz
 fi
 #--------------------------
 # Install LIBS
 #--------------------------
 
-if [ ! -d "${LIBS_HOME}" ]; then
+if ! command -v lua && ! command -v lua53 ;then
   if [ ! -d "${INSTALL_PATH}" ]; then
     mkdir $INSTALL_PATH
   fi
 
   if [ ! -f "${LIBS_FILE_PACK}" ]; then
+    echo https://sourceforge.net/projects/luabinaries/files/${LIBS_VERSION}/Tools%20Executables/${LIBS_FILE_PACK}/download
     curl -o ${LIBS_FILE_PACK} -L https://sourceforge.net/projects/luabinaries/files/${LIBS_VERSION}/Tools%20Executables/${LIBS_FILE_PACK}/download
   fi
 
@@ -66,7 +68,7 @@ fi
 #export alias zb='z -b'
 if [[ "$(uname -a)" =~ (x86_64)|(i686) ]]; then
   echo $LIBS_HOME
-  echo "export PATH=$LIBS_HOME:$PATH" > $TOOLSRC
+  echo "export PATH=$LIBS_HOME:"'$PATH'> $TOOLSRC
   echo 'eval "$(lua53 '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
 else
   sudo apt install lua5.3 -y
