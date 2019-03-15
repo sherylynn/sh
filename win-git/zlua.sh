@@ -8,7 +8,7 @@ TOOLSRC_NAME=zluarc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 if [[ "$(uname)" == *MINGW* ]]; then
   BASH_FILE=~/.bash_profile
-  PLATFORM=Win
+  PLATFORM=win
   LIBS_ARCH=Win32_bin
 elif [[ "$(uname)" == *Linux* ]]; then
   BASH_FILE=~/.bashrc

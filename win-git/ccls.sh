@@ -38,7 +38,7 @@ fi
 #--------------------------
 # Install LIBS
 #--------------------------
-
+cd ~
 if [ ! -d "${LIBS_HOME}/${LIBS_FILE_NAME}" ]; then
   if [ ! -d "${INSTALL_PATH}" ]; then
     mkdir $INSTALL_PATH
