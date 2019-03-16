@@ -6,7 +6,7 @@ LIBS_VERSION=5.3.5
 BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=zluarc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
-if [[ "$(uname)" == *MINGW* ]]; then
+if [[ "$(uname)" =~ (MINGW)|(MSYS) ]]; then
   BASH_FILE=~/.bash_profile
   PLATFORM=win
   LIBS_ARCH=Win32_bin
