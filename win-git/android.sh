@@ -40,4 +40,4 @@ echo "export JAVA_HOME=$LIBS_HOME/jre" >> $TOOLSRC
 #echo "export JAVA_HOME=$(winDoublePath $LIBS_HOME/jre)" >> $TOOLSRC
 #echo "export JAVA_HOME=$(cygpath -w $LIBS_HOME/jre)" >> $TOOLSRC
 echo "export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1" >> $TOOLSRC
-echo "export PATH="'$PATH'":$GRADLE_HOME/bin:$ANDROID_HOME/jre/jre/bin:ANDROID_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools" >> $TOOLSRC
+echo "export PATH="'$PATH'":$GRADLE_HOME/bin:$ANDROID_HOME/jre/jre/bin:$ANDROID_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools" >> $TOOLSRC
