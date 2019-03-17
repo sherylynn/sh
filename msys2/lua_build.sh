@@ -2,7 +2,7 @@
 INSTALL_PATH=$HOME/tools
 SOFT_HOME=$INSTALL_PATH/lua
 BASH_DIR=$INSTALL_PATH/rc
-TOOLSRC_NAME=luarc
+TOOLSRC_NAME=lualibrc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 SOFT_VERSION=5.3.5
 if [[ "$(uname)" =~ (MINGW)|(MSYS) ]]; then
@@ -23,7 +23,7 @@ mkdir -p ${SOFT_FILE_NAME}
 tar -xzf ${SOFT_FILE_PACK} -C ${SOFT_FILE_NAME}
 cd ${SOFT_FILE_NAME}/${SOFT_FILE_NAME}
 make mingw
-cp -R src ~/tools/lua
+cp -R src ~/tools/lualib
 #--------------------------
 if [ ! -d "${BASH_DIR}" ]; then
   mkdir $BASH_DIR
