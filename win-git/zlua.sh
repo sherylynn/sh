@@ -37,8 +37,11 @@ if ! command -v lua && ! command -v lua53 ;then
   fi
 
   if [ ! -f "${LIBS_FILE_PACK}" ]; then
-    echo https://sourceforge.net/projects/luabinaries/files/${LIBS_VERSION}/Tools%20Executables/${LIBS_FILE_PACK}/download
-    curl -o ${LIBS_FILE_PACK} -L https://sourceforge.net/projects/luabinaries/files/${LIBS_VERSION}/Tools%20Executables/${LIBS_FILE_PACK}/download
+    if [[ ${PLATFORM} == win ]]; then
+      curl -o ${LIBS_FILE_PACK} -L https://github.com/skywind3000/z.lua/files/2975425/lua.zip
+    else
+      curl -o ${LIBS_FILE_PACK} -L https://sourceforge.net/projects/luabinaries/files/${LIBS_VERSION}/Tools%20Executables/${LIBS_FILE_PACK}/download
+    fi
   fi
 
   if [ ! -d "${LIBS_FILE_NAME}" ]; then
@@ -70,15 +73,10 @@ if [[ "$(uname -a)" =~ (x86_64)|(i686) ]]; then
   echo $LIBS_HOME
   echo "export PATH=$LIBS_HOME:"'$PATH'> $TOOLSRC
   echo "export PATH=$SOFT_HOME:"'$PATH'>> $TOOLSRC
-  if [ -f $LIBS_HOME/lua53.exe ];then
-    cp $LIBS_HOME/lua53.exe $LIBS_HOME/lua.exe
-    #z.cmd本身在git-bash下跑不起来
-    #echo "alias z='z.cmd'" >> $TOOLSRC
-    echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
-  else
-    cp $LIBS_HOME/lua53 $LIBS_HOME/lua
-    echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
+  if [ -f $LIBS_HOME/lua53 ];then
+    p $LIBS_HOME/lua53 $LIBS_HOME/lua
   fi
+  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
 else
   sudo apt install lua5.3 -y
   echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' > $TOOLSRC
