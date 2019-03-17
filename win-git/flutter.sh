@@ -6,10 +6,13 @@ TOOLSRC_NAME=flutterrc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 if [[ "$(uname)" == *MINGW* ]]; then
   BASH_FILE=~/.bash_profile
+  PLATFORM=win
 elif [[ "$(uname)" == *Linux* ]]; then
   BASH_FILE=~/.bashrc
+  PLATFORM=linux
 elif [[ "$(uname)" == *Darwin* ]]; then
   BASH_FILE=~/.bash_profile
+  PLATFORM=mac
 fi
 if [ ! -d "${BASH_DIR}" ]; then
   mkdir $BASH_DIR
@@ -27,4 +30,8 @@ cd $INSTALL_PATH
 git clone -b dev https://github.com/flutter/flutter.git $SOFT_HOME
 cd $SOFT_HOME
 git pull
-flutter doctor
+if [[ $PLATFORM =~ (win) ]]; then
+  flutter.bat doctor
+else
+  flutter doctor
+fi
