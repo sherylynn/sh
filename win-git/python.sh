@@ -117,18 +117,19 @@ if [[ "$(pip --version)" != *from* ]]; then
 fi
 
 #  ----windows bat----
+if [[ $WIN_PATH ]]; then
+  setx PYTHONHOME $(winPath ${PYTHON_HOME})
+  setx PYTHONPATH $(winPath ${PYTHONPATH})
+  setx PYTHONUSERBASE $(winPath ${PIP_USERBASE})
+  setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(winPath ${PIP_BIN_PATH}/../Scripts)
 
-setx PYTHONHOME $(winPath ${PYTHON_HOME})
-setx PYTHONPATH $(winPath ${PYTHONPATH})
-setx PYTHONUSERBASE $(winPath ${PIP_USERBASE})
-setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(winPath ${PIP_BIN_PATH}/../Scripts)
-
-# 替换掉linux path中:为;因为最后一个$PATH中的值是没有:分隔符的，这里补充一个; 用sort排序 uniq 去重 cypath换win字符 tr去换行
-# 有换行时path全部不识别，只有powershell能识别，神奇
-winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
-#cygpath 是 msys带的处理路径的工具
-echo $winENV
-powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::User)"
-setx test_env "$winENV"
-#powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::Machine)"
-#这样设置后的环境变量莫名其妙不能用 ,可能由于回车没去掉
+  # 替换掉linux path中:为;因为最后一个$PATH中的值是没有:分隔符的，这里补充一个; 用sort排序 uniq 去重 cypath换win字符 tr去换行
+  # 有换行时path全部不识别，只有powershell能识别，神奇
+  winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
+  #cygpath 是 msys带的处理路径的工具
+  echo $winENV
+  powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::User)"
+  setx test_env "$winENV"
+  #powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::Machine)"
+  #这样设置后的环境变量莫名其妙不能用 ,可能由于回车没去掉
+fi

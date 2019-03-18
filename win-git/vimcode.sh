@@ -30,6 +30,6 @@ cp $HOME/.vimrc $XDG_CONFIG_HOME/nvim/init.vim
 
 mkdir autoload
 cd autoload
-if [! -f plug.vim]; then
+if [ ! -f plug.vim ]; then
   curl -fLo plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi

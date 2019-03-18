@@ -107,10 +107,12 @@ echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>${TOOLSRC}
 echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
 
 #  ----windows bat----
-if [[ $PLATFORM == windows ]]; then
-  setx GOROOT $(cygpath -w ${GO_ROOT})
-  setx GOPATH $(cygpath -w ${GO_PATH})
-  windowsENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
-  echo $windowsENV
-  setx Path "$windowsENV"
+if [[ $WIN_PATH  ]]; then
+  if [[ $PLATFORM == windows ]]; then
+    setx GOROOT $(cygpath -w ${GO_ROOT})
+    setx GOPATH $(cygpath -w ${GO_PATH})
+    windowsENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
+    echo $windowsENV
+    setx Path "$windowsENV"
+  fi
 fi
