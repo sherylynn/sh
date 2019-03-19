@@ -17,7 +17,10 @@ elif [[ "$(uname)" == *Darwin* ]]; then
   PLATFORM=darwin
 fi
 if [[ "$(uname -a)" == *x86_64* ]]; then
-  LIBS_ARCH=x86_64-linux-gnu-ubuntu-16.04
+  case $PLATFORM in
+    linux) LIBS_ARCH=x86_64-linux-gnu-ubuntu-16.04;;
+    darwin) LIBS_ARCH=x86_64-apple-darwin ;LIBS_VERSION=7.0.0;;
+  esac
 elif [[ "$(uname -a)" == *i686* ]]; then
   LIBS_ARCH=x86
 elif [[ "$(uname -a)" == *armv8l* ]]; then
@@ -53,7 +56,7 @@ if [ ! -d "${LIBS_HOME}/${LIBS_FILE_NAME}" ]; then
     if [[ ${PLATFORM} == win ]]; then
       unzip -q ${LIBS_FILE_PACK} -d ${LIBS_FILE_NAME}
     else
-      mkdir ${SOFT_FILE_NAME}
+      mkdir ${LIBS_FILE_NAME}
       tar -xzf ${LIBS_FILE_PACK} -C ${LIBS_FILE_NAME}
     fi
   fi
