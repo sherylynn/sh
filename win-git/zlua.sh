@@ -74,7 +74,7 @@ if [[ "$(uname -a)" =~ (x86_64)|(i686) ]]; then
   echo "export PATH=$LIBS_HOME:"'$PATH'> $TOOLSRC
   echo "export PATH=$SOFT_HOME:"'$PATH'>> $TOOLSRC
   if [ -f $LIBS_HOME/lua53 ];then
-    p $LIBS_HOME/lua53 $LIBS_HOME/lua
+    cp $LIBS_HOME/lua53 $LIBS_HOME/lua
   fi
   echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
 else
