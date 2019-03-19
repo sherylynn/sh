@@ -1,3 +1,4 @@
+#!/bin/bash
 INSTALL_PATH=$HOME/tools
 SOFT_HOME=$INSTALL_PATH/ccls
 LIBS_HOME=$INSTALL_PATH/clang_llvm
