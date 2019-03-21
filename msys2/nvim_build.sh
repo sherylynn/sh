@@ -1,0 +1,20 @@
+#!/bin/bash
+#pacman -S mingw-w64-x86_64-{gcc,libtool,cmake,make,perl,python2,pkg-config,unibilium} gperf
+#can't build in msys .just in mingw
+#pacman -S msys/cmake msys/gperf
+cd ~
+git clone https://github.com/neovim/neovim
+cd neovim
+git checkout v0.3.4
+mkdir .deps
+cd .deps
+cmake -G "MinGW Makefiles" ../third-party
+mingw32-make
+core_num=$(cat /proc/cpuinfo|grep "processor"|wc -l)
+make -j$core_num
+##########################
+#msys中纯粹按linux的make，会缺少linux的syscall
+#mingw需要先mkdir然后跳出msys shell到cmd里make，这里-G MinGW后会提示不能有git for windows
+#看到cmd中cmake的profile有msys的 MSYS Makefiles，但是直接在cmd中Generate不出来
+#回到msys中cmake没有MSYS Make file
+##########################
