@@ -4,6 +4,7 @@ cd ~
 git clone https://github.com/neovim/neovim
 ##
 cd neovim
+git checkout v0.3.4
 #core_num=$(cat /proc/cpuinfo|grep "processer"|wc -l)
 core_num=$(nproc)
 if [[ ${BUILD_TYPE} =~ (DEBUG) ]]; then
