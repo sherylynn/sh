@@ -25,4 +25,7 @@ else
   rm -rf build
   make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$HOME/neovim" -j$core_num
   make install
+  if [[ $(cat ~/.bashrc) != *neovim* ]]; then
+    echo export PATH="$HOME/neovim/bin:$PATH">>~/.bashrc
+  fi
 fi

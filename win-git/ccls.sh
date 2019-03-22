@@ -49,6 +49,7 @@ if [ ! -d "${LIBS_HOME}/${LIBS_FILE_NAME}" ]; then
   fi
 
   if [ ! -f "${LIBS_FILE_PACK}" ]; then
+    echo https://releases.llvm.org/${LIBS_VERSION}/${LIBS_FILE_PACK}
     curl -o ${LIBS_FILE_PACK} https://releases.llvm.org/${LIBS_VERSION}/${LIBS_FILE_PACK}
   fi
 
@@ -57,7 +58,8 @@ if [ ! -d "${LIBS_HOME}/${LIBS_FILE_NAME}" ]; then
       unzip -q ${LIBS_FILE_PACK} -d ${LIBS_FILE_NAME}
     else
       mkdir ${LIBS_FILE_NAME}
-      tar -xzf ${LIBS_FILE_PACK} -C ${LIBS_FILE_NAME}
+      #tar -xzf ${LIBS_FILE_PACK} -C ${LIBS_FILE_NAME}
+      tar -xJf ${LIBS_FILE_PACK} -C ${LIBS_FILE_NAME}
     fi
   fi
 
@@ -80,6 +82,7 @@ cd $INSTALL_PATH
 git clone --depth=1 --recursive https://github.com/MaskRay/ccls
 cd $SOFT_HOME
 git pull
+#up to now raspbian cmake is lower than require
 cmake -H. -BRelease -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${LIBS_HOME}/${LIBS_FILE_NAME}
 #cmake -H. -BRelease -DCMAKE_PREFIX_PATH=/usr/lib/llvm-7
 #just for debian
