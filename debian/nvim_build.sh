@@ -22,11 +22,29 @@ elif [[ ${BUILD_TYPE} =~ (RELEASE) ]]; then
   make clean
   make CMAKE_BUILD_TYPE=Release -j$core_num
   sudo make install
-else
+elif [[ ${BUILD_TYPE} =~ (BUNDLE) ]]; then
   rm -rf build
   make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$HOME/neovim" -j$core_num
   make install
   if [[ $(cat ~/.bashrc) != *neovim* ]]; then
-    echo export PATH="$HOME/neovim/bin:$PATH">>~/.bashrc
+    echo export PATH="$HOME/neovim/bin:"'$PATH'>>~/.bashrc
+  fi
+else
+  #有lua5.3的情况下编译不了
+  #arm64的情况下没法直接编译nvim因为lua用默认脚本提示不支持arm64
+  sudo apt remove lua5.3 -y
+  sudo apt install lua5.1 -y
+  sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev libuv1-dev lua-lpeg-dev lua-mpack -y 
+  #还需要lua的bit库，没法直接安装，只有编译安装
+  rm -rf .deps
+  mkdir -p build 
+  cd build
+  cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build
+  ninja
+  ninja install
+  #最后绕了一圈发现nvim的python支持不是build来的，默认的就是没的
+  #需要pip3 install --user neovim
+  if [[ $(cat ~/.bashrc) != *neovim/build* ]]; then
+    echo export PATH="$HOME/neovim/build/bin:"'$PATH'>>~/.bashrc
   fi
 fi
