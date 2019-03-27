@@ -5,10 +5,13 @@ TOOLSRC_NAME=vimcoderc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 if [[ "$(uname)" == *MINGW* ]]; then
   BASH_FILE=~/.bash_profile
+  PLATFORM=win
 elif [[ "$(uname)" == *Linux* ]]; then
   BASH_FILE=~/.bashrc
+  PLATFORM=linux
 elif [[ "$(uname)" == *Darwin* ]]; then
   BASH_FILE=~/.bash_profile
+  PLATFORM=macos
 fi
 if [ ! -d "${BASH_DIR}" ]; then
   mkdir -p $BASH_DIR
@@ -26,7 +29,11 @@ echo 'source '$XDG_CONFIG_HOME'/config/vimrc' >> $HOME/.vimrc
 #guifont和后面的内容不能有空格
 #echo set guifont=Courier_new:h15:b >> ../.vimrc
 echo set ff=unix >> $HOME/.vimrc
-cp $HOME/.vimrc $XDG_CONFIG_HOME/nvim/init.vim
+#nvim in windows
+if [[ $PLATFORM =~ (win) ]]; then
+  echo let g:VIMHOME=\"vimcode\" > $XDG_CONFIG_HOME/nvim/init.vim
+  echo 'source '$(cygpath -w ${XDG_CONFIG_HOME}/config/vimrc) >> $XDG_CONFIG_HOME/nvim/init.vim
+fi
 
 mkdir autoload
 cd autoload
