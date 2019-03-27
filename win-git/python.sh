@@ -1,6 +1,14 @@
 #!/bin/bash
 # source
-INSTALL_PATH=$HOME/tools
+. $(dirname "$0")/toolsinit.sh
+TOOLSRC_NAME=pythonrc
+TOOLSRC=$(toolsRC $TOOLSRC_NAME)
+PIP_USERBASE=$INSTALL_PATH/python-pip
+
+#PIP3_PATH=$(python3 -m site --user-base)"/bin"
+#export PATH=$PATH:$PIP3_PATH
+#echo "export PATH=\$PATH:"${PIP3_PATH} >> ~/.bashrc
+
 PYTHON_HOME=$INSTALL_PATH/python
 #PYTHON_VERSION=3.6.8
 PYTHON_VERSION=3.7.1
@@ -13,7 +21,6 @@ PYTHON_SCRIPTS=$PYTHON_HOME/Scripts
 PYTHON_ARCH=amd64
 GET_PIP=get-pip.py
 GET_PIP_PATH=$PYTHON_HOME/$GET_PIP
-PIP_USERBASE=$INSTALL_PATH/python-pip
 PIP_BIN_PATH=$PIP_USERBASE/Python$PYTHON_PREFIX/Scripts
 PIP_PACKAGES=$PIP_USERBASE/Python$PYTHON_PREFIX/site-packages
 OS=windows
@@ -24,27 +31,7 @@ PYTHON_SOURCE_NAME=Python-${PYTHON_VERSION}
 PYTHON_SOURCE_FILE=${PYTHON_SOURCE_NAME}.tar.xz
 cd ~
 #------------------win function-----------------
-winPath(){
-  #return ${1////\\}
-  # shell 函数只能返回整数
-  local x=$1
-  local x_drive=${x///c/C:}
-  local x_backsplash=${x_drive////\\}
-  local x_semicolon=${x_backsplash//:/;}
-  local x_c=${x_semicolon//C;/C:}
-  echo $x_c
-}
-DoubleBackSlash(){
-  local y=$1
-  local y_double=${y//\\/\\\\}
-  echo $y_double
-}
-winDoublePath(){
-  local x=$1
-  local z_winPath=$(winPath $x)
-  local z_winPath_Double=$(DoubleBackSlash $z_winPath)
-  echo $z_winPath_Double
-}
+. $(dirname "$0")/winPath.sh
 #--------------------------------------
 #安装 python
 #--------------------------------------
@@ -81,10 +68,7 @@ if [ ! -d "${PYTHON_LIB}" ]; then
   rm -rf ${PYTHON_SOURCE_NAME} ${PYTHON_SOURCE_FILE}
 fi
 #--------------new .toolsrc-----------------------
-if [[ "$(cat ~/.bash_profile)" != *pythonrc* ]]; then
-  echo 'test -f ~/.pythonrc && . ~/.pythonrc' >> ~/.bash_profile
-fi
-cd $INSTALL_PATH/python
+cd ${PYTHON_HOME}
 mv python*._pth python._pth.save
 #-----------pip install path-----------------------------------
 if [ ! -d "${PIP_USERBASE}" ]; then
@@ -101,11 +85,11 @@ echo $(winDoublePath $PIP_USERBASE)
 python -m site
 python -m site --user-site
 #--------------------------------
-echo 'export PATH=$PATH:'${PYTHON_HOME}>~/.pythonrc
-echo 'export PATH=$PATH:'${PYTHON_SCRIPTS}>>~/.pythonrc
-echo 'export PATH=$PATH:'${PIP_BIN_PATH}>>~/.pythonrc
-echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}>>~/.pythonrc
-echo 'export PYTHONUSERBASE='$(winDoublePath ${PIP_USERBASE})>>~/.pythonrc
+echo 'export PATH=$PATH:'${PYTHON_HOME}>$TOOLSRC
+echo 'export PATH=$PATH:'${PYTHON_SCRIPTS}>>$TOOLSRC
+echo 'export PATH=$PATH:'${PIP_BIN_PATH}>>$TOOLSRC
+echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}>>$TOOLSRC
+echo 'export PYTHONUSERBASE='$(winDoublePath ${PIP_USERBASE})>>$TOOLSRC
 
 #-------get pip-------------------------------------------
 if [ ! -f "${GET_PIP_PATH}" ]; then
