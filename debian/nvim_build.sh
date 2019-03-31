@@ -36,6 +36,7 @@ else
   sudo apt install lua5.1 -y
   sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev libuv1-dev lua-lpeg-dev lua-mpack -y 
   #还需要lua的bit库，没法直接安装，只有编译安装
+  sudo apt install lua-bitop-dev -y
   rm -rf .deps
   mkdir -p build 
   cd build
