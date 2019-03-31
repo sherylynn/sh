@@ -78,7 +78,7 @@ if [[ "$(uname -a)" =~ (x86_64)|(i686) ]]; then
   fi
   echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
 else
-  sudo apt install lua5.3 -y
+  sudo apt install lua5.1 -y
   echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' > $TOOLSRC
 fi
 echo "alias zc='z -c'" >> $TOOLSRC
