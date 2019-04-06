@@ -77,12 +77,15 @@ fi
 export PATH="$SOFT_HOME/Release:$PATH"
 echo "export PATH=$SOFT_HOME/Release:"'$PATH' >> $TOOLSRC
 #sudo apt install clang-7 libclang-7-dev cmake
+#ubuntu
+#sudo apt install clang libclang-dev
 #just for debian
 cd $INSTALL_PATH
 git clone --depth=1 --recursive https://github.com/MaskRay/ccls
 cd $SOFT_HOME
 git pull
 #up to now raspbian cmake is lower than require
+echo ${LIBS_HOME}/${LIBS_FILE_NAME}
 cmake -H. -BRelease -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${LIBS_HOME}/${LIBS_FILE_NAME}
 #cmake -H. -BRelease -DCMAKE_PREFIX_PATH=/usr/lib/llvm-7
 #just for debian
