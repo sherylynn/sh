@@ -22,7 +22,7 @@ elif [[ "$(uname)" == *Linux* ]]; then
   BASH_FILE=~/.bashrc
   PLATFORM=linux
 elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bsh_profile
+  BASH_FILE=~/.bash_profile
   PLATFORM=darwin
 fi
 

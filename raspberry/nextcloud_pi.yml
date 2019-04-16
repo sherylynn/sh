@@ -1,0 +1,26 @@
+version: '2'
+services:
+  db:
+    container_name: cloud_db
+    image: hypriot/rpi-mysql
+    volumes:
+      - /home/pi/nextcloud/mysql:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: nextcloud
+      MYSQL_DATABASE: nextcloud
+  app:
+    container_name: cloud_app
+    depends_on:
+      - db
+    image: nextcloud
+    #官方原版没有samba
+    #image: wonderfall/nextcloud
+    #第三方参数不一样,麻烦
+    volumes:
+      - /home/pi/nextcloud/html:/var/www/html
+    links:
+      - db
+    ports:
+      - "8080:80"
+    restart: always

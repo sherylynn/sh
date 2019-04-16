@@ -1,0 +1,9 @@
+pi.sherylynn.win {
+  proxy / localhost:8080 {
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-Proto {remote}
+  }
+  gzip
+}
+

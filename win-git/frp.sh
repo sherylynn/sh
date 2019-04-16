@@ -24,9 +24,14 @@ if [[ "$(uname -a)" == *x86_64* ]]; then
 elif [[ "$(uname -a)" == *i686* ]]; then
   FRP_ARCH=386
 elif [[ "$(uname -a)" == *armv8l* ]]; then
-  FRP_ARCH=arm64
+  case $(getconf LONG_BIT) in 
+    32) FRP_ARCH=arm;;
+    64) FRP_ARCH=arm64;;
+  esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
   FRP_ARCH=arm64
+elif [[ "$(uname -a)" == *armv7l* ]]; then
+  FRP_ARCH=arm
 fi
 while getopts 'v:a:sc' OPT; do
   case $OPT in
