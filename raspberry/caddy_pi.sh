@@ -43,9 +43,13 @@ if [ ! -f "/etc/caddy/Caddyfile" ]; then
 sudo tee /etc/caddy/Caddyfile <<-'EOF'
 pi.sherylynn.win {
   proxy / localhost:8080 {
-    header_upstream Host {host}
-    header_upstream X-Real-IP {remote}
-    header_upstream X-Forwarded-Proto {remote}
+    #header_upstream Host {host}
+    #header_upstream X-Real-IP {remote}
+    #header_upstream X-Forwarded-Proto {remote}
+    transparent
+  }
+  header / {
+    Strict-Transport-Security "max-age=5552000"
   }
   gzip
 }
