@@ -19,6 +19,8 @@ services:
     #第三方参数不一样,麻烦
     volumes:
       - /home/pi/nextcloud/html:/var/www/html
+      - /home/pi/mount-point:/mount-point
+      - /home/pi/samba-point:/samba-point
     links:
       - db
     ports:
