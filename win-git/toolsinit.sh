@@ -11,6 +11,11 @@ elif [[ "$(uname)" == *Darwin* ]]; then
   BASH_FILE=~/.bash_profile
   PLATFORM=macos
 fi
+
+platform(){
+  echo $PLATFORM
+}
+
 toolsRC(){
   local toolsrc_name=$1
   local toolsrc=$BASH_DIR/${toolsrc_name}
