@@ -28,16 +28,18 @@ fi
 if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
   echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
-export ANDROID_HOME=$LIBS_HOME
+export ANDROID_STUDIO_HOME=$LIBS_HOME
 export SDK_HOME=$SOFT_HOME
 export CLASSPATH=.:$LIBS_HOME/jre/lib/tools.jar:$LIBS_HOME/jre/lib/dt.jar:$LIBS_HOME/jre/jre/lib/rt.jar
 export JAVA_HOME=$LIBS_HOME/jre
 export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1
-echo "export ANDROID_HOME=$LIBS_HOME" > $TOOLSRC
+echo "export ANDROID_STUDIO_HOME=$LIBS_HOME" > $TOOLSRC
 echo "export SDK_HOME=$SOFT_HOME" >> $TOOLSRC
+echo "export ANDROID_HOME=$SOFT_HOME" >> $TOOLSRC
+echo "export ANDROID_SDK_ROOT=$SOFT_HOME" >> $TOOLSRC
 echo "export CLASSPATH=.:$LIBS_HOME/jre/lib/tools.jar:$LIBS_HOME/jre/lib/dt.jar:$LIBS_HOME/jre/jre/lib/rt.jar" >> $TOOLSRC
 echo "export JAVA_HOME=$LIBS_HOME/jre" >> $TOOLSRC
 #echo "export JAVA_HOME=$(winDoublePath $LIBS_HOME/jre)" >> $TOOLSRC
 #echo "export JAVA_HOME=$(cygpath -w $LIBS_HOME/jre)" >> $TOOLSRC
 echo "export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1" >> $TOOLSRC
-echo "export PATH="'$PATH'":$GRADLE_HOME/bin:$ANDROID_HOME/jre/jre/bin:$ANDROID_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools" >> $TOOLSRC
+echo "export PATH="'$PATH'":$GRADLE_HOME/bin:$ANDROID_STUDIO_HOME/jre/jre/bin:$ANDROID_STUDIO_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools" >> $TOOLSRC
