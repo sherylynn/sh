@@ -3,6 +3,7 @@ INSTALL_PATH=$HOME/tools
 SOFT_HOME=$INSTALL_PATH/apktool
 #LIBS_HOME=$INSTALL_PATH/lua
 LIBS_VERSION=2.4.0
+DEX_VERSION=2.0
 BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=apktoolrc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
@@ -26,6 +27,10 @@ fi
 
 LIBS_FILE_NAME=${BIN_FILE_NAME}_${LIBS_VERSION}
 LIBS_FILE_PACK=${LIBS_FILE_NAME}.jar
+
+DEX_FILE_NAME=dex2jar
+DEX_FILE_PACK=${DEX_FILE_NAME}-${DEX_VERSION}.zip
+DEX_HOME=${INSTALL_PATH}/${DEX_FILE_NAME}
 #--------------------------
 # Install LIBS
 #--------------------------
@@ -55,6 +60,20 @@ if ! command -v apktool && ! command -v apktool.bat ;then
   mv ${BIN_FILE_NAME}.jar $SOFT_HOME/${BIN_FILE_NAME}.jar
 
 fi
+if ! command -v d2j-dex2jar && ! command -v d2j-dex2jar.bat ;then
+  if [ ! -f "${DEX_FILE_PACK}" ]; then
+    curl -o ${DEX_FILE_PACK} -L https://sourceforge.net/projects/dex2jar/files/${DEX_FILE_PACK}/download
+  fi
+
+  if [ ! -d "${DEX_FILE_NAME}" ]; then
+      #unzip -q ${DEX_FILE_PACK} -d ${DEX_FILE_NAME}
+      unzip -q ${DEX_FILE_PACK}
+      mv ${DEX_FILE_NAME}-${DEX_VERSION} ${DEX_FILE_NAME}
+  fi
+  rm -rf ${DEX_HOME} && \
+  mv ${DEX_FILE_NAME} ${DEX_HOME} && \
+  rm -rf ${DEX_FILE_PACK}
+fi
 #--------------------------
 if [ ! -d "${BASH_DIR}" ]; then
   mkdir $BASH_DIR
@@ -64,3 +83,4 @@ if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
 fi
 
 echo "export PATH=$SOFT_HOME:"'$PATH'> $TOOLSRC
+echo "export PATH=$DEX_HOME:"'$PATH'>>$TOOLSRC
