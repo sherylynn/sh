@@ -29,18 +29,30 @@ LIBS_FILE_PACK=${LIBS_FILE_NAME}.jar
 #--------------------------
 # Install LIBS
 #--------------------------
+if [ ! -d "${SOFT_HOME}" ]; then
+  mkdir -p ${SOFT_HOME}
+fi
+
 if ! command -v apktool && ! command -v apktool.bat ;then
   if [ ! -d "${INSTALL_PATH}" ]; then
     mkdir $INSTALL_PATH
   fi
 
   if [ ! -f "${BIN_FILE_PACK}" ]; then
-    curl -o ${BIN_FILE_PACK} -L https://github.com/iBotPeaches/Apktool/blob/master/scripts/${PLATFORM}/${BIN_FILE_PACK}
+    echo https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/${PLATFORM}/${BIN_FILE_PACK}
+    curl -o ${BIN_FILE_PACK} -L https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/${PLATFORM}/${BIN_FILE_PACK}
   fi
   
   if [ ! -f "${LIBS_FILE_PACK}" ]; then
     curl -o ${LIBS_FILE_PACK} -L https://github.com/iBotPeaches/Apktool/releases/latest/download/${LIBS_FILE_PACK}
   fi
+
+  if [ ! -f "${BIN_FILE_NAME}.jar" ]; then
+    mv ${LIBS_FILE_PACK} ${BIN_FILE_NAME}.jar
+  fi
+
+  mv ${BIN_FILE_PACK} $SOFT_HOME/${BIN_FILE_PACK} && \
+  mv ${BIN_FILE_NAME}.jar $SOFT_HOME/${BIN_FILE_NAME}.jar
 
 fi
 #--------------------------
