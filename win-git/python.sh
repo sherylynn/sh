@@ -1,6 +1,11 @@
 #!/bin/bash
 # source
+#------------------init function----------------
 . $(dirname "$0")/toolsinit.sh
+#------------------win function-----------------
+echo $(dirname "$0")/winPath.sh
+. $(dirname "$0")/winPath.sh
+#-----------------------------------------------
 TOOLSRC_NAME=pythonrc
 TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 PLATFORM=$(platform)
@@ -31,9 +36,6 @@ PYLINT_ON=1
 PYTHON_SOURCE_NAME=Python-${PYTHON_VERSION}
 PYTHON_SOURCE_FILE=${PYTHON_SOURCE_NAME}.tar.xz
 cd ~
-#------------------win function-----------------
-echo $(dirname "$0")
-. $(dirname "$0")/winPath.sh
 #--------------------------------------
 #安装 python
 #--------------------------------------
@@ -106,6 +108,7 @@ else
   if [ ! -d "${PIP_USERBASE}" ]; then
     mkdir ${PIP_USERBASE}
   fi
+  PIP_BIN_PATH=$PIP_USERBASE/bin
   export PATH=$PATH:${PIP_BIN_PATH}
   export PYTHONPATH=${PIP_BIN_PATH}
   export PYTHONUSERBASE=$PIP_USERBASE
