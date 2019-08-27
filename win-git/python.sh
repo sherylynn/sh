@@ -3,6 +3,7 @@
 . $(dirname "$0")/toolsinit.sh
 TOOLSRC_NAME=pythonrc
 TOOLSRC=$(toolsRC $TOOLSRC_NAME)
+PLATFORM=$(platform)
 PIP_USERBASE=$INSTALL_PATH/python-pip
 
 #PIP3_PATH=$(python3 -m site --user-base)"/bin"
@@ -31,75 +32,89 @@ PYTHON_SOURCE_NAME=Python-${PYTHON_VERSION}
 PYTHON_SOURCE_FILE=${PYTHON_SOURCE_NAME}.tar.xz
 cd ~
 #------------------win function-----------------
+echo $(dirname "$0")
 . $(dirname "$0")/winPath.sh
 #--------------------------------------
 #安装 python
 #--------------------------------------
-if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
-  if [ ! -d "${INSTALL_PATH}" ]; then
-    mkdir $INSTALL_PATH
-  fi
+if [[ $PLATFORM == 'win' ]];then
+  if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
+    if [ ! -d "${INSTALL_PATH}" ]; then
+      mkdir $INSTALL_PATH
+    fi
 
-  if [ ! -f "${PYTHON_FILE_PACK}" ]; then
-    #淘宝源没法用curl下载
-    #curl -o ${PYTHON_FILE_PACK} https://npm.taobao.org/mirrors/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
-    curl -o ${PYTHON_FILE_PACK} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
+    if [ ! -f "${PYTHON_FILE_PACK}" ]; then
+      #淘宝源没法用curl下载
+      #curl -o ${PYTHON_FILE_PACK} https://npm.taobao.org/mirrors/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
+      curl -o ${PYTHON_FILE_PACK} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
+    fi
+    
+    if [ ! -d "${PYTHON_FILE_NAME}" ]; then
+      #指定解压到python_file_name 文件夹
+      unzip -q ${PYTHON_FILE_PACK} -d ${PYTHON_FILE_NAME}
+    fi
+    rm -rf ${PYTHON_HOME} && \
+    mv ${PYTHON_FILE_NAME} ${PYTHON_HOME} && \
+    rm -rf ${PYTHON_FILE_PACK}
   fi
-  
-  if [ ! -d "${PYTHON_FILE_NAME}" ]; then
-    #指定解压到python_file_name 文件夹
-    unzip -q ${PYTHON_FILE_PACK} -d ${PYTHON_FILE_NAME}
-  fi
-  rm -rf ${PYTHON_HOME} && \
-  mv ${PYTHON_FILE_NAME} ${PYTHON_HOME} && \
-  rm -rf ${PYTHON_FILE_PACK}
-fi
-#--------------安装 python Lib-----pylint 会用到-------------
-if [ ! -d "${PYTHON_LIB}" ]; then
-  #下载源文件，会用到里面的lib
-  if [ ! -f "${PYTHON_SOURCE_FILE}" ]; then
-    curl -o ${PYTHON_SOURCE_FILE} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_SOURCE_FILE}
-  fi
-  if [ ! -d "${PYTHON_SOURCE_NAME}" ]; then
-    tar -xf ${PYTHON_SOURCE_FILE}
-  fi
+  #--------------安装 python Lib-----pylint 会用到-------------
+  if [ ! -d "${PYTHON_LIB}" ]; then
+    #下载源文件，会用到里面的lib
+    if [ ! -f "${PYTHON_SOURCE_FILE}" ]; then
+      curl -o ${PYTHON_SOURCE_FILE} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_SOURCE_FILE}
+    fi
+    if [ ! -d "${PYTHON_SOURCE_NAME}" ]; then
+      tar -xf ${PYTHON_SOURCE_FILE}
+    fi
 
-  mv ${PYTHON_SOURCE_NAME}/Lib ${PYTHON_LIB} && \
-  rm -rf ${PYTHON_SOURCE_NAME} ${PYTHON_SOURCE_FILE}
-fi
-#--------------new .toolsrc-----------------------
-cd ${PYTHON_HOME}
-mv python*._pth python._pth.save
-#-----------pip install path-----------------------------------
-if [ ! -d "${PIP_USERBASE}" ]; then
-  mkdir ${PIP_USERBASE}
-fi
-#---------------------------------------------  需要有路径不然没user-site
-export PATH=$PATH:${PYTHON_HOME}
-export PATH=$PATH:${PYTHON_SCRIPTS}
-export PATH=$PATH:${PIP_BIN_PATH}
-export PYTHONPATH=${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}
-export PYTHONUSERBASE=$(winDoublePath $PIP_USERBASE)
-#------------------------------------
-echo $(winDoublePath $PIP_USERBASE)
-python -m site
-python -m site --user-site
-#--------------------------------
-echo 'export PATH=$PATH:'${PYTHON_HOME}>$TOOLSRC
-echo 'export PATH=$PATH:'${PYTHON_SCRIPTS}>>$TOOLSRC
-echo 'export PATH=$PATH:'${PIP_BIN_PATH}>>$TOOLSRC
-echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}>>$TOOLSRC
-echo 'export PYTHONUSERBASE='$(winDoublePath ${PIP_USERBASE})>>$TOOLSRC
+    mv ${PYTHON_SOURCE_NAME}/Lib ${PYTHON_LIB} && \
+    rm -rf ${PYTHON_SOURCE_NAME} ${PYTHON_SOURCE_FILE}
+  fi
+  #--------------new .toolsrc-----------------------
+  cd ${PYTHON_HOME}
+  mv python*._pth python._pth.save
+  #-----------pip install path-----------------------------------
+  if [ ! -d "${PIP_USERBASE}" ]; then
+    mkdir ${PIP_USERBASE}
+  fi
+  #---------------------------------------------  需要有路径不然没user-site
+  export PATH=$PATH:${PYTHON_HOME}
+  export PATH=$PATH:${PYTHON_SCRIPTS}
+  export PATH=$PATH:${PIP_BIN_PATH}
+  export PYTHONPATH=${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}
+  export PYTHONUSERBASE=$(winDoublePath $PIP_USERBASE)
+  #------------------------------------
+  echo $(winDoublePath $PIP_USERBASE)
+  python -m site
+  python -m site --user-site
+  #--------------------------------
+  echo 'export PATH=$PATH:'${PYTHON_HOME}>$TOOLSRC
+  echo 'export PATH=$PATH:'${PYTHON_SCRIPTS}>>$TOOLSRC
+  echo 'export PATH=$PATH:'${PIP_BIN_PATH}>>$TOOLSRC
+  echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}>>$TOOLSRC
+  echo 'export PYTHONUSERBASE='$(winDoublePath ${PIP_USERBASE})>>$TOOLSRC
 
-#-------get pip-------------------------------------------
-if [ ! -f "${GET_PIP_PATH}" ]; then
-  curl -o ${GET_PIP} https://bootstrap.pypa.io/get-pip.py
-fi
-echo Install pip
-if [[ "$(pip --version)" != *from* ]]; then
-  python ${GET_PIP} --user
-fi
+  #-------get pip-------------------------------------------
+  if [ ! -f "${GET_PIP_PATH}" ]; then
+    curl -o ${GET_PIP} https://bootstrap.pypa.io/get-pip.py
+  fi
+  echo Install pip
+  if [[ "$(pip --version)" != *from* ]]; then
+    python ${GET_PIP} --user
+  fi
+else
+  if [ ! -d "${PIP_USERBASE}" ]; then
+    mkdir ${PIP_USERBASE}
+  fi
+  export PATH=$PATH:${PIP_BIN_PATH}
+  export PYTHONPATH=${PIP_BIN_PATH}
+  export PYTHONUSERBASE=$PIP_USERBASE
 
+  echo 'export PATH=$PATH:'${PIP_BIN_PATH}>$TOOLSRC
+  echo 'export PYTHONPATH='${PIP_BIN_PATH}>>$TOOLSRC
+  echo 'export PYTHONUSERBASE='${PIP_USERBASE}>>$TOOLSRC
+
+fi
 #  ----windows bat----
 if [[ $WIN_PATH ]]; then
   setx PYTHONHOME $(winPath ${PYTHON_HOME})
