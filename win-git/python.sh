@@ -105,6 +105,7 @@ if [[ $PLATFORM == 'win' ]];then
     python ${GET_PIP} --user
   fi
 else
+  sudo apt install python3 python3-pip -y
   if [ ! -d "${PIP_USERBASE}" ]; then
     mkdir ${PIP_USERBASE}
   fi
