@@ -25,3 +25,8 @@ brew install v2ray-core
 # need to add sudo before brew services
 sudo brew services start v2ray-core
 cp ~/config.json /usr/local/etc/v2ray/config.json
+# wireguard
+brew install wireguard-tools
+<<'config_path'
+/usr/local/etc/wireguard/xxx.conf
+config_path
