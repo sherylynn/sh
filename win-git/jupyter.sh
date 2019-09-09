@@ -1,6 +1,7 @@
 #just for termux ,so it is lack of sudo
 echo "add .local/bin to path first"
-apt install libcrypt-dev libzmq libzmq-dev
+apt install libcrypt-dev libzmq libzmq-dev -y
+sudo apt install python3-lxml -y
 pip3 install --user jupyter
 pip3 install --user jupyter_contrib_nbextensions
 # env
