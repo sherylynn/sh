@@ -8,6 +8,7 @@ echo ${NAMESILO_KEY}
 API_KEY=${NAMESILO_KEY}
 MyDomain=sherylynn.win
 HostA="pi"
+HostB="share"
 
 renew_hostip()
 {
@@ -61,5 +62,6 @@ ${record_id}&rrhost=$1&rrvalue=${wan0_ip}&rrttl=3602")
 date +%D%t%H:%M:%S
 echo "*****************************************"
 renew_hostip	${HostA}
+renew_hostip	${HostB}
 echo "*****************************************"
 exit 0

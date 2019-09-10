@@ -53,6 +53,18 @@ pi.sherylynn.win {
   }
   gzip
 }
+share.sherylynn.win {
+  proxy / localhost:8081 {
+    #header_upstream Host {host}
+    #header_upstream X-Real-IP {remote}
+    #header_upstream X-Forwarded-Proto {remote}
+    transparent
+  }
+  header / {
+    Strict-Transport-Security "max-age=5552000"
+  }
+  gzip
+}
 EOF
 fi
 
@@ -68,7 +80,7 @@ Type=simple
 ; Letsencrypt-issued certificates will be written to this directory.
 Environment=CADDYPATH=/etc/ssl/caddy
 ; Always set "-root" to something safe in case it gets forgotten in the Caddyfile.
-ExecStart=/usr/local/bin/caddy -disable-http-challenge -log stdout -agree=true -conf /etc/caddy/Caddyfile
+ExecStart=/usr/local/bin/caddy -disable-http-challenge -log stdout -agree=true -email=352281674@qq.com -conf /etc/caddy/Caddyfile
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-abnormal
 
