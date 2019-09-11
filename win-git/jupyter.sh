@@ -4,6 +4,7 @@ apt install libcrypt-dev libzmq libzmq-dev -y
 sudo apt install python3-lxml -y
 pip3 install --user jupyter
 pip3 install --user jupyter_contrib_nbextensions
+pip3 install --user autopep8
 # env
 #PIP3_PATH=$(python3 -m site --user-base)"/bin"
 #export PATH=$PATH:$PIP3_PATH
