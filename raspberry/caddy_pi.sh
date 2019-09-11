@@ -65,6 +65,18 @@ share.sherylynn.win {
   }
   gzip
 }
+pdf.sherylynn.win {
+  proxy / localhost:10000 {
+    #header_upstream Host {host}
+    #header_upstream X-Real-IP {remote}
+    #header_upstream X-Forwarded-Proto {remote}
+    transparent
+  }
+  header / {
+    Strict-Transport-Security "max-age=5552000"
+  }
+  gzip
+}
 EOF
 fi
 

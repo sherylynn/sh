@@ -9,6 +9,7 @@ API_KEY=${NAMESILO_KEY}
 MyDomain=sherylynn.win
 HostA="pi"
 HostB="share"
+HostC="pdf"
 
 renew_hostip()
 {
@@ -63,5 +64,6 @@ date +%D%t%H:%M:%S
 echo "*****************************************"
 renew_hostip	${HostA}
 renew_hostip	${HostB}
+renew_hostip	${HostC}
 echo "*****************************************"
 exit 0
