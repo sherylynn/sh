@@ -6,6 +6,8 @@
 echo $(dirname "$0")/winPath.sh
 . $(dirname "$0")/winPath.sh
 #-----------------------------------------------
+INSTALL_PATH=$HOME/tools
+
 TOOLSRC_NAME=pythonrc
 TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 PLATFORM=$(platform)
