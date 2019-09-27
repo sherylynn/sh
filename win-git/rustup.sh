@@ -21,4 +21,4 @@ export RUSTUP_HOME=$RUSTUP_HOME
 export CARGO_HOME=$CARGO_HOME
 echo 'export RUSTUP_HOME='${RUSTUP_HOME}>$TOOLSRC
 echo 'export CARGO_HOME='${CARGO_HOME}>>$TOOLSRC
-curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none
+curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable
