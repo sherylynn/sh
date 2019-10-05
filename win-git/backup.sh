@@ -1,4 +1,6 @@
 #!/bin/bash
+#------------------init function----------------
+. $(dirname "$0")/toolsinit.sh
 cd ~
 #sudo apt install pigz -y
 #npm cache clean --force
@@ -10,4 +12,5 @@ mkdir -p ~/download
 #./* 会没有隐藏文件
 #tar --exclude=download --exclude=.cache  -pcvf - ./*  |pigz --best > ~/download/backup.tar.gz
 #tar --exclude=.dbus --exclude=.config --exclude=download --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > ~/download/backup.tar.gz
-tar --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config --exclude=download --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > ~/download/backup.tar.gz
+
+tar --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config --exclude=download --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > ~/download/backup_$(arch).tar.gz

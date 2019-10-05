@@ -12,8 +12,30 @@ elif [[ "$(uname)" == *Darwin* ]]; then
   PLATFORM=macos
 fi
 
+if [[ "$(uname -a)" == *x86_64* ]]; then
+  ARCH=amd64
+elif [[ "$(uname -a)" == *i686* ]]; then
+  ARCH=386
+elif [[ "$(uname -a)" == *armv8l* ]]; then
+  case $(getconf LONG_BIT) in 
+    32) ARCH=armhf;;
+    64) ARCH=arm64;;
+  esac
+elif [[ "$(uname -a)" == *aarch64* ]]; then
+  case $(getconf LONG_BIT) in 
+    32) ARCH=armhf;;
+    64) ARCH=arm64;;
+  esac
+elif [[ "$(uname -a)" == *armv7l* ]]; then
+  ARCH=armhf
+fi
+
 platform(){
   echo $PLATFORM
+}
+
+arch(){
+  echo $ARCH
 }
 
 toolsRC(){

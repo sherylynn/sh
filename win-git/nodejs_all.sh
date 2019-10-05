@@ -31,7 +31,10 @@ elif [[ "$(uname -a)" == *armv8l* ]]; then
     64) SOFT_ARCH=arm64;;
   esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
-  SOFT_ARCH=arm64
+  case $(getconf LONG_BIT) in 
+    32) SOFT_ARCH=armv7l;;
+    64) SOFT_ARCH=arm64;;
+  esac
 elif [[ "$(uname -a)" == *armv7l* ]]; then
   SOFT_ARCH=armv7l
 fi

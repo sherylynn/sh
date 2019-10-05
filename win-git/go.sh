@@ -36,7 +36,10 @@ elif [[ "$(uname -a)" == *armv8l* ]]; then
     64) GO_ARCH=arm64;;
   esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
-  GO_ARCH=arm64
+  case $(getconf LONG_BIT) in 
+    32) GO_ARCH=armv6l;;
+    64) GO_ARCH=arm64;;
+  esac
 elif [[ "$(uname -a)" == *armv7l* ]]; then
   GO_ARCH=armv6l
 fi
