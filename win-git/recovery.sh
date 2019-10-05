@@ -1,4 +1,4 @@
 #!/bin/bash
 cd ~
 sudo apt install pigz -y
-tar  -xvf -I pigz ~/download/backup.tar.gz
+tar -I pigz -xvf ~/download/backup.tar.gz
