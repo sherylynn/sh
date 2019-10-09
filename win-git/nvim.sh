@@ -6,7 +6,7 @@ TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
 NVIM_HOME=$INSTALL_PATH/nvim
 NVIM_ROOT=$NVIM_HOME/Neovim
 NVIM_ROOT_BIN=$NVIM_ROOT/bin
-NVIM_VERSION=0.3.4
+NVIM_VERSION=0.4.2
 NVIM_ARCH=64
 #NVIM_ARCH=arm64
 #NVIM_ARCH=armv6l
@@ -90,11 +90,11 @@ if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
   echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
 
-export XDG_CONFIG_HOME=$HOME/.config
+#export XDG_CONFIG_HOME=$HOME/.config
 export PATH=$PATH:${NVIM_ROOT_BIN}
 
-echo 'export XDG_CONFIG_HOME='${XDG_CONFIG_HOME}>${TOOLSRC}
-echo 'export PATH=$PATH:'${NVIM_ROOT_BIN}>>${TOOLSRC}
+#echo 'export XDG_CONFIG_HOME='${XDG_CONFIG_HOME}>${TOOLSRC}
+echo 'export PATH=$PATH:'${NVIM_ROOT_BIN}>${TOOLSRC}
 
 #  ----windows bat----
 if [[ $SYSTEM == 1 ]]; then
