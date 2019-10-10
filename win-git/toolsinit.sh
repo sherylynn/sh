@@ -19,12 +19,12 @@ elif [[ "$(uname -a)" == *i686* ]]; then
 elif [[ "$(uname -a)" == *armv8l* ]]; then
   case $(getconf LONG_BIT) in 
     32) ARCH=armhf;;
-    64) ARCH=arm64;;
+    64) ARCH=aarch64;;
   esac
 elif [[ "$(uname -a)" == *aarch64* ]]; then
   case $(getconf LONG_BIT) in 
     32) ARCH=armhf;;
-    64) ARCH=arm64;;
+    64) ARCH=aarch64;;
   esac
 elif [[ "$(uname -a)" == *armv7l* ]]; then
   ARCH=armhf

@@ -1,10 +1,12 @@
+#------------------init function----------------
+. $(dirname "$0")/../win-git/toolsinit.sh
 #sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev -y
 sudo apt-get install ninja-build gettext libtool libtool-bin autoconf automake cmake g++ pkg-config unzip -y
 cd ~
 git clone https://github.com/neovim/neovim
 ##
 cd neovim
-git checkout v0.3.4
+git checkout v0.5.0
 #core_num=$(cat /proc/cpuinfo|grep "processer"|wc -l)
 core_num=$(nproc)
 if [[ ${BUILD_TYPE} =~ (DEBUG) ]]; then
@@ -34,13 +36,13 @@ else
   #arm64的情况下没法直接编译nvim因为lua用默认脚本提示不支持arm64
   sudo apt remove lua5.3 -y
   sudo apt install lua5.1 -y
-  sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev libuv1-dev lua-lpeg-dev lua-mpack -y 
+  sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev libuv1-dev lua-lpeg-dev lua-mpack lua-luv-dev libutf8proc-dev -y 
   #还需要lua的bit库，没法直接安装，只有编译安装
   sudo apt install lua-bitop-dev -y
   rm -rf .deps
   mkdir -p build 
   cd build
-  cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build
+  cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build -DLIBLUV_LIBRARY:STRING=-Wl,/usr/lib/$(arch)-$(platform)-gnu/liblua5.1-luv.so -DLIBLUV_INCLUDE_DIR=/usr/include/lua5.1
   ninja
   ninja install
   #最后绕了一圈发现nvim的python支持不是build来的，默认的就是没的
