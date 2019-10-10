@@ -1,12 +1,11 @@
 #!/bin/bash
-#pacman -S mingw-w64-x86_64-{gcc,libtool,cmake,make,perl,python2,pkg-config,unibilium} gperf
 #can't build in msys .just in mingw
 #pacman -S msys/cmake msys/gperf
 SHELL_FOLDER=$(dirname $(readlink -f "$0"))
 cd ~
 git clone https://github.com/neovim/neovim
 cd neovim
-git checkout v0.3.4
+git checkout v0.4.2
 #mkdir .deps
 #cd .deps
 #cmake -G "MinGW Makefiles" ../third-party
