@@ -3,11 +3,6 @@
 #sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev -y
 sudo apt-get install ninja-build gettext libtool libtool-bin autoconf automake cmake g++ pkg-config unzip -y
 cd ~
-git clone https://github.com/luvit/luv.git --recursive
-cd luv
-BUILD_MODULE=OFF BUILD_SHARED_LIBS=ON make
-sudo make install
-cd ~
 git clone https://github.com/neovim/neovim
 ##
 cd neovim
@@ -47,9 +42,17 @@ else
   git clone https://github.com/neovim/libvterm 
   make
   sudo make install
-  cd -
+  cd ~
+  git clone https://github.com/luvit/luv.git --recursive
+  cd luv
+  mkdir -p include/luv
+  cp src/* include/luv/
+  BUILD_MODULE=OFF BUILD_SHARED_LIBS=ON make
+  sudo make install
 
   #还需要lua的bit库，没法直接安装，只有编译安装
+  cd ~
+  cd neovim
   sudo apt install lua-bitop-dev -y
   rm -rf .deps
   mkdir -p build 
@@ -59,7 +62,7 @@ else
     ninja
     ninja install
   else
-    cmake ..  -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build
+    cmake ..  -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build -DLIBLUV_LIBRARY=$HOME/luv/build/luv.so -DLIBLUV_INCLUDE_DIR=$HOME/luv/include
     make -j
     make install
   fi
