@@ -11,7 +11,7 @@ cd ~
 git clone https://github.com/neovim/neovim
 ##
 cd neovim
-git checkout v0.5.0
+git checkout v0.4.2
 #core_num=$(cat /proc/cpuinfo|grep "processer"|wc -l)
 core_num=$(nproc)
 if [[ ${BUILD_TYPE} =~ (DEBUG) ]]; then
@@ -54,11 +54,18 @@ else
   rm -rf .deps
   mkdir -p build 
   cd build
-  cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build -DLIBLUV_LIBRARY:STRING=-Wl,/usr/lib/$(arch)-$(platform)-gnu/liblua5.1-luv.so -DLIBLUV_INCLUDE_DIR=/usr/include/lua5.1 -DLIBVTERM_INCLUDE_DIR=/usr/local/include -DLIBVTERM_LIBRARY=/usr/local/lib/libvterm.so
-  ninja
-  ninja install
+  if [[ ${MAKE_TYPE} =~ (NINJA) ]]; then
+    cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build -DLIBLUV_LIBRARY:STRING=-Wl,/usr/lib/$(arch)-$(platform)-gnu/liblua5.1-luv.so -DLIBLUV_INCLUDE_DIR=/usr/include/lua5.1 -DLIBVTERM_INCLUDE_DIR=/usr/local/include -DLIBVTERM_LIBRARY=/usr/local/lib/libvterm.so
+    ninja
+    ninja install
+  else
+    cmake ..  -DCMAKE_INSTALL_PREFIX=$HOME/neovim/build
+    make -j
+    make install
+  fi
   #最后绕了一圈发现nvim的python支持不是build来的，默认的就是没的
   #需要pip3 install --user neovim
+  #修改成pynvim了
   if [[ $(cat ~/.bashrc) != *neovim/build* ]]; then
     echo export PATH="$HOME/neovim/build/bin:"'$PATH'>>~/.bashrc
   fi
