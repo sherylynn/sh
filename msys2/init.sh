@@ -8,4 +8,4 @@ pacman -S git unzip zip
 INSTALL_PATH=$HOME/tools
 TOOLSRC_NAME=msys2rc
 TOOLSRC=$(toolsRC $TOOLSRC_NAME)
-echo export $HOME=$HOMEPATH>$TOOLSRC
+echo 'export HOME=$HOMEPATH' > $TOOLSRC
