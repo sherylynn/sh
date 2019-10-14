@@ -17,6 +17,8 @@ git config --global alias.gl 'pull'
 git config --global alias.F 'pull'
 
 git config --global core.editor vim
+# for crlf
+git config --global core.autocrlf input
 
 #echo "alias lynn ='git clone https://github/sherylynn/'" >> ~/.bashrc
 #-----------------------
