@@ -1,22 +1,21 @@
 #!/bin/bash
+#------------------init function----------------
+. $(dirname "$0")/toolsinit.sh
+
 INSTALL_PATH=$HOME/tools
 SOFT_HOME=$INSTALL_PATH/zlua
 LIBS_HOME=$INSTALL_PATH/lua
 LIBS_VERSION=5.3.5
-BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=zluarc
-TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
+TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 if [[ "$(uname)" =~ (MINGW)|(MSYS) ]]; then
-  BASH_FILE=~/.bash_profile
   PLATFORM=win
   LIBS_ARCH=Win32_bin
 elif [[ "$(uname)" == *Linux* ]]; then
-  BASH_FILE=~/.bashrc
   PLATFORM=Linux
   #LIBS_ARCH=Linux44_64_bin
   LIBS_ARCH=Linux415_64_bin
 elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bash_profile
   PLATFORM=MacOS
   LIBS_ARCH=MacOS1013_bin
 fi
@@ -58,12 +57,6 @@ if ! command -v lua && ! command -v lua53 ;then
   rm -rf ${LIBS_FILE_PACK}
 fi
 #--------------------------
-if [ ! -d "${BASH_DIR}" ]; then
-  mkdir $BASH_DIR
-fi
-if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
-  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
-fi
 #eval '"$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"'
 #export alias zc='z -c'
 #export alias zz='z -i'
@@ -76,10 +69,10 @@ if [[ "$(uname -a)" =~ (x86_64)|(i686) ]]; then
   if [ -f $LIBS_HOME/lua53 ];then
     cp $LIBS_HOME/lua53 $LIBS_HOME/lua
   fi
-  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' >> $TOOLSRC
+  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init '${bash_type}' enhanced once echo fzf)"' >> $TOOLSRC
 else
   sudo apt install lua5.1 -y
-  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init bash enhanced once echo fzf)"' > $TOOLSRC
+  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init '${bash_type}' enhanced once echo fzf)"' > $TOOLSRC
 fi
 echo "alias zc='z -c'" >> $TOOLSRC
 echo "alias zz='z -i'" >> $TOOLSRC

@@ -1,6 +1,7 @@
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 INSTALL_PATH=$HOME/tools
 BASH_DIR=$INSTALL_PATH/rc
+ZSH_FILE=$HOME/.zshrc
 if [[ "$(uname)" == *MINGW* ]]; then
   BASH_FILE=~/.bash_profile
   PLATFORM=win
@@ -30,6 +31,17 @@ elif [[ "$(uname -a)" == *armv7l* ]]; then
   ARCH=armhf
 fi
 
+ALLTOOLSRC_FILE=$BASH_FILE
+BASH_TYPE=bash
+#zsh
+if command -v zsh >/dev/null 2>&1; then
+  ALLTOOLSRC_FILE=$BASH_DIR/allToolsrc
+  if [[ "$(cat ${ZSH_FILE})" != *${ALLTOOLSRC_FILE}* ]]; then
+    echo "test -f ${ALLTOOLSRC_FILE} && . ${ALLTOOLSRC_FILE}" >> ${ZSH_FILE}
+  fi
+  BASH_TYPE=zsh
+fi
+
 platform(){
   echo $PLATFORM
 }
@@ -45,9 +57,21 @@ toolsRC(){
   if [ ! -d "${BASH_DIR}" ]; then
     mkdir $BASH_DIR
   fi
-  if [[ "$(cat ${BASH_FILE})" != *${toolsrc_name}* ]]; then
-    echo "test -f ${toolsrc} && . ${toolsrc}" >> ${BASH_FILE}
+  if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
+    echo "test -f ${toolsrc} && . ${toolsrc}" >> ${ALLTOOLSRC_FILE}
   fi
   echo $toolsrc
+}
+
+bash_file(){
+  echo $BASH_FILE
+}
+
+bash_type(){
+  echo $BASH_TYPE
+}
+
+alltoolsrc_file(){
+  echo $ALLTOOLSRC_FILE
 }
 
