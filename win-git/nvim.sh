@@ -1,8 +1,9 @@
 #!/bin/bash
+. $(dirname "$0")/toolsinit.sh
 INSTALL_PATH=$HOME/tools
 BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=nvimrc
-TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
+TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 NVIM_HOME=$INSTALL_PATH/nvim
 NVIM_ROOT=$NVIM_HOME/Neovim
 NVIM_ROOT_BIN=$NVIM_ROOT/bin
@@ -71,7 +72,7 @@ if [[ "$(nvim --version)" != *NVIM*v${NVIM_VERSION}* ]]; then
   fi
   
   if [ ! -d "${NVIM_FILE_NAME}" ]; then
-    if [ ${PLATFORM} == win ]; then
+    if [[ ${PLATFORM} == win ]]; then
       unzip -q ${NVIM_FILE_PACK} -d ${NVIM_FILE_NAME}
     else
       mkdir ${NVIM_FILE_NAME}
