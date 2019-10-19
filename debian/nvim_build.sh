@@ -1,3 +1,4 @@
+#!/bin/bash
 #------------------init function----------------
 . $(dirname "$0")/../win-git/toolsinit.sh
 #sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev -y
@@ -41,6 +42,7 @@ else
   #sudo apt install libvterm-dev -y
   cd ~ 
   git clone https://github.com/neovim/libvterm 
+  cd libvterm
   make
   sudo make install
   cd ~

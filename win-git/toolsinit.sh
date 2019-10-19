@@ -1,3 +1,4 @@
+#!/bin/bash
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 INSTALL_PATH=$HOME/tools
 BASH_DIR=$INSTALL_PATH/rc
