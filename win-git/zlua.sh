@@ -69,10 +69,10 @@ if [[ "$(uname -a)" =~ (x86_64)|(i686) ]]; then
   if [ -f $LIBS_HOME/lua53 ];then
     cp $LIBS_HOME/lua53 $LIBS_HOME/lua
   fi
-  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init '${bash_type}' enhanced once echo fzf)"' >> $TOOLSRC
+  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init '$(bash_type)' enhanced once echo fzf)"' >> $TOOLSRC
 else
   sudo apt install lua5.1 -y
-  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init '${bash_type}' enhanced once echo fzf)"' > $TOOLSRC
+  echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init '$(bash_type)' enhanced once echo fzf)"' > $TOOLSRC
 fi
 echo "alias zc='z -c'" >> $TOOLSRC
 echo "alias zz='z -i'" >> $TOOLSRC
