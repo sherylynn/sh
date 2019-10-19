@@ -1,9 +1,10 @@
 #!/bin/bash
 # source
+. $(dirname "$0")/toolsinit.sh
 INSTALL_PATH=$HOME/tools
 BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=noderc
-TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
+TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 SOFT_HOME=$INSTALL_PATH/node
 NODE_GLOBAL=$INSTALL_PATH/node-global
 NODE_CACHE=$INSTALL_PATH/node-cache
@@ -83,9 +84,6 @@ fi
 #--------------new .toolsrc-----------------------
 if [ ! -d "${BASH_DIR}" ]; then
   mkdir $BASH_DIR
-fi
-if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
-  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
 fi
 #windows下和linux下的不同
 NODE_ROOT=${SOFT_HOME}/${SOFT_FILE_NAME}

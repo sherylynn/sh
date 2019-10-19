@@ -1,6 +1,7 @@
 #!/bin/bash
 #------------------init function----------------
 . $(dirname "$0")/../win-git/toolsinit.sh
+BUILD_TYPE=BUNDLE
 #sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev -y
 sudo apt-get install ninja-build gettext libtool libtool-bin autoconf automake cmake g++ pkg-config unzip -y
 cd ~
@@ -30,8 +31,8 @@ elif [[ ${BUILD_TYPE} =~ (BUNDLE) ]]; then
   rm -rf build
   make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$HOME/neovim" -j$core_num
   make install
-  if [[ $(cat ~/.bashrc) != *neovim* ]]; then
-    echo export PATH="$HOME/neovim/bin:"'$PATH'>>~/.bashrc
+  if [[ $(cat $(alltoolsrc_file) ) != *neovim/build* ]]; then
+    echo export PATH="$HOME/neovim/build/bin:"'$PATH'>>$(alltoolsrc_file)
   fi
 else
   #有lua5.3的情况下编译不了
