@@ -12,19 +12,7 @@ NVIM_ARCH=64
 #NVIM_ARCH=arm64
 #NVIM_ARCH=armv6l
 #arm64
-
-# uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-if [[ "$(uname)" == *MINGW* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=win
-elif [[ "$(uname)" == *Linux* ]]; then
-  BASH_FILE=~/.bashrc
-  PLATFORM=linux
-elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=macos
-fi
-
+PLATFORM=$(platform)
 if [[ "$(uname -a)" == *x86_64* ]]; then
   NVIM_ARCH=64
 elif [[ "$(uname -a)" == *i686* ]]; then
@@ -83,13 +71,6 @@ if [[ "$(nvim --version)" != *NVIM*v${NVIM_VERSION}* ]]; then
   mv ${NVIM_FILE_NAME} ${NVIM_HOME} && \
   rm -rf ${NVIM_FILE_PACK}
 fi
-#--------------new .toolsrc-----------------------
-if [ ! -d "${BASH_DIR}" ]; then
-  mkdir $BASH_DIR
-fi
-if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
-  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
-fi
 
 #export XDG_CONFIG_HOME=$HOME/.config
 export PATH=$PATH:${NVIM_ROOT_BIN}
@@ -100,7 +81,6 @@ echo 'export PATH=$PATH:'${NVIM_ROOT_BIN}>${TOOLSRC}
 #  ----windows bat----
 if [[ $SYSTEM == 1 ]]; then
 if [[ $PLATFORM == windows ]]; then
-  setx XDG_CONFIG_HOME $(cygpath -w ${XDG_CONFIG_HOME})
   windowsENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
   echo $windowsENV
   setx Path "$windowsENV"
