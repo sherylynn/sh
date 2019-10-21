@@ -4,7 +4,7 @@
 if command -v git >/dev/null 2>&1; then
   echo 'git exists'
 else
-  pacman -S git unzip zip
+  pacman -S git unzip zip tar
 fi
 #pacman -S mingw64/mingw-w64-x86_64-lua
 #------------------init function----------------
