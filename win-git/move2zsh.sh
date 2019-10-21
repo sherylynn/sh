@@ -28,6 +28,9 @@ fi
 antigen bundle Vifon/deer
 antigen bundle zdharma/fast-syntax-highlighting
 antigen apply
+autoload -U deer
+zle -N deer
+bindkey '\ev' deer
 EOF
 if [[ $syntax ]];then
 cd ~
