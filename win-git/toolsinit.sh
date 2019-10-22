@@ -59,8 +59,11 @@ toolsRC(){
     mkdir $BASH_DIR
   fi
   if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
-    echo "test -f ${toolsrc} && . ${toolsrc}" >> ${ALLTOOLSRC_FILE}
+    echo exist ${toolsrc}
+  else
+    sed -i '/'${toolsrc_name}'/d' ${ALLTOOLSRC_FILE}
   fi
+  echo "test -f ${toolsrc} && . ${toolsrc}" >> ${ALLTOOLSRC_FILE}
   echo $toolsrc
 }
 
@@ -74,5 +77,9 @@ bash_type(){
 
 alltoolsrc_file(){
   echo $ALLTOOLSRC_FILE
+}
+
+install_path(){
+  echo $INSTALL_PATH
 }
 
