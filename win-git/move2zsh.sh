@@ -8,7 +8,16 @@ if [[ "$(cat $(bash_file))" != *zsh* ]]; then
   echo "not zsh"
   #echo zsh >> $(bash_file)
 fi
-ZSH_PLUG=antigen
+if [[ $1 == zplug ]]; then
+  ZSH_PLUG=zplug
+elif [[ $1 == antigen ]]; then
+  ZSH_PLUG=antigen
+elif [[ $1 == help ]]; then
+  echo "+++++++++++++++++++++++"
+  echo "set ZSH_PLUG to antigen"
+  ZSH_PLUG=antigen
+fi
+
 if [[ "$ZSH_PLUG" == antigen ]]; then
   # load antigen
   ANTIGENRC_NAME=antigenrc
@@ -32,25 +41,25 @@ fi
 TOOLSRC_NAME=myzshrc
 TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 
-tee $TOOLSRC <<-'EOF'
-if [ -n "$BASH_VERSION" ]; then
+tee $TOOLSRC <<EOF
+if [ -n "\$BASH_VERSION" ]; then
     export PS1='\[\e[38;5;135m\]\u\[\e[0m\]@\[\e[38;5;166m\]\h\[\e[0m\] \[\e[38;5;118m\]\w\[\e[0m\] \$ '
 else
-    if [ "$UID" -eq 0 ]; then
+    if [ "\$UID" -eq 0 ]; then
         export PROMPT="%F{135}%n%f@%F{166}%m%f %F{118}%~%f %# "
     else
         export PROMPT="%F{135}%n%f@%F{166}%m%f %F{118}%~%f \$ "
     fi
 fi
-ZSH_PLUG=antigen
-if [[ $ZSH_PLUG == antigen ]]; then
+ZSH_PLUG=$ZSH_PLUG
+if [[ \$ZSH_PLUG == antigen ]]; then
   antigen bundle Vifon/deer
   antigen bundle zdharma/fast-syntax-highlighting
   antigen apply
   autoload -U deer
   zle -N deer
   bindkey '\ev' deer
-elif [[ $ZSH_PLUG == zplug ]]; then
+elif [[ \$ZSH_PLUG == zplug ]]; then
   zplug zdharma/fast-syntax-highlighting
   zplug "vifon/deer", use:deer
   zle -N deer
