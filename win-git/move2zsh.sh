@@ -77,3 +77,6 @@ cd ~
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
   echo "source ~/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
 fi
+cd ~
+compaudit | xargs chown -R "$(whoami)"
+compaudit | xargs chmod -R go-w
