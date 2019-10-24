@@ -8,6 +8,8 @@ if [[ "$(cat $(bash_file))" != *zsh* ]]; then
   echo "not zsh"
   #echo zsh >> $(bash_file)
 fi
+#set default plugin manager to antigen
+ZSH_PLUG=antigen
 if [[ $1 == zplug ]]; then
   ZSH_PLUG=zplug
 elif [[ $1 == antigen ]]; then
@@ -15,6 +17,8 @@ elif [[ $1 == antigen ]]; then
 elif [[ $1 == help ]]; then
   echo "+++++++++++++++++++++++"
   echo "set ZSH_PLUG to antigen"
+  ZSH_PLUG=antigen
+else
   ZSH_PLUG=antigen
 fi
 
@@ -54,14 +58,16 @@ fi
 ZSH_PLUG=$ZSH_PLUG
 if [[ \$ZSH_PLUG == antigen ]]; then
   antigen bundle Vifon/deer
+  #antigen bundle skywind3000/z.lua
   antigen bundle zdharma/fast-syntax-highlighting
   antigen apply
   autoload -U deer
   zle -N deer
   bindkey '\ev' deer
 elif [[ \$ZSH_PLUG == zplug ]]; then
-  zplug zdharma/fast-syntax-highlighting
   zplug "vifon/deer", use:deer
+  #zplug skywind3000/z.lua
+  zplug zdharma/fast-syntax-highlighting
   zle -N deer
   bindkey '\ek' deer
 fi
