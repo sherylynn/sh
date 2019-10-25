@@ -91,20 +91,20 @@ install_path(){
 cache_folder(){
   if [[ ! -d $CACHE_FOLDER ]]; then
     mkdir -p $CACHE_FOLDER
-    echo $CACHE_FOLDER
   fi
+  echo $CACHE_FOLDER
 }
 
 cache_downloader(){
   local soft_file_pack=$1
   local soft_url=$2
   cd $(cache_folder)
-  if [[ ! -f $soft_file_pack ]]; then
+  #if [[ ! -f $soft_file_pack ]]; then
     # use curl
     #curl -o $soft_file_pack $soft_url
     # use wget
     wget -O $soft_file_pack -c $soft_url
-  fi
+  #fi
 }
 
 cache_unpacker(){
