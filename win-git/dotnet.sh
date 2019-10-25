@@ -1,10 +1,9 @@
 #!/bin/bash
 #sudo apt update
-INSTALL_PATH=$HOME/tools
-BASH_DIR=$INSTALL_PATH/rc
+. $(dirname "$0")/toolsinit.sh
 TOOLSRC_NAME=dotnetrc
-TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
-SOFT_HOME=$INSTALL_PATH/dotnet
+TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+SOFT_HOME=$(install_path)/dotnet
 
 VERSION=2.1.6
 SOFT_VERSION=release/${VERSION}xx
@@ -13,39 +12,22 @@ SOFT_VERSION=release/${VERSION}xx
 SOFT_ARCH=x64
 
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-if [[ "$(uname)" == *MINGW* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=win
-elif [[ "$(uname)" == *Linux* ]]; then
-  BASH_FILE=~/.bashrc
-  PLATFORM=linux
-elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=osx
-fi
+case $(platform) in 
+  win) PLATFORM=win;;
+  linux) PLATFORM=linux;;
+  macos) PLATFORM=osx;;
+esac
 
-if [[ "$(uname -a)" == *x86_64* ]]; then
-  SOFT_ARCH=x64
-elif [[ "$(uname -a)" == *i686* ]]; then
-  SOFT_ARCH=x86
-elif [[ "$(uname -a)" == *armv8l* ]]; then
-  case $(getconf LONG_BIT) in 
-    32) SOFT_ARCH=arm;;
-    64) SOFT_ARCH=arm64;;
-  esac
-elif [[ "$(uname -a)" == *aarch64* ]]; then
-  SOFT_ARCH=arm64
-elif [[ "$(uname -a)" == *armv7l* ]]; then
-  SOFT_ARCH=arm
-fi
+case $(arch) in 
+  amd64) SOFT_ARCH=x64;;
+  386) SOFT_ARCH=x86;;
+  armhf) SOFT_ARCH=arm;;
+  aarch64) SOFT_ARCH=arm64;;
+esac
 
 SOFT_FILE_NAME=dotnet-sdk-latest-${PLATFORM}-${SOFT_ARCH}
-
-if [[ ${PLATFORM} == win ]]; then
-  SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
-else
-  SOFT_FILE_PACK=${SOFT_FILE_NAME}.tar.gz
-fi
+SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
+SOFT_URL=https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${SOFT_VERSION}/${SOFT_FILE_PACK}
 # init pwd
 cd ~
 
@@ -53,35 +35,14 @@ cd ~
 #安装 dotnet
 #--------------------------------------
 if [[ "$(dotnet --version)" != *${VERSION}* ]]; then
-  if [ ! -d "${INSTALL_PATH}" ]; then
-    mkdir $INSTALL_PATH
-  fi
 
-  if [ ! -f "${SOFT_FILE_PACK}" ]; then
-    curl -o ${SOFT_FILE_PACK} https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${SOFT_VERSION}/${SOFT_FILE_PACK}
-    echo dowload-url https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${SOFT_VERSION}/${SOFT_FILE_PACK}
-    #https://dotnetcli.blob.core.windows.net/dotnet/Sdk/release/2.1.6xx/dotnet-sdk-latest-win-x64.zip
-  fi
+  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
 
-  if [ ! -d "${SOFT_FILE_NAME}" ]; then
-    if [ $PLATFORM == win ]; then
-      unzip -q ${SOFT_FILE_PACK} -d ${SOFT_FILE_NAME}
-    else
-      mkdir ${SOFT_FILE_NAME}
-      tar -xzf ${SOFT_FILE_PACK} -C ${SOFT_FILE_NAME}
-    fi
-  fi
   rm -rf ${SOFT_HOME} && \
-  mv ${SOFT_FILE_NAME} ${SOFT_HOME} && \
-  rm -rf ${SOFT_FILE_PACK}
+    mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
 fi
 #--------------new .toolsrc-----------------------
-if [ ! -d "${BASH_DIR}" ]; then
-  mkdir $BASH_DIR
-fi
-if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
-  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
-fi
 export PATH=$PATH:${SOFT_HOME} 
 export DOTNET_ROOT=${SOFT_HOME} 
 echo 'export PATH=$PATH:'${SOFT_HOME} >${TOOLSRC}
