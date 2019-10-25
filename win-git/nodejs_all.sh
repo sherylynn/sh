@@ -1,44 +1,25 @@
 #!/bin/bash
 # source
 . $(dirname "$0")/toolsinit.sh
-INSTALL_PATH=$HOME/tools
-BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=noderc
-TOOLSRC=$(toolsRC $TOOLSRC_NAME)
-SOFT_HOME=$INSTALL_PATH/node
-NODE_GLOBAL=$INSTALL_PATH/node-global
-NODE_CACHE=$INSTALL_PATH/node-cache
+TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+SOFT_HOME=$(install_path)/node
+NODE_GLOBAL=$(install_path)/node-global
+NODE_CACHE=$(install_path)/node-cache
 SOFT_VERSION=10.15.0
 cd ~
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-if [[ "$(uname)" == *MINGW* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=win
-elif [[ "$(uname)" == *Linux* ]]; then
-  BASH_FILE=~/.bashrc
-  PLATFORM=linux
-elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bash_profile
+PLATFORM=$(platform)
+if [[ "$PLATFORM" == "macos" ]]; then
   PLATFORM=darwin
 fi
 
-if [[ "$(uname -a)" == *x86_64* ]]; then
-  SOFT_ARCH=x64
-elif [[ "$(uname -a)" == *i686* ]]; then
-  SOFT_ARCH=x86
-elif [[ "$(uname -a)" == *armv8l* ]]; then
-  case $(getconf LONG_BIT) in 
-    32) SOFT_ARCH=armv7l;;
-    64) SOFT_ARCH=arm64;;
-  esac
-elif [[ "$(uname -a)" == *aarch64* ]]; then
-  case $(getconf LONG_BIT) in 
-    32) SOFT_ARCH=armv7l;;
-    64) SOFT_ARCH=arm64;;
-  esac
-elif [[ "$(uname -a)" == *armv7l* ]]; then
-  SOFT_ARCH=armv7l
-fi
+case $(arch) in 
+  amd64) SOFT_ARCH=x64
+  386) SOFT_ARCH=x86
+  armhf) SOFT_ARCH=armv7l;;
+  aarch64) SOFT_ARCH=arm64;;
+esac
 
 SOFT_FILE_NAME=node-v${SOFT_VERSION}-${PLATFORM}-${SOFT_ARCH}
 
@@ -47,30 +28,17 @@ if [[ ${PLATFORM} == win ]]; then
 else
   SOFT_FILE_PACK=${SOFT_FILE_NAME}.tar.gz
 fi
+
+SOFT_URL=http://cdn.npm.taobao.org/dist/node/v${SOFT_VERSION}/${SOFT_FILE_PACK} 
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
 if [[ "$(node --version)" != *${SOFT_VERSION}* ]]; then
-  if [ ! -d "${INSTALL_PATH}" ]; then
-    mkdir $INSTALL_PATH
-  fi
-
-  if [ ! -f "${SOFT_FILE_PACK}" ]; then
-    curl -o ${SOFT_FILE_PACK} http://cdn.npm.taobao.org/dist/node/v${SOFT_VERSION}/${SOFT_FILE_PACK} 
-  fi
-
-  if [ ! -d "${SOFT_FILE_NAME}" ]; then
-    if [[ ${PLATFORM} == win ]]; then
-      unzip -q ${SOFT_FILE_PACK} -d ${SOFT_FILE_NAME}
-    else
-      mkdir ${SOFT_FILE_NAME}
-      tar -xzf ${SOFT_FILE_PACK} -C ${SOFT_FILE_NAME}
-    fi
-  fi
+  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
 
   rm -rf $SOFT_HOME && \
-  mv ${SOFT_FILE_NAME} $SOFT_HOME && \
-  rm -rf ${SOFT_FILE_PACK}
+    mv $(cache_folder)/${SOFT_FILE_NAME} $SOFT_HOME 
 fi
 #----------------------------
 # Set Global packages path
@@ -82,9 +50,6 @@ if [ ! -d "${NODE_CACHE}" ]; then
   mkdir ${NODE_CACHE}
 fi
 #--------------new .toolsrc-----------------------
-if [ ! -d "${BASH_DIR}" ]; then
-  mkdir $BASH_DIR
-fi
 #windows下和linux下的不同
 NODE_ROOT=${SOFT_HOME}/${SOFT_FILE_NAME}
 if [[ ${PLATFORM} == win ]]; then
@@ -100,11 +65,11 @@ else
 fi
 echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >> ${TOOLSRC}
 echo 'NPM_CONFIG_CACHE='$NODE_CACHE >> ${TOOLSRC}
-echo 'YARN_CACHE_FOLDER='$INSTALL_PATH'/yarn-cache' >> ${TOOLSRC}
+echo 'YARN_CACHE_FOLDER='$(install_path)'/yarn-cache' >> ${TOOLSRC}
 #-----env--------------------------------------------------
 export NPM_CONFIG_PREFIX=$NODE_GLOBAL
 export NPM_CONFIG_CACHE=$NODE_CACHE
-export YARN_CACHE_FOLDER=$INSTALL_PATH/yarn-cache
+export YARN_CACHE_FOLDER=$(install_path)/yarn-cache
 export ELECTRON_MIRROR=http://npm.taobao.org/mirrors/electron/
 export SQLITE3_BINARY_SITE=http://npm.taobao.org/mirrors/sqlite3
 export PHANTOMJS_CDNURL=http://npm.taobao.org/mirrors/phantomjs
@@ -114,7 +79,7 @@ export PHANTOMJS_CDNURL=http://npm.taobao.org/mirrors/phantomjs
 #----------------------------
 npm config set prefix "${NODE_GLOBAL}"
 npm config set cache "${NODE_CACHE}"
-yarn config set cache-folder "${INSTALL_PATH}/yarn-cache"
+yarn config set cache-folder "$(install_path)/yarn-cache"
 #----------------------------
 # Install Basic cli packages
 #----------------------------
@@ -125,7 +90,7 @@ yrm use taobao
 #npm i -g react-native-cli rnpm pm2 pouchdb-server npm webpack yrm http-server j json dva-cli babel-cli code-push express-cli flow-bin vue-cli rundev eslint tslint ts-node typescript cordova
 #arm
 npm i -g yarn webpack http-server babel-cli pm2 typescript ts-node tslint eslint
-yarn config set cache-folder "${INSTALL_PATH}/yarn-cache"
+yarn config set cache-folder "$(install_path)/yarn-cache"
 #-----------------------
 if [[ $WIN_PATH ]]; then
   if [[ ${PLATFORM} == win ]]; then

@@ -1,6 +1,10 @@
 #!/bin/bash
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 INSTALL_PATH=$HOME/tools
+if [ ! -d "${INSTALL_PATH}" ]; then
+  mkdir -p $INSTALL_PATH
+fi
+CACHE_FOLDER=$INSTALL_PATH/cache
 BASH_DIR=$INSTALL_PATH/rc
 ZSH_FILE=$HOME/.zshrc
 if [[ "$(uname)" == *MINGW* ]]; then
@@ -40,7 +44,6 @@ if command -v zsh >/dev/null 2>&1; then
   if [[ "$(cat ${ZSH_FILE})" != *${ALLTOOLSRC_FILE}* ]]; then
     echo "test -f ${ALLTOOLSRC_FILE} && . ${ALLTOOLSRC_FILE}" >> ${ZSH_FILE}
   fi
-  touch ${ALLTOOLSRC_FILE}
   BASH_TYPE=zsh
 fi
 
@@ -59,6 +62,7 @@ toolsRC(){
   if [ ! -d "${BASH_DIR}" ]; then
     mkdir $BASH_DIR
   fi
+  touch ${ALLTOOLSRC_FILE}
   if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
     echo not exist ${toolsrc}
   else
@@ -84,3 +88,36 @@ install_path(){
   echo $INSTALL_PATH
 }
 
+cache_folder(){
+  if [[ ! -d $CACHE_FOLDER ]]; then
+    mkdir -p $CACHE_FOLDER
+    echo $CACHE_FOLDER
+  fi
+}
+
+cache_downloader(){
+  local soft_file_pack=$1
+  local soft_url=$2
+  cd $CACHE_FOLDER
+  if [[ ! -f $soft_file_pack ]]; then
+    # use curl
+    #curl -o $soft_file_pack $soft_url
+    # use wget
+    wget -O $soft_file_pack -c $soft_url
+  fi
+}
+
+cache_unpacker(){
+  local soft_file_pack=$1
+  local soft_file_name=$2
+  cd $CACHE_FOLDER
+  if [ ! -d "${soft_file_name}" ]; then
+    if [[ ${PLATFORM} == win ]]; then
+      unzip -q ${soft_file_pack} -d ${soft_file_name}
+    else
+      mkdir ${soft_file_name}
+      tar -xzf ${soft_file_pack} -C ${soft_file_name}
+    fi
+  fi
+
+}
