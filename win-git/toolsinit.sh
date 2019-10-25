@@ -98,7 +98,7 @@ cache_folder(){
 cache_downloader(){
   local soft_file_pack=$1
   local soft_url=$2
-  cd $CACHE_FOLDER
+  cd $(cache_folder)
   if [[ ! -f $soft_file_pack ]]; then
     # use curl
     #curl -o $soft_file_pack $soft_url
@@ -110,7 +110,7 @@ cache_downloader(){
 cache_unpacker(){
   local soft_file_pack=$1
   local soft_file_name=$2
-  cd $CACHE_FOLDER
+  cd $(cache_folder)
   if [ ! -d "${soft_file_name}" ]; then
     if [[ ${PLATFORM} == win ]]; then
       unzip -q ${soft_file_pack} -d ${soft_file_name}
