@@ -40,6 +40,7 @@ if command -v zsh >/dev/null 2>&1; then
   if [[ "$(cat ${ZSH_FILE})" != *${ALLTOOLSRC_FILE}* ]]; then
     echo "test -f ${ALLTOOLSRC_FILE} && . ${ALLTOOLSRC_FILE}" >> ${ZSH_FILE}
   fi
+  touch ${ALLTOOLSRC_FILE}
   BASH_TYPE=zsh
 fi
 
@@ -59,7 +60,7 @@ toolsRC(){
     mkdir $BASH_DIR
   fi
   if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
-    echo exist ${toolsrc}
+    echo not exist ${toolsrc}
   else
     sed -i '/'${toolsrc_name}'/d' ${ALLTOOLSRC_FILE}
   fi

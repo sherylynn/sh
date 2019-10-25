@@ -29,7 +29,7 @@ elif [[ ${BUILD_TYPE} =~ (RELEASE) ]]; then
   sudo make install
 elif [[ ${BUILD_TYPE} =~ (BUNDLE) ]]; then
   rm -rf build
-  make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$HOME/neovim" -j$core_num
+  make CMAKE_BUILD_TYPE=Release CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$HOME/neovim" -j$core_num
   make install
   if [[ $(cat $(alltoolsrc_file) ) != *neovim/build* ]]; then
     echo export PATH="$HOME/neovim/build/bin:"'$PATH'>>$(alltoolsrc_file)
