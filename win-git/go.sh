@@ -1,54 +1,38 @@
 #!/bin/bash
-INSTALL_PATH=$HOME/tools
-BASH_DIR=$INSTALL_PATH/rc
+. $(dirname "$0")/toolsinit.sh
 TOOLSRC_NAME=golangrc
-TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
-GO_HOME=$INSTALL_PATH/goroot
-GO_ROOT=$GO_HOME/go
-GO_PATH=$INSTALL_PATH/gopath
+TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+SOFT_HOME=$(install_path)/goroot
+GO_ROOT=$SOFT_HOME/go
+GO_PATH=$(install_path)/gopath
 GO_PATH_BIN=${GO_PATH}/bin
 GO_ROOT_BIN=$GO_ROOT/bin
 GO_VERSION=1.12
-GO_ARCH=amd64
-#GO_ARCH=arm64
-#GO_ARCH=armv6l
+SOFT_ARCH=amd64
+#SOFT_ARCH=arm64
+#SOFT_ARCH=armv6l
 #arm64
 
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-if [[ "$(uname)" == *MINGW* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=windows
-elif [[ "$(uname)" == *Linux* ]]; then
-  BASH_FILE=~/.bashrc
-  PLATFORM=linux
-elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=darwin
-fi
+case $(platform) in 
+  win) PLATFORM=windows;;
+  linux) PLATFORM=linux;;
+  macos) PLATFORM=darwin;;
+esac
 
-if [[ "$(uname -a)" == *x86_64* ]]; then
-  GO_ARCH=amd64
-elif [[ "$(uname -a)" == *i686* ]]; then
-  GO_ARCH=386
-elif [[ "$(uname -a)" == *armv8l* ]]; then
-  case $(getconf LONG_BIT) in 
-    32) GO_ARCH=armv6l;;
-    64) GO_ARCH=arm64;;
-  esac
-elif [[ "$(uname -a)" == *aarch64* ]]; then
-  case $(getconf LONG_BIT) in 
-    32) GO_ARCH=armv6l;;
-    64) GO_ARCH=arm64;;
-  esac
-elif [[ "$(uname -a)" == *armv7l* ]]; then
-  GO_ARCH=armv6l
-fi
+case $(arch) in 
+  amd64) SOFT_ARCH=amd64;;
+  386) SOFT_ARCH=386;;
+  armhf) SOFT_ARCH=armv6l;;
+  aarch64) SOFT_ARCH=arm64;;
+esac
+
 while getopts 'v:a:sc' OPT; do
   case $OPT in
     v)
       GO_VERSION="$OPTARG";;
     a)
-      GO_ARCH="$OPTARG";;
+      SOFT_ARCH="$OPTARG";;
     s)
       Server="y";;
     c)
@@ -58,47 +42,21 @@ while getopts 'v:a:sc' OPT; do
   esac
 done
 
-GO_FILE_NAME=go${GO_VERSION}.${PLATFORM}-${GO_ARCH}
-if [[ ${PLATFORM} == windows ]]; then
-  GO_FILE_PACK=${GO_FILE_NAME}.zip
-else
-  GO_FILE_PACK=${GO_FILE_NAME}.tar.gz
-fi
+SOFT_FILE_NAME=go${GO_VERSION}.${PLATFORM}-${SOFT_ARCH}
+SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
 # init pwd
 cd $HOME
 
 shift $(($OPTIND - 1))
-
-if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${GO_ARCH}" ]; then
-  if [ ! -d "${INSTALL_PATH}" ]; then
-    mkdir $INSTALL_PATH
-  fi
-
-  if [ ! -f "${GO_FILE_PACK}" ]; then
-    echo ${GO_FILE_PACK}
-    curl -o ${GO_FILE_PACK} https://dl.google.com/go/${GO_FILE_PACK}
-  fi
+SOFT_URL=https://dl.google.com/go/${SOFT_FILE_PACK}
+if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${SOFT_ARCH}" ]; then
+  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
   
-  if [ ! -d "${GO_FILE_NAME}" ]; then
-    if [ ${PLATFORM} == windows ]; then
-      unzip -q ${GO_FILE_PACK} -d ${GO_FILE_NAME}
-    else
-      mkdir ${GO_FILE_NAME}
-      tar -xzf ${GO_FILE_PACK} -C ${GO_FILE_NAME}
-    fi
-  fi
-  rm -rf ${GO_HOME} && \
-  mv ${GO_FILE_NAME} ${GO_HOME} && \
-  rm -rf ${GO_FILE_PACK}
+  rm -rf ${SOFT_HOME} && \
+    mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
 fi
 #--------------new .toolsrc-----------------------
-if [ ! -d "${BASH_DIR}" ]; then
-  mkdir $BASH_DIR
-fi
-if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
-  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
-fi
-
 export GOPATH=${GO_PATH}
 export GOROOT=${GO_ROOT}
 export PATH=$PATH:${GO_ROOT_BIN}

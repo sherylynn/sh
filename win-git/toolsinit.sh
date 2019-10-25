@@ -121,3 +121,12 @@ cache_unpacker(){
   fi
 
 }
+
+soft_file_pack(){
+  local soft_file_name=$1
+  if [[ $(platform) == win ]]; then
+    echo ${soft_file_name}.zip
+  else
+    echo ${soft_file_name}.tar.gz
+  fi
+}

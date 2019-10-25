@@ -23,11 +23,7 @@ esac
 
 SOFT_FILE_NAME=node-v${SOFT_VERSION}-${PLATFORM}-${SOFT_ARCH}
 
-if [[ ${PLATFORM} == win ]]; then
-  SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
-else
-  SOFT_FILE_PACK=${SOFT_FILE_NAME}.tar.gz
-fi
+SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
 
 SOFT_URL=http://cdn.npm.taobao.org/dist/node/v${SOFT_VERSION}/${SOFT_FILE_PACK} 
 #--------------------------------------
