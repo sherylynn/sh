@@ -15,8 +15,8 @@ if [[ "$PLATFORM" == "macos" ]]; then
 fi
 
 case $(arch) in 
-  amd64) SOFT_ARCH=x64
-  386) SOFT_ARCH=x86
+  amd64) SOFT_ARCH=x64;;
+  386) SOFT_ARCH=x86;;
   armhf) SOFT_ARCH=armv7l;;
   aarch64) SOFT_ARCH=arm64;;
 esac
