@@ -25,6 +25,7 @@ tee $TOOLSRC <<EOF
 export RUSTUP_HOME=${RUSTUP_HOME}
 export CARGO_HOME=${CARGO_HOME}
 source ${CARGO_HOME}/env
+export CARGO_REGISTRIES_MY_REGISTRY_INDEX=http://mirrors.ustc.edu.cn/crates.io-index
 export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
 export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
 EOF
