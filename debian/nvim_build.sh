@@ -8,6 +8,7 @@ cd ~
 git clone https://github.com/neovim/neovim
 ##
 cd neovim
+git pull
 git checkout v0.4.2
 git clean -xfd
 #core_num=$(cat /proc/cpuinfo|grep "processer"|wc -l)
