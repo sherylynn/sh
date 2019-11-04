@@ -21,8 +21,12 @@ export RUSTUP_HOME=$RUSTUP_HOME
 export CARGO_HOME=$CARGO_HOME
 export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
 export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
-echo 'export RUSTUP_HOME='${RUSTUP_HOME}>$TOOLSRC
-echo 'export CARGO_HOME='${CARGO_HOME}>>$TOOLSRC
-echo 'export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup'>>$TOOLSRC
-echo 'export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static'>>$TOOLSRC
+tee $TOOLSRC <<EOF
+export RUSTUP_HOME=${RUSTUP_HOME}
+export CARGO_HOME=${CARGO_HOME}
+source ${CARGO_HOME}/env
+export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
+export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
+EOF
 curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable
+
