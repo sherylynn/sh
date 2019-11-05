@@ -3,7 +3,7 @@
 . $(dirname "$0")/../win-git/toolsinit.sh
 BUILD_TYPE=BUNDLE
 #sudo apt install gperf libluajit-5.1-dev libunibilium-dev libmsgpack-dev libtermkey-dev libvterm-dev libjemalloc-dev -y
-sudo apt-get install ninja-build gettext libtool libtool-bin autoconf automake cmake g++ pkg-config unzip -y
+sudo apt-get install ninja-build gettext libtool libtool-bin autoconf automake cmake g++ pkg-config unzip neovim-qt -y
 cd ~
 git clone https://github.com/neovim/neovim
 ##
@@ -79,7 +79,7 @@ else
   #最后绕了一圈发现nvim的python支持不是build来的，默认的就是没的
   #需要pip3 install --user neovim
   #修改成pynvim了
-  if [[ $(cat ~/.bashrc) != *neovim/build* ]]; then
-    echo export PATH="$HOME/neovim/build/bin:"'$PATH'>>~/.bashrc
+  if [[ $(cat $(alltoolsrc_file) ) != *neovim/build* ]]; then
+    echo export PATH="$HOME/neovim/build/bin:"'$PATH'>>$(alltoolsrc_file)
   fi
 fi
