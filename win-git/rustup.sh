@@ -29,5 +29,12 @@ export CARGO_REGISTRIES_MY_REGISTRY_INDEX=http://mirrors.ustc.edu.cn/crates.io-i
 export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
 export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
 EOF
+tee $CARGO_HOME/config <<EOF
+[source.crates-io]
+registry = "https://github.com/rust-lang/crates.io-index"
+replace-with = 'ustc'
+[source.ustc]
+registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+EOF
 curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable
 
