@@ -11,6 +11,7 @@ TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 . ./winPath.sh
 #--------------------------
 export ANDROID_STUDIO_HOME=$LIBS_HOME
+export ANDROID_ABI=arm64-v8a
 export SDK_HOME=$SOFT_HOME
 export CLASSPATH=.:$LIBS_HOME/jre/lib/tools.jar:$LIBS_HOME/jre/lib/dt.jar:$LIBS_HOME/jre/jre/lib/rt.jar
 export JAVA_HOME=$LIBS_HOME/jre
@@ -20,6 +21,7 @@ tee $TOOLSRC <<EOF
 export ANDROID_STUDIO_HOME=$LIBS_HOME
 export SDK_HOME=$SOFT_HOME
 export ANDROID_HOME=$SOFT_HOME
+export ANDROID_ABI=$ANDROID_ABI
 export ANDROID_SDK_ROOT=$SOFT_HOME
 export ANDROID_SDK=$SOFT_HOME
 export ANDROID_NDK=$SOFT_HOME/ndk-bundle
