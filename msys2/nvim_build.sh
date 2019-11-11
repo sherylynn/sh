@@ -20,6 +20,8 @@ git checkout v0.4.2
 ##########################
 rm -rf ~/neovim/nvim_build_step_2.bat
 cp ${SHELL_FOLDER}/nvim_build_step_2.bat ~/neovim/
+cp ${SHELL_FOLDER}/nvim_build_step_2_portable.bat ~/neovim/
+vim ~/neovim/nvim_build_step_2_portable.bat -c "set ff=dos" -c "x"
 cd ~/neovim/
 echo "run nvim_build_step_2.bat!"
 start .
