@@ -1,6 +1,6 @@
 #!/bin/bash
 #------------------init function----------------
-apt install getconf
+apt install getconf tsu
 . $(dirname "$0")/../win-git/toolsinit.sh
 cd ~
 #sudo apt install pigz -y
@@ -14,4 +14,4 @@ termux-setup-storage
 #tar --exclude=download --exclude=.cache  -pcvf - ./*  |pigz --best > ~/download/backup.tar.gz
 #tar --exclude=.dbus --exclude=.config --exclude=download --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > ~/download/backup.tar.gz
 
-tar -zpcvf ~/storage/downloads/backup_termux_$(arch).tar.gz --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config --exclude=storage --exclude=.x* --exclude=.vnc* --exclude=.cache ./*
+tar -zpcvf ~/storage/downloads/backup_termux_$(arch).tar.gz --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config --exclude=storage --exclude=.x* --exclude=.vnc* --exclude=.cache ./
