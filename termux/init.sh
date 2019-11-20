@@ -1,5 +1,5 @@
 pkg install apt openssh -y
-pkg install htop coreutils tsu vim zsh lua -y
+pkg install htop coreutils tsu vim zsh lua git -y
 #cat bashrc >> $HOME/.bashrc
 chsh -s zsh
 mkdir -p ~/.termux
