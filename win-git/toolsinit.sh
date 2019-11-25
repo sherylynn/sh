@@ -34,6 +34,8 @@ elif [[ "$(uname -a)" == *aarch64* ]]; then
   esac
 elif [[ "$(uname -a)" == *armv7l* ]]; then
   ARCH=armhf
+elif [[ "$(uname -a)" == *mips* ]]; then
+  ARCH=mips
 fi
 
 ALLTOOLSRC_FILE=$BASH_FILE
