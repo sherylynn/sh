@@ -7,16 +7,6 @@ fi
 CACHE_FOLDER=$INSTALL_PATH/cache
 BASH_DIR=$INSTALL_PATH/rc
 ZSH_FILE=$HOME/.zshrc
-if [[ "$(uname)" == *MINGW* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=win
-elif [[ "$(uname)" == *Linux* ]]; then
-  BASH_FILE=~/.bashrc
-  PLATFORM=linux
-elif [[ "$(uname)" == *Darwin* ]]; then
-  BASH_FILE=~/.bash_profile
-  PLATFORM=macos
-fi
 
 if [[ "$(uname -a)" == *x86_64* ]]; then
   ARCH=amd64
@@ -50,6 +40,18 @@ if command -v zsh >/dev/null 2>&1; then
 fi
 
 platform(){
+  local PLATFORM=win
+  if [[ "$(uname)" == *MINGW* ]]; then
+    BASH_FILE=~/.bash_profile
+    PLATFORM=win
+  elif [[ "$(uname)" == *Linux* ]]; then
+    BASH_FILE=~/.bashrc
+    PLATFORM=linux
+  elif [[ "$(uname)" == *Darwin* ]]; then
+    BASH_FILE=~/.bash_profile
+    PLATFORM=macos
+  fi
+
   echo $PLATFORM
 }
 
@@ -114,7 +116,7 @@ cache_unpacker(){
   local soft_file_name=$2
   cd $(cache_folder)
   if [ ! -d "${soft_file_name}" ]; then
-    if [[ ${PLATFORM} == win ]]; then
+    if [[ $(platform) == win ]]; then
       unzip -q ${soft_file_pack} -d ${soft_file_name}
     else
       mkdir ${soft_file_name}
