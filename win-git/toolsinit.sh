@@ -118,6 +118,9 @@ cache_unpacker(){
   if [ ! -d "${soft_file_name}" ]; then
     if [[ $(platform) == win ]]; then
       unzip -q ${soft_file_pack} -d ${soft_file_name}
+    elif [[ ${soft_file_pack} != *tar* ]]; then
+      mkdir -p ${soft_file_name}/${soft_file_name}
+      gunzip -c ${soft_file_pack} > ${soft_file_name}/${soft_file_name}/${soft_file_name}
     else
       mkdir ${soft_file_name}
       tar -xzf ${soft_file_pack} -C ${soft_file_name}
@@ -128,8 +131,12 @@ cache_unpacker(){
 
 soft_file_pack(){
   local soft_file_name=$1
+  local notar=$2
+
   if [[ $(platform) == win ]]; then
     echo ${soft_file_name}.zip
+  elif [[ $notar == notar ]]; then
+    echo ${soft_file_name}.gz
   else
     echo ${soft_file_name}.tar.gz
   fi
