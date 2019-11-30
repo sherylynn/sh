@@ -6,6 +6,7 @@ if [ ! -d "${INSTALL_PATH}" ]; then
 fi
 CACHE_FOLDER=$INSTALL_PATH/cache
 BASH_DIR=$INSTALL_PATH/rc
+BASH_FILE=~/.bash_profile
 ZSH_FILE=$HOME/.zshrc
 
 if [[ "$(uname -a)" == *x86_64* ]]; then
@@ -28,17 +29,6 @@ elif [[ "$(uname -a)" == *mips* ]]; then
   ARCH=mips
 fi
 
-ALLTOOLSRC_FILE=$BASH_FILE
-BASH_TYPE=bash
-#zsh
-if command -v zsh >/dev/null 2>&1; then
-  ALLTOOLSRC_FILE=$BASH_DIR/allToolsrc
-  if [[ "$(cat ${ZSH_FILE})" != *${ALLTOOLSRC_FILE}* ]]; then
-    echo "test -f ${ALLTOOLSRC_FILE} && . ${ALLTOOLSRC_FILE}" >> ${ZSH_FILE}
-  fi
-  BASH_TYPE=zsh
-fi
-
 platform(){
   local PLATFORM=win
   if [[ "$(uname)" == *MINGW* ]]; then
@@ -54,6 +44,17 @@ platform(){
 
   echo $PLATFORM
 }
+ALLTOOLSRC_FILE=$BASH_FILE
+platform
+BASH_TYPE=bash
+#zsh
+if command -v zsh >/dev/null 2>&1; then
+  ALLTOOLSRC_FILE=$BASH_DIR/allToolsrc
+  if [[ "$(cat ${ZSH_FILE})" != *${ALLTOOLSRC_FILE}* ]]; then
+    echo "test -f ${ALLTOOLSRC_FILE} && . ${ALLTOOLSRC_FILE}" >> ${ZSH_FILE}
+  fi
+  BASH_TYPE=zsh
+fi
 
 arch(){
   echo $ARCH
@@ -85,7 +86,7 @@ bash_type(){
 }
 
 alltoolsrc_file(){
-  echo $ALLTOOLSRC_FILE
+  echo ${ALLTOOLSRC_FILE}
 }
 
 install_path(){
