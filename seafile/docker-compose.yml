@@ -8,6 +8,7 @@ services:
       - MYSQL_LOG_CONSOLE=true
     volumes:
       - /mnt/seafile_drive/seafile-mysql/db:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+    restart: always
     networks:
       - seafile-net
 
@@ -15,6 +16,7 @@ services:
     image: memcached:1.5.6
     container_name: seafile-memcached
     entrypoint: memcached -m 256
+    restart: always
     networks:
       - seafile-net
           
@@ -37,6 +39,7 @@ services:
     depends_on:
       - db
       - memcached
+    restart: always
     networks:
       - seafile-net
 
