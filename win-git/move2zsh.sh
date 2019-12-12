@@ -71,6 +71,7 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
   zle -N deer
   bindkey '\ek' deer
 fi
+alias ls='ls --color'
 EOF
 if [[ $syntax ]];then
 cd ~
