@@ -142,3 +142,10 @@ soft_file_pack(){
     echo ${soft_file_name}.tar.gz
   fi
 }
+
+get_github_release_version(){
+  local author_softname=$1
+  curl --silent "https://api.github.com/repos/${author_softname}/releases/latest" |
+    grep '"tag_name":' |
+    awk -F '["]' '{print $4}'
+}
