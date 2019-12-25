@@ -44,7 +44,7 @@ done
 shift $(($OPTIND - 1))
 
 SOFT_FILE_NAME=${NAME}_${SOFT_VERSION}_${PLATFORM}_${SOFT_ARCH}
-SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME notar)
+SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME )
 COMMAND_NAME=$SOFT_FILE_NAME
 # init pwd
 cd $HOME
