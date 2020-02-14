@@ -1,3 +1,4 @@
+#!/bin/zsh
 if [ ! -d "$HOME/caddy" ]; then
   mkdir $HOME/caddy
 fi
