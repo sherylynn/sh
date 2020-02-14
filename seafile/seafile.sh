@@ -1,6 +1,7 @@
 #/bin/bash
 docker run -itd --name seafile_db --restart=always -v /root/seafile_drive/mysql:/var/lib/mysql -e MYSQL_ROOT_PASSWORD="seafile" -e MYSQL_DATABASE="seafile" mysql --default-authentication-plugin=mysql_native_password --skip-mysqlx
-docker run -itd --name seafile_app --restart=always -p 8000:8000 -p 8082:8082 \
+docker run -itd --name seafile_app --restart=always \
+  -p 0.0.0.0:8000:8000 -p 0.0.0.0:8082:8082 \
   -v /root/seafile_drive/seafile-data:/home/haiwen/seafile-data \
   --link seafile_db:db seafile /bin/bash
 docker attach seafile_app

@@ -1,0 +1,34 @@
+version: '2.0'
+services:
+  db:
+    image: mysql
+    container_name: seafile_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=seafile # Requested, set the root's password of MySQL service.
+      - MYSQL_DATABASE=seafile
+      - MYSQL_LOG_CONSOLE=true
+    volumes:
+      - /root/seafile_drive/mysql:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+    restart: always
+    networks:
+      - seafile-net
+
+  seafile:
+    image: seafile
+    container_name: seafile_app
+    ports:
+      - "8080:80"
+      - "8000:8000"
+      - "8082:8082"
+#      - "443:443"  # If https is enabled, cancel the comment.
+    volumes:
+      - /root/seafile_drive/seafile-data:/home/haiwen/seafile-data # Requested, specifies the path to Seafile data persistent store.
+    environment:
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - seafile-net
+
+networks:
+  seafile-net:

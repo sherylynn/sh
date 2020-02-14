@@ -34,6 +34,7 @@ ADD build/recovery.sh /home/haiwen/recovery.sh
 ADD build/start.sh    /home/haiwen/start.sh
 ADD build/stop.sh     /home/haiwen/stop.sh
 ADD build/init.sh     /home/haiwen/init.sh
+ADD build/patch.sh     /home/haiwen/patch.sh
 
 WORKDIR /home/haiwen
 
