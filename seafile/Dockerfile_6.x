@@ -3,30 +3,31 @@ LABEL Author=sherylynn@outlook.com
 
 WORKDIR /home
 #COPY sources.aliyun.list /etc/apt/sources.list
-#RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
+RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
 
 #RUN bash seafile_install_ubt.sh 
 #apt的命令还是要集成在run中好，不然会出事
 RUN apt update -y && \
     apt install -y wget && \
-    apt clean 
-
-RUN wget http://seafile-downloads.oss-cn-shanghai.aliyuncs.com/seafile-server_7.1.1_x86-64.tar.gz && \
+    apt clean && \
+    wget http://seafile-downloads.oss-cn-shanghai.aliyuncs.com/seafile-server_7.0.5_x86-64.tar.gz && \
     mkdir haiwen && \
     mv seafile-server_* haiwen && \
     cd haiwen && \
     tar -xzf seafile-server_* && \
     mkdir installed && \
     mv seafile-server_* installed
-
-RUN apt-get install -y python3 python3-setuptools python3-pip python3-ldap && \
+RUN apt update -y && \
+    apt-get install -y python && \
     apt clean
-#RUN apt update -y && \
-#    apt install ffmpeg -y && \ 
-#    apt clean
+RUN apt update -y && \
+    apt-get install -y python2.7 libpython2.7 python-setuptools python-imaging python-ldap python-urllib3 python-pip python-mysqldb python-memcache python-requests && \
+    apt clean
+RUN apt update -y && \
+    apt install ffmpeg -y && \ 
+    apt clean
 
-RUN pip3 install --timeout=3600 Pillow pylibmc captcha jinja2 sqlalchemy psd-tools \
-    django-pylibmc django-simple-captcha
+RUN pip install pillow moviepy
 
 #ADD seafile_config.sh /home/haiwen/seafile_config.sh
 ADD build/backup.sh   /home/haiwen/backup.sh
