@@ -17,7 +17,6 @@ services:
     image: seafile
     container_name: seafile_app
     ports:
-      - "8080:80"
       - "8000:8000"
       - "8082:8082"
 #      - "443:443"  # If https is enabled, cancel the comment.

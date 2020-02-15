@@ -1,0 +1,55 @@
+#jupyter.sherylynn.win {
+#    proxy /proxy/ 0.0.0.0:10000 {
+#      header_upstream X-Real-IP {remote}
+#      header_upstream Host {host}
+#      websocket
+#      without /proxy/
+#    }
+#    proxy / 0.0.0.0:10000 {
+#      header_upstream X-Real-IP {remote}
+#      header_upstream Host {host}
+#      websocket
+#    }
+#    rewrite {
+#      r "~* /(api/kernels/[^/]+/(channels|iopub|shell|stdin)|terminals/websocket)/?"
+#      to /proxy/{uri}
+#    }
+#}
+hk.sherylynn.win {
+  proxy / 0.0.0.0:8000 {
+#    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Port {server_port}
+    header_upstream X-Forwarded-Proto {scheme}
+  }
+  gzip
+}
+sea.sherylynn.win {
+  proxy / 0.0.0.0:8000 {
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Proto {scheme}
+    header_upstream Connection {}
+  }
+  proxy /seafhttp 0.0.0.0:8000/seafhttp {
+    transparent
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Proto {scheme}
+    header_upstream Connection {}
+    without /seafhttp
+  }
+  proxy /seafdav 0.0.0.0:8000/seafdav {
+    transparent
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Proto {scheme}
+    header_upstream Connection {}
+    without /seafdav
+  } 
+  gzip
+}
