@@ -1,3 +1,11 @@
+# 自己 build
 先build_img.sh
 再seafile.sh
 docker attach进去后再考虑是recover还是start还是init
+
+# office docker
+
+使用Caddyfile
+docker-compose -f ./docker-compose_root.yml up -d
+开启webdav
+./docker_webdav.sh
