@@ -70,6 +70,7 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
   zplug zdharma/fast-syntax-highlighting
   zle -N deer
   bindkey '\ek' deer
+  zplug load
 fi
 alias ls='ls --color'
 EOF
