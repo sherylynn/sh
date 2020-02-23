@@ -100,6 +100,17 @@ cache_folder(){
   echo $CACHE_FOLDER
 }
 
+git_downloader(){
+  local soft_file_pack=$1
+  local soft_url=$2
+  #if [[ ! -f $soft_file_pack ]]; then
+    # use curl
+    #curl -o $soft_file_pack $soft_url
+    # use wget
+    git clone $soft_url $soft_file_pack 
+  #fi
+}
+
 cache_downloader(){
   local soft_file_pack=$1
   local soft_url=$2
