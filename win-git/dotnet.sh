@@ -49,7 +49,8 @@ echo 'export PATH=$PATH:'${SOFT_HOME} >${TOOLSRC}
 echo 'export DOTNET_ROOT='${SOFT_HOME} >>${TOOLSRC}
 
 #  ----windows bat----
-if [[ $PLATFORM == win ]]; then
+# if [[ $PLATFORM == win ]]; then
+if [[ $PLATFORM == not_win_ ]]; then
   setx DOTNET_ROOT $(cygpath -w ${SOFT_HOME})
   winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
   echo $winENV
