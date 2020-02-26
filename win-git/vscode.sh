@@ -64,32 +64,12 @@ if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
     mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
 fi
 
-SOFT_ROOT=${SOFT_HOME}
+
+case $(platform) in
+  macos) SOFT_ROOT=${SOFT_HOME}/'Visual\ Studio\ Code.app/Contents/Resources/app/bin';;
+  win) SOFT_ROOT=${SOFT_HOME};;
+  linux) DOWNLOAD_ID=620884;;
+esac
 
 export PATH=$PATH:${SOFT_ROOT}
 echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
-
-if [[ ${PLATFORM} == linux ]]; then
-  if [ ! -d "/etc/${NAME}" ]; then
-  sudo mkdir /etc/${NAME}
-  fi
-  sudo ln -sf ~/config.yaml /etc/${NAME}/config.yaml
-  chmod 777 ${SOFT_ROOT}/${COMMAND_NAME}
-  sudo ln -sf ${SOFT_ROOT}/${COMMAND_NAME} /usr/local/bin/${NAME}
-  sudo tee /etc/systemd/system/${NAME}.service <<-EOF
-[Unit]
-Description=${NAME} Service
-After=NetworkManager-wait-online.service network.target network-online.target 
-Wants=NetworkManager-wait-online.service network.target network-online.target 
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/${NAME} -d /etc/${NAME}
-Restart=on-abnormal
-[Install]
-WantedBy=multi-user.target
-EOF
-  sudo systemctl daemon-reload
-  sudo systemctl enable ${NAME}.service
-  sudo systemctl start ${NAME}.service
-fi
