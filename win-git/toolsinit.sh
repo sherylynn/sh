@@ -71,7 +71,12 @@ toolsRC(){
   if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
     echo not exist ${toolsrc}
   else
-    sed -i '/'${toolsrc_name}'/d' ${ALLTOOLSRC_FILE}
+    if [[ $(platform) == macos ]]; then
+      #fuck sed in mac need ""
+      sed -i "" '/'${toolsrc_name}'/d' ${ALLTOOLSRC_FILE}
+    else
+      sed -i '/'${toolsrc_name}'/d' ${ALLTOOLSRC_FILE}
+    fi
   fi
   echo "test -f ${toolsrc} && . ${toolsrc}" >> ${ALLTOOLSRC_FILE}
   echo $toolsrc

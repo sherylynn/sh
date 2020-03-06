@@ -4,8 +4,20 @@
 docker attach进去后再考虑是recover还是start还是init
 
 # office docker
-
+独立使用caddy
 使用Caddyfile
 docker-compose -f ./docker-compose_root.yml up -d
 开启webdav
 ./docker_webdav.sh
+
+# office docker with caddy
+
+docker-compose -f ./docker-compose_docker.yml up -d
+
+# office docker with caddy with trojan
+docker-compose -f ./docker-compose_trojan.yml up -d
+
+需要设置key 为 /root/caddy/acme/acme-v02.api.letsencrypt.org/sites/sea.sherylynn.win/sea.sherylynn.win.key
+
+trojan端口再设置为 8000 [既docker组合中原来seafile提供的那个,而caddy作用在次其实只是自动更新签名了,而trojan本身会用秘钥加密http的流量,所以实际上依然无法设置多域名]
+
