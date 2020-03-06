@@ -59,7 +59,8 @@ ZSH_PLUG=$ZSH_PLUG
 if [[ \$ZSH_PLUG == antigen ]]; then
   antigen bundle Vifon/deer
   #antigen bundle skywind3000/z.lua
-  antigen bundle zdharma/fast-syntax-highlighting
+  #antigen bundle zdharma/fast-syntax-highlighting
+  antigen bundle sherylynn/fast-syntax-highlighting
   antigen apply
   autoload -U deer
   zle -N deer
@@ -67,7 +68,8 @@ if [[ \$ZSH_PLUG == antigen ]]; then
 elif [[ \$ZSH_PLUG == zplug ]]; then
   zplug "vifon/deer", use:deer
   #zplug skywind3000/z.lua
-  zplug zdharma/fast-syntax-highlighting
+  #zplug zdharma/fast-syntax-highlighting
+  zplug sherylynn/fast-syntax-highlighting
   zle -N deer
   bindkey '\ek' deer
   zplug load
