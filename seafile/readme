@@ -4,8 +4,12 @@
 docker attach进去后再考虑是recover还是start还是init
 
 # office docker
-
+独立使用caddy
 使用Caddyfile
 docker-compose -f ./docker-compose_root.yml up -d
 开启webdav
 ./docker_webdav.sh
+
+# office docker with caddy
+
+docker-compose -f ./docker-compose_docker.yml up -d
