@@ -1,3 +1,6 @@
-command="*/15 * * * * ~/sh/termux/namesilo.sh >> ~/cron.log 2>&1"
+command='*/15 * * * * ~/sh/termux/namesilo.sh >> ~/cron.log 2>&1'
 #echo $command > ~/crontab_conf && crontab ~/crontab_conf
-echo $command > $PREFIX/var/spool/cron/crontabs/$(whoami)
+#echo $command > $PREFIX/var/spool/cron/crontabs/$(whoami)
+tee $PREFIX/var/spool/cron/crontabs/$(whoami) <<-EOF
+$command
+EOF
