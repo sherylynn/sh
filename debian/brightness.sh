@@ -14,3 +14,4 @@ case $1 in
 esac
 
 cat $brightness_file
+echo 1> $brightness_file
