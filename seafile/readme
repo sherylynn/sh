@@ -21,3 +21,5 @@ docker-compose -f ./docker-compose_trojan.yml up -d
 
 trojan端口再设置为 8000 [既docker组合中原来seafile提供的那个,而caddy作用在次其实只是自动更新签名了,而trojan本身会用秘钥加密http的流量,所以实际上依然无法设置多域名]
 
+# office docker with caddy pdf
+docker-compose -f ./docker-compose_caddy_pdf.yml up -d
