@@ -41,5 +41,21 @@ pdf.sherylynn.win {
     header_upstream Connection {}
     without /seafdav
   } 
+  proxy /update_progress pdf:10000/update_progress{
+    transparent
+    without /update_progress
+  }
+  proxy /get_latest_progress pdf:10000/get_latest_progress{
+    transparent
+    without /get_latest_progress
+  }
+  proxy /progress_cn.json pdf:10000/progress_cn.json{
+    transparent
+    without /progress_cn.json
+  }
+  proxy /all pdf:10000/all {
+    transparent
+    without /all
+  }
   gzip
 }
