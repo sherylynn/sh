@@ -42,7 +42,8 @@ server_restart(){
   fi
   echo "server finish"
 }
-read -p "should we restart server ? y or n : " RESTART
+#read -p "should we restart server ? y or n : " RESTART
+RESTART=y
 case $RESTART in
   y) echo $(server_restart) ;;
   n) echo "enjoying" ;;
