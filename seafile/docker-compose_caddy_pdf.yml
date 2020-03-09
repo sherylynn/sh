@@ -35,10 +35,19 @@ services:
       - SEAFILE_ADMIN_EMAIL=admin@sherylynn.win # Specifies Seafile admin user, default is 'me@example.com'.
       - SEAFILE_ADMIN_PASSWORD=asecret     # Specifies Seafile admin password, default is 'asecret'.
       - SEAFILE_SERVER_LETSENCRYPT=false   # Whether use letsencrypt to generate cert.
-      - SEAFILE_SERVER_HOSTNAME=pdf.sherylynn.com # Specifies your host name.
+      - SEAFILE_SERVER_HOSTNAME=pdf.sherylynn.win # Specifies your host name.
     depends_on:
       - db
       - memcached
+    restart: always
+    networks:
+      - seafile-net
+
+  speedtest:
+    image: adolfintel/speedtest:latest
+    container_name: speedtest
+    ports:
+      - "8001:80"
     restart: always
     networks:
       - seafile-net

@@ -41,6 +41,7 @@ pdf.sherylynn.win {
     header_upstream Connection {}
     without /seafdav
   } 
+# pdf server
   proxy /update_progress pdf:10000/update_progress{
     transparent
     without /update_progress
@@ -56,6 +57,11 @@ pdf.sherylynn.win {
   proxy /all pdf:10000/all {
     transparent
     without /all
+  }
+# speedtest
+  proxy /speedtest speedtest:80 {
+    transparent
+    without /speedtest
   }
   gzip
 }
