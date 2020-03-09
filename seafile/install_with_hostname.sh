@@ -23,12 +23,12 @@ vi ./docker-compose_caddy_hostname.yml -c ":%s/Caddyfile_docker_pdf/Caddyfile_do
 vi ./docker-compose_caddy_hostname.yml -c ":%s#/root#$HOME" -c ":wq!"
 
 server_restart(){
-  # stop server if server is running
-  if [[ $(docker ps -a |grep seafile)=="seafile" ]] ;then
-    docker-compose -f ./docker-compose_caddy_hostname.yml down
-  else
-  # start server
+  if [[ $(docker ps -a |grep seafile)!= *seafile* ]] ;then
+    # start server
     docker-compose -f ./docker-compose_caddy_hostname.yml up -d
+  else
+    # stop server if server is running
+    docker-compose -f ./docker-compose_caddy_hostname.yml down
   fi
 }
 read -p "should we restart server ? y or n ?" RESTART
