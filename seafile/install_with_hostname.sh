@@ -1,3 +1,4 @@
+#!/bin/bash
 hostname=$1
 help_message="add your hostname as args"
 greeting_message="now start process"
@@ -22,17 +23,27 @@ vi ./docker-compose_caddy_hostname.yml -c ":%s/Caddyfile_docker_pdf/Caddyfile_do
 
 vi ./docker-compose_caddy_hostname.yml -c ":%s#/root#$HOME" -c ":wq!"
 
-server_restart(){
-  if [[ $(docker ps -a |grep seafile)!= *seafile* ]] ;then
-    # start server
-    docker-compose -f ./docker-compose_caddy_hostname.yml up -d
-  else
-    # stop server if server is running
-    docker-compose -f ./docker-compose_caddy_hostname.yml down
-  fi
+server_start(){
+  # start server
+  docker-compose -f ./docker-compose_caddy_hostname.yml up -d
 }
-read -p "should we restart server ? y or n ?" RESTART
+
+server_stop(){
+  # stop server if server is running
+  docker-compose -f ./docker-compose_caddy_hostname.yml down
+}
+
+server_restart(){
+  if [[ "$(docker ps -a |grep seafile)" == *"seafile"* ]] ;then
+    echo $(server_stop )
+    echo $(server_start )
+  else
+    echo $(server_start )
+  fi
+  echo "server finish"
+}
+read -p "should we restart server ? y or n : " RESTART
 case $RESTART in
-  y) $(server_restart) ;;
+  y) echo $(server_restart) ;;
   n) echo "enjoying" ;;
 esac
