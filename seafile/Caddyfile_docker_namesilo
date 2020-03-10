@@ -1,0 +1,76 @@
+#jupyter.sherylynn.win {
+#    proxy /proxy/ 0.0.0.0:10000 {
+#      header_upstream X-Real-IP {remote}
+#      header_upstream Host {host}
+#      websocket
+#      without /proxy/
+#    }
+#    proxy / 0.0.0.0:10000 {
+#      header_upstream X-Real-IP {remote}
+#      header_upstream Host {host}
+#      websocket
+#    }
+#    rewrite {
+#      r "~* /(api/kernels/[^/]+/(channels|iopub|shell|stdin)|terminals/websocket)/?"
+#      to /proxy/{uri}
+#    }
+#}
+pdf.sherylynn.win {
+  #proxy / seafile:80 {
+  proxy / 0.0.0.0:8000 {
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Proto {scheme}
+    header_upstream Connection {}
+  }
+  #proxy /seafhttp seafile:80/seafhttp {
+  proxy /seafhttp 0.0.0.0:8000/seafhttp {
+    transparent
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Proto {scheme}
+    header_upstream Connection {}
+    without /seafhttp
+  }
+  #proxy /seafdav seafile:80/seafdav {
+  proxy /seafdav 0.0.0.0:8000/seafdav {
+    transparent
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Proto {scheme}
+    header_upstream Connection {}
+    without /seafdav
+  } 
+# pdf server
+  proxy /update_progress 0.0.0.0:10000/update_progress {
+    transparent
+    without /update_progress
+  }
+  proxy /get_latest_progress 0.0.0.0:10000/get_latest_progress {
+    transparent
+    without /get_latest_progress
+  }
+  proxy /progress_cn.json 0.0.0.0:10000/progress_cn.json {
+    transparent
+    without /progress_cn.json
+  }
+  proxy /all 0.0.0.0:10000/all {
+    transparent
+    without /all
+  }
+# speedtest
+  proxy /speedtest 0.0.0.0:8001 {
+    transparent
+    header_upstream Host {host}
+    header_upstream X-Real-IP {remote}
+    header_upstream X-Forwarded-For {remote}
+    header_upstream X-Forwarded-Proto {scheme}
+    header_upstream Connection {}
+    without /speedtest
+  }
+  redir /speedtest.js /speedtest/speedtest.js
+  gzip
+}
