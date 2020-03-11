@@ -174,3 +174,11 @@ get_github_release_version(){
     awk -F '["]' '{print $4}'
 }
 
+exist(){
+  local COMMAND=$1
+  if command -v $1 >/dev/null 2>&1; then
+    echo 1
+  else
+    echo 0
+  fi
+}

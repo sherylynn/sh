@@ -1,16 +1,17 @@
 # as start function
-if [[ $openPathIsFunction  ]]; then
+if [[ $(exist z)==1 ]]; then
   zd(){
+    z $1
     case $(platform) in
-      win) start $1 ;;
-      linux) thunar $1;;
-      macos) open $1;;
+      win) start . ;;
+      linux) thunar ;;
+      macos) open ;;
     esac
   }
 else
   # as alias
   case $(platform) in
-    win) alias zd="start" ;;
+    win) alias zd="explorer" ;;
     linux) alias zd="thunar" ;;
     macos) alias zd="open" ;;
   esac

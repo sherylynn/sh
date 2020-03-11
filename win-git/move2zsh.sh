@@ -27,8 +27,7 @@ if [[ "$ZSH_PLUG" == antigen ]]; then
   ANTIGENRC_NAME=antigenrc
   ANTIGENRC=$(toolsRC $ANTIGENRC_NAME)
   ADOTDIR=$(install_path)/antigen
-  mkdir -p $ADOTDIR
-  curl -L git.io/antigen > $ADOTDIR/antigen.zsh 
+  git clone https://github.com/zsh-users/antigen $ADOTDIR
   echo export ADOTDIR=$ADOTDIR > $ANTIGENRC
   echo source $ADOTDIR/antigen.zsh >> $ANTIGENRC
 elif [[ "$ZSH_PLUG" == zplug ]]; then
