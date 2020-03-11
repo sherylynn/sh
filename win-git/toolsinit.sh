@@ -45,7 +45,7 @@ platform(){
   echo $PLATFORM
 }
 ALLTOOLSRC_FILE=$BASH_FILE
-platform
+#platform
 BASH_TYPE=bash
 #zsh
 if command -v zsh >/dev/null 2>&1; then
@@ -120,12 +120,20 @@ cache_downloader(){
   local soft_file_pack=$1
   local soft_url=$2
   cd $(cache_folder)
+  echo "url is $soft_url" 
+  if [[ $soft_url != "" ]]; then
   #if [[ ! -f $soft_file_pack ]]; then
     # use curl
     #curl -o $soft_file_pack $soft_url
     # use wget
     wget -O $soft_file_pack -c $soft_url
   #fi
+  else
+    # not soft_url is empty; so soft_file_pack is url in fact
+    local soft_url=$soft_file_pack
+    wget -c $soft_url
+  fi
+  cd -
 }
 
 cache_unpacker(){
@@ -165,3 +173,4 @@ get_github_release_version(){
     grep '"tag_name":' |
     awk -F '["]' '{print $4}'
 }
+

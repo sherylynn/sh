@@ -74,6 +74,9 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
   bindkey '\ek' deer
   zplug load
 fi
+. $(cd "$(dirname "$0")";pwd)/toolsinit.sh
+. $(cd "$(dirname "$0")";pwd)/proxy.sh
+. $(cd "$(dirname "$0")";pwd)/openPath.sh
 alias ls='ls --color'
 EOF
 if [[ $syntax ]];then
@@ -82,5 +85,5 @@ cd ~
   echo "source ~/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
 fi
 cd ~
-compaudit | xargs chown -R "$(whoami)"
-compaudit | xargs chmod -R go-w
+#compaudit | xargs chown -R "$(whoami)"
+#compaudit | xargs chmod -R go-w
