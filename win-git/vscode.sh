@@ -68,8 +68,12 @@ fi
 case $(platform) in
   macos) SOFT_ROOT=${SOFT_HOME}/'Visual\ Studio\ Code.app/Contents/Resources/app/bin';;
   win) SOFT_ROOT=${SOFT_HOME};;
-  linux) DOWNLOAD_ID=620884;;
+  linux) SOFT_ROOT=${SOFT_HOME}/VSCode-linux-x64/bin;;
 esac
 
 export PATH=$PATH:${SOFT_ROOT}
 echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
+
+echo "the settings.json path is\n"
+echo "linux   : ~/.config/Code/User/settings.json \n"
+echo "windows : ~/AppData/Roaming/Code/User \n"
