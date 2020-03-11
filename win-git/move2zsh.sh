@@ -73,7 +73,10 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
   bindkey '\ek' deer
   zplug load
 fi
-. $(cd "$(dirname "$0")";pwd)/toolsinit.sh
+fpath+=$(cd "$(dirname "$0")";pwd)
+autoload -U $(cd "$(dirname "$0")";pwd)/toolsinit.sh
+toolsinit.sh
+#. $(cd "$(dirname "$0")";pwd)/toolsinit
 . $(cd "$(dirname "$0")";pwd)/proxy.sh
 . $(cd "$(dirname "$0")";pwd)/openPath.sh
 alias ls='ls --color'

@@ -7,6 +7,7 @@ fi
 CACHE_FOLDER=$INSTALL_PATH/cache
 BASH_DIR=$INSTALL_PATH/rc
 BASH_FILE=~/.bash_profile
+#ZSH_FILE=$HOME/.zprofile
 ZSH_FILE=$HOME/.zshrc
 
 if [[ "$(uname -a)" == *x86_64* ]]; then
@@ -175,6 +176,7 @@ get_github_release_version(){
 }
 
 exist(){
+  #autoload -X
   local COMMAND=$1
   if command -v $1 >/dev/null 2>&1; then
     echo 1
