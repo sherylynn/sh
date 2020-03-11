@@ -6,3 +6,4 @@ platform
 
 cache_folder
 
+exist

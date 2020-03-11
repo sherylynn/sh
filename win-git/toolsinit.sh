@@ -182,3 +182,22 @@ exist(){
     echo 0
   fi
 }
+
+zshenv(){
+  echo "$HOME/.zshenv"
+  # .zshenv 的使用还有问题,访问不到uname
+  # 无法把toolsinit都放进去
+}
+
+exportf(){
+  local func_name=$1
+  if [[ $SHELL == *bash* ]]; then
+    export -f  $func_name
+  else
+    tee $(zshenv) <<EOF
+$(declare -f $func_name) 
+EOF
+  fi
+}
+#$(exportf exist)
+#会有问题
