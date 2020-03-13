@@ -73,14 +73,19 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
   bindkey '\ek' deer
   zplug load
 fi
-fpath+=$(cd "$(dirname "$0")";pwd)
-autoload -U $(cd "$(dirname "$0")";pwd)/toolsinit.sh
-toolsinit.sh
-#. $(cd "$(dirname "$0")";pwd)/toolsinit
+#方法一 autoload 加载后执行，无法script里调用toolsinit.sh内部函数，但是script可以手动呼唤toolsinit.sh
+#fpath+=$(cd "$(dirname "$0")";pwd)
+#autoload -U $(cd "$(dirname "$0")";pwd)/toolsinit.sh
+#toolsinit.sh
+#直接执行 理同方法一，但script必须手动指定 路径来 source toolsinit.sh
+#. $(cd "$(dirname "$0")";pwd)/toolsinit.sh
+#方法三 写入 .zshenv [需要看uname 路径]
+#方法三 写入 .zshenv [需要看uname 路径]
 . $(cd "$(dirname "$0")";pwd)/proxy.sh
 . $(cd "$(dirname "$0")";pwd)/openPath.sh
 alias ls='ls --color'
 EOF
+echo ".  $(cd "$(dirname "$0")";pwd)/toolsinit.sh " > $(zshenv)
 if [[ $syntax ]];then
 cd ~
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git

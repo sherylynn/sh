@@ -70,7 +70,7 @@ toolsRC(){
   fi
   touch ${ALLTOOLSRC_FILE}
   if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
-    echo not exist ${toolsrc}
+    echo "not exist ${toolsrc}"
   else
     if [[ $(platform) == macos ]]; then
       #fuck sed in mac need ""
