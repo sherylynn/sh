@@ -1,5 +1,10 @@
 #!/bin/bash
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
+if [[ $PREFIX == *termux*  ]]; then
+  alias uname=$PREFIX/bin/uname
+else
+  alias uname=/usr/bin/uname #for msys2 which can't found uname in .zshenv
+fi
 INSTALL_PATH=$HOME/tools
 if [ ! -d "${INSTALL_PATH}" ]; then
   mkdir -p $INSTALL_PATH
