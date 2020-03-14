@@ -4,7 +4,7 @@ if [[ $(exist z)==1 ]]; then
     z $1
     case $(platform) in
       win) start . ;;
-      linux) thunar ;;
+      linux) xdg-open;;
       macos) open ;;
     esac
   }
@@ -12,7 +12,7 @@ else
   # as alias
   case $(platform) in
     win) alias zd="explorer" ;;
-    linux) alias zd="thunar" ;;
+    linux) alias zd="xdg-open" ;;
     macos) alias zd="open" ;;
   esac
 fi
