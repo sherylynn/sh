@@ -4,7 +4,7 @@ if [[ $(exist z)==1 ]]; then
     z $1
     case $(platform) in
       win) start . ;;
-      linux) xdg-open;;
+      linux) xdg-open .;;
       macos) open ;;
     esac
   }

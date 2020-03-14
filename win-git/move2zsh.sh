@@ -84,6 +84,7 @@ fi
 . $(cd "$(dirname "$0")";pwd)/proxy.sh
 . $(cd "$(dirname "$0")";pwd)/openPath.sh
 alias ls='ls --color'
+setopt no_nomatch
 EOF
 echo ".  $(cd "$(dirname "$0")";pwd)/toolsinit.sh " > $(zshenv)
 if [[ $syntax ]];then

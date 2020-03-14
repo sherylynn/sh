@@ -118,7 +118,7 @@ git_downloader(){
     # use curl
     #curl -o $soft_file_pack $soft_url
     # use wget
-    git clone $soft_url $soft_file_pack 
+    git clone $soft_url $soft_file_pack  --depth 1
   #fi
 }
 
