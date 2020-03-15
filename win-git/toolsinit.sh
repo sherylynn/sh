@@ -206,5 +206,14 @@ $(declare -f $func_name)
 EOF
   fi
 }
+
+update(){
+  git -C $HOME/sh pull
+  $HOME/sh/win-git/move2zsh.sh
+}
 #$(exportf exist)
 #会有问题
+
+###############################
+
+alias go_win="GOOS=windows GOARCH=amd64 go build "
