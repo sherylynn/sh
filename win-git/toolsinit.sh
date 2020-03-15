@@ -14,6 +14,7 @@ BASH_DIR=$INSTALL_PATH/rc
 BASH_FILE=~/.bash_profile
 #ZSH_FILE=$HOME/.zprofile
 ZSH_FILE=$HOME/.zshrc
+ZSH_HOME=$HOME/sh
 
 if [[ "$(uname -a)" == *x86_64* ]]; then
   ARCH=amd64
@@ -224,15 +225,19 @@ zcode(){
   code ./
 }
 
+zpush(){
+  git -C $ZSH_HOME push
+}
+
 zreload(){
-  source $HOME/sh/win-git/toolsinit.sh
+  source $ZSH_HOME/win-git/toolsinit.sh
 }
 zedit(){
-  $EDITOR $HOME/sh/win-git/toolsinit.sh
+  $EDITOR $ZSH_HOME/win-git/toolsinit.sh
 }
 zgit(){
   #$EDITOR -C "gs"
-  git -C $HOME/sh commit -a
+  git -C $ZSH_HOME commit -a
 }
 
 #bindkey
@@ -241,5 +246,6 @@ export EDITOR=nvim
 alias go_win="GOOS=windows GOARCH=amd64 go build "
 alias zc="zcode"
 alias zg="zgit"
+alias zp="zpush"
 alias zr="zreload"
 alias ze="zedit"
