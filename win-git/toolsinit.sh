@@ -210,10 +210,30 @@ EOF
 update(){
   git -C $HOME/sh pull
   $HOME/sh/win-git/move2zsh.sh
+  zs
 }
 #$(exportf exist)
 #会有问题
 
-###############################
+distro(){
+  source /etc/os-release && echo "$ID"
+}
 
+zsource(){
+  source $HOME/sh/win-git/toolsinit.sh
+}
+zedit(){
+  $EDITOR $HOME/sh/win-git/toolsinit.sh
+}
+zgit(){
+  #$EDITOR -C "gs"
+  git -C $HOME/sh commit -a
+}
+
+#bindkey
+###############################
+export EDITOR=nvim
 alias go_win="GOOS=windows GOARCH=amd64 go build "
+alias zg="zgit"
+alias zs="zsource"
+alias ze="zedit"
