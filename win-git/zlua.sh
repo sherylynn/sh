@@ -74,7 +74,7 @@ else
   sudo apt install lua5.1 -y
   echo 'eval "$(lua '${SOFT_HOME}'/z.lua --init '$(bash_type)' enhanced once echo fzf)"' > $TOOLSRC
 fi
-echo "alias zc='z -c'" >> $TOOLSRC
+#echo "alias zc='z -c'" >> $TOOLSRC
 echo "alias zz='z -i'" >> $TOOLSRC
 echo "alias zf='z -I'" >> $TOOLSRC
 echo "alias zb='z -b'" >> $TOOLSRC

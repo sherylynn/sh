@@ -219,7 +219,12 @@ distro(){
   source /etc/os-release && echo "$ID"
 }
 
-zsource(){
+zcode(){
+  z $1
+  code ./
+}
+
+zreload(){
   source $HOME/sh/win-git/toolsinit.sh
 }
 zedit(){
@@ -234,6 +239,7 @@ zgit(){
 ###############################
 export EDITOR=nvim
 alias go_win="GOOS=windows GOARCH=amd64 go build "
+alias zc="zcode"
 alias zg="zgit"
-alias zs="zsource"
+alias zr="zreload"
 alias ze="zedit"
