@@ -127,7 +127,6 @@ cache_downloader(){
   local soft_file_pack=$1
   local soft_url=$2
   cd $(cache_folder)
-  echo "url is $soft_url" 
   if [[ $soft_url != "" ]]; then
   #if [[ ! -f $soft_file_pack ]]; then
     # use curl
@@ -225,12 +224,6 @@ distro(){
 ###############################
 export EDITOR=nvim
 alias go_win="GOOS=windows GOARCH=amd64 go build "
-export ZLUALOAD=0
-zluaisload(){
-  if (( $ZLUALOAD == 1 )){
-    echo "yes"
-  }
-}
 
 # as start function
 #  case $(platform) in

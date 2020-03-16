@@ -2,6 +2,7 @@
 . $(dirname "$0")/toolsinit.sh
 AUTHOR=microsoft
 NAME=vscode
+BIN_NAME=code
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
@@ -56,7 +57,7 @@ COMMAND_NAME=$SOFT_FILE_NAME
 cd $HOME
 SOFT_URL="https://go.microsoft.com/fwlink/?LinkID=${DOWNLOAD_ID}"
 
-if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
+if [[ "$(${BIN_NAME} -v)" != *${SOFT_VERSION}* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
   
