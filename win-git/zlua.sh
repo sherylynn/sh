@@ -78,7 +78,8 @@ fi
 echo "alias zz='z -i'" >> $TOOLSRC
 echo "alias zf='z -I'" >> $TOOLSRC
 echo "alias zb='z -b'" >> $TOOLSRC
-echo "source $HOME/sh/win-git/openPath.sh" >> $TOOLSRC
+#echo "source $HOME/sh/win-git/openPath.sh" >> $TOOLSRC
+echo "export ZLUALOAD=1" >> $TOOLSRC
 cd $INSTALL_PATH
 git clone https://github.com/skywind3000/z.lua $SOFT_HOME
 cd $SOFT_HOME

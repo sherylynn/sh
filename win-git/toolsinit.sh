@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux*  ]]; then
   alias uname=$PREFIX/bin/uname
@@ -225,3 +225,52 @@ distro(){
 ###############################
 export EDITOR=nvim
 alias go_win="GOOS=windows GOARCH=amd64 go build "
+export ZLUALOAD=0
+zluaisload(){
+  if (( $ZLUALOAD == 1 )){
+    echo "yes"
+  }
+}
+
+# as start function
+#  case $(platform) in
+#    win) alias zd="explorer" ;;
+#    linux) alias zd="xdg-open" ;;
+#    macos) alias zd="open" ;;
+#  esac
+zluaload(){
+  $(which _zlua)
+  _zlua $1
+}
+zd(){
+  zluaload $1
+  case $(platform) in
+    win) start . ;;
+    linux) xdg-open .;;
+    macos) open ;;
+  esac
+}
+zcode(){
+  zluaload $1
+  code ./
+}
+
+zpush(){
+  git -C $ZSH_HOME push
+}
+
+zreload(){
+  source $ZSH_HOME/win-git/toolsinit.sh
+}
+zedit(){
+  $EDITOR $ZSH_HOME/win-git/toolsinit.sh
+}
+zgit(){
+  #$EDITOR -C "gs"
+  git -C $ZSH_HOME commit -a
+}
+alias zc="zcode"
+alias zg="zgit"
+alias zp="zpush"
+alias zr="zreload"
+alias ze="zedit"
