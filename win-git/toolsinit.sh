@@ -220,32 +220,8 @@ distro(){
   source /etc/os-release && echo "$ID"
 }
 
-zcode(){
-  z $1
-  code ./
-}
-
-zpush(){
-  git -C $ZSH_HOME push
-}
-
-zreload(){
-  source $ZSH_HOME/win-git/toolsinit.sh
-}
-zedit(){
-  $EDITOR $ZSH_HOME/win-git/toolsinit.sh
-}
-zgit(){
-  #$EDITOR -C "gs"
-  git -C $ZSH_HOME commit -a
-}
 
 #bindkey
 ###############################
 export EDITOR=nvim
 alias go_win="GOOS=windows GOARCH=amd64 go build "
-alias zc="zcode"
-alias zg="zgit"
-alias zp="zpush"
-alias zr="zreload"
-alias ze="zedit"

@@ -82,7 +82,6 @@ fi
 #方法三 写入 .zshenv [需要看uname 路径]
 #方法三 写入 .zshenv [需要看uname 路径]
 . $(cd "$(dirname "$0")";pwd)/proxy.sh
-. $(cd "$(dirname "$0")";pwd)/openPath.sh
 alias ls='ls --color'
 setopt no_nomatch
 EOF
