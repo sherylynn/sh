@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux*  ]]; then
   alias uname=$PREFIX/bin/uname
