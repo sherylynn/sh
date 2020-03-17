@@ -254,9 +254,6 @@ zcode(){
   code ./
 }
 
-zpush(){
-  git -C $ZSH_HOME push
-}
 
 zreload(){
   source $ZSH_HOME/win-git/toolsinit.sh
@@ -268,8 +265,21 @@ zgit(){
   #$EDITOR -C "gs"
   git -C $ZSH_HOME commit -a
 }
+zgitstatus(){
+  #$EDITOR -C "gs"
+  git -C $ZSH_HOME status
+}
+zgitaddall(){
+  #$EDITOR -C "gs"
+  git -C $ZSH_HOME add --all
+}
+zpush(){
+  git -C $ZSH_HOME push
+}
 alias zc="zcode"
 alias zg="zgit"
+alias zgs="zgitstatus"
+alias zga="zgitaddall"
 alias zp="zpush"
 alias zr="zreload"
 alias ze="zedit"
