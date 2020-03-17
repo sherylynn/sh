@@ -222,7 +222,13 @@ distro(){
 
 #bindkey
 ###############################
-export EDITOR=nvim
+if [[ "$(platform)" == "win" ]]; then 
+  EDITOR=vim
+  export EDITOR=vim
+else
+  EDITOR=nvim
+  export EDITOR=nvim
+fi
 alias go_win="GOOS=windows GOARCH=amd64 go build "
 
 # as start function
