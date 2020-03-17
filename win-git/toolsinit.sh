@@ -273,3 +273,5 @@ alias zg="zgit"
 alias zp="zpush"
 alias zr="zreload"
 alias ze="zedit"
+bindkey -e
+
