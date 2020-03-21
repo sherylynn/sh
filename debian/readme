@@ -1,2 +1,6 @@
 init.sh
 ./../git.sh
+
+#for vmware
+
+run ./deb

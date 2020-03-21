@@ -6,8 +6,8 @@ sudo apt-get install open-vm-tools-desktop -y
 sudo tee /etc/systemd/system/mnt.hgfs.service <<-'EOF'
 [Unit]
 Description=Load VMware shared folders
-Requires=vmware-vmblock-fuse.service
-After=vmware-vmblock-fuse.service
+;Requires=vmware-vmblock-fuse.service
+;After=vmware-vmblock-fuse.service
 ConditionPathExists=.host:/
 ConditionVirtualization=vmware
 

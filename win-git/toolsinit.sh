@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux*  ]]; then
   alias uname=$PREFIX/bin/uname
@@ -283,5 +283,21 @@ alias zga="zgitaddall"
 alias zp="zpush"
 alias zr="zreload"
 alias ze="zedit"
-bindkey -e
+#bindkey -e
 
+proxy(){
+  #export http_proxy=http://127.0.0.1:8087
+  #export http_proxy=http://127.0.0.1:10808
+  #export https_proxy=http://127.0.0.1:10808
+
+  export http_proxy=socks5://127.0.0.1:1080
+  export ALL_PROXY=socks5://127.0.0.1:1080
+
+
+  #git config --global https.proxy http://127.0.0.1:10808
+  #git config --global https.proxy https://127.0.0.1:10808
+
+  git config --global http.proxy socks5://127.0.0.1:1080
+    git config --global https.proxy socks5://127.0.0.1:1080
+
+}
