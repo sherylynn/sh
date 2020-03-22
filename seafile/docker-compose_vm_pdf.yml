@@ -2,12 +2,16 @@ version: '2.0'
 services:
   db:
     image: mariadb:10.1
+    #for mysql
+    #image: mysql:latest
     container_name: seafile-mysql
     environment:
       - MYSQL_ROOT_PASSWORD=db_dev  # Requested, set the root's password of MySQL service.
       - MYSQL_LOG_CONSOLE=true
     volumes:
       - /root/seafile_drive/seafile-mysql/db:/var/lib/mysql  # Requested, specifies the path to MySQL data persistent store.
+    #for mysql
+    #entrypoint: ["docker-entrypoint.sh","--default-authentication-plugin=mysql_native_password","--skip-mysqlx"]
     restart: always
     networks:
       - seafile-net

@@ -16,7 +16,7 @@ ConditionVirtualization=vmware
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=
-ExecStart=/usr/bin/vmhgfs-fuse -o allow_other -o auto_unmount .host:/ /mnt/hgfs
+ExecStart=/usr/bin/vmhgfs-fuse -o allow_other -o gid=1000 -o uid=1000 -o auto_unmount .host:/ /mnt/hgfs
 ;-o umask=000 
 ;专门的权限给777
 [Install]
