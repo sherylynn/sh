@@ -25,12 +25,12 @@ export GID=${GID}
 echo $GID
 server_start(){
   # start server
-  docker-compose -f ./docker-compose_vm_hostname.yml up -d
+  docker-compose -p seafile -f ./docker-compose_vm_hostname.yml up -d
 }
 
 server_stop(){
   # stop server if server is running
-  docker-compose -f ./docker-compose_vm_hostname.yml down
+  docker-compose -p seafile -f ./docker-compose_vm_hostname.yml down
 }
 
 server_restart(){
