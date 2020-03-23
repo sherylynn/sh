@@ -51,8 +51,8 @@ server_restart(){
   fi
   echo "server finish"
 }
-RESTART=y
+read "RESTART?should we restart server ? y or n : "
 case $RESTART in
   y) echo $(server_restart) ;;
-  n) echo "enjoying" ;;
+  n) echo $(server_stop) ;;
 esac

@@ -1,6 +1,6 @@
 version: '2.0'
 services:
-  seafile-db:
+  db:
     image: mariadb:10.1
     #for mysql
     #image: mysql:latest
@@ -16,7 +16,7 @@ services:
     networks:
       - seafile-net
 
-  seafile-memcached:
+  memcached:
     image: memcached:1.5.6
     container_name: seafile-memcached
     entrypoint: memcached -m 256
@@ -24,7 +24,7 @@ services:
     networks:
       - seafile-net
           
-  seafile-app:
+  seafile:
     image: seafileltd/seafile-mc:latest
     container_name: seafile-app
 #    user: "${UID}:${GID}"
@@ -42,13 +42,13 @@ services:
       - SEAFILE_SERVER_LETSENCRYPT=false   # Whether use letsencrypt to generate cert.
       - SEAFILE_SERVER_HOSTNAME=pdf.sherylynn.win # Specifies your host name.
     depends_on:
-      - seafile-db
-      - seafile-memcached
+      - db
+      - memcached
     restart: always
     networks:
       - seafile-net
 
-  seafile-speedtest:
+  speedtest:
     image: adolfintel/speedtest:latest
     container_name: seafile-speed
     ports:
