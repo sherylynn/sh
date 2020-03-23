@@ -1,5 +1,5 @@
 #!/bin/zsh
-vmware_folder=/mnt/hgfs/hdd
+vmware_folder=/mnt/seafile
 hostname=$1
 help_message="add your hostname as args"
 greeting_message="now start process"
