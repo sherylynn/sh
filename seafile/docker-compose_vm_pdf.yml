@@ -27,6 +27,7 @@ services:
   seafile:
     image: seafileltd/seafile-mc:latest
     container_name: seafile
+#    user: "${UID}:${GID}"
     ports:
       - "8000:80"
 #      - "443:443"  # If https is enabled, cancel the comment.

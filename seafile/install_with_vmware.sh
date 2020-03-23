@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 vmware_folder=/mnt/hgfs/hdd
 hostname=$1
 help_message="add your hostname as args"
@@ -21,7 +21,8 @@ vi ./docker-compose_vm_hostname.yml -c ":%s/vmfile_docker_pdf/vmfile_docker_host
 # change first /root to $HOME ,not all
 
 vi ./docker-compose_vm_hostname.yml -c ":%s#/root#$vmware_folder" -c ":wq!"
-
+export GID=${GID}
+echo $GID
 server_start(){
   # start server
   docker-compose -f ./docker-compose_vm_hostname.yml up -d
