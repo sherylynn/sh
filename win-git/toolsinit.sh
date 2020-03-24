@@ -246,7 +246,7 @@ zd(){
   case $(platform) in
     win) start . ;;
     linux) xdg-open .;;
-    macos) open ;;
+    macos) open ./ ;;
   esac
 }
 zcode(){
