@@ -229,6 +229,11 @@ else
   EDITOR=nvim
   export EDITOR=nvim
 fi
+if [[ "$(platform)" == "macos" ]]; then 
+  alias ls='ls -G'
+else
+  alias ls='ls --color'
+fi
 alias go_win="GOOS=windows GOARCH=amd64 go build "
 
 # as start function
