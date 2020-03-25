@@ -76,7 +76,7 @@ else
 fi
 #echo "alias zc='z -c'" >> $TOOLSRC
 echo "alias zz='z -i'" >> $TOOLSRC
-echo "alias zf='z -I'" >> $TOOLSRC
+#echo "alias zf='z -I'" >> $TOOLSRC
 echo "alias zb='z -b'" >> $TOOLSRC
 #echo "source $HOME/sh/win-git/openPath.sh" >> $TOOLSRC
 echo "export ZLUALOAD=1" >> $TOOLSRC

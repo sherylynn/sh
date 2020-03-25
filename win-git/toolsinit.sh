@@ -281,11 +281,15 @@ zgitaddall(){
 zpush(){
   git -C $ZSH_HOME push
 }
+zfetch(){
+  git -C $ZSH_HOME pull
+}
 alias zc="zcode"
 alias zg="zgit"
 alias zgs="zgitstatus"
 alias zga="zgitaddall"
 alias zp="zpush"
+alias zf="zfetch"
 alias zr="zreload"
 alias ze="zedit"
 #bindkey -e
