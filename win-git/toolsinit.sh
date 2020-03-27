@@ -2,6 +2,8 @@
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux*  ]]; then
   alias uname=$PREFIX/bin/uname
+elif [[ $(uname -a) == *raspberrypi* ]]; then
+  alias uname=/bin/uname #for raspberrypi
 else
   alias uname=/usr/bin/uname #for msys2 which can't found uname in .zshenv
 fi
@@ -310,3 +312,4 @@ proxy(){
     git config --global https.proxy socks5://127.0.0.1:1080
 
 }
+
