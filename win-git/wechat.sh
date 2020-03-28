@@ -52,11 +52,11 @@ $(git_downloader $SOFT_HOME $SOFT_URL)
 
 # deps
 if [[ ${PLATFORM} == linux ]]; then
-  sudo apt-get install wine-binfmt
-  sudo update-binfmts --import /usr/share/binfmts/wine
+  #sudo apt-get install wine-binfmt -y
+  #sudo update-binfmts --import /usr/share/binfmts/wine
   sudo dpkg --add-architecture i386 \
     && sudo apt update \
-    && sudo apt install wine32
+    && sudo apt install wine32 -y
 
 fi
 
