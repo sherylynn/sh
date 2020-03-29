@@ -2,10 +2,11 @@
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux*  ]]; then
   alias uname=$PREFIX/bin/uname
-elif [[ $(uname -a) == *raspberrypi* ]]; then
-  alias uname=/bin/uname #for raspberrypi
-else
+elif [[ $(which name) == *usr* ]]; then
   alias uname=/usr/bin/uname #for msys2 which can't found uname in .zshenv
+else
+#elif [[ $(uname -a) == *raspberrypi* ]]; then
+  alias uname=/bin/uname #for raspberrypi
 fi
 INSTALL_PATH=$HOME/tools
 if [ ! -d "${INSTALL_PATH}" ]; then
