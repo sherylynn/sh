@@ -300,7 +300,7 @@ alias zp="zpush"
 alias zf="zfetch"
 alias zr="zreload"
 alias ze="zedit"
-#bindkey -e
+bindkey -e
 
 proxy(){
   #export http_proxy=http://127.0.0.1:8087
