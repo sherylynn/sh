@@ -307,10 +307,16 @@ alias zr="zreload"
 alias ze="zedit"
 bindkey -e
 
-proxy(){
+wsl_ip(){
+  cat /etc/resolv.conf | grep nameserver | awk '{ print $2 }'
+}
+
+proxy_ip(){
   #export http_proxy=http://127.0.0.1:8087
-  export http_proxy=http://127.0.0.1:10808
-  export https_proxy=http://127.0.0.1:10808
+  local IP=$1
+
+  export http_proxy=http://$IP:10808
+  export https_proxy=http://$IP:10808
 
   #export http_proxy=socks5://127.0.0.1:1080
   #export https_proxy=socks5://127.0.0.1:1080
@@ -318,11 +324,24 @@ proxy(){
   #export all_proxy=socks5://127.0.0.1:1080
 
 
-  git config --global http.proxy http://127.0.0.1:10808
-  git config --global https.proxy https://127.0.0.1:10808
+  git config --global http.proxy http://$IP:10808
+  git config --global https.proxy https://$IP:10808
 
   #git config --global http.proxy socks5://127.0.0.1:1080
   #git config --global https.proxy socks5://127.0.0.1:1080
 
 }
 
+proxy(){
+  local normal_IP=127.0.0.1
+  proxy_ip $normal_IP 
+}
+
+proxyw(){
+  local normal_IP=$(wsl_ip)
+  proxy_ip $normal_IP
+}
+
+proxys(){
+  echo $http_proxy
+}
