@@ -262,6 +262,11 @@ zd(){
     macos) open ./ ;;
   esac
 }
+zdw(){
+  #wsl
+  zluaload $1
+  /mnt/c/Windows/explorer.exe .
+}
 zcode(){
   zluaload $1
   code ./
