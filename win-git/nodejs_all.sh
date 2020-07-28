@@ -88,17 +88,17 @@ yrm use taobao
 npm i -g yarn webpack http-server babel-cli pm2 typescript ts-node tslint eslint
 yarn config set cache-folder "$(install_path)/yarn-cache"
 #-----------------------
-if [[ $WIN_PATH ]]; then
-  if [[ ${PLATFORM} == win ]]; then
-    setx NPM_CONFIG_PREFIX $(cygpath -w $NPM_CONFIG_PREFIX)
-    setx NPM_CONFIG_CACHE $(cygpath -w $NPM_CONFIG_CACHE)
-    setx YARN_CACHE_FOLDER $(cygpath -w $YARN_CACHE_FOLDER)
-    setx ELECTRON_MIRROR 'http://npm.taobao.org/mirrors/electron/'
-    setx SQLITE3_BINARY_SITE 'http://npm.taobao.org/mirrors/sqlite3'
-    setx PHANTOMJS_CDNURL 'http://npm.taobao.org/mirrors/phantomjs'
-
-    winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
-    echo $winENV
-    setx Path "$winENV"
-  fi
-fi
+#if [[ $WIN_PATH ]]; then
+#  if [[ ${PLATFORM} == win ]]; then
+#    setx NPM_CONFIG_PREFIX $(cygpath -w $NPM_CONFIG_PREFIX)
+#    setx NPM_CONFIG_CACHE $(cygpath -w $NPM_CONFIG_CACHE)
+#    setx YARN_CACHE_FOLDER $(cygpath -w $YARN_CACHE_FOLDER)
+#    setx ELECTRON_MIRROR 'http://npm.taobao.org/mirrors/electron/'
+#    setx SQLITE3_BINARY_SITE 'http://npm.taobao.org/mirrors/sqlite3'
+#    setx PHANTOMJS_CDNURL 'http://npm.taobao.org/mirrors/phantomjs'
+#
+#    winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
+#    echo $winENV
+#    setx Path "$winENV"
+#  fi
+#fi
