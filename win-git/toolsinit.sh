@@ -188,15 +188,6 @@ get_github_release_version(){
     awk -F '["]' '{print $4}'
 }
 
-exist(){
-  #autoload -X
-  local COMMAND=$1
-  if command -v $1 >/dev/null 2>&1; then
-    echo 1
-  else
-    echo 0
-  fi
-}
 
 zshenv(){
   echo "$HOME/.zshenv"
@@ -230,12 +221,26 @@ distro(){
 
 #bindkey
 ###############################
+exist(){
+  #autoload -X
+  local COMMAND=$1
+  if command -v $1 >/dev/null 2>&1; then
+    echo 1
+  else
+    echo 0
+  fi
+}
 if [[ "$(platform)" == "win" ]]; then 
   EDITOR=vim
   export EDITOR=vim
 else
-  EDITOR=nvim
-  export EDITOR=nvim
+  if [[ $(exist nvim) == 1 ]]; then
+    EDITOR=nvim
+    export EDITOR=nvim
+  else
+    EDITOR=vim
+    export EDITOR=vim
+  fi
 fi
 if [[ "$(platform)" == "macos" ]]; then 
   alias ls='ls -G'
@@ -330,6 +335,11 @@ proxy_ip(){
   #git config --global http.proxy socks5://127.0.0.1:1080
   #git config --global https.proxy socks5://127.0.0.1:1080
 
+}
+
+unproxy(){
+  git config --global --unset http.proxy 
+  git config --global --unset https.proxy
 }
 
 proxy(){
