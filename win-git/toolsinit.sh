@@ -233,6 +233,9 @@ exist(){
 if [[ "$(platform)" == "win" ]]; then 
   EDITOR=vim
   export EDITOR=vim
+  code(){
+    "C:\Users\lynn\AppData\Local\Programs\Microsoft VS Code\Code.exe" $1
+  }
 else
   if [[ $(exist nvim) == 1 ]]; then
     EDITOR=nvim
