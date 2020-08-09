@@ -266,7 +266,8 @@ zd(){
   zluaload $1
   case $(platform) in
     win) start . ;;
-    linux) xdg-open .;;
+    #linux) xdg-open .;;
+    linux) thunar .;;
     macos) open ./ ;;
   esac
 }
