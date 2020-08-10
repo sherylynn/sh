@@ -1,0 +1,1 @@
+%USERPROFILE%\msys64\mingw64.exe "%LOCALAPPDATA%/\Programs\Microsoft VS Code\Code.exe"
