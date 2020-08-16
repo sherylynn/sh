@@ -230,6 +230,9 @@ exist(){
     echo 0
   fi
 }
+if [[ "$(arch)" == "aarch64" ]]; then 
+    alias codium="LD_PRELOAD=$HOME/lib/libxcb.so.1 codium"
+fi
 if [[ "$(platform)" == "win" ]]; then 
   EDITOR=vim
   export EDITOR=vim

@@ -1,0 +1,1 @@
+cp ./xstartup ~/.vnc/

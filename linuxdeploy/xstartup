@@ -1,0 +1,12 @@
+XAUTHORITY=$HOME/.Xauthority
+export XAUTHORITY
+LANG=C
+export LANG
+echo $$ > /tmp/xsession.pid
+
+export GTK_IM_MODULE="fcitx"
+export QT_IM_MODULE="fcitx"
+export XMODIFIERS="@im=fcitx"
+
+fcitx-autostart &
+. $HOME/.xsession
