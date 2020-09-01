@@ -2,7 +2,7 @@
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux*  ]]; then
   alias uname=$PREFIX/bin/uname
-elif [[ $(which name) == *usr* ]]; then
+elif [[ $(which uname) == *usr* ]]; then
   alias uname=/usr/bin/uname #for msys2 which can't found uname in .zshenv
 else
   alias uname=/bin/uname
