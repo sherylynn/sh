@@ -21,7 +21,8 @@ if ! command -v lua && ! command -v lua53 ;then
   elif [[ $(platform) == *linux* ]]; then
     sudo apt install lua5.1 lua-filesystem -y
   elif [[ $(platform) == *win* ]]; then
-    pacman -Sy lua5.1 
+  	pacman -Syu mingw64/mingw-w64-x86_64-lua
+    #pacman -Sy lua5.1 
   fi
 
 fi
