@@ -1,0 +1,1 @@
+pacman -Syu python3
