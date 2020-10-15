@@ -150,6 +150,10 @@ cache_downloader(){
   cd -
 }
 
+zget(){
+  cache_downloader $1
+}
+
 cache_unpacker(){
   local soft_file_pack=$1
   local soft_file_name=$2
