@@ -366,3 +366,6 @@ proxyw(){
 proxys(){
   echo $http_proxy
 }
+node_split(){
+  node -e "console.log('$1'.split('$2')[$3])"
+}
