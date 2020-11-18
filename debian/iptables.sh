@@ -15,8 +15,8 @@ NAT_Port=$2
 Dst_Host=$1
 Dst_Port=$2
 iptables -t nat -A POSTROUTING -j MASQUERADE
-#iptables -t nat -A PREROUTING -i eth0 -p $pro --dport $NAT_Port -j DNAT --to-destination $Dst_Host:$Dst_Port
-iptables -t nat -A PREROUTING -d $NAT_Host -p $pro --dport $NAT_Port -j DNAT --to-destination $Dst_Host:$Dst_Port
+iptables -t nat -A PREROUTING -i eth0 -p $pro --dport $NAT_Port -j DNAT --to-destination $Dst_Host:$Dst_Port
+#iptables -t nat -A PREROUTING -d $NAT_Host -p $pro --dport $NAT_Port -j DNAT --to-destination $Dst_Host:$Dst_Port
 #iptables -t nat -A POSTROUTING -m $pro -p $pro --dport $Dst_Port -d $Dst_Host -j SNAT --to-source $NAT_Host
 #iptables -t nat -A POSTROUTING -d 104.243.29.121 -p tcp --dport 24630 -j SNAT --to 0.0.0.0
 iptables-save
