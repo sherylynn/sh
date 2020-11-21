@@ -274,7 +274,11 @@ zd(){
   case $(platform) in
     win) start . ;;
     #linux) xdg-open .;;
-    linux) thunar .;;
+    linux) if [[ $(exist thunar) == 1 ]]; then
+      thunar .
+    else
+      xdg-open .
+    fi ;;
     macos) open ./ ;;
   esac
 }
