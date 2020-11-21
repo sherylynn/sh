@@ -2,7 +2,8 @@ cd ~
 sudo apt install build-essential -y
 git clone https://github.com/onitake/gslx680-acpi.git
 cd gslx680-acpi
-sudo make
+sudo make clean
+make
 sudo make install
 sudo depmod -a
 cd ~
