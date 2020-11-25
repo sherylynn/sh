@@ -9,5 +9,5 @@ sudo apt install -y \
     lxc \
     make \
     qemu-user-static \
-    ubuntu-archive-keyring \
-sudo ./build.sh -b debian -n buster-container -- -r buster -a arm64 --minimal
+    ubuntu-archive-keyring
+sudo ./build.sh -b debian -n deb -- -r buster -a arm64 --minimal
