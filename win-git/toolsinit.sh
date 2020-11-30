@@ -373,3 +373,6 @@ proxys(){
 node_split(){
   node -e "console.log('$1'.split('$2')[$3])"
 }
+
+export USE_CCACHE=1
+export CCACHE_EXEC=/usr/bin/ccache
