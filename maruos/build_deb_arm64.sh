@@ -6,7 +6,7 @@ cd ~
 git clone https://github.com/maruos/blueprints
 cd blueprints
 
-sudo apt-get update && apt-get install -y \
+sudo apt install -y \
     binfmt-support \
     debootstrap \
     fakeroot \
