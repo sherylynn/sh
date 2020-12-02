@@ -1,3 +1,4 @@
-need git clone https://github.com/LineageOS/android_device_oppo_common
+./pre_breakfast.sh
+./breakfast.sh
 
-manual
+zip is ~/android/lineage/out/target/product/oneplus3
