@@ -24,3 +24,4 @@ export LLVM_ENABLE_THREADS=1
 #需要用brunch而不是lunch和mka
 # 对 ~/android/maruos/system/sepolicy/public/domian.te
 # 的1385进行了注释
+brunch maru_oneplus3-userdebug
