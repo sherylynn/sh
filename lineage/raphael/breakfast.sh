@@ -8,9 +8,9 @@ setopt shwordsplit
 export LC_ALL=C
 
 #
-breakfast oneplus3
+#breakfast oneplus3
 
 croot
-brunch oneplus3
-
-
+#lunch lineage_raphael-userdebug
+#mka
+brunch lineage_raphael-userdebug

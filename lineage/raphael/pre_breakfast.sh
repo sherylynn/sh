@@ -1,6 +1,6 @@
-cp ./oneplus3.xml ~/android/lineage/.repo/local_manifests/oneplus3.xml
+cp ./raphael.xml ~/android/lineage/.repo/local_manifests/
 
 cd ~/android/lineage
-repo sync -j 8 
+repo sync -j 8  --force-sync
 #
 #以上方法均缺失

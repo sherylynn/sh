@@ -4,4 +4,5 @@
 if [ ! -f ~/blueprints/out/maru-* ]; then
   ../../maruos/build_deb_arm64.sh
 fi
-cp ~/blueprints/out/maru-* ~/android/maruos/prebuilts/desktop-rootfs.tar.gz
+mkdir -p ~/android/maruos/vendor/maruos/prebuilts
+cp ~/blueprints/out/maru-* ~/android/maruos/vendor/maruos/prebuilts/desktop-rootfs.tar.gz

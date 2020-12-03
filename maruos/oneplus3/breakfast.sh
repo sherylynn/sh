@@ -1,5 +1,5 @@
 #!/bin/zsh
-#cp ./vendorsetup.sh ~/android/maruos/device/oneplus/oneplus3/
+cp ./vendorsetup.sh ~/android/maruos/device/oneplus/oneplus3/
 
 cd ~/android/maruos
 source build/envsetup.sh
@@ -15,4 +15,6 @@ export LC_ALL=C
 rm ~/android/maruos/vendor/nxp/interfaces/Android.bp
 sudo ln -s ~/android/maruos/vendor/nxp/opensource/interfaces/nfc/prop_pickup.bp ~/android/maruos/vendor/nxp/interfaces/Android.bp
 croot
+# 奇怪的报错
+export LLVM_ENABLE_THREADS=1
 brunch oneplus3
