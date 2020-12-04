@@ -1,4 +1,4 @@
-cd ~/android/lineage/kernel/oneplus/msm8997
+cd ~/android/lineage/kernel/oneplus/msm8996
 ARCH=arm64 make lineageos_oneplus3_defconfig
 CONFIG=.config lxc-checkconfig
 # 手动修复

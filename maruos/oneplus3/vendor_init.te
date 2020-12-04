@@ -1,0 +1,12 @@
+allow vendor_init {
+  camera_data_file
+  fingerprintd_data_file
+  system_data_file
+  tombstone_data_file
+}:dir { create search getattr open read setattr ioctl write add_name remove_name rmdir relabelfrom };
+
+allow vendor_init proc_touchpanel:file write;
+
+set_prop(vendor_init, thermal_prop)
+
+allow init maru_file:dir { rmdir setattr create_dir_perms rw_dir_perms create mounton };

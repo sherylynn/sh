@@ -217,6 +217,7 @@ include device/qcom/sepolicy/sepolicy.mk
 
 BOARD_PLAT_PUBLIC_SEPOLICY_DIR += $(PLATFORM_PATH)/sepolicy/public
 BOARD_SEPOLICY_DIRS += $(PLATFORM_PATH)/sepolicy
+BOARD_PLAT_PRIVATE_SEPOLICY_DIR += $(PLATFORM_PATH)/sepolicy/private /vendor/maruos/sepolicy
 
 # Thermal
 USE_DEVICE_SPECIFIC_THERMAL := true

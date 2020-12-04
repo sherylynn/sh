@@ -8,7 +8,10 @@ cp ./fstab.qcom  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/
 cp ./init.qcom.rc  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/
 cp ./BoardConfig.mk ~/android/maruos/device/oneplus/oneplus3/
 cp ./maru-oneplus3_defconfig ~/android/maruos/kernel/oneplus/msm8996/arch/arm64/configs/
-
+cp ./vendor_init.te ~/android/maruos/device/oneplus/oneplus3/sepolicy/
+cp ./system_server.te ~/android/maruos/device/oneplus/oneplus3/sepolicy/
+cp ./domain.te ~/android/maruos/system/sepolicy/public/
+cp ./file.te ~/android/maruos/device/qcom/sepolicy/vendor/common/
 cd ~/android/maruos
 source build/envsetup.sh
 #按照官方教程，会莫名其妙报错
