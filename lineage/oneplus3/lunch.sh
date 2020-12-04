@@ -1,5 +1,4 @@
 #!/bin/zsh
-cp ./vendorsetup.sh ~/android/lineage/device/xiaomi/raphael/
 cd ~/android/lineage
 source build/envsetup.sh
 #按照官方教程，会莫名其妙报错
@@ -10,9 +9,7 @@ export LC_ALL=C
 
 #
 #breakfast oneplus3
-croot
-#lunch lineage_raphael-userdebug
-#mka
-export LLVM_ENABLE_THREADS=1
-#breakfast lineage_raphael-userdebug
-brunch lineage_raphael-userdebug
+
+brunch oneplus3
+
+
