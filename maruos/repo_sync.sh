@@ -11,7 +11,9 @@ ccache -M 100G
 # repo sycn
 mkdir -p ~/android/maruos
 cd ~/android/maruos
-repo init -u https://github.com/maruos/manifest.git -b maru-0.6 maruos
-repo sync -j 8 --force-sync
 
+#repo init -u https://github.com/maruos/manifest.git -b maru-0.7 maruos
+#repo sync -j 8 --force-sync
+repo init -u https://github.com/pintaf/manifest -b maru-0.7 --no-clone-bundle --depth=1
+repo sync --jobs=8 --fetch-submodules --current-branch --no-clone-bundle
 # after finished should 
