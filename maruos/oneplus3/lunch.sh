@@ -2,10 +2,12 @@
 cp ./vendorsetup.sh ~/android/maruos/device/oneplus/oneplus3/
 cp ./AndroidProducts.mk ~/android/maruos/device/oneplus/oneplus3/
 cp ./maru_oneplus3.mk ~/android/maruos/device/oneplus/oneplus3/
-mkdir -p ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/
-cp ./config.xml  ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/config.xml
+#darydream
+#mkdir -p ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/
+#cp ./config.xml  ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/config.xml
 cp ./fstab.qcom  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/
 cp ./init.qcom.rc  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/
+#cp ./init.oneplus3.rc  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/
 cp ./BoardConfig.mk ~/android/maruos/device/oneplus/oneplus3/
 cp ./maru-oneplus3_defconfig ~/android/maruos/kernel/oneplus/msm8996/arch/arm64/configs/
 cp ./vendor_init.te ~/android/maruos/device/oneplus/oneplus3/sepolicy/
