@@ -11,7 +11,9 @@ cp ./maru-oneplus3_defconfig ~/android/maruos/kernel/oneplus/msm8996/arch/arm64/
 cp ./vendor_init.te ~/android/maruos/device/oneplus/oneplus3/sepolicy/
 cp ./system_server.te ~/android/maruos/device/oneplus/oneplus3/sepolicy/
 cp ./domain.te ~/android/maruos/system/sepolicy/public/
-cp ./file.te ~/android/maruos/device/qcom/sepolicy/vendor/common/
+#cp ./file.te ~/android/maruos/device/qcom/sepolicy/vendor/common/
+#cp ./file.te ~/android/maruos/system/sepolicy/public/
+cp ./maru_files.te ~/android/maruos/vendor/maruos/sepolicy/
 cd ~/android/maruos
 source build/envsetup.sh
 #按照官方教程，会莫名其妙报错
@@ -27,4 +29,5 @@ export LLVM_ENABLE_THREADS=1
 #需要用brunch而不是lunch和mka
 # 对 ~/android/maruos/system/sepolicy/public/domian.te
 # 的1385进行了注释
+croot
 brunch maru_oneplus3-userdebug
