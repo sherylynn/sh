@@ -3,8 +3,8 @@ cp ./vendorsetup.sh ~/android/maruos/device/oneplus/oneplus3/
 cp ./AndroidProducts.mk ~/android/maruos/device/oneplus/oneplus3/
 cp ./maru_oneplus3.mk ~/android/maruos/device/oneplus/oneplus3/
 #darydream
-#mkdir -p ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/
-#cp ./config.xml  ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/config.xml
+mkdir -p ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/
+cp ./config.xml  ~/android/maruos/device/oneplus/oneplus3/overlay_maru/daydream/frameworks/base/core/res/res/value/config.xml
 cp ./fstab.qcom  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/
 cp ./init.qcom.rc  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/
 #cp ./init.oneplus3.rc  ~/android/maruos/device/oneplus/oneplus3/rootdir/etc/

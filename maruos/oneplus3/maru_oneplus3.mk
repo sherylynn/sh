@@ -35,5 +35,5 @@ PRODUCT_MODEL := Maru on the oneplus 3
 MARU_VERSION := 0.7-test
 MARU_BUILD_VERSION := $(MARU_VERSION)-$(shell date -u +%Y%m%d)
 
-#DEVICE_PACKAGE_OVERPLAYS += \
-#														device/oneplus/oneplus3/overlay_maru/daydream
+DEVICE_PACKAGE_OVERPLAYS += \
+														device/oneplus/oneplus3/overlay_maru/daydream
