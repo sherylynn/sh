@@ -1,4 +1,5 @@
 cd ~/android/maruos/kernel/xiaomi/sm8150
+ARCH=arm64 make maru-raphael_defconfig
 ARCH=arm64 make raphael_defconfig
 CONFIG=.config lxc-checkconfig
 # 手动修复
@@ -19,3 +20,5 @@ make mrproper
 #              -> charactor device -> mult instance
 #              -> graphics suport -> displaylink
 #              -> usb
+# CONFIG_DEVPTS_MULTIPLE_INSTANCES=y
+上述kernel option已经废弃在新的内核
