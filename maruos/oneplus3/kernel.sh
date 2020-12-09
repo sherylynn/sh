@@ -5,3 +5,5 @@ CONFIG=.config lxc-checkconfig
 ARCH=arm64 make savedefconfig
 mv defconfig 需要的路径 ./maru-oneplus3_defconfig
 make mrproper
+# CONFIG_DEVPTS_MULTIPLE_INSTANCES
+# is device drivers  -> charact device->unixx98 下方
