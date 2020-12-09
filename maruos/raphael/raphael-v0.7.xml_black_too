@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="TingyiChen/device_xiaomi_raphael" path="device/xiaomi/raphael" remote="github"  />
+  <!--project name="TingyiChen/kernel_xiaomi_sm8150" path="kernel/xiaomi/sm8150" remote="github"  /-->
+  <project name="Evolution-X-Devices/kernel_xiaomi_raphael" path="kernel/xiaomi/sm8150" remote="github" revision="pie" />
+  <project name="TingyiChen/vendor_xiaomi_raphael" path="vendor/xiaomi/raphael" remote="github"  />
+  <!--project name="Evolution-X-Devices/vendor_xiaomi" path="vendor/xiaomi" remote="github" revision="pie" /-->
+</manifest>
