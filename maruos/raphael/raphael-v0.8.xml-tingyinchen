@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="TingyiChen/device_xiaomi_raphael" path="device/xiaomi/raphael" remote="github" revision="lineage-17.1" />
+  <project name="TingyiChen/kernel_xiaomi_sm8150" path="kernel/xiaomi/sm8150" remote="github" revision="lineage-17.1" />
+  <project name="raphael-devs/android_vendor_xiaomi" path="vendor/xiaomi" remote="github" revision="lineage-17.1" />
+</manifest>

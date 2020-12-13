@@ -24,6 +24,6 @@ export LLVM_ENABLE_THREADS=1
 # 对 ~/android/maruos/system/sepolicy/public/domian.te
 # 的1385进行了注释
 croot
-#brunch maru_raphael-userdebug
-lunch maru_raphael-userdebug
-mka
+brunch maru_raphael-userdebug
+#lunch maru_raphael-userdebug
+#mka
