@@ -14,3 +14,8 @@ https://github.com/pintaf/manifest/tree/maru-0.7-pintaf
 
 repo init -u git://github.com/deepak-divakar/manifest.git -b maru-lineage-17.1 --no-clone-bundle --depth=1
 0.8
+
+# 不管是自己迁移的17.1 的aosip 还是17.1 raphael-devs的 都有一个error叫 系统内部自带error
+# 并且 会crash desktop option in setting
+
+# tingyichen 的17.1 直接不能build 有error
