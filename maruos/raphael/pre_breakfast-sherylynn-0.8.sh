@@ -1,7 +1,7 @@
 rm ~/android/maruos
 ln -s ~/android/maruos-v0.8 ~/android/maruos
 mkdir -p ~/android/maruos/.repo/local_manifests/
-cp ./raphael-sherylynn.xml ~/android/maruos/.repo/local_manifests/raphael.xml
+cp ./raphael-sherylynn-v0.8.xml ~/android/maruos/.repo/local_manifests/raphael.xml
 #cp ./default.xml ~/android/maruos/.repo/manifests/
 
 cd ~/android/maruos
