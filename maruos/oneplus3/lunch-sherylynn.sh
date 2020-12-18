@@ -6,7 +6,7 @@ source build/envsetup.sh
 # 需要去掉本地语义化设置
 setopt shwordsplit
 export LC_ALL=C
-
+export LD_BIND_NOW=1
 export LLVM_ENABLE_THREADS=1
 #lunch
 #lunch maru_oneplus3-userdebug
