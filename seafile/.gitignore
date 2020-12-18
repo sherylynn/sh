@@ -2,3 +2,4 @@ Caddyfile_docker_hostname
 docker-compose_caddy_hostname.yml
 docker-compose_vm_hostname.yml
 docker-compose_vm_lynn.yml
+docker-compose_caddy_pro.yml

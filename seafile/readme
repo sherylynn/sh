@@ -23,3 +23,10 @@ trojan端口再设置为 8000 [既docker组合中原来seafile提供的那个,�
 
 # office docker with caddy pdf
 docker-compose -f ./docker-compose_caddy_pdf.yml up -d
+
+# pro 版本
+#
+
+docker login docker.seadrive.org
+then input username seafile, password zjkmid6rQibdZ=uJMuWS
+then ./install_with_hostname_pro.sh hostname
