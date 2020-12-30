@@ -18,3 +18,5 @@ cd ~/android/maruos-v0.8
 repo init -u git://github.com/sherylynn/manifest.git -b maru-0.8 --no-clone-bundle --depth=1
 repo sync --jobs=8 --fetch-submodules --current-branch --no-clone-bundle --force-sync
 # after finished should 
+rm ~/android/maruos
+ln -s ~/android/maruos-v0.8 ~/android/maruos
