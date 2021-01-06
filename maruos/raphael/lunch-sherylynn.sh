@@ -8,6 +8,7 @@ setopt shwordsplit
 export LC_ALL=C
 export LD_BIND_NOW=1
 #export ALLOW_MISSING_DEPENDENCIES=true
+export TEMPORARY_DISABLE_PATH_RESTRICTIONS=true
 export LLVM_ENABLE_THREADS=1
 #lunch
 #mka
