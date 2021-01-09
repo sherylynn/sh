@@ -21,4 +21,5 @@ make mrproper
 #              -> graphics suport -> displaylink
 #              -> usb
 # CONFIG_DEVPTS_MULTIPLE_INSTANCES=y
+# kernel hacking -> 一些log打开才能输出initlog
 上述kernel option已经废弃在新的内核
