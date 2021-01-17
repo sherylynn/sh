@@ -1,10 +1,4 @@
-
-#set ccache
-
-export USE_CCACHE=1
-export CCACHE_EXEC=/usr/bin/ccache
-
-ccache -M 100G
+echo "net repo init in case-sensitive filesystem"
 
 # repo sycn
 mkdir -p ~/android/maruos-v0.8

@@ -1,4 +1,16 @@
 #!/bin/zsh
+#set ccache
+. $(dirname "$0")/../../win-git/toolsinit.sh
+
+export USE_CCACHE=1
+PLATFORM=$(platform)
+if [[ "$PLATFORM" == "macos" ]]; then
+  export CCACHE_EXEC=/usr/local/bin/ccache
+  ccache -M 50G
+else
+  export CCACHE_EXEC=/usr/bin/ccache
+  ccache -M 100G
+fi
 cd ~/android/maruos
 source build/envsetup.sh
 #按照官方教程，会莫名其妙报错
