@@ -53,6 +53,7 @@ if [[ ${PLATFORM} == win ]]; then
   echo 'export PATH=$PATH:'${NODE_GLOBAL} >> ${TOOLSRC}
   export PATH=$PATH:$NODE_ROOT
   export PATH=$PATH:$NODE_GLOBAL
+  export NODE_SKIP_PLATFORM_CHECK=1
 else
   echo 'export PATH=$PATH:'${NODE_ROOT}'/bin'> ${TOOLSRC}
   echo 'export PATH=$PATH:'${NODE_GLOBAL}'/bin' >> ${TOOLSRC}
@@ -62,6 +63,7 @@ fi
 echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >> ${TOOLSRC}
 echo 'NPM_CONFIG_CACHE='$NODE_CACHE >> ${TOOLSRC}
 echo 'YARN_CACHE_FOLDER='$(install_path)'/yarn-cache' >> ${TOOLSRC}
+echo 'export NODE_SKIP_PLATFORM_CHECK=1' >> ${TOOLSRC}
 #-----env--------------------------------------------------
 export NPM_CONFIG_PREFIX=$NODE_GLOBAL
 export NPM_CONFIG_CACHE=$NODE_CACHE
