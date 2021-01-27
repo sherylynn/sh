@@ -378,3 +378,5 @@ export USE_CCACHE=1
 export CCACHE_EXEC=/usr/bin/ccache
 
 alias armake="ARCH=arm64 make"
+
+export HOMEBREW_NO_AUTO_UPDATE=true

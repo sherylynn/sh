@@ -7,6 +7,11 @@ PLATFORM=$(platform)
 if [[ "$PLATFORM" == "macos" ]]; then
   export CCACHE_EXEC=/usr/local/bin/ccache
   ccache -M 50G
+  ln -s /usr/local/bin/gcc-9 /usr/local/bin/gcc
+  ln -s /usr/local/bin/g++-9 /usr/local/bin/g++
+  export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:/usr/local/bin:$PATH"
+  which sed
+  which gcc
 else
   export CCACHE_EXEC=/usr/bin/ccache
   ccache -M 100G
