@@ -26,7 +26,7 @@ export LD_BIND_NOW=1
 #export ALLOW_MISSING_DEPENDENCIES=true
 export TEMPORARY_DISABLE_PATH_RESTRICTIONS=true
 export LLVM_ENABLE_THREADS=1
-export unset NDK_ROOT
+#export unset NDK_ROOT
 
-#breakfast lineage_raphael-userdebug
+breakfast lineage_raphael-userdebug
 brunch lineage_raphael-userdebug
