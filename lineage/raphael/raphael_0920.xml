@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="sherylynn/lineage_device_xiaomi_raphael" path="device/xiaomi/raphael" remote="github" revision="lineage0920" />
+  <project name="sherylynn/maru_kernel_xiaomi_raphael" path="kernel/xiaomi/raphael" remote="github" revision="lineage0920" />
+  <!--project name="sherylynn/maru_kernel_xiaomi_sm8150" path="kernel/xiaomi/raphael" remote="github" revision="lineage0920" /-->
+  <project name="sherylynn/android_vendor_xiaomi_raphael" path="vendor/xiaomi/raphael" remote="github" revision="lineage0920" />
+</manifest>

@@ -1,4 +1,4 @@
-mkdir ~/android/lineage/.repo/local_manifests/
+mkdir -p  ~/android/lineage/.repo/local_manifests/
 cp ./raphael_sherylynn.xml ~/android/lineage/.repo/local_manifests/
 
 cd ~/android/lineage
