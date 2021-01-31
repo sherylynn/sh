@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
   <project name="sherylynn/lineage_device_xiaomi_raphael" path="device/xiaomi/raphael" remote="github" revision="lineage-17.1" />
-  <!--project name="sherylynn/maru_kernel_xiaomi_raphael" path="kernel/xiaomi/raphael" remote="github" revision="maru-lineage-oss" /-->
-  <project name="sherylynn/lineage_kernel_xiaomi_raphael" path="kernel/xiaomi/raphael" remote="github" revision="10" />
+  <project name="sherylynn/maru_kernel_xiaomi_raphael" path="kernel/xiaomi/raphael" remote="github" revision="maru-lineage-oss" />
+  <!--project name="sherylynn/lineage_kernel_xiaomi_raphael" path="kernel/xiaomi/raphael" remote="github" revision="10" /-->
   <project name="sherylynn/lineage_vendor_xiaomi_raphael" path="vendor/xiaomi/raphael" remote="github" revision="10" />
   <!--project name="sashascurtu/vendor_ANXCamera" path="vendor/ANXCamera" remote="github" revision="raphael-v185" /-->
 </manifest>
