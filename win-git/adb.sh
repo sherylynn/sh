@@ -1,7 +1,7 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
-AUTHOR=Genymobile
-NAME=scrcpy
+AUTHOR=qhuyduong
+NAME=arm_adb
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
@@ -12,26 +12,13 @@ SOFT_ARCH=64
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 PLATFORM=$(platform)
 if [[ $(platform) == *linux* ]]; then
-  #deb apt
-  sudo apt install ffmpeg libsdl2-2.0-0 gcc git pkg-config meson ninja-build \
-                 libavcodec-dev libavformat-dev libavutil-dev \
-                 libsdl2-dev openjdk-11-jdk -y
-  cd $(install_path)
-  git clone https://github.com/Genymobile/${NAME} $SOFT_HOME
-  cd $SOFT_HOME
-  git pull
-  #prebuilt server
-  SOFT_URL=https://github.com/Genymobile/${NAME}/releases/download/${SOFT_VERSION}/${NAME}-server-${SOFT_VERSION}
-  SOFT_FILE_NAME=${NAME}-server-${SOFT_VERSION}
+  mkdir $SOFT_HOME
+  #SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/adb
+  SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/v1.0.39-aarch64/adb
+  SOFT_FILE_NAME=${NAME}
   $(cache_downloader $SOFT_FILE_NAME $SOFT_URL)
   cp $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}/
-  #build
-  meson x --buildtype release --strip -Db_lto=true \
-      -Dprebuilt_server=${SOFT_FILE_NAME}
-  ninja -Cx
-  #install
-  #sudo ninja -Cx install
-  echo 'alias scrcpy="'${SOFT_HOME}/run ${SOFT_HOME}/x'"'>${TOOLSRC}
+  echo 'export PATH=$PATH:'${SOFT_HOME}>${TOOLSRC}
 fi
 if [[ $(platform) == *win* ]]; then
   case $(arch) in 
