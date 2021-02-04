@@ -31,7 +31,7 @@ if [[ $(platform) == *linux* ]]; then
   ninja -Cx
   #install
   #sudo ninja -Cx install
-  echo 'alias scrcpy='"${SOFT_HOME}/run ${SOFT_HOME}/x">>${TOOLSRC}
+  echo 'alias scrcpy="'${SOFT_HOME}/run ${SOFT_HOME}/x'"'>${TOOLSRC}
 fi
 if [[ $(platform) == *win* ]]; then
   case $(arch) in 
