@@ -1,7 +1,7 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
 AUTHOR=qhuyduong
-NAME=arm_adb
+NAME=adb
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
@@ -14,10 +14,11 @@ PLATFORM=$(platform)
 if [[ $(platform) == *linux* ]]; then
   mkdir $SOFT_HOME
   #SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/adb
-  SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/v1.0.39-aarch64/adb
+  SOFT_URL=https://github.com/${AUTHOR}/arm_${NAME}/releases/download/v1.0.39-aarch64/${NAME}
   SOFT_FILE_NAME=${NAME}
   $(cache_downloader $SOFT_FILE_NAME $SOFT_URL)
-  cp $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}/
+  cp $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}/${NAME}
+  chmod 777 ${SOFT_HOME}/${NAME}
   echo 'export PATH=$PATH:'${SOFT_HOME}>${TOOLSRC}
 fi
 if [[ $(platform) == *win* ]]; then
