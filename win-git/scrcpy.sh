@@ -17,7 +17,7 @@ if [[ $(platform) == *linux* ]]; then
                  libavcodec-dev libavformat-dev libavutil-dev \
                  libsdl2-dev openjdk-11-jdk -y
   cd $(install_path)
-  git clone https://github.com/Genymobile/${NAME} $SOFT_HOME
+  git clone https://github.com/${AUTHOR}/${NAME} $SOFT_HOME
   cd $SOFT_HOME
   git pull
   #prebuilt server
