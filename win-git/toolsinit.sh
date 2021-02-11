@@ -331,6 +331,14 @@ wsl_ip(){
   cat /etc/resolv.conf | grep nameserver | awk '{ print $2 }'
 }
 
+hotspot_ip(){
+  cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
+}
+
+ssh_hotspot(){
+  ssh maru@$(hotspot_ip)
+}
+
 proxy_ip(){
   #export http_proxy=http://127.0.0.1:8087
   local IP=$1
