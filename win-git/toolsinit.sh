@@ -194,7 +194,7 @@ get_github_release_version(){
     awk -F '["]' '{print $4}'
 }
 
-version_without_prefiex_v(){
+version_without_prefix_v(){
   local version=$1
   echo ${version#"v"}
 }
@@ -332,7 +332,7 @@ alias zp="zpush"
 alias zf="zfetch"
 alias zr="zreload"
 alias ze="zedit"
-bindkey -e
+#bindkey -e
 
 wsl_ip(){
   cat /etc/resolv.conf | grep nameserver | awk '{ print $2 }'

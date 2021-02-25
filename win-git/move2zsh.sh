@@ -73,6 +73,7 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
   bindkey '\ek' deer
   zplug load
 fi
+bindkey -e
 #方法一 autoload 加载后执行，无法script里调用toolsinit.sh内部函数，但是script可以手动呼唤toolsinit.sh
 #fpath+=$(cd "$(dirname "$0")";pwd)
 #autoload -U $(cd "$(dirname "$0")";pwd)/toolsinit.sh

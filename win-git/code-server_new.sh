@@ -18,10 +18,15 @@ esac
 PLATFORM=$(platform)
 
 SOFT_FILE_NAME=${NAME}_$(version_without_prefix_v $SOFT_VERSION)_${SOFT_ARCH}
-echo $(SOFT_FILE_NAME)
+echo ${SOFT_FILE_NAME}
 SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME deb)
 
 SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/${SOFT_FILE_PACK}
 if [[ $(platform) == *linux* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+  sudo dpkg -i $(cache_folder)/$SOFT_FILE_PACK
+  sudo systemctl daemon-reload
+  sudo systemctl enable code-server@$USER
+  #sudo systemctl enable code-server@$USER
+  sudo systemctl start code-server@$USER
 fi
