@@ -180,6 +180,8 @@ soft_file_pack(){
     echo ${soft_file_name}.zip
   elif [[ $notar == notar ]]; then
     echo ${soft_file_name}.gz
+  elif [[ $notar == deb ]]; then
+    echo ${soft_file_name}.deb
   else
     echo ${soft_file_name}.tar.gz
   fi
@@ -190,6 +192,11 @@ get_github_release_version(){
   curl --silent "https://api.github.com/repos/${author_softname}/releases/latest" |
     grep '"tag_name":' |
     awk -F '["]' '{print $4}'
+}
+
+version_without_prefiex_v(){
+  local version=$1
+  echo ${version#"v"}
 }
 
 

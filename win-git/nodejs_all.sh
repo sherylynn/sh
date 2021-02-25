@@ -6,7 +6,7 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/node
 NODE_GLOBAL=$(install_path)/node-global
 NODE_CACHE=$(install_path)/node-cache
-SOFT_VERSION=14.13.1
+SOFT_VERSION=14.16.0
 cd ~
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 PLATFORM=$(platform)
