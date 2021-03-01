@@ -12,7 +12,7 @@ case "$1" in
      $0 stop 
 EOF
 sudo tee -a /etc/init.d/${SCRIPT_NAME}<<EOF
-     su $(whoami) -c '$(cd "$(dirname "$0")";pwd)/server_${SCRIPT_NAME}.sh'
+     $(cd "$(dirname "$0")";pwd)/server_${SCRIPT_NAME}.sh
      ;; 
     stop) 
      killall ${SCRIPT_NAME}

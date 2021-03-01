@@ -17,4 +17,4 @@ test -f ../../tools/rc/ttydrc && . ../../tools/rc/ttydrc
 echo $(node -v)
 echo $(go version)
 echo $PATH
-ttyd login -p 3000 -t fontSize=20
+ttyd -p 3000 -t fontSize=18 login
