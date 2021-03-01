@@ -11,21 +11,13 @@ Wants=network-online.target systemd-networkd-wait-online.service
 EOF
 
 sudo tee -a /etc/systemd/system/${SCRIPT_NAME}.service <<EOF
-User=$(whoami)
-;Group=$(id -g -n)
 Type=simple
-;ExecStartPre=/bin/bash --login -c 'env > /tmp/.new-env-file'
-;EnvironmentFile=$HOME/.env.file
 PrivateTmp=true
 Restart=on-abnormal
 ExecStart=$(cd "$(dirname "$0")";pwd)/server_${SCRIPT_NAME}.sh
 EOF
 
 sudo tee -a /etc/systemd/system/${SCRIPT_NAME}.service <<-'EOF'
-; Hide /home, /root, and /run/user. Nobody will steal your SSH-keys.
-;ProtectHome=true
-;after protect even if this script can not read home
-; Make /usr, /boot, /etc and possibly some more folders read-only.
 ProtectSystem=full
 
 [Install]
