@@ -25,8 +25,8 @@ SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/
 if [[ $(platform) == *linux* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   sudo dpkg -i $(cache_folder)/$SOFT_FILE_PACK
-  sudo systemctl daemon-reload
-  sudo systemctl enable code-server@$USER
+  #sudo systemctl daemon-reload
   #sudo systemctl enable code-server@$USER
-  sudo systemctl start code-server@$USER
+  #sudo systemctl start code-server@$USER
+  ./systemd_code-server.sh
 fi
