@@ -12,6 +12,8 @@ if [[ "$PLATFORM" == "macos" ]]; then
   export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:/usr/local/bin:$PATH"
   which sed
   which gcc
+  launchctl limit
+  sudo launchctl limit maxfiles 1024 unlimited
 else
   export CCACHE_EXEC=/usr/bin/ccache
   ccache -M 100G
