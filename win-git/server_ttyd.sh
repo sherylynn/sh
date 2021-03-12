@@ -14,7 +14,9 @@ pwd
 #load env
 test -f ../../tools/rc/ttydrc && . ../../tools/rc/ttydrc
 
-echo $(node -v)
-echo $(go version)
-echo $PATH
-ttyd -p 3000 -t fontSize=18 login
+echo $(whoami)
+# login need systemd user root
+#ttyd -p 3000 -t fontSize=18 login
+# login need systemd user $(whoami)
+ttyd -p 3000 -t fontSize=18 ssh localhost
+#su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'

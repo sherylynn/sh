@@ -11,6 +11,8 @@ Wants=network-online.target systemd-networkd-wait-online.service
 EOF
 
 sudo tee -a /etc/systemd/system/${SCRIPT_NAME}.service <<EOF
+User=$(whoami)
+;Group=$(id -g -n)
 Type=simple
 PrivateTmp=true
 Restart=on-abnormal
