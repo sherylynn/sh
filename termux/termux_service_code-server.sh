@@ -9,4 +9,4 @@
 	ln -sf $PREFIX/share/termux-services/svlogger code/log/run
 # Setup shortcuts
 mkdir -p ~/.shortcuts
-echo 'code-server' > ~/.shortcuts/code_server.sh
+echo 'exec $PREFIX/../home/sh/termux/server_code-server.sh' > ~/.shortcuts/code_server.sh
