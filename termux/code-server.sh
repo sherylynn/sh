@@ -1,3 +1,5 @@
 npm i -g code-server
 ./termux_service_code-server.sh
-sv-enable code
+
+#enable code in termux_service 
+#sv-enable code

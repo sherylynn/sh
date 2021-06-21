@@ -7,3 +7,6 @@
 	chmod +x code/run
 	touch code/down
 	ln -sf $PREFIX/share/termux-services/svlogger code/log/run
+# Setup shortcuts
+mkdir -p ~/.shortcuts
+echo 'code-server' > ~/.shortcuts/code_server.sh
