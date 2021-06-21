@@ -30,15 +30,10 @@ esac
 # init pwd
 cd $HOME
 mkdir -p $GOPATH
-mkdir -p $GOROOT
 #--------------new .toolsrc-----------------------
 export GOPATH=${GO_PATH}
-export GOROOT=${GO_ROOT}
-export PATH=$PATH:${GO_ROOT_BIN}
 export PATH=$PATH:${GO_PATH_BIN}
 
 echo 'export GOPATH='${GO_PATH}>${TOOLSRC}
-echo 'export GOROOT='${GO_ROOT}>>${TOOLSRC}
-echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>${TOOLSRC}
 echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
 
