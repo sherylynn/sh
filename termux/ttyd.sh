@@ -29,5 +29,6 @@ if [[ $(platform) == *linux* ]]; then
   chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   echo "export PATH=$SOFT_HOME:"'$PATH' > ${TOOLSRC}
 
-  #./systemd_ttyd.sh
+  ./termux_service_ttyd.sh
+  sv-enable ttyd
 fi
