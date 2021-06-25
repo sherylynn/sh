@@ -395,3 +395,15 @@ export CCACHE_EXEC=/usr/bin/ccache
 alias armake="ARCH=arm64 make"
 
 export HOMEBREW_NO_AUTO_UPDATE=true
+
+realScriptPath(){
+  local x=$1
+  echo $(cd $(dirname $0);pwd)/$x
+
+}
+
+realScriptPathDir(){
+  local x=$1
+  echo $(cd $(dirname $0);pwd)
+
+}

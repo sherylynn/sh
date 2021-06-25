@@ -23,5 +23,4 @@ test -f ../../tools/rc/${SCRIPT_NAME}rc && . ../../tools/rc/${SCRIPT_NAME}rc
 echo $(node -v)
 echo $(go version)
 echo $PATH
-#${SCRIPT_NAME} --config ./webdav.yaml
-${SCRIPT_NAME} -h
+${SCRIPT_NAME} --config ../../tools/rc/webdav.yaml

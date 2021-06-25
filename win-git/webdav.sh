@@ -32,7 +32,7 @@ SOFT_FILE_NAME=${PLATFORM}-${SOFT_ARCH}-${NAME}
 SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME )
 COMMAND_NAME=$SOFT_FILE_NAME
 # init pwd
-cd $HOME
+#cd $HOME
 SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/${SOFT_FILE_PACK}
 
 if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
@@ -47,3 +47,5 @@ SOFT_ROOT=${SOFT_HOME}
 
 export PATH=$PATH:${SOFT_ROOT}
 echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
+
+test ! -f ${BASH_DIR}/webdav.yaml && cp $(realScriptPathDir )/webdav.sample.yaml ${BASH_DIR}/webdav.yaml
