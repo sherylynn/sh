@@ -9,7 +9,7 @@ realpathdir(){
   echo $(cd $(dirname $0);pwd)
 
 }
-cd $(realpathdir ./server_code-server.sh)
+cd $(realpathdir ./server_${SCRIPT_NAME}.sh)
 pwd
 #load env
 test -f ../../tools/rc/noderc && . ../../tools/rc/noderc

@@ -18,7 +18,10 @@ test -f ../../tools/rc/cclsrc && . ../../tools/rc/cclsrc
 test -f ../../tools/rc/golangrc && . ../../tools/rc/golangrc
 test -f ../../tools/rc/pythonrc && . ../../tools/rc/pythonrc
 
+test -f ../../tools/rc/${SCRIPT_NAME}rc && . ../../tools/rc/${SCRIPT_NAME}rc
+
 echo $(node -v)
 echo $(go version)
 echo $PATH
-${SCRIPT_NAME} --config /opt/webdav.config
+#${SCRIPT_NAME} --config ./webdav.yaml
+${SCRIPT_NAME} -h
