@@ -1,4 +1,5 @@
 #!/bin/bash
+SCRIPT_NAME="code-server"
 realpath(){
   local x=$1
   echo $(cd $(dirname $0);pwd)/$x
@@ -20,4 +21,4 @@ test -f ../../tools/rc/pythonrc && . ../../tools/rc/pythonrc
 echo $(node -v)
 echo $(go version)
 echo $PATH
-code-server
+${SCRIPT_NAME}
