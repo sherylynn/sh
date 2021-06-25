@@ -1,9 +1,9 @@
 #!/bin/bash
-SCRIPT_NAME="any"
+SCRIPT_NAME="webdav"
 
-sudo tee /etc/systemd/system/${SCRIPT_NAME}.service <<-'EOF'
+sudo tee /etc/systemd/system/${SCRIPT_NAME}.service <<EOF
 [Unit]
-Description=pdf-all Service
+Description=${SCRIPT_NAME} Service
 After=network-online.target
 Wants=network-online.target systemd-networkd-wait-online.service
 

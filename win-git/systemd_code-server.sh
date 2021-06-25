@@ -1,19 +1,5 @@
 #!/bin/bash
 SCRIPT_NAME="code-server"
-while getopts 'n:a:sc' OPT; do
-  case $OPT in
-    n)
-      SCRIPT_NAME="$OPTARG";;
-    h)
-      REVOLUTION_HIGH="$OPTARG";;
-    s)
-      Server="y";;
-    c)
-      Client="y";;
-    ?)
-      echo "Usage: `basename $0` [options] filename"
-  esac
-done
 
 sudo tee /etc/systemd/system/${SCRIPT_NAME}.service <<EOF
 [Unit]
@@ -49,4 +35,4 @@ sudo systemctl daemon-reload
 sudo systemctl enable ${SCRIPT_NAME}.service
 sudo systemctl restart ${SCRIPT_NAME}.service
 sudo systemctl status ${SCRIPT_NAME}.service
-./init_d_code-server.sh
+./init_d_${SCRIPT_NAME}.sh
