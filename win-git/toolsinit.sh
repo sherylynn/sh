@@ -159,7 +159,13 @@ cache_unpacker(){
   local soft_file_name=$2
   cd $(cache_folder)
   if [ ! -d "${soft_file_name}" ]; then
-    if [[ $(platform) == win ]]; then
+    if [[ ${soft_file_pack} != *.* ]]; then
+      mkdir ${soft_file_name}
+      cp ${soft_file_pack} ${soft_file_name}/${soft_file_name}
+    elif [[ ${soft_file_pack} == *exe* ]]; then
+      mkdir ${soft_file_name}
+      cp ${soft_file_pack} ${soft_file_name}/${soft_file_pack}
+    elif [[ ${soft_file_pack} == *zip* ]]; then
       unzip -q ${soft_file_pack} -d ${soft_file_name}
     elif [[ ${soft_file_pack} != *tar* ]]; then
       mkdir -p ${soft_file_name}/${soft_file_name}

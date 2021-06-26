@@ -34,9 +34,7 @@ SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/
 
 if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-
-  #
-  #$(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
   
   rm -rf ${SOFT_HOME} && \
     mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
