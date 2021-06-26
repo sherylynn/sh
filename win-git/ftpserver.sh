@@ -34,10 +34,10 @@ SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/
 
 if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+  $(cache_unpacker $SOFT_FILE_PACK $NAME)
   
   rm -rf ${SOFT_HOME} && \
-    mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+    mv $(cache_folder)/${NAME} ${SOFT_HOME} 
 fi
 
 SOFT_ROOT=${SOFT_HOME}
@@ -45,4 +45,4 @@ SOFT_ROOT=${SOFT_HOME}
 export PATH=$PATH:${SOFT_ROOT}
 echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 
-#test ! -f ${BASH_DIR}/webdav.yaml && cp $(realScriptPathDir )/webdav.sample.yaml ${BASH_DIR}/webdav.yaml
+test ! -f ${BASH_DIR}/${NAME}.json && cp $(realScriptPathDir )/${NAME}.sample.json ${BASH_DIR}/${NAME}.json

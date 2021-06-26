@@ -160,12 +160,12 @@ cache_unpacker(){
   cd $(cache_folder)
   if [ ! -d "${soft_file_name}" ]; then
     if [[ ${soft_file_pack} != *.* ]]; then
-      mv ${soft_file_pack} ${soft_file_pack}_swap
       mkdir ${soft_file_name}
-      cp ${soft_file_pack}_swap ${soft_file_name}/${soft_file_name}
+      cp ${soft_file_pack} ${soft_file_name}/${soft_file_name}
+      chmod 777 ${soft_file_name}/${soft_file_name}
     elif [[ ${soft_file_pack} == *exe* ]]; then
       mkdir ${soft_file_name}
-      cp ${soft_file_pack} ${soft_file_name}/${soft_file_pack}
+      cp ${soft_file_pack} ${soft_file_name}/${name}.exe
     elif [[ ${soft_file_pack} == *zip* ]]; then
       unzip -q ${soft_file_pack} -d ${soft_file_name}
     elif [[ ${soft_file_pack} != *tar* ]]; then
