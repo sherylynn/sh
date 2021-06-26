@@ -176,7 +176,13 @@ soft_file_pack(){
   local soft_file_name=$1
   local notar=$2
 
-  if [[ $(platform) == win ]]; then
+  if [[ $notar == bin ]]; then
+    if [[ $(platform) == win ]]; then
+      echo ${soft_file_name}.exe
+    else
+      echo ${soft_file_name}
+    fi
+  elif [[ $(platform) == win ]]; then
     echo ${soft_file_name}.zip
   elif [[ $notar == notar ]]; then
     echo ${soft_file_name}.gz
