@@ -160,8 +160,9 @@ cache_unpacker(){
   cd $(cache_folder)
   if [ ! -d "${soft_file_name}" ]; then
     if [[ ${soft_file_pack} != *.* ]]; then
+      mv ${soft_file_pack} ${soft_file_pack}_swap
       mkdir ${soft_file_name}
-      cp ${soft_file_pack} ${soft_file_name}/${soft_file_name}
+      cp ${soft_file_pack}_swap ${soft_file_name}/${soft_file_name}
     elif [[ ${soft_file_pack} == *exe* ]]; then
       mkdir ${soft_file_name}
       cp ${soft_file_pack} ${soft_file_name}/${soft_file_pack}
