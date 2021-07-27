@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
+#change bash from /usr/bin/bash to realpath
 realpath(){
   local x=$1
   echo $(cd $(dirname $0);pwd)/$x
