@@ -4,7 +4,7 @@ SCRIPT_NAME=ftpserver
 	mkdir -p $PREFIX/var/service
 	cd $PREFIX/var/service
 	mkdir -p ${SCRIPT_NAME}/log
-	echo '#!/bin/sh' > htop/run
+	echo '#!/bin/sh' > ${SCRIPT_NAME}/run
 	echo 'exec $PREFIX/../home/sh/termux/server_'${SCRIPT_NAME}'.sh' >> ${SCRIPT_NAME}/run
 	chmod +x ${SCRIPT_NAME}/run
 	touch ${SCRIPT_NAME}/down
