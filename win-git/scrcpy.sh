@@ -13,9 +13,10 @@ SOFT_ARCH=64
 PLATFORM=$(platform)
 if [[ $(platform) == *linux* ]]; then
   #deb apt
-  sudo apt install ffmpeg libsdl2-2.0-0 gcc git pkg-config meson ninja-build \
-                 libavcodec-dev libavformat-dev libavutil-dev \
-                 libsdl2-dev openjdk-11-jdk -y
+  sudo apt install -y ffmpeg libsdl2-2.0-0 adb wget \
+                 gcc git pkg-config meson ninja-build libsdl2-dev \
+                 libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev \
+                 libusb-1.0-0 libusb-1.0-0-dev
   cd $(install_path)
   git clone https://github.com/${AUTHOR}/${NAME} $SOFT_HOME
   cd $SOFT_HOME
