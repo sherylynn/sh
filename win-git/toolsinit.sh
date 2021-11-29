@@ -295,7 +295,8 @@ zluaload(){
 zd(){
   zluaload $1
   case $(platform) in
-    win) start . ;;
+    #win) start . ;;
+    win) explorer . ;;
     #linux) xdg-open .;;
     linux) if [[ $(exist thunar) == 1 ]]; then
       thunar .
