@@ -55,6 +55,9 @@ platform(){
   elif [[ "$(uname)" == *Darwin* ]]; then
     BASH_FILE=~/.bash_profile
     PLATFORM=macos
+  elif [[ "$(uname)" == *Cgywin* ]]; then
+    BASH_FILE=~/.bash_profile
+    PLATFORM=win
   fi
 
   echo $PLATFORM
