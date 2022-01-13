@@ -19,5 +19,5 @@ echo $(whoami)
 # login need systemd user root
 #ttyd -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
-${SCRIPT_NAME} -p 3000 -t fontSize=18 ssh localhost
+${SCRIPT_NAME} -6 -p 3000 -t fontSize=18 ssh localhost
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
