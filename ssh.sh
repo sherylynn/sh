@@ -9,4 +9,5 @@ AuthorizedKeysFile .ssh/authorized_keys
 PubkeyAuthentication yes
 EOF
 
-sudo service sshd restart
+#sudo service sshd restart
+sudo systemctl restart ssh
