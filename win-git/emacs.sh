@@ -4,44 +4,44 @@
 NAME=emacs
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
-SOFT_VERSION=26.1
+SOFT_HOME=$(install_path)/${NAME}
+SOFT_VERSION=27.2
 SOFT_ARCH=x86_64
 OS=windows
-SOFT_FILE_NAME=emacs-${SOFT_VERSION}-${SOFT_ARCH}
-SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
 cd ~
 #--------------------------------------
 #安装 emacs
 #--------------------------------------
-if [ ! -d "${INSTALL_PATH}" ]; then
-  mkdir $INSTALL_PATH
-fi
+if [[ $(platform) == *win* ]]; then
+  PLATFORM=windows
+  case $(arch) in 
+    amd64) SOFT_ARCH=x86_64;;
+    386) SOFT_ARCH=i686;;
+  esac
 
-if [ ! -f "${SOFT_FILE_PACK}" ]; then
-  #地址变更，需要前置emacs-26
-  curl -o ${SOFT_FILE_PACK} http://mirrors.nju.edu.cn/gnu/emacs/${OS}/emacs-$(echo ${SOFT_VERSION}|cut -d '.' -f 1)/${SOFT_FILE_PACK} 
-  #curl -o ${SOFT_FILE_PACK} http://mirrors.ustc.edu.cn/gnu/emacs/${OS}/emacs-$(echo ${SOFT_VERSION}|cut -d '.' -f 1)/${SOFT_FILE_PACK} 
-  #curl -o ${SOFT_FILE_PACK} http://iso.mirrors.ustc.edu.cn/gnu/emacs/${OSkkSOFT_FILE_PACK} 
-  #curl -o ${SOFT_FILE_PACK} http://ftp.gnu.org/gnu/emacs/${OS}/${SOFT_FILE_PACK} 
-  #curl -o emacs.zip http://iso.mirrors.ustc.edu.cn/gnu/emacs/windows/emacs-25.3_1-x86_64.zip
-  #curl -o emacs.zip http://ftp.gnu.org/gnu/emacs/windows/emacs-25.3_1-x86_64.zip
-fi
+  SOFT_FILE_NAME=${NAME}-${SOFT_VERSION}-${SOFT_ARCH}
+  SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
+  # init pwd
+  cd $HOME
 
-if [ ! -d "${SOFT_FILE_NAME}" ]; then
-  #指定解压到emacs_file_name 文件夹
-  unzip -q ${SOFT_FILE_PACK} -d ${SOFT_FILE_NAME}
+  SOFT_URL=http://mirrors.nju.edu.cn/gnu/${NAME}/${PLATFORM}/${NAME}-$(echo ${SOFT_VERSION}|cut -d '.' -f 1)/${SOFT_FILE_PACK} 
+  #if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
+  if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
+    $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+    $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+    
+    rm -rf ${SOFT_HOME} && \
+      mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+  fi
+  #--------------new .toolsrc-----------------------
+  SOFT_ROOT=${SOFT_HOME}/bin
+  export PATH=$PATH:${SOFT_ROOT}
+  echo "set HOME=$(cygpath $HOME -d)">${SOFT_ROOT}/emacs_win.cmd
+  echo "emacs" >> ${SOFT_ROOT}emacs_win.cmd
+
+  echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
-  rm -rf $INSTALL_PATH/emacs && \
-  mv ${SOFT_FILE_NAME} $INSTALL_PATH/emacs && \
-  rm -rf ${SOFT_FILE_PACK}
 
 #--------------new .toolsrc-----------------------
-if [ ! -d "${BASH_DIR}" ]; then
-  mkdir $BASH_DIR
-fi
-if [[ "$(cat ${BASH_FILE})" != *${TOOLSRC_NAME}* ]]; then
-  echo "test -f ${TOOLSRC} && . ${TOOLSRC}" >> ${BASH_FILE}
-fi
 #windows下和linux下的不同
-echo 'export PATH=$PATH:'${INSTALL_PATH}'/emacs/bin'>${TOOLSRC}
 #windows 下还需要增加一个HOME的环境变量去系统
