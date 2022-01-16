@@ -1,5 +1,6 @@
 #!/bin/bash
-rm ~/.emacs.d
+#rm ~/.emacs.d
+rm -rf ~/.emacs.d
 git clone https://github.com/plexus/chemacs2.git ~/.emacs.d
 git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d_doom
 #ln -s ~/.emacs.d_doom ~/.emacs.d
