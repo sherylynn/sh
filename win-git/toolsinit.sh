@@ -341,6 +341,9 @@ zpush(){
 zfetch(){
   git -C $ZSH_HOME pull
 }
+ztermuxpaste(){
+  echo $(termux-clipboard-get)
+}
 alias zc="zcode"
 alias zg="zgit"
 alias zgs="zgitstatus"
@@ -349,6 +352,7 @@ alias zp="zpush"
 alias zf="zfetch"
 alias zr="zreload"
 alias ze="zedit"
+alias ztp="ztermuxpaste"
 #bindkey -e
 
 wsl_ip(){
