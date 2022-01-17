@@ -9,6 +9,6 @@ git clone https://github.com/sherylynn/doom-private ~/.doom.d
 
 tee ~/.emacs-profiles.el <<-'EOF'
 (("default"   . ((user-emacs-directory . "~/.emacs.d_doom")))
- ("legacy" . ((user-emacs-directory . "~/.emacs.legacy")))
- ("spacemacs"   . ((user-emacs-directory . "~/.emacs.d_space"))))
+ ("doom" . ((user-emacs-directory . "~/.emacs.d_doom")))
+ ("space"   . ((user-emacs-directory . "~/.emacs.d_space"))))
 EOF
