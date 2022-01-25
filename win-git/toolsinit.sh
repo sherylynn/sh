@@ -344,6 +344,9 @@ zfetch(){
 ztermuxpaste(){
   echo $(termux-clipboard-get)
 }
+zxserver(){
+  export DISPLAY=:0.0
+}
 alias zc="zcode"
 alias zg="zgit"
 alias zgs="zgitstatus"
@@ -353,6 +356,7 @@ alias zf="zfetch"
 alias zr="zreload"
 alias ze="zedit"
 alias ztp="ztermuxpaste"
+alias zx="zxserver"
 #bindkey -e
 
 wsl_ip(){
