@@ -3,7 +3,7 @@ pkg install htop coreutils tsu getconf vim zsh git -y termux-api
 pkg install nodejs golang python
 pkg install tmux ttyd -y
 #doom emacs
-pkg install emacs ripgrep fd librime -y
+pkg install emacs ripgrep fd librime gflags -y
 pkg install lua53 -y
 ln -s /data/data/com.termux/files/usr/bin/lua5.3 /data/data/com.termux/files/usr/bin/lua
 #cat bashrc >> $HOME/.bashrc
