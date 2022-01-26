@@ -44,6 +44,7 @@ fi
 
 if [[ $(platform) == *linux* ]]; then
   sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
+  sudo apt install cmake libtool-bin libvterm-dev -y
 fi
 
 #--------------new .toolsrc-----------------------
