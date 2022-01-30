@@ -42,6 +42,11 @@ if [[ $(platform) == *win* ]]; then
   echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
 
+if [[ $(platform) == *linux* ]]; then
+  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
+  sudo apt install cmake libtool-bin libvterm-dev -y
+fi
+
 #--------------new .toolsrc-----------------------
 #windows下和linux下的不同
 #windows 下还需要增加一个HOME的环境变量去系统
