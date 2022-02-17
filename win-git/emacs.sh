@@ -43,6 +43,7 @@ if [[ $(platform) == *win* ]]; then
 fi
 
 if [[ $(platform) == *linux* ]]; then
+	## diffcult to find lib to compile
 ##  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
 ##  sudo apt install cmake libtool-bin libvterm-dev -y
 ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
@@ -59,9 +60,15 @@ if [[ $(platform) == *linux* ]]; then
   SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK} 
   if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-   mkdir -p ${SOFT_HOME}  
-   cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/emacs
-   chmod 777 ${SOFT_HOME}/emacs
+    ## no need to extract
+    ##chmod 777 $(cache_folder)/$SOFT_FILE_PACK
+    ##$(cache_folder)/$SOFT_FILE_PACK --appimage-extract
+    ##rm -rf ${SOFT_HOME}
+    ##mv squashfs-root ${SOFT_HOME}
+    ##cp ${SOFT_HOME}/AppRun ${SOFT_HOME}/emacs
+    mkdir -p ${SOFT_HOME}
+    cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/emacs
+    chmod 777 ${SOFT_HOME}/emacs
   fi
   #--------------new .toolsrc-----------------------
   SOFT_ROOT=${SOFT_HOME}
