@@ -43,8 +43,30 @@ if [[ $(platform) == *win* ]]; then
 fi
 
 if [[ $(platform) == *linux* ]]; then
-  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
-  sudo apt install cmake libtool-bin libvterm-dev -y
+##  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
+##  sudo apt install cmake libtool-bin libvterm-dev -y
+##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
+
+  case $(arch) in 
+    amd64) SOFT_ARCH=x86_64;;
+    386) SOFT_ARCH=i686;;
+  esac
+  SOFT_FILE_NAME=Emacs-${SOFT_VERSION}.glibc2.16-${SOFT_ARCH}
+  SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
+  # init pwd
+  cd $HOME
+
+  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK} 
+  if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
+    $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+   mkdir -p ${SOFT_HOME}  
+   cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/emacs
+   chmod 777 ${SOFT_HOME}/emacs
+  fi
+  #--------------new .toolsrc-----------------------
+  SOFT_ROOT=${SOFT_HOME}
+  export PATH=$PATH:${SOFT_ROOT}
+  echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
 
 #--------------new .toolsrc-----------------------
