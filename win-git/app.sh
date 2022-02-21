@@ -1,3 +1,4 @@
+sudo apt install libgccjit0 libgccjit-8-dev -y
 brew install gcc 
 brew install htop ncdu neovim
 # for doom emacs
