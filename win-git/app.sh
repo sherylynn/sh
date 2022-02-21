@@ -1,5 +1,4 @@
-sudo apt install libgccjit0 libgccjit-8-dev -y
-brew install gcc 
+sudo apt install libgccjit0 libgccjit-8-dev librime-dev -y
 brew install htop ncdu neovim
 # for doom emacs
 brew untap sherylynn/homebrew-emacsx11
