@@ -5,7 +5,7 @@ NAME=emacs
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=27.2
+SOFT_VERSION=28.0.91
 SOFT_ARCH=x86_64
 OS=windows
 cd ~
@@ -89,28 +89,26 @@ if [[ $(platform) == *linux* ]]; then
     amd64) SOFT_ARCH=x86_64;;
     386) SOFT_ARCH=i686;;
   esac
-  SOFT_FILE_NAME=Emacs-${SOFT_VERSION}.glibc2.16-${SOFT_ARCH}
-  SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
+  SOFT_FILE_NAME=${NAME}-${SOFT_VERSION}
+  SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
+
   # init pwd
   cd $HOME
-  url "https://github.com/emacs-mirror/emacs/archive/refs/tags/emacs-"+version+".tar.gz"
+  SOFT_URL=https://github.com/emacs-mirror/emacs/archive/refs/tags/emacs-$SOFT_VERSION.tar.gz
 
-  url "https://github.com/emacs-mirror/emacs.git", :branch => "emacs-28"
-  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK}
+  ## url "https://github.com/emacs-mirror/emacs.git", :branch => "emacs-28"
   if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-    ## no need to extract
-    ##chmod 777 $(cache_folder)/$SOFT_FILE_PACK
-    ##$(cache_folder)/$SOFT_FILE_PACK --appimage-extract
-    ##rm -rf ${SOFT_HOME}
-    ##mv squashfs-root ${SOFT_HOME}
-    ##cp ${SOFT_HOME}/AppRun ${SOFT_HOME}/emacs
-    mkdir -p ${SOFT_HOME}
-    cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/emacs
-    chmod 777 ${SOFT_HOME}/emacs
+    $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+    
+    rm -rf ${SOFT_HOME} && \
+      mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
   fi
   #--------------new .toolsrc-----------------------
-  SOFT_ROOT=${SOFT_HOME}
+  SOFT_ROOT=${SOFT_HOME}/${NAME}-${NAME}-${SOFT_VERSION}
+  cd $SOFT_ROOT
+  ./autogen.sh
+  ./configure --with-x --with-native-compilation
   export PATH=$PATH:${SOFT_ROOT}
   echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
