@@ -109,6 +109,8 @@ if [[ $(platform) == *linux* ]]; then
   cd $SOFT_ROOT
   ./autogen.sh
   ./configure --with-x --with-native-compilation
+  make
+  make install
   export PATH=$PATH:${SOFT_ROOT}
   echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
