@@ -42,7 +42,7 @@ if [[ $(platform) == *win* ]]; then
   echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
 
-if [[ $(platform) == *appimage* ]]; then
+if [[ $(platform) == *linux* ]]; then
 	## diffcult to find lib to compile
 ##  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
 ##  sudo apt install cmake libtool-bin libvterm-dev -y
@@ -76,44 +76,6 @@ if [[ $(platform) == *appimage* ]]; then
   echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
 
-if [[ $(platform) == *linux* ]]; then
-	## diffcult to find lib to compile
-  sudo apt install libgccjit0 librime-dev fd-find ripgrep -y
-  sudo apt install libgccjit-10-dev -y
-  sudo apt install libgccjit-8-dev -y
-  sudo apt build-dep emacs -y
-##  sudo apt install cmake libtool-bin libvterm-dev -y
-##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
-
-  case $(arch) in
-    amd64) SOFT_ARCH=x86_64;;
-    386) SOFT_ARCH=i686;;
-  esac
-  SOFT_FILE_NAME=Emacs-${SOFT_VERSION}.glibc2.16-${SOFT_ARCH}
-  SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
-  # init pwd
-  cd $HOME
-  url "https://github.com/emacs-mirror/emacs/archive/refs/tags/emacs-"+version+".tar.gz"
-
-  url "https://github.com/emacs-mirror/emacs.git", :branch => "emacs-28"
-  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK}
-  if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
-    $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-    ## no need to extract
-    ##chmod 777 $(cache_folder)/$SOFT_FILE_PACK
-    ##$(cache_folder)/$SOFT_FILE_PACK --appimage-extract
-    ##rm -rf ${SOFT_HOME}
-    ##mv squashfs-root ${SOFT_HOME}
-    ##cp ${SOFT_HOME}/AppRun ${SOFT_HOME}/emacs
-    mkdir -p ${SOFT_HOME}
-    cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/emacs
-    chmod 777 ${SOFT_HOME}/emacs
-  fi
-  #--------------new .toolsrc-----------------------
-  SOFT_ROOT=${SOFT_HOME}
-  export PATH=$PATH:${SOFT_ROOT}
-  echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
-fi
 #--------------new .toolsrc-----------------------
 #windows下和linux下的不同
 #windows 下还需要增加一个HOME的环境变量去系统
