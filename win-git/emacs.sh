@@ -94,22 +94,25 @@ if [[ $(platform) == *linux* ]]; then
 
   # init pwd
   cd $HOME
-  SOFT_URL=https://github.com/emacs-mirror/emacs/archive/refs/tags/emacs-$SOFT_VERSION.tar.gz
+  ##SOFT_URL=https://github.com/emacs-mirror/emacs/archive/refs/tags/emacs-$SOFT_VERSION.tar.gz
 
-  ## url "https://github.com/emacs-mirror/emacs.git", :branch => "emacs-28"
   if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
-    $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-    $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
-    
-    rm -rf ${SOFT_HOME} && \
-      mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+    ##$(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+    ##$(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+    cd $(install_path)
+    git clone -b emacs-${SOFT_VERSION} --depth 1 https://github.com/emacs-mirror/emacs.git
+    #cd ${SOFT_HOME}
+    #git checkout tags/${SOFT_VERSION}
+    ##rm -rf ${SOFT_HOME} && \
+    ##  mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
   fi
   #--------------new .toolsrc-----------------------
-  SOFT_ROOT=${SOFT_HOME}/${NAME}-${NAME}-${SOFT_VERSION}
-  cd $SOFT_ROOT
+  ##SOFT_ROOT=${SOFT_HOME}/${NAME}-${NAME}-${SOFT_VERSION}
+  ##cd $SOFT_ROOT
+  cd ${SOFT_HOME}
   ./autogen.sh
   ./configure --with-x --with-native-compilation
-  make
+  make -j$(nproc)
   make install
   export PATH=$PATH:${SOFT_ROOT}
   echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
