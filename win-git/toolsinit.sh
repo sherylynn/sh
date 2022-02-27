@@ -218,8 +218,8 @@ version_without_prefix_v(){
 
 zshenv(){
   echo "$HOME/.zshenv"
-  # .zshenv 的使用还有问题,访问不到uname
-  # 无法把toolsinit都放进去
+  # .zshenv 的使用还有问题,访问不到 uname
+  # 无法把 toolsinit 都放进去
 }
 
 exportf(){
@@ -344,8 +344,14 @@ zfetch(){
 ztermuxpaste(){
   echo $(termux-clipboard-get)
 }
-zxserver(){
+zxserver_scale(){
+  local SCALE=$1
   export DISPLAY=:0.0
+  export GDK_DPI_SCALING=$SCALE
+}
+zxserver(){
+  local normal_scale=1
+  zxserver_scale $normal_scale
 }
 alias zc="zcode"
 alias zg="zgit"
