@@ -113,7 +113,7 @@ if [[ $(platform) == *linux* ]]; then
   ./autogen.sh
   ./configure --with-x --with-native-compilation
   make -j$(nproc)
-  make install
+  sudo make install
   export PATH=$PATH:${SOFT_ROOT}
   echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 fi
