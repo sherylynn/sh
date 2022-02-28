@@ -49,6 +49,9 @@ platform(){
   if [[ "$(uname)" == *MINGW* ]]; then
     BASH_FILE=~/.bash_profile
     PLATFORM=win
+  elif [[ "$(uname -a)" == *Microsoft* ]]; then
+    BASH_FILE=~/.bashrc
+    PLATFORM=wsl
   elif [[ "$(uname)" == *Linux* ]]; then
     BASH_FILE=~/.bashrc
     PLATFORM=linux
@@ -297,6 +300,7 @@ zd(){
   case $(platform) in
     #win) start . ;;
     win) explorer . ;;
+    wsl) explorer.exe . ;;
     #linux) xdg-open .;;
     linux) if [[ $(exist thunar) == 1 ]]; then
       thunar .
