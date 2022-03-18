@@ -300,7 +300,7 @@ zd(){
   case $(platform) in
     #win) start . ;;
     win) explorer . ;;
-    wsl) explorer.exe . ;;
+    wslinux) explorer.exe . ;;
     #linux) xdg-open .;;
     linux) if [[ $(exist thunar) == 1 ]]; then
       thunar .
