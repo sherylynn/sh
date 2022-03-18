@@ -51,7 +51,7 @@ platform(){
     PLATFORM=win
   elif [[ "$(uname -a)" == *Microsoft* ]]; then
     BASH_FILE=~/.bashrc
-    PLATFORM=wsl
+    PLATFORM=wslinux
   elif [[ "$(uname)" == *Linux* ]]; then
     BASH_FILE=~/.bashrc
     PLATFORM=linux
