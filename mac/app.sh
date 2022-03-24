@@ -36,3 +36,6 @@ brew install emacs-mac --with-modules
 ln -s /usr/local/opt/emacs-mac/Emacs.app /Applications/Emacs.app
 brew tap d12frosted/emacs-plus
 brew install emacs-plus@28 --with-native-comp
+
+brew tap wez/wezterm
+brew install --cask wez/wezterm/wezterm
