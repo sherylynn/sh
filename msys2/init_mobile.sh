@@ -16,6 +16,6 @@ TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 #echo 'export HOME='$(winPath $USERPROFILE)> $TOOLSRC
 #echo 'export HOME='$(cygpath -u $USERPROFILE)> $TOOLSRC
 
-#vi /etc/nsswitch.conf -c '%s/cygwin/windows cygwin/g'
+vim /etc/nsswitch.conf -c '%s#db_home: cygwin desc#db_home: /home/lynn#g' -c':wq!'
 #sed -i 's/: cygwin/: windows cygwin/g' /etc/nsswitch.conf
 echo "SHELL=/usr/bin/zsh" >> /mingw64.ini

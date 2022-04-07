@@ -132,7 +132,9 @@ if [[ $(platform) == *win* ]]; then
     mingw-w64-x86_64-libxml2 \
     mingw-w64-x86_64-gnutls \
     mingw-w64-x86_64-zlib \
-    mingw-w64-x86_64-harfbuzz
+    mingw-w64-x86_64-harfbuzz \
+    autoconfig \
+    cmake
 ##  sudo apt install cmake libtool-bin libvterm-dev -y
 ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
 
