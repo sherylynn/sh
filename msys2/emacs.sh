@@ -164,7 +164,11 @@ if [[ $(platform) == *win* ]]; then
   ##cd $SOFT_ROOT
   cd ${SOFT_HOME}
   ./autogen.sh
-  ./configure --without-dbus --with-native-compilation --with-modules
+  if [[ "$(uname)" == *CGYWIN* ]]; then
+    ./configure --without-dbus --with-native-compilation --with-modules --with-w32
+  else
+    ./configure --without-dbus --with-native-compilation --with-modules
+  fi
   make -j$(nproc)
   make install
   export PATH=$PATH:${SOFT_ROOT}
