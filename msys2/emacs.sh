@@ -165,7 +165,7 @@ if [[ $(platform) == *win* ]]; then
   cd ${SOFT_HOME}
   ./autogen.sh
   if [[ "$(uname)" == *CGYWIN* ]]; then
-    ./configure --without-dbus --with-native-compilation --with-modules --with-w32
+    ./configure --with-w32 --without-dbus --with-native-compilation --with-modules
   else
     ./configure --without-dbus --with-native-compilation --with-modules
   fi
