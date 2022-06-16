@@ -1,6 +1,6 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
-AUTHOR=yeeac
+AUTHOR=sherylynn
 NAME=kosyncsrv
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
