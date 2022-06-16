@@ -4,6 +4,7 @@ TOOLSRC_NAME=golangrc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/goroot
 GO_ROOT=$SOFT_HOME/go
+GO_PROXY=https://mirrors.aliyun.com/goproxy
 GO_PATH=$(install_path)/gopath
 GO_PATH_BIN=${GO_PATH}/bin
 GO_ROOT_BIN=$GO_ROOT/bin
@@ -64,6 +65,7 @@ export PATH=$PATH:${GO_PATH_BIN}
 
 echo 'export GOPATH='${GO_PATH}>${TOOLSRC}
 echo 'export GOROOT='${GO_ROOT}>>${TOOLSRC}
+echo 'export GOPROXY='${GO_PROXY}>>${TOOLSRC}
 echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>${TOOLSRC}
 echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
 
