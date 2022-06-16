@@ -43,7 +43,7 @@ if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
   rm -rf ${SOFT_HOME} && \
     mkdir -p ${SOFT_HOME}
     chmod 777 $(cache_folder)/${SOFT_FILE_NAME}
-    mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+    mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}/${NAME}
 fi
 
 SOFT_ROOT=${SOFT_HOME}
