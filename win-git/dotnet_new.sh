@@ -4,7 +4,7 @@
 TOOLSRC_NAME=dotnetrc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/dotnet
-
+SOFT_TOOL_HOME=$HOME/.dotnet/tools
 SOFT_ARCH=x64
 
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
@@ -35,11 +35,12 @@ chmod 777 $(cache_folder)/${LIB_FILE_NAME}
 $(cache_folder)/${LIB_FILE_NAME} --install-dir ${SOFT_HOME} --channel Current --architecture ${SOFT_ARCH}
 
 #--------------new .toolsrc-----------------------
-export PATH=$PATH:${SOFT_HOME} 
+export PATH=$PATH:${SOFT_HOME}:${SOFT_TOOL_HOME}
 export DOTNET_ROOT=${SOFT_HOME} 
-echo 'export PATH=$PATH:'${SOFT_HOME} >${TOOLSRC}
+echo 'export PATH=$PATH:'${SOFT_HOME}:${SOFT_TOOL_HOME} >${TOOLSRC}
 echo 'export DOTNET_ROOT='${SOFT_HOME} >>${TOOLSRC}
 
+dotnet tool install --global dotnet-warp
 #  ----windows bat----
 # if [[ $PLATFORM == win ]]; then
 if [[ $PLATFORM == not_win_ ]]; then

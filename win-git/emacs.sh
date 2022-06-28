@@ -96,16 +96,17 @@ if [[ $(platform) == *linux* ]]; then
   cd $HOME
   ##SOFT_URL=https://github.com/emacs-mirror/emacs/archive/refs/tags/emacs-$SOFT_VERSION.tar.gz
 
-  if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
+  #if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     ##$(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
     ##$(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
     cd $(install_path)
+    rm -rf emacs
     git clone -b emacs-${SOFT_VERSION} --depth 1 https://github.com/emacs-mirror/emacs.git
     #cd ${SOFT_HOME}
     #git checkout tags/${SOFT_VERSION}
     ##rm -rf ${SOFT_HOME} && \
     ##  mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
-  fi
+  #fi
   #--------------new .toolsrc-----------------------
   ##SOFT_ROOT=${SOFT_HOME}/${NAME}-${NAME}-${SOFT_VERSION}
   ##cd $SOFT_ROOT
