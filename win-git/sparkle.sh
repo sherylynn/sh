@@ -11,6 +11,8 @@ export DISPLAY=:0
 export XDG_RUNTIME_DIR="/tmp/weston"
 mkdir -p $XDG_RUNTIME_DIR
 chmod 0700 $XDG_RUNTIME_DIR
+VNC_DISPLAY=0
+rm "/tmp/.X${VNC_DISPLAY}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY}"
 weston --xwayland -B rdp-backend.so --rdp4-key ~/rdpkey/rdp-security.key
 ##weston -B drm-backend.so
 ##weston -B wayland-backend.so --display=:0
