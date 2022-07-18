@@ -35,3 +35,5 @@ if [[ "$(${BIN_NAME} -v)" != *${SOFT_VERSION}* ]]; then
   sudo apt install -f
 
 fi
+mkdir -p $SOFT_HOME
+echo "alias code='code --no-sandbox --user-data-dir "$SOFT_HOME"'">${TOOLSRC}
