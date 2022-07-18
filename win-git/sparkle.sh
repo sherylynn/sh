@@ -6,7 +6,7 @@ XDG_RUNTIME_DIR=/sparkle Xwayland &
 sleep 1
 # if linux deploy has vnc so let it be :1
 # if not set display number :0
-export DISPLAY=:1
+export DISPLAY=:0
 #export XDG_RUNTIME_DIR="/tmp/swaywm"
 export XDG_RUNTIME_DIR="/tmp/weston"
 mkdir -p $XDG_RUNTIME_DIR

@@ -11,4 +11,7 @@ test -f ../../tools/rc/noderc && . ../../tools/rc/noderc
 echo $(node -v)
 ./golang
 
-x11vnc -forever -display :0 -usepw
+#x11vnc -forever -display :0 -usepw
+VNC_DISPLAY=0
+rm "/tmp/.X${VNC_DISPLAY}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY}"
+vncserver :${VNC_DISPLAY} -depth 16 -dpi 100 -geometry 1080x2295
