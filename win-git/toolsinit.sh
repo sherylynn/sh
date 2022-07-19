@@ -177,6 +177,9 @@ cache_unpacker(){
     elif [[ ${soft_file_pack} != *tar* ]]; then
       mkdir -p ${soft_file_name}/${soft_file_name}
       gunzip -c ${soft_file_pack} > ${soft_file_name}/${soft_file_name}/${soft_file_name}
+    elif [[ ${soft_file_pack} == *bz2* ]]; then
+      mkdir ${soft_file_name}
+      tar -xf ${soft_file_pack} -C ${soft_file_name}
     else
       mkdir ${soft_file_name}
       tar -xzf ${soft_file_pack} -C ${soft_file_name}
