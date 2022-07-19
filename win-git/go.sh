@@ -18,6 +18,7 @@ SOFT_ARCH=amd64
 case $(platform) in 
   win) PLATFORM=windows;;
   linux) PLATFORM=linux;;
+  wslinux) PLATFORM=linux;;
   macos) PLATFORM=darwin;;
 esac
 

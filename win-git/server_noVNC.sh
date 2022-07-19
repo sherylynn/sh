@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPT_NAME="ttyd"
+SCRIPT_NAME="noVNC"
 realpath(){
   local x=$1
   echo $(cd $(dirname $0);pwd)/$x
@@ -17,7 +17,8 @@ test -f ../../tools/rc/${SCRIPT_NAME}rc && . ../../tools/rc/${SCRIPT_NAME}rc
 
 echo $(whoami)
 # login need systemd user root
-#ttyd -p 3000 -t fontSize=18 login
+#novnc -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
-${SCRIPT_NAME} -6 -p 3000 -t fontSize=18 ssh 127.0.0.1
-#su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
+cd ../../tools/noVNC
+./utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
+#su $(whoami) -c 'novnc -p 3000 -t fontSize=18 ssh localhost'
