@@ -1,3 +1,7 @@
+#!/bin/bash
+. $(dirname "$0")/toolsinit.sh
+TOOLSRC_NAME=mesarc
+TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 cd ~
 mkdir -p dir
 cd dir
@@ -5,6 +9,7 @@ curl -LO https://dri.freedesktop.org/libdrm/libdrm-2.4.109.tar.xz
 
 git clone --depth 1 https://gitlab.freedesktop.org/wayland/wayland.git
 git clone --depth 1 https://gitlab.freedesktop.org/wayland/wayland-protocols.git
+git clone --depth 1 https://github.com/glmark2/glmark2.git
 #libdrm 
 sudo apt build-dep libdrm -y
 tar -xf libdrm-2.4.109.tar.xz
@@ -45,3 +50,15 @@ meson build -D platforms=x11,wayland -D gallium-drivers=swrast,virgl,zink -D vul
 
 cd build
 sudo ninja install
+
+#glmark2
+sudo apt install -y libjpeg-dev libpng-dev
+cd ~/dir/glmark2
+mkdir build
+cd build
+meson  -Dflavors=x11-gl ..
+sudo ninja install
+
+
+echo 'export MESA_LOADER_DRIVER_OVERRIDE=zink'>${TOOLSRC}
+echo 'export GALLIUM_DRIVER=zink'>>${TOOLSRC}
