@@ -7,6 +7,8 @@ mkdir -p dir
 cd dir
 curl -LO https://dri.freedesktop.org/libdrm/libdrm-2.4.109.tar.xz
 
+sudo apt install tigervnc-standalone-server -y
+
 git clone --depth 1 https://gitlab.freedesktop.org/wayland/wayland.git
 git clone --depth 1 https://gitlab.freedesktop.org/wayland/wayland-protocols.git
 git clone --depth 1 https://github.com/glmark2/glmark2.git
@@ -39,9 +41,12 @@ meson  ..
 
 cd ~
 #git clone --depth 1 --branch 22.2 https://gitlab.freedesktop.org/mesa/mesa.git
+#success
+git clone --depth 1 --branch 22.0 https://gitlab.freedesktop.org/mesa/mesa.git
 #rm -rf mesa
+#git clone --single-branch --shallow-since 2022-02-01 https://gitlab.freedesktop.org/mesa/mesa.git
 sudo cp /usr/include/libdrm/* /usr/include/ -r
-git clone --depth 1 --branch 22.1 https://gitlab.freedesktop.org/mesa/mesa.git
+#git clone --depth 1 --branch 22.1 https://gitlab.freedesktop.org/mesa/mesa.git
 #git clone --depth 1 --branch 21.3 https://gitlab.freedesktop.org/mesa/mesa.git
 sudo apt-get install meson -y
 sudo apt build-dep mesa -y
@@ -62,3 +67,4 @@ sudo ninja install
 
 echo 'export MESA_LOADER_DRIVER_OVERRIDE=zink'>${TOOLSRC}
 echo 'export GALLIUM_DRIVER=zink'>>${TOOLSRC}
+echo 'export XDG_RUNTIME_DIR=/tmp'>>${TOOLSRC}
