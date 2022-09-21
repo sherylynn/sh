@@ -12,14 +12,10 @@ export DISPLAY=:0
 export XDG_RUNTIME_DIR="/sparkle"
 export MESA_LOADER_DRIVER_OVERRIDE=zink
 export GALLIUM_DRIVER=zink
-#mkdir -p $XDG_RUNTIME_DIR
-chmod 0700 $XDG_RUNTIME_DIR
-VNC_DISPLAY=0
 rm -rf "/tmp/.X${VNC_DISPLAY}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY}"
-weston --xwayland -B rdp-backend.so --rdp4-key ~/rdpkey/rdp-security.key
 ##weston -B drm-backend.so
 ##weston -B wayland-backend.so --display=:0
 #sway
 #weston -B x11-backend.so --height 2295 --width 1080
-#xfce4-session
+xfce4-session
 #XDG_RUNTIME_DIR=/sparkle sway
