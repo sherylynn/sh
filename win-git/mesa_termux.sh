@@ -2,7 +2,7 @@
 set -e 
 export XDG_RUNTIME_DIR="/tmp"
 #mkdir -p $XDG_RUNTIME_DIR
-sudo chmod 777 /tmp
+sudo chmod 600 /tmp
 #sudo chown root /tmp
 #sudo chgrp root /tmp
 sudo chmod 777 /tmp/wayland-0

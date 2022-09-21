@@ -18,7 +18,7 @@ mkdir build
 cd build
 meson -Dintel=false -Dradeon=false -Damdgpu=false -Dnouveau=false -Dvmwgfx=false -Dvc4=false ..
 #不安装
-sudo ninja install
+#sudo ninja install
 
 #libwayland 
 cd ~/dir/wayland
@@ -27,7 +27,7 @@ mkdir build
 cd build
 meson -Ddocumentation=false ..
 #不安装
-sudo ninja install
+#sudo ninja install
 
 #wayland-protocols
 cd ~/dir/wayland-protocols
@@ -35,7 +35,7 @@ mkdir build
 cd build
 meson  ..
 #不安装
-sudo ninja install 
+#sudo ninja install 
 
 cd ~
 #git clone --depth 1 --branch 22.2 https://gitlab.freedesktop.org/mesa/mesa.git
