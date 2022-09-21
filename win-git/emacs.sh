@@ -79,6 +79,7 @@ fi
 if [[ $(platform) == *linux* ]]; then
 	## diffcult to find lib to compile
   sudo apt install libgccjit0 librime-dev fd-find ripgrep -y
+  sudo apt install libvterm-dev -y
   sudo apt install libgccjit-10-dev -y
   sudo apt install libgccjit-8-dev -y
   sudo apt build-dep emacs -y
