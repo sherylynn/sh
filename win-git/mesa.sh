@@ -43,6 +43,7 @@ cd ~
 #git clone --depth 1 --branch 22.2 https://gitlab.freedesktop.org/mesa/mesa.git
 #success
 git clone --depth 1 --branch 22.0 https://gitlab.freedesktop.org/mesa/mesa.git
+#git clone --depth 1 https://github.com/Heasterian/mesa.git
 #rm -rf mesa
 #git clone --single-branch --shallow-since 2022-02-01 https://gitlab.freedesktop.org/mesa/mesa.git
 sudo cp /usr/include/libdrm/* /usr/include/ -r

@@ -324,7 +324,7 @@ zcode(){
   zluaload $1
   code ./
 }
-
+alias chromium="chromium --no-sandbox"
 
 zreload(){
   source $ZSH_HOME/win-git/toolsinit.sh
