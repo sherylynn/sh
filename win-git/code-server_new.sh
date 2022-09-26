@@ -1,6 +1,6 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
-AUTHOR=cdr
+AUTHOR=coder
 NAME=code-server
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
