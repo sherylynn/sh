@@ -19,5 +19,6 @@ echo $(whoami)
 # login need systemd user root
 #ttyd -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
-${SCRIPT_NAME} --start
+${SCRIPT_NAME} --start --file /etc/pulse/default.pa
+#pactl load-module module-simple-protocol-tcp rate=44100 format=s16le channels=2 source=auto_null.monitor record=true port=12345
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
