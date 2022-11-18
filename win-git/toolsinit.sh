@@ -42,6 +42,9 @@ elif [[ "$(uname -a)" == *armv7l* ]]; then
   ARCH=armhf
 elif [[ "$(uname -a)" == *mips* ]]; then
   ARCH=mips
+#for mac arm64
+elif [[ "$(uname -a)" == *arm64* ]]; then
+  ARCH=aarch64
 fi
 
 platform(){

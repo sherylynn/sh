@@ -94,3 +94,4 @@ fi
 cd ~
 #compaudit | xargs chown -R "$(whoami)"
 #compaudit | xargs chmod -R go-w
+brew install wget curl

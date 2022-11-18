@@ -17,7 +17,8 @@ if ! command -v lua && ! command -v lua53 ;then
   fi
 
   if [[ $(platform) == *macos* ]]; then
-    brew install lua51
+    #brew install lua51
+    brew install lua
   elif [[ $(platform) == *linux* ]]; then
     sudo apt install lua5.1 lua-filesystem -y
   elif [[ $(platform) == *win* ]]; then
