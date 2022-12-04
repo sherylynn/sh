@@ -51,26 +51,30 @@ SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
 cd $HOME
 
 shift $(($OPTIND - 1))
-SOFT_URL=https://dl.google.com/go/${SOFT_FILE_PACK}
-if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${SOFT_ARCH}" ]; then
-  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
-  
-  rm -rf ${SOFT_HOME} && \
-    mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+if [[ $(platform) == *mingw* ]]; then
+  pacman -Syu mingw64/mingw-w64-x86_64-go
+  echo 'export GOPATH='${GO_PATH}>${TOOLSRC}
+  echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
+else
+  SOFT_URL=https://dl.google.com/go/${SOFT_FILE_PACK}
+  if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${SOFT_ARCH}" ]; then
+    $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+    $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+
+    rm -rf ${SOFT_HOME} && \
+      mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
+  fi
+  #--------------new .toolsrc-----------------------
+  export GOPATH=${GO_PATH}
+  export GOROOT=${GO_ROOT}
+  export PATH=$PATH:${GO_ROOT_BIN}
+  export PATH=$PATH:${GO_PATH_BIN}
+
+  echo 'export GOPATH='${GO_PATH}>${TOOLSRC}
+  echo 'export GOROOT='${GO_ROOT}>>${TOOLSRC}
+  echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>${TOOLSRC}
+  echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
 fi
-#--------------new .toolsrc-----------------------
-export GOPATH=${GO_PATH}
-export GOROOT=${GO_ROOT}
-export PATH=$PATH:${GO_ROOT_BIN}
-export PATH=$PATH:${GO_PATH_BIN}
-
-echo 'export GOPATH='${GO_PATH}>${TOOLSRC}
-echo 'export GOROOT='${GO_ROOT}>>${TOOLSRC}
-echo 'export GOPROXY='${GO_PROXY}>>${TOOLSRC}
-echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>${TOOLSRC}
-echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
-
 #  ----windows bat----
 if [[ $WIN_PATH  ]]; then
   if [[ $PLATFORM == windows ]]; then
