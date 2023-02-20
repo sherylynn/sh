@@ -277,6 +277,8 @@ if [[ "$(platform)" == "win" ]]; then
     "C:\Program Files\Microsoft VS Code\Code.exe" $1
     "Code.exe" $1
   }
+elif [[ "$(whoami)" == "root" ]]; then
+  alias code='code --no-sandbox --user-data-dir /root/tools/vscode'
 else
   if [[ $(exist nvim) == 1 ]]; then
     EDITOR=nvim
@@ -378,11 +380,18 @@ alias zx="zxserver"
 #bindkey -e
 
 wsl_ip(){
-  cat /etc/resolv.conf | grep nameserver | awk '{ print $2 }'
+  cat /etc/resolv.conf | grep nameserver | awk '{ print $2 }' |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
 }
 
 hotspot_ip(){
-  cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
+  #cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
+  if [[ $(exist ifconfig) == 1 ]]; then
+    ifconfig |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
+  elif [[ $(exist ip) == 1 ]]; then
+    ip address |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
+  else
+    hostname -I |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
+  fi
 }
 
 ssh_hotspot(){
