@@ -383,6 +383,14 @@ wsl_ip(){
   cat /etc/resolv.conf | grep nameserver | awk '{ print $2 }' |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
 }
 
+wsl_adb(){
+  adb connect $(wsl_ip)
+}
+
+wsl_ssh(){
+  ssh root@$(wsl_ip)
+}
+
 hotspot_ip(){
   #cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
   if [[ $(exist ifconfig) == 1 ]]; then
