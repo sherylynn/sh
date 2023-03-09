@@ -39,3 +39,6 @@ brew install emacs-plus@28 --with-native-comp
 
 brew tap wez/wezterm
 brew install --cask wez/wezterm/wezterm
+
+brew tap kde-mac/kde https://invent.kde.org/packaging/homebrew-kde.git
+brew install kdeconnect

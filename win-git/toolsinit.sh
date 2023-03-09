@@ -384,7 +384,7 @@ wsl_ip(){
 }
 
 wsl_adb(){
-  adb connect $(wsl_ip)
+  adb connect $(wsl_ip):5555
 }
 
 wsl_ssh(){
