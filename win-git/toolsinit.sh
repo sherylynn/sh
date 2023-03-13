@@ -393,13 +393,18 @@ wsl_ssh(){
 
 hotspot_ip(){
   #cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
+  local local_ip=0.0.0.0
   if [[ $(exist ifconfig) == 1 ]]; then
-    ifconfig |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
+    local_ip=$(ifconfig)
+    #ifconfig |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
   elif [[ $(exist ip) == 1 ]]; then
-    ip address |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
+    local_ip=$(ip address)
+    #ip address |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
   else
-    hostname -I |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
+    local_ip=$(hostname -I)
+    #hostname -I |grep -oE "192.168.[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
   fi
+  echo $local_ip |grep -oE "(192.168|172.27).[0-9]{1,3}.[0-9]{1,3}" |grep -vE "255"
 }
 
 ssh_hotspot(){
