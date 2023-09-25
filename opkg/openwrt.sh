@@ -9,4 +9,6 @@ cd openwrt
 cp ~/sh/opkg/ea8100v2.config .config
 cp ~/sh/opkg/322-mt7621-fix-cpu-clk-add-clkdev.patch target/linux/ramips/patches-5.10/
 make -j$(nproc) download V=s
-make -j$(nproc) V=s
+#make -j$(nproc) V=s
+#the first 
+make -j1 V=s
