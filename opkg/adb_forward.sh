@@ -7,6 +7,7 @@ opkg install adb
 cat << "EOF" > /root/adb-watchdog.sh
 #!/bin/sh
 adb -a forward tcp:10086 tcp:10086
+adb -a forward tcp:10808 tcp:10808
 adb -a forward tcp:3000 tcp:3000
 adb -a forward tcp:5900 tcp:5900
 sysctl -w net.ipv4.ip_forward=1
@@ -15,6 +16,10 @@ iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 10086 -j DNAT --to-destin
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 10808 -j DNAT --to-destination 127.0.0.1:10808
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 5900 -j DNAT --to-destination 127.0.0.1:5900
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 3000 -j DNAT --to-destination 127.0.0.1:3000
+iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 10086 -j DNAT --to-destination 127.0.0.1:10086
+iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 10808 -j DNAT --to-destination 127.0.0.1:10808
+iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5900 -j DNAT --to-destination 127.0.0.1:5900
+iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 3000 -j DNAT --to-destination 127.0.0.1:3000
 EOF
 chmod +x /root/adb-watchdog.sh
  

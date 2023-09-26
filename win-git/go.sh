@@ -72,6 +72,8 @@ else
 
   echo 'export GOPATH='${GO_PATH}>${TOOLSRC}
   echo 'export GOROOT='${GO_ROOT}>>${TOOLSRC}
+  echo 'export GO111MODULE=on'>>${TOOLSRC}
+  echo 'export GOPROXY='${GO_PROXY}>>${TOOLSRC}
   echo 'export PATH=$PATH:'${GO_ROOT_BIN}>>${TOOLSRC}
   echo 'export PATH=$PATH:'${GO_PATH_BIN}>>${TOOLSRC}
 fi
