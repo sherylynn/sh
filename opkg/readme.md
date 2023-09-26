@@ -109,3 +109,29 @@ Downloading https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/22.03.5/packag
 Configuring libusb-compat4.
 Configuring hub-ctrl.
 
+Configuring kmod-nf-ipt.
+Configuring kmod-nft-compat.
+Configuring libxtables12.
+Configuring libiptext0.
+Configuring kmod-ipt-core.
+Configuring libiptext6-0.
+Configuring libiptext-nft0.
+Configuring xtables-nft.
+Configuring iptables-nft.
+Installing iptables-mod-nat-extra (1.8.7-7) to root...
+Downloading https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/22.03.5/targets/ramips/mt7621/packages/iptables-mod-nat-extra_1.8.7-7_mipsel_24kc.ipk
+Installing kmod-ipt-nat (5.10.176-1) to root...
+Downloading https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/22.03.5/targets/ramips/mt7621/packages/kmod-ipt-nat_5.10.176-1_mipsel_24kc.ipk
+Installing kmod-ipt-nat-extra (5.10.176-1) to root...
+Downloading https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/22.03.5/targets/ramips/mt7621/packages/kmod-ipt-nat-extra_5.10.176-1_mipsel_24kc.ipk
+Configuring kmod-ipt-nat.
+Configuring kmod-ipt-nat-extra.
+Configuring iptables-mod-nat-extra.
+Installing adb (android.5.0.2_r1-3) to root...
+Downloading https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/22.03.5/packages/mipsel_24kc/base/adb_android.5.0.2_r1-3_mipsel_24kc.ipk
+Installing zlib (1.2.11-6) to root...
+Downloading https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/22.03.5/packages/mipsel_24kc/base/zlib_1.2.11-6_mipsel_24kc.ipk
+Installing libopenssl1.1 (1.1.1v-1) to root...
+Downloading https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/22.03.5/packages/mipsel_24kc/base/libopenssl1.1_1.1.1v-1_mipsel_24kc.ipk
+Configuring zlib.
+Configuring libop
