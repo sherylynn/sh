@@ -394,7 +394,7 @@ wsl_ssh(){
 wsl_proxy(){
   proxy_ip $(wsl_ip)
 }
-
+alias proxy_wsl="wsl_proxy"
 hotspot_ip(){
   #cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
   local local_ip=0.0.0.0
