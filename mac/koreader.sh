@@ -11,3 +11,6 @@ cd koreader && ./kodev fetch-thirdparty
 #./kodev build
 ./kodev release macos -d
 #./kodev release macos
+echo "delete wifi_all_on"
+echo 'add ["wifi_disable_action"] = "leave_on", ["wifi_enable_action"] = "turn_on",'
+vim ~/Library/Application Support/koreader/settings.reader.lua
