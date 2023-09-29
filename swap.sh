@@ -7,7 +7,7 @@ fi
 if [ -f "$HOME/swap" ]; then
   echo "swap on"
 else
-  dd if=/dev/zero of=$HOME/swap bs=1024 count=${G}000000
+  dd if=/dev/zero of=$HOME/swap bs=4096 count=${G}000000
   sudo mkswap -f $HOME/swap
 fi
 sudo swapon $HOME/swap
