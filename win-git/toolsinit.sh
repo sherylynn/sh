@@ -399,6 +399,7 @@ alias proxy_wsl="wsl_proxy"
 proxy_adb(){
   wsl_adb
   adb forward tcp:10808 tcp:10808
+  proxy_wsl
 }
 
 hotspot_ip(){
