@@ -13,6 +13,7 @@ cd openwrt
 #./scripts/feeds clean
 ./scripts/feeds update -a
 ./scripts/feeds install -a
+#armlinux下无法编译golang，所以对此有依赖的程序必须删除
 #make menuconfig
 cp ~/sh/opkg/rpi3b+.config .config
 #cp ~/sh/opkg/322-mt7621-fix-cpu-clk-add-clkdev.patch target/linux/ramips/patches-5.10/
