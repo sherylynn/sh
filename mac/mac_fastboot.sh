@@ -42,7 +42,7 @@ echo .如果长时间没有反应，请尝试手动开机或者重刷一遍
 echo .
 echo .
 
-if [[ -e $wipeData == "y" ]]; then
+if [[ $wipeData == "y" ]]; then
 	fastboot erase userdata
 	fastboot erase metadata
 fi
