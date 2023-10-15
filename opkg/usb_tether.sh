@@ -3,6 +3,7 @@
 #opkg install vim-full vim-runtime
 opkg install kmod-usb-net-rndis
 opkg install luci-i18n-base-zh-cn
+opkg install zram-swap
 opkg install block-mount e2fsprogs kmod-fs-ext4 kmod-usb-storage kmod-usb2 kmod-usb3
 opkg install lsblk
 opkg install usbutils
