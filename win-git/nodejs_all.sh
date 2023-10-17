@@ -12,6 +12,8 @@ cd ~
 PLATFORM=$(platform)
 if [[ "$PLATFORM" == "macos" ]]; then
   PLATFORM=darwin
+elif [[ "$PLATFORM" == "wslinux" ]]; then
+  PLATFORM=linux
 fi
 
 case $(arch) in 
