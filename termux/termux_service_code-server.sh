@@ -1,12 +1,15 @@
 # Setup sshd services
-	mkdir -p $PREFIX/var/service
-	cd $PREFIX/var/service
-	mkdir -p code/log
-	echo '#!/bin/sh' > code/run
-	echo 'exec $PREFIX/../home/sh/termux/server_code-server.sh' >> code/run
-	chmod +x code/run
-	touch code/down
-	ln -sf $PREFIX/share/termux-services/svlogger code/log/run
+SCRIPT_NAME="code-server"
+mkdir -p $PREFIX/var/service/${SCRIPT_NAME}/log
+tee $PREFIX/var/service/${SCRIPT_NAME}/run <<EOF
+#!/bin/sh
+exec $(cd "$(dirname "$0")";pwd)/server_${SCRIPT_NAME}.sh
+EOF
+chmod +x $PREFIX/var/service/${SCRIPT_NAME}/run
+#	touch code-server/down
+ln -sf $PREFIX/share/termux-services/svlogger $PREFIX/var/service/${SCRIPT_NAME}/log/run
 # Setup shortcuts
 mkdir -p ~/.shortcuts
-echo 'exec $PREFIX/../home/sh/termux/server_code-server.sh' > ~/.shortcuts/code_server.sh
+tee ~/.shortcuts/${SCRIPT_NAME}.sh <<EOF
+exec $(cd "$(dirname "$0")";pwd)/server_${SCRIPT_NAME}.sh
+EOF
