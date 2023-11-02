@@ -22,6 +22,13 @@ echo $(whoami)
 # login need systemd user $(whoami)
 
 cd ../../tools/noVNC
+vncserver -kill :1
+vncserver -kill :2
+vncserver -kill :3
+rm -rf /data/data/com.termux/files/usr/tmp/.X*
+rm -rf /data/data/com.termux/files/usr/tmp/.x*
+#vncserver :1
+vncserver :3
 
-./utils/novnc_proxy --vnc 127.0.0.1:5901 --listen 10000
+./utils/novnc_proxy --vnc 127.0.0.1:5903 --listen 10086
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
