@@ -66,7 +66,7 @@ platform(){
     PLATFORM=win
   fi
 
-  echo $PLATFORM
+  echo -n $PLATFORM
 }
 ALLTOOLSRC_FILE=$BASH_FILE
 #platform
