@@ -21,7 +21,7 @@ git clone --recursive https://github.com/rime/librime.git $SOFT_HOME_LIBRIME
 cd $SOFT_HOME_LIBRIME
 ####the origin has remove xcode.mk
 brew install boost
-export LIBRARY_PATH=${LIBRARY_PATH}:/opt/homebrew/opt/icu4c/lib:/usr/local/opt/icu4c/lib
+export LIBRARY_PATH=${LIBRARY_PATH}:/opt/homebrew/opt/icu4c/lib
 #make xcode/deps
 #make xcode/deps/opencc
 #make xcode
@@ -31,12 +31,13 @@ make test
 make install
 
 cd $SOFT_HOME
-git clone https://github.com/merrickluo/liberime $SOFT_HOME_LIBERIME
+#git clone https://github.com/merrickluo/liberime $SOFT_HOME_LIBERIME
+git clone https://github.com/sherylynn/liberime $SOFT_HOME_LIBERIME
 export RIME_PATH=$SOFT_HOME_LIBRIME
-export EMACS_MAJOR_VERSION=$SOFT_VERSION
+export EMACS_PLUS_PATH=/opt/homebrew/opt/emacs-plus/include
 cd $SOFT_HOME_LIBERIME
 #export rime-emacs-module-header-root=/opt/homebrew/opt/emacs-plus/include
-
-make CFLAGS = -fPIC -O2 -Wall -I $SOFT_HOME_LIBRIME -I $SOFT_HOME_LIBRIME/src/
+#make CFLAGS = -fPIC -O2 -Wall -I $SOFT_HOME_LIBRIME -I $SOFT_HOME_LIBRIME/src/
+make
 echo 'export PATH=$PATH:'${SOFT_BIN}>${TOOLSRC}
 echo 'export RIME_PATH='${SOFT_HOME_LIBRIME}>>${TOOLSRC}
