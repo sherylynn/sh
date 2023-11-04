@@ -7,6 +7,7 @@ opkg install zram-swap
 opkg install block-mount e2fsprogs kmod-fs-ext4 kmod-usb-storage kmod-usb2 kmod-usb3
 opkg install lsblk
 opkg install usbutils
+opkg install luci-i18n-watchcat-zh-cn
 #mount usb driver as overlay
 #mount /dev/sda1 test_mount
 #cp -r /overlay/* test_mount/
