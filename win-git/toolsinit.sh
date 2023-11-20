@@ -391,6 +391,14 @@ wsl_ssh(){
   ssh root@$(wsl_ip)
 }
 
+wsl_vnc(){
+  open http://$(wsl_ip):10086/vnc.html
+}
+
+wsl_ttyd(){
+  open http://$(wsl_ip):3333
+}
+
 wsl_proxy(){
   proxy_ip $(wsl_ip)
 }
