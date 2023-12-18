@@ -410,6 +410,11 @@ proxy_adb(){
   proxy_wsl
 }
 
+scrcpy_adb(){
+  wsl_adb
+  scrcpy --turn-screen-off --stay-awake
+}
+
 hotspot_ip(){
   #cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
   local local_ip=0.0.0.0
