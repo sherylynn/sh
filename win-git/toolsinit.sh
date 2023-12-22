@@ -391,6 +391,11 @@ wsl_ssh(){
   ssh root@$(wsl_ip)
 }
 
+wsl_port(){
+  local PORT=$1
+  open http://$(wsl_ip):$PORT
+}
+
 wsl_vnc(){
   open http://$(wsl_ip):10086/vnc.html
 }
