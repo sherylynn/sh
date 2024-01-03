@@ -1,6 +1,21 @@
 #!/data/data/com.termux/files/usr/bin/bash
 #. $(dirname "$0")/../win-git/toolsinit.sh
+SCRIPT_NAME="scrcpy_hold"
+realpath(){
+  local x=$1
+  echo $(cd $(dirname $0);pwd)/$x
 
+}
+realpathdir(){
+  local x=$1
+  echo $(cd $(dirname $0);pwd)
+
+}
+cd $(realpathdir ./server_${SCRIPT_NAME}.sh)
+pwd
+#load env
+
+adb kill-server
 PORTS=`nmap -sT -p30000-45000 --open localhost | grep "open" | sed -r 's/([1-9][0-9]+)(\/tcp.+)/\1/'`
 for PORT in $PORTS
 do
