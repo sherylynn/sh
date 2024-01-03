@@ -420,6 +420,14 @@ scrcpy_adb(){
   scrcpy --turn-screen-off --stay-awake
 }
 
+scrcpy_termux_hold_video(){
+  scrcpy --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
+}
+
+scrcpy_termux_hold_audio(){
+  scrcpy --turn-screen-off --no-video --verbosity error
+}
+
 hotspot_ip(){
   #cat /etc/resolv.conf | grep 192.168.43 | awk '{ print $2}'
   local local_ip=0.0.0.0

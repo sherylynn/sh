@@ -18,6 +18,8 @@ tee ~/.emacs-profiles.el <<-'EOF'
 EOF
 SOFT_BIN=~/.emacs.d_doom/bin
 echo 'export PATH=$PATH:'${SOFT_BIN}>${TOOLSRC}
+echo 'alias emd="emacs --daemon"'>>${TOOLSRC}
+echo 'alias em="emacsclient -nw"'>>${TOOLSRC}
 #
 rm -rf ~/.doom.d
 mv ~/.doom.d_pc ~/.doom.d
