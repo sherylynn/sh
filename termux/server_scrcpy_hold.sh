@@ -33,4 +33,5 @@ adb -s "$TCPPORT" tcpip 5555
 fi
 done
 adb connect 127.0.0.1
-scrcpy --tcpip=127.0.0.1:5555 --turn-screen-off --no-video --verbosity error
+#scrcpy --tcpip=127.0.0.1:5555 --turn-screen-off --no-video --verbosity error
+scrcpy --tcpip=127.0.0.1:5555 --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
