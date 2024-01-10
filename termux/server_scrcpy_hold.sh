@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-#. $(dirname "$0")/../win-git/toolsinit.sh
+. $(dirname "$0")/../win-git/toolsinit.sh
 SCRIPT_NAME="scrcpy_hold"
 realpath(){
   local x=$1
@@ -14,6 +14,12 @@ realpathdir(){
 cd $(realpathdir ./server_${SCRIPT_NAME}.sh)
 pwd
 #load env
+if [[ $(exist nmap) != 1 ]]; then
+  pkg install nmap
+fi
+if [[ $(exist scrcpy) != 1 ]]; then
+  pkg install scrcpy
+fi
 
 adb kill-server
 PORTS=`nmap -sT -p30000-45000 --open localhost | grep "open" | sed -r 's/([1-9][0-9]+)(\/tcp.+)/\1/'`
