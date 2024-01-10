@@ -15,4 +15,6 @@ if [[ ANDROID_VERSION == 13 ]]; then
   sudo settings put global settings_enable_monitor_phantom_proc false
 fi
 if [[ ANDROID_VERSION == 14 ]]; then
+  sudo settings put global settings_enable_monitor_phantom_proc false
+  sudo setprop persist.sys.fflag.override.settings_enable_monitor_phantom_procs false
 fi
