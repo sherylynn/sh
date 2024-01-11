@@ -10,6 +10,7 @@
 ANDROID_VERSION=sudo getprop |grep ro.build.version.release |awk -F '[][]' '{print $4}'
 if [[ $ANDROID_VERSION == 12 ]]; then
   sudo device_config put activity_manager max_phantom_processes 2147483647
+  sudo /system/bin/dumpsys package com.google.android.gms | grep WRITE_DEVICE_CONFIG
 fi
 if [[ $ANDROID_VERSION == 13 ]]; then
   sudo settings put global settings_enable_monitor_phantom_proc false
