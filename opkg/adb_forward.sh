@@ -6,6 +6,7 @@ opkg install adb
 # Save connectivity checking script
 cat << "EOF" > /root/adb-watchdog.sh
 #!/bin/sh
+adb shell svc usb setFunctions rndis
 adb -a forward tcp:10086 tcp:10086
 adb -a forward tcp:10808 tcp:10808
 adb -a forward tcp:3000 tcp:3000
