@@ -1,6 +1,7 @@
 opkg install iptables
 opkg install iptables-mod-nat-extra
 opkg install adb
+opkg install curl
 
 
 # Save connectivity checking script
@@ -60,6 +61,7 @@ function network() {
 
 network
 if [ $? -eq 0 ]; then
+	echo "网络不畅"
   adb shell svc usb setFunctions rndis
   adb shell svc power stayon usb
 fi
