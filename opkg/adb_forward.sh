@@ -67,5 +67,5 @@ EOF
 chmod +x /root/adb-wan_check.sh
 
 cat << "EOF" >> /etc/crontabs/root
-* * * * * /root/adb-wan_check.sh
+4-59/10 * * * * /root/adb-wan_check.sh
 EOF
