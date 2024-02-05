@@ -51,11 +51,13 @@ function network() {
 ANDROID_NAME=$(adb shell getprop ro.product.name)
 
 if [ $ANDROID_NAME = 'gauguinpro' ]; then
+	echo "is gauguinpro"
 	network
 	if [ $? -eq 0 ]; then
 		echo "网络不畅"
 		adb shell svc usb setFunctions rndis
-		adb shell svc power stayon usb
+		#adb shell svc power stayon usb
+		adb shell input keyevent 26
 	fi
 else
   echo "not gauguinpro"
