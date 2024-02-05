@@ -26,18 +26,7 @@ iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5555 -j DNAT --to-des
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5244 -j DNAT --to-destination 127.0.0.1:5244
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5900 -j DNAT --to-destination 127.0.0.1:5900
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 3000 -j DNAT --to-destination 127.0.0.1:3000
-EOF
-chmod +x /root/adb-watchdog.sh
- 
-# Add cron job
-cat << "EOF" >> /etc/crontabs/root
-* * * * * /root/adb-watchdog.sh
-EOF
 
-
-
-cat << "EOF" > /root/adb-wan_check.sh
-#!/bin/sh
 function network() {
 	#超时时间
 	local timeout=30
@@ -59,15 +48,25 @@ function network() {
 	return 0
 }
 
-network
-if [ $? -eq 0 ]; then
-	echo "网络不畅"
-  adb shell svc usb setFunctions rndis
-  adb shell svc power stayon usb
+ANDROID_NAME=$(adb shell getprop ro.product.name)
+
+if [ $ANDROID_NAME = 'gauguinpro' ]; then
+	network
+	if [ $? -eq 0 ]; then
+		echo "网络不畅"
+		adb shell svc usb setFunctions rndis
+		adb shell svc power stayon usb
+	fi
+else
+  echo "not gauguinpro"
 fi
 EOF
-chmod +x /root/adb-wan_check.sh
-
+chmod +x /root/adb-watchdog.sh
+ 
+# Add cron job
 cat << "EOF" >> /etc/crontabs/root
-4-59/10 * * * * /root/adb-wan_check.sh
+* * * * * /root/adb-watchdog.sh
 EOF
+
+
+
