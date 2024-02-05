@@ -8,7 +8,8 @@
 
 
 #adb shell "su -c 'settings put global settings_enable_monitor_phantom_proc false'"
-ANDROID_VERSION=$(sudo getprop |grep ro.build.version.release] |awk -F '[][]' '{print $4}')
+#ANDROID_VERSION=$(sudo getprop |grep ro.build.version.release] |awk -F '[][]' '{print $4}')
+ANDROID_VERSION=$(sudo getprop ro.build.version.release)
 #命令太长需要括号起来
 echo $ANDROID_VERSION
 if [[ $ANDROID_VERSION == 12 ]]; then
