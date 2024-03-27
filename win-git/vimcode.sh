@@ -35,6 +35,13 @@ if [[ $PLATFORM =~ (win) ]]; then
   echo 'source '$(cygpath -w ${XDG_CONFIG_HOME}/config/vimrc) >> $XDG_CONFIG_HOME/nvim/init.vim
 fi
 
+if [[ $PLATFORM =~ (macos) ]]; then
+  mkdir $HOME/.config/nvim
+  echo "set runtimepath^=~/.vim runtimepath+=~/.vim/after"> $HOME/.config/nvim/init.vim
+  echo "let &packpath = &runtimepath">> $HOME/.config/nvim/init.vim
+  echo "source ~/.vimrc">> $HOME/.config/nvim/init.vim
+fi
+
 mkdir autoload
 cd autoload
 if [ ! -f plug.vim ]; then
