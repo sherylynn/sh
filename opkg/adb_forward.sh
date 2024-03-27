@@ -14,6 +14,7 @@ adb -a forward tcp:3333 tcp:3333
 adb -a forward tcp:5555 tcp:5555
 adb -a forward tcp:5900 tcp:5900
 adb -a forward tcp:5244 tcp:5244
+adb -a forward tcp:8022 tcp:8022
 sysctl -w net.ipv4.ip_forward=1
 sysctl -w net.ipv4.conf.all.route_localnet=1
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 10086 -j DNAT --to-destination 127.0.0.1:10086
@@ -22,6 +23,7 @@ iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 5555 -j DNAT --to-destina
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 5900 -j DNAT --to-destination 127.0.0.1:5900
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 3000 -j DNAT --to-destination 127.0.0.1:3000
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 3333 -j DNAT --to-destination 127.0.0.1:3333
+iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 8022 -j DNAT --to-destination 127.0.0.1:8022
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 10086 -j DNAT --to-destination 127.0.0.1:10086
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 10808 -j DNAT --to-destination 127.0.0.1:10808
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5555 -j DNAT --to-destination 127.0.0.1:5555
@@ -29,6 +31,7 @@ iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5244 -j DNAT --to-des
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5900 -j DNAT --to-destination 127.0.0.1:5900
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 3000 -j DNAT --to-destination 127.0.0.1:3000
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 3333 -j DNAT --to-destination 127.0.0.1:3333
+iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 8022 -j DNAT --to-destination 127.0.0.1:8022
 
 function network() {
 	#超时时间
