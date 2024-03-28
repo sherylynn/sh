@@ -40,7 +40,7 @@ fi
   echo "set runtimepath^=~/.vim runtimepath+=~/.vim/after"> $HOME/.config/nvim/init.vim
   echo "let &packpath = &runtimepath">> $HOME/.config/nvim/init.vim
   echo "source ~/.vimrc">> $HOME/.config/nvim/init.vim
- # echo "source ~/vimcode/config/org.vim" >> $HOME/.config/nvim/init.vim
+  echo "source ~/vimcode/config/org.vim" >> $HOME/.config/nvim/init.vim
 #fi
 
 mkdir autoload
