@@ -5,7 +5,7 @@ NAME=emacs
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=28.2
+SOFT_VERSION=29.3
 SOFT_ARCH=x86_64
 OS=windows
 cd ~
