@@ -17,6 +17,6 @@ config.keys = {
     action = wezterm.action.DisableDefaultAssignment,
   },
 }
-config.font_size=14
+config.font_size=16
 -- and finally, return the configuration to wezterm
 return config
