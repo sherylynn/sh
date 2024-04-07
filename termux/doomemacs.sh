@@ -1,5 +1,5 @@
 #!/bin/bash
-. $(dirname "$0")/../win-git/toolsinit.sh
+. $(dirname "$0")/win-git/toolsinit.sh
 NAME=doom
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
@@ -8,7 +8,8 @@ rm -rf ~/.emacs.d
 git clone --depth 1 https://github.com/plexus/chemacs2.git ~/.emacs.d
 git clone --depth 1 https://github.com/hlissner/doom-emacs ~/.emacs.d_doom
 #ln -s ~/.emacs.d_doom ~/.emacs.d
-git clone https://github.com/sherylynn/doom-private ~/.doom.d_pc
+#doom 似乎还和指向的路径有关，难以在 termux 里不改就用
+git clone https://github.com/sherylynn/doom-private ~/.doom.d
 ~/.emacs.d_doom/bin/doom install
 
 tee ~/.emacs-profiles.el <<-'EOF'
@@ -18,8 +19,3 @@ tee ~/.emacs-profiles.el <<-'EOF'
 EOF
 SOFT_BIN=~/.emacs.d_doom/bin
 echo 'export PATH=$PATH:'${SOFT_BIN}>${TOOLSRC}
-echo 'alias emd="emacs --daemon"'>>${TOOLSRC}
-echo 'alias em="emacsclient -nw"'>>${TOOLSRC}
-#
-rm -rf ~/.doom.d
-mv ~/.doom.d_pc ~/.doom.d
