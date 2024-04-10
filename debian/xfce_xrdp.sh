@@ -11,7 +11,9 @@ sudo apt install xrdp -y
 #安装 xfce4 language-selector-gnome
 #gsettings set org.gnome.desktop.input-sources  sources "[('xkb', 'us'),('xkb','es'),('xkb','zh')]"
 sudo apt update
-sudo apt install xfce4 xfce4-terminal xterm chromium -y
+#sudo apt install xfce4 xfce4-terminal xterm chromium -y
+sudo apt install xfce4 xfce4-terminal -y
+sudo apt install fonts-wqy-zenhei ttf-wqy-zenhei -y
 
 #sudo sed -i 's/port=3389/port=3390/g' /etc/xrdp/xrdp.ini
 sudo echo xfce4-session >~/.xsession
