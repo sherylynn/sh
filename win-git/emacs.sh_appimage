@@ -46,7 +46,7 @@ fi
 if [[ $(platform) == *linux* ]]; then
 	## diffcult to find lib to compile
 ##  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
-##  sudo apt install cmake libtool-bin libvterm-dev -y
+  sudo apt install cmake build-essential libvterm-dev -y
 ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
 
   case $(arch) in 
