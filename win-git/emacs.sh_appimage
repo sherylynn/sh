@@ -5,6 +5,7 @@ NAME=emacs
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
+##新地址写死的
 SOFT_VERSION=29.3
 SOFT_ARCH=x86_64
 OS=windows
@@ -52,12 +53,18 @@ if [[ $(platform) == *linux* ]]; then
     amd64) SOFT_ARCH=x86_64;;
     386) SOFT_ARCH=i686;;
   esac
-  SOFT_FILE_NAME=Emacs-${SOFT_VERSION}.glibc2.16-${SOFT_ARCH}
+  ##地址变了，老地址死活不更新
+  ##SOFT_FILE_NAME=Emacs-${SOFT_VERSION}.glibc2.16-${SOFT_ARCH}
+  ##SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
+  SOFT_FILE_NAME=Emacs_29.3-2-1-archimage3.4-x86_64
   SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
   # init pwd
   cd $HOME
 
-  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK} 
+  ##地址变了，老地址死活不更新
+##  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK} 
+  SOFT_URL=https://github.com/ivan-hc/Emacs-appimage/releases/download/continuous/Emacs_29.3-2-1-archimage3.4-x86_64.AppImage
+
   if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
     ## no need to extract
