@@ -56,14 +56,18 @@ if [[ $(platform) == *linux* ]]; then
   ##地址变了，老地址死活不更新
   ##SOFT_FILE_NAME=Emacs-${SOFT_VERSION}.glibc2.16-${SOFT_ARCH}
   ##SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
-  SOFT_FILE_NAME=Emacs_29.3-2-1-archimage3.4-x86_64
+  ##SOFT_FILE_NAME=Emacs_29.3-2-1-archimage3.4-x86_64
+  SOFT_FILE_NAME=Emacs-29.3-x11.AppImage
+
   SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
   # init pwd
   cd $HOME
 
   ##地址变了，老地址死活不更新
 ##  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK} 
-  SOFT_URL=https://github.com/ivan-hc/Emacs-appimage/releases/download/continuous/Emacs_29.3-2-1-archimage3.4-x86_64.AppImage
+  ## 这个地址的home文件夹识别有问题
+  ##SOFT_URL=https://github.com/ivan-hc/Emacs-appimage/releases/download/continuous/Emacs_29.3-2-1-archimage3.4-x86_64.AppImage
+  SOFT_URL=https://github.com/blahgeek/emacs-appimage/releases/download/v20240326-29.3/Emacs-29.3-x11.AppImage
 
   if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
