@@ -36,6 +36,7 @@ brew install emacs-mac --with-modules
 ln -s /usr/local/opt/emacs-mac/Emacs.app /Applications/Emacs.app
 brew tap d12frosted/emacs-plus
 # emacs-plus的包没做with-tree-sitter的参数识别
+# 但是有了--with-modules 就没事 依然可以加载tree-sitter
 #brew install emacs-plus@29 --with-native-comp --with-tree-sitter
 brew install emacs-plus@29 --with-native-comp
 

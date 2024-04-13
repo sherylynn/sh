@@ -116,7 +116,7 @@ if [[ $(platform) == *linux* ]]; then
 	##cd $SOFT_ROOT
 	cd ${SOFT_HOME}
 	./autogen.sh
-	./configure --with-x --with-native-compilation --with-tree-sitter
+	./configure --with-x --with-native-compilation --with-tree-sitter --with-modules
 	make -j$(nproc)
 	sudo make install
 	export PATH=$PATH:${SOFT_ROOT}
