@@ -9,10 +9,10 @@ SOFT_HOME_LIBERIME=$(install_path)/${NAME}/liberime
 SOFT_VERSION=29
 
 brew install cmake git llvm ninja
-brew install ripgrep fd libvterm
+brew install ripgrep fd libvterm libtool
 
 brew tap d12frosted/emacs-plus
-brew install emacs-plus@$SOFT_VERSION --with-native-comp
+brew install emacs-plus@$SOFT_VERSION --with-native-comp --with-tree-sitter
 
 
 mkdir -p $SOFT_HOME
