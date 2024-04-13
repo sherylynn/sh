@@ -35,7 +35,9 @@ brew tap railwaycat/emacsmacport
 brew install emacs-mac --with-modules
 ln -s /usr/local/opt/emacs-mac/Emacs.app /Applications/Emacs.app
 brew tap d12frosted/emacs-plus
-brew install emacs-plus@29 --with-native-comp --with-tree-sitter
+# emacs-plus的包没做with-tree-sitter的参数识别
+#brew install emacs-plus@29 --with-native-comp --with-tree-sitter
+brew install emacs-plus@29 --with-native-comp
 
 brew tap wez/wezterm
 brew install --cask wez/wezterm/wezterm
