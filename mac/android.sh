@@ -2,6 +2,8 @@
 INSTALL_PATH=$HOME/tools
 SOFT_HOME=$INSTALL_PATH/Android/Sdk
 LIBS_HOME=$INSTALL_PATH/Android/android-studio
+#新增了新地址
+#/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin
 BASH_DIR=$INSTALL_PATH/rc
 TOOLSRC_NAME=androidrc
 TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
