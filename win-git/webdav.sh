@@ -49,3 +49,6 @@ export PATH=$PATH:${SOFT_ROOT}
 echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
 
 test ! -f ${BASH_DIR}/webdav.yaml && cp $(realScriptPathDir )/webdav.sample.yaml ${BASH_DIR}/webdav.yaml
+
+#webdav -c /root/tools/rc/weddav.yaml
+#有专门的server_webdav.sh 和 systemd_webdav.sh 
