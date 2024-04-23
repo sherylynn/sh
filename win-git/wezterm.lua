@@ -17,6 +17,7 @@ config.keys = {
     action = wezterm.action.DisableDefaultAssignment,
   },
 }
+config.default_prog={'wsl.exe','zsh','~/1.sh'}
 config.font_size=16
 -- and finally, return the configuration to wezterm
 return config
