@@ -2,6 +2,8 @@
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux*  ]]; then
   alias uname=$PREFIX/bin/uname
+elif [[ $TMPDIR == *emacs* ]]; then #/data/data/org.gnu.emacs/cache
+  alias uname=/data/data/com.termux/files/usr/bin/uname #安卓上的emacs利用的地址是termux一样的地址
 elif [[ $(which uname) == *usr* ]]; then
   alias uname=/usr/bin/uname #for msys2 which can't found uname in .zshenv
 else
