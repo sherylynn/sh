@@ -3,6 +3,8 @@
 FONT_NAME=PingFang-Regular.ttf
 FONT_URL=https://github.com/ShmilyHTT/PingFang/raw/master/PingFang-Regular.ttf
 
+#安装依赖包
+apt install -y libvterm build-essential wget
 #干掉默认的emacs的HOME，链接termux的HOME
 rm -rf /data/data/org.gnu.emacs/files
 ln -s /data/data/com.termux/files/home /data/data/org.gnu.emacs/files
