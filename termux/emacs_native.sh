@@ -2,8 +2,10 @@
 . $(dirname "$0")/../win-git/toolsinit.sh
 
 #中文字体
-FONT_NAME_CN=PingFang-Regular.ttf
-FONT_URL_CN=https://github.com/ShmilyHTT/PingFang/raw/master/PingFang-Regular.ttf
+#FONT_NAME_CN=PingFang-Regular.ttf
+#FONT_URL_CN=https://github.com/ShmilyHTT/PingFang/raw/master/PingFang-Regular.ttf
+FONT_NAME_CN=sarasa-term-sc-nerd-regular.ttf
+FONT_URL_CN=https://github.com/sherylynn/fonts/raw/main/sarasa-term-sc-nerd-regular.ttf
 
 #英文字体
 FONT_NAME_CN=SourceCodePro-Regular.ttf
