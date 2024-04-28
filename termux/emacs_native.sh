@@ -30,11 +30,6 @@ rm -rf $NATIVE_EMACS_FONT_DIR
 mkdir -p $TERMUX_EMACS_FONT_DIR
 ln -s $TERMUX_EMACS_FONT_DIR $NATIVE_EMACS_FONT_DIR
 rm -rf $TERMUX_EMACS_FONT_DIR/font.ttf
-#设置termux的字体
-rm  $TERMUX_FONT_DIR/font.ttf
-ln -s /system/fonts/DroidSansMono.ttf  $TERMUX_FONT_DIR/font.ttf
-#设置emacs的字体
-ln -s /system/fonts/DroidSansMono.ttf $NATIVE_EMACS_FONT_DIR/font.ttf
 
 #下载中文字体
 $(cache_downloader $FONT_NAME_CN $FONT_URL_CN)
@@ -45,3 +40,14 @@ ln -s $(cache_folder)/$FONT_NAME_CN $NATIVE_EMACS_FONT_DIR/$FONT_NAME_CN
 $(cache_downloader $FONT_NAME_EN $FONT_URL_EN)
 rm $NATIVE_EMACS_FONT_DIR/$FONT_NAME_EN
 ln -s $(cache_folder)/$FONT_NAME_EN $NATIVE_EMACS_FONT_DIR/$FONT_NAME_EN
+
+#设置termux的字体 [默认安卓自带的]
+rm  $TERMUX_FONT_DIR/font.ttf
+#ln -s /system/fonts/DroidSansMono.ttf  $TERMUX_FONT_DIR/font.ttf
+#用更纱黑体，中英文都对齐
+ln -s $(cache_folder)/$FONT_NAME_CN  $TERMUX_FONT_DIR/font.ttf
+
+#设置emacs的字体 [默认安卓自带的]
+#ln -s /system/fonts/DroidSansMono.ttf $NATIVE_EMACS_FONT_DIR/font.ttf
+#用更纱黑体，中英文都对齐
+ln -s $(cache_folder)/$FONT_NAME_CN  $NATIVE_EMACS_FONT_DIR/font.ttf
