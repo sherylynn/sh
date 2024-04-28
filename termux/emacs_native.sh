@@ -8,8 +8,8 @@ FONT_NAME_CN=sarasa-term-sc-nerd-regular.ttf
 FONT_URL_CN=https://github.com/sherylynn/fonts/raw/main/sarasa-term-sc-nerd-regular.ttf
 
 #英文字体
-FONT_NAME_CN=SourceCodePro-Regular.ttf
-FONT_URL_CN=https://github.com/adobe-fonts/source-code-pro/raw/release/TTF/SourceCodePro-Regular.ttf
+FONT_NAME_EN=SourceCodePro-Regular.ttf
+FONT_URL_EN=https://github.com/adobe-fonts/source-code-pro/raw/release/TTF/SourceCodePro-Regular.ttf
 
 #路径设置
 TERMUX_HOME=/data/data/com.termux/files/home
