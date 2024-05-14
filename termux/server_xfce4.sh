@@ -22,7 +22,8 @@ echo $(whoami)
 # login need systemd user $(whoami)
 
 
-cd ../../tools/noVNC
+#cd ../../tools/noVNC
+cd ../../
 vncserver --localhost
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
 export DISPLAY=":1"
