@@ -27,8 +27,9 @@ export LIBRARY_PATH=${LIBRARY_PATH}:/opt/homebrew/opt/icu4c/lib
 #make xcode
 #./install-boost.sh
 make deps
-make test
-make install
+#make test
+make
+#make install
 
 cd $SOFT_HOME
 #git clone https://github.com/merrickluo/liberime $SOFT_HOME_LIBERIME
