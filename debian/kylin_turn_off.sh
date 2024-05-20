@@ -11,3 +11,7 @@ sudo apt-mark hold qaxbrowser-safe-stable
 
 #install tools
 sudo apt install sshpass scrcpy firefox-esr -y
+
+#init
+#git clone https://github.com/sherylynn/sh
+../win-git/move2zsh.sh 
