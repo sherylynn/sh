@@ -8,3 +8,6 @@ sudo setstatus -f exectl off
 
 # 阻止奇安信浏览器更新，因为使用的是特殊版本
 sudo apt-mark hold qaxbrowser-safe-stable
+
+#install tools
+sudo apt install sshpass scrcpy -y
