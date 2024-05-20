@@ -10,4 +10,4 @@ sudo setstatus -f exectl off
 sudo apt-mark hold qaxbrowser-safe-stable
 
 #install tools
-sudo apt install sshpass scrcpy -y
+sudo apt install sshpass scrcpy firefox-esr -y
