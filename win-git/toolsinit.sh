@@ -392,6 +392,7 @@ wsl_adb(){
 
 wsl_ssh(){
   ssh root@$(wsl_ip)
+  ssh root@$(wsl_ip) -p 8022
 }
 
 wsl_port(){
