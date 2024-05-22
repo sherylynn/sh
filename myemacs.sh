@@ -5,8 +5,10 @@ TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 #rm ~/.emacs.d
 rm -rf ~/.emacs.d
-git clone --depth 1 https://github.com/plexus/chemacs2.git ~/.emacs.d
-git clone --depth 1 https://github.com/sherylynn/myemacs.d.git ~/.emacs.d_my
+#git clone --depth 1 https://github.com/plexus/chemacs2.git ~/.emacs.d
+#git clone --depth 1 https://github.com/sherylynn/myemacs.d.git ~/.emacs.d_my
+git clone --depth 1 https://github.com/sherylynn/myemacs.d.git ~/.emacs.d
+
 #ln -s ~/.emacs.d_doom ~/.emacs.d
 #git clone https://github.com/sherylynn/doom-private ~/.doom.d
 #~/.emacs.d_doom/bin/doom install
