@@ -10,7 +10,11 @@ sudo setstatus -f exectl off
 sudo apt-mark hold qaxbrowser-safe-stable
 
 #install tools
-sudo apt install zsh sshpass scrcpy firefox-esr -y
+sudo apt install zsh sshpass scrcpy firefox-esr ncdu htop -y
+
+#把傻逼的自动打开网页测试是否能上网的功能关闭
+sudo vim -c "42normal! I#" -c wq "/etc/NetworkManager/dispatcher.d/90-open_captive_portal"
+#sudo vim /etc/NetworkManager/dispatcher.d/90-open_captive_portal
 
 #init
 #git clone https://github.com/sherylynn/sh
