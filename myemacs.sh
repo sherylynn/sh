@@ -9,6 +9,7 @@ rm -rf ~/.emacs.d
 git clone --depth 1 https://github.com/sherylynn/myemacs.d.git ~/.emacs.d_my
 ln -s ~/.emacs.d_my ~/.emacs.d
 
+git clone --depth 1 https://github.com/iDvel/rime-ice ~/rime
 #ln -s ~/.emacs.d_doom ~/.emacs.d
 #git clone https://github.com/sherylynn/doom-private ~/.doom.d
 #~/.emacs.d_doom/bin/doom install
