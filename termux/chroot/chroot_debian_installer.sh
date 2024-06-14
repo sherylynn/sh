@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+. $(dirname "$0")/../../win-git/toolsinit.sh
 debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4_chrootDebian.sh"
@@ -23,22 +24,6 @@ success() {
     echo "[✓] $1"
 }
 
-# Function to download file
-download_file() {
-    progress "Downloading file..."
-    if [ -e "$1/$2" ]; then
-        echo "[!] File already exists: $2"
-        echo "[!] Skipping download..."
-    else
-        wget -O "$1/$2" "$3"
-        if [ $? -eq 0 ]; then
-            success "File downloaded successfully: $2"
-        else
-            echo "[!] Error downloading file: $2. Exiting..."
-            goodbye
-        fi
-    fi
-}
 
 # Function to extract file
 extract_file() {
@@ -136,7 +121,8 @@ main() {
             sudo mkdir -p "$download_dir"
             success "Created directory: $download_dir"
         fi
-        download_file "$download_dir" "debian12-arm64.tar.gz" "https://github.com/LinuxDroidMaster/Termux-Desktops/releases/download/Debian/debian12-arm64.tar.gz"
+	$(cache_downloader "debian12-arm64.tar.gz" "https://github.com/LinuxDroidMaster/Termux-Desktops/releases/download/Debian/debian12-arm64.tar.gz")
+	sudo cp $(cache_folder)/debian12-arm64.tar.gz $download_dir/
         extract_file "$download_dir"
         configure_debian_chroot
         modify_startfile_with_username
