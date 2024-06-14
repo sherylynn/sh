@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #apatch busybox
 busybox=/data/adb/ap/bin/busybox
