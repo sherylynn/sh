@@ -3,7 +3,7 @@ debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4_chrootDebian.sh"
 
-mkdir -p $debian_folder_path
+sudo mkdir -p $debian_folder_path
 
 pkg install busybox tsu pulseaudio
 
@@ -43,11 +43,11 @@ download_file() {
 # Function to extract file
 extract_file() {
     progress "Extracting file..."
-    if [ -d "$1/debian12-arm64" ]; then
-        echo "[!] Directory already exists: $1/debian12-arm64"
+    if [ -d "$1/usr/lib/apt" ]; then
+        echo "[!] Directory already exists: $1/usr/lib/apt"
         echo "[!] Skipping extraction..."
     else
-        tar xpvf "$1/debian12-arm64.tar.gz" -C "$1" --numeric-owner >/dev/null 2>&1
+        sudo tar xpvf "$1/debian12-arm64.tar.gz" -C "$1" --numeric-owner >/dev/null 2>&1
         if [ $? -eq 0 ]; then
             success "File extracted successfully: $1/debian12-arm64"
         else
@@ -64,11 +64,11 @@ configure_debian_chroot() {
 
     # Check if DEBIANPATH directory exists
     if [ ! -d "$DEBIANPATH" ]; then
-        mkdir -p "$DEBIANPATH"
+        sudo mkdir -p "$DEBIANPATH"
         if [ $? -eq 0 ]; then
             success "Created directory: $DEBIANPATH"
         else
-            echo "[!] Error creating directory: $DEBIANPATH. Exiting...\e[0m"
+            echo "[!] Error creating directory: $DEBIANPATH. Exiting..."
             goodbye
         fi
     fi
@@ -79,10 +79,10 @@ configure_debian_chroot() {
     sudo busybox mount --bind /proc $DEBIANPATH/proc
     sudo busybox mount -t devpts devpts $DEBIANPATH/dev/pts
 
-    mkdir $DEBIANPATH/dev/shm
+    sudo mkdir -p $DEBIANPATH/dev/shm
     sudo busybox mount -t tmpfs -o size=256M tmpfs $DEBIANPATH/dev/shm
 
-    mkdir $DEBIANPATH/sdcard
+    sudo mkdir -p $DEBIANPATH/sdcard
     sudo busybox mount --bind /sdcard $DEBIANPATH/sdcard
     
     sudo busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt upgrade -y'
@@ -126,14 +126,14 @@ configure_debian_chroot() {
 
 modify_startfile_with_username() {
     success "Set start_debian.sh file with user name..."
-    sed -i "s/droidmaster/$USERNAME/g" $debian_run_scrpit
+    sudo sed -i "s/droidmaster/$USERNAME/g" $debian_run_scrpit
 }
 
 # Main function
 main() {
         download_dir=$debian_folder_path
         if [ ! -d "$download_dir" ]; then
-            mkdir -p "$download_dir"
+            sudo mkdir -p "$download_dir"
             success "Created directory: $download_dir"
         fi
         download_file "$download_dir" "debian12-arm64.tar.gz" "https://github.com/LinuxDroidMaster/Termux-Desktops/releases/download/Debian/debian12-arm64.tar.gz"
