@@ -24,7 +24,6 @@ success() {
     echo "[✓] $1"
 }
 
-
 # Function to extract file
 extract_file() {
     progress "Extracting file..."

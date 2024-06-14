@@ -272,6 +272,11 @@ if [[ "$(arch)" == "aarch64" ]]; then
     alias codium="LD_PRELOAD=$HOME/lib/libxcb.so.1 codium"
     alias ncdu="ncdu --exclude /root/download --exclude /proc --exclude /vendor --exclude /system"
 fi
+
+if [[ $PREFIX == *termux*  ]]; then
+    alias ncdu="ncdu --exclude /root/download --exclude /proc --exclude /vendor --exclude /system --exclude ~/Desktop/chrootdebian/sdcard --exclude ~/Desktop/chrootdebian/proc"
+fi
+
 if [[ "$(platform)" == "win" ]]; then 
   EDITOR=vim
   export EDITOR=vim
