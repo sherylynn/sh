@@ -8,7 +8,10 @@ debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4
 busybox=/data/adb/ap/bin/busybox
 sudo mkdir -p $debian_folder_path
 
-pkg install tsu pulseaudio
+pkg update
+pkg install x11-repo root-repo termux-x11-nightly
+pkg update
+pkg install tsu pulseaudio virglrenderer-android
 
 # Function to show farewell message
 goodbye() {
