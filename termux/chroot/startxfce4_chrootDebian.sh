@@ -2,6 +2,8 @@
 
 #apatch busybox
 busybox=/data/adb/ap/bin/busybox
+#for run in native emacs
+PREFIX=/data/data/com.termux/files/usr
 
 debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 DEBIANPATH=$debian_folder_path
@@ -14,7 +16,7 @@ am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 
 sudo $busybox mount --bind $PREFIX/tmp $debian_folder_path/tmp
 
-XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :0 -ac &
+XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :4 -ac &
 
 sleep 3
 

@@ -27,7 +27,7 @@ sudo $busybox mount --bind /sdcard $DEBIANPATH/sdcard
 #sudo $busybox chroot $DEBIANPATH /bin/su - root
 #sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'export XDG_RUNTIME_DIR=${TMPDIR} && export PULSE_SERVER=tcp:127.0.0.1:4713 && sudo service dbus start && su - lynn -c "env DISPLAY=:0 startxfce4"'
 #for fcitx5
-sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'export DISPLAY=:4 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
