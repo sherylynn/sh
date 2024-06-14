@@ -7,7 +7,7 @@ debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 DEBIANPATH=$debian_folder_path
 
 # Kill all old prcoesses
-killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
+sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
 ## Start Termux X11
 am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity

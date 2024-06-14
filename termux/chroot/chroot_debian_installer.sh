@@ -94,29 +94,10 @@ configure_debian_chroot() {
         goodbye
     fi
 
-    # Prompt for username
-    progress "Setting up user account..."
-    echo -n "Enter username for Debian chroot environment: "
-    read USERNAME
-
-    # Add the user
-    sudo $busybox chroot $DEBIANPATH /bin/su - root -c "adduser $USERNAME"
-
-    # Add user to sudoers
-    progress "Configuring sudo permissions..."
-    sudo $busybox chroot $DEBIANPATH /bin/su - root -c "echo '$USERNAME ALL=(ALL:ALL) ALL' >> /etc/sudoers"
-    sudo $busybox chroot $DEBIANPATH /bin/su - root -c "usermod -aG aid_inet $USERNAME"
-
-    success "User account set up and sudo permissions configured"
-
     progress "Installing XFCE4..."
     sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal firefox-esr fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei -y'
 }
 
-modify_startfile_with_username() {
-    success "Set start_debian.sh file with user name..."
-    sudo sed -i "s/droidmaster/$USERNAME/g" $debian_run_scrpit
-}
 
 # Main function
 main() {
@@ -129,7 +110,6 @@ main() {
 	sudo cp $(cache_folder)/debian12-arm64.tar.gz $download_dir/
         extract_file "$download_dir"
         configure_debian_chroot
-        modify_startfile_with_username
 }
 
 # Call the main function
