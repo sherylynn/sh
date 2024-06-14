@@ -4,9 +4,11 @@ debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4_chrootDebian.sh"
 
+#apatch busybox
+busybox=/data/adb/ap/bin/busybox
 sudo mkdir -p $debian_folder_path
 
-pkg install busybox tsu pulseaudio
+pkg install tsu pulseaudio
 
 # Function to show farewell message
 goodbye() {
@@ -57,20 +59,20 @@ configure_debian_chroot() {
         fi
     fi
 
-    sudo busybox mount -o remount,dev,suid /data
-    sudo busybox mount --bind /dev $DEBIANPATH/dev
-    sudo busybox mount --bind /sys $DEBIANPATH/sys
-    sudo busybox mount --bind /proc $DEBIANPATH/proc
-    sudo busybox mount -t devpts devpts $DEBIANPATH/dev/pts
+    sudo $busybox mount -o remount,dev,suid /data
+    sudo $busybox mount --bind /dev $DEBIANPATH/dev
+    sudo $busybox mount --bind /sys $DEBIANPATH/sys
+    sudo $busybox mount --bind /proc $DEBIANPATH/proc
+    sudo $busybox mount -t devpts devpts $DEBIANPATH/dev/pts
 
     sudo mkdir -p $DEBIANPATH/dev/shm
-    sudo busybox mount -t tmpfs -o size=256M tmpfs $DEBIANPATH/dev/shm
+    sudo $busybox mount -t tmpfs -o size=256M tmpfs $DEBIANPATH/dev/shm
 
     sudo mkdir -p $DEBIANPATH/sdcard
-    sudo busybox mount --bind /sdcard $DEBIANPATH/sdcard
+    sudo $busybox mount --bind /sdcard $DEBIANPATH/sdcard
     
-    sudo busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt upgrade -y'
-    sudo busybox chroot $DEBIANPATH /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
+    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt upgrade -y'
+    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
     groupadd -g 3003 aid_inet; \
     groupadd -g 3004 aid_net_raw; \
@@ -95,17 +97,17 @@ configure_debian_chroot() {
     read USERNAME
 
     # Add the user
-    sudo busybox chroot $DEBIANPATH /bin/su - root -c "adduser $USERNAME"
+    sudo $busybox chroot $DEBIANPATH /bin/su - root -c "adduser $USERNAME"
 
     # Add user to sudoers
     progress "Configuring sudo permissions..."
-    sudo busybox chroot $DEBIANPATH /bin/su - root -c "echo '$USERNAME ALL=(ALL:ALL) ALL' >> /etc/sudoers"
-    sudo busybox chroot $DEBIANPATH /bin/su - root -c "usermod -aG aid_inet $USERNAME"
+    sudo $busybox chroot $DEBIANPATH /bin/su - root -c "echo '$USERNAME ALL=(ALL:ALL) ALL' >> /etc/sudoers"
+    sudo $busybox chroot $DEBIANPATH /bin/su - root -c "usermod -aG aid_inet $USERNAME"
 
     success "User account set up and sudo permissions configured"
 
     progress "Installing XFCE4..."
-    sudo busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal -y'
+    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal -y'
 }
 
 modify_startfile_with_username() {
