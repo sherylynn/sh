@@ -16,7 +16,7 @@ am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 
 sudo $busybox mount --bind $PREFIX/tmp $debian_folder_path/tmp
 
-XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :4 -ac &
+XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :0 -ac &
 
 sleep 3
 
