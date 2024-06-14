@@ -110,7 +110,7 @@ configure_debian_chroot() {
     success "User account set up and sudo permissions configured"
 
     progress "Installing XFCE4..."
-    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal -y'
+    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal firefox-esr fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei -y'
 }
 
 modify_startfile_with_username() {
