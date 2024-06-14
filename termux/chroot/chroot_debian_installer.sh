@@ -1,6 +1,8 @@
 #!/bin/sh
 debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh"
+debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4_chrootDebian.sh"
+
 mkdir -p $debian_folder_path
 
 # Function to show farewell message
@@ -56,7 +58,7 @@ extract_file() {
 # Function to download and execute script
 download_and_execute_script() {
     progress "Downloading script..."
-    if [ -e '/data/data/com.termux/files/home/sh/termux/start_debian.sh' ]; then
+    if [ -e '$debian_run_scrpit' ]; then
         echo -e "\e[1;33m[!] Script already exists: /data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh\e[0m"
         echo -e "\e[1;33m[!] Skipping download...\e[0m"
     else
@@ -136,10 +138,6 @@ configure_debian_chroot() {
 
     success "User account set up and sudo permissions configured"
 
-}
-
-# Function to install XFCE4 desktop environment
-install_xfce4() {
     progress "Installing XFCE4..."
     busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal -y'
     download_startxfce4_script
@@ -150,7 +148,7 @@ install_xfce4() {
 download_startxfce4_script() {
     progress "Downloading startxfce4_chrootDebian.sh script..."
     if [ "$DE_OPTION" -eq 1 ]; then
-        wget -O "./startxfce4_chrootDebian.sh" "https://raw.githubusercontent.com/LinuxDroidMaster/Termux-Desktops/main/scripts/chroot/debian/startxfce4_chrootDebian.sh"
+        wget -O $debian_xfce_scrpit "https://raw.githubusercontent.com/LinuxDroidMaster/Termux-Desktops/main/scripts/chroot/debian/startxfce4_chrootDebian.sh"
         if [ $? -eq 0 ]; then
             success "startxfce4_chrootDebian.sh script downloaded successfully"
         else
@@ -162,7 +160,7 @@ download_startxfce4_script() {
 
 modify_startfile_with_username() {
     success "Set start_debian.sh file with user name..."
-    sed -i "s/droidmaster/$USERNAME/g" "$DEBIANPATH/../start_debian.sh"
+    sed -i "s/droidmaster/$USERNAME/g" $debian_run_scrpit
 }
 
 # Main function
