@@ -29,7 +29,7 @@ vncserver -kill :3
 rm -rf /data/data/com.termux/files/usr/tmp/.X*
 rm -rf /data/data/com.termux/files/usr/tmp/.x*
 #vncserver :1
-vncserver :3
+vncserver -geometry 1920x1080 :3
 
 ./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5903 --listen 10086
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
