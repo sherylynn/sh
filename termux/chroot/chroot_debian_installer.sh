@@ -5,6 +5,8 @@ debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4
 
 mkdir -p $debian_folder_path
 
+pkg install busybox tsu
+
 # Function to show farewell message
 goodbye() {
     echo -e "\e[1;31m[!] Something went wrong. Exiting...\e[0m"
@@ -55,10 +57,9 @@ extract_file() {
     fi
 }
 
-# Function to download and execute script
 download_and_execute_script() {
     progress "Downloading script..."
-    if [ -e '$debian_run_scrpit' ]; then
+    if [ -e $debian_run_scrpit ]; then
         echo -e "\e[1;33m[!] Script already exists: /data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh\e[0m"
         echo -e "\e[1;33m[!] Skipping download...\e[0m"
     else
