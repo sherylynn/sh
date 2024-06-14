@@ -9,9 +9,9 @@ busybox=/data/adb/ap/bin/busybox
 sudo mkdir -p $debian_folder_path
 
 pkg update
-pkg install x11-repo root-repo termux-x11-nightly
+pkg install x11-repo root-repo termux-x11-nightly -y
 pkg update
-pkg install tsu pulseaudio virglrenderer-android
+pkg install tsu pulseaudio virglrenderer-android -y
 
 # Function to show farewell message
 goodbye() {
@@ -84,7 +84,7 @@ configure_debian_chroot() {
     usermod -G 3003 -a root; \
     apt update; \
     apt upgrade; \
-    apt install emacs vim net-tools sudo git; \
+    apt install emacs vim net-tools sudo git -y; \
     echo "Debian chroot environment configured"'
 
     if [ $? -eq 0 ]; then
