@@ -6,6 +6,66 @@ busybox=/data/adb/ap/bin/busybox
 debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 DEBIANPATH=$debian_folder_path
 
+msg()
+{
+    echo "$@"
+}
+
+is_ok()
+{
+    if [ $? -eq 0 ]; then
+        if [ -n "$2" ]; then
+            msg "$2"
+        fi
+        return 0
+    else
+        if [ -n "$1" ]; then
+            msg "$1"
+        fi
+        return 1
+    fi
+}
+
+multiarch_support()
+{
+    if [ -d "/proc/sys/fs/binfmt_misc" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+get_pids()
+{
+    local pid pidfile pids
+    for pid in $*
+    do
+        pidfile="${CHROOT_DIR}${pid}"
+        if [ -e "${pidfile}" ]; then
+            pid=$(cat "${pidfile}")
+        fi
+        if [ -e "/proc/${pid}" ]; then
+            pids="${pids} ${pid}"
+        fi
+    done
+    if [ -n "${pids}" ]; then
+        echo ${pids}
+        return 0
+    else
+        return 1
+    fi
+}
+
+kill_pids()
+{
+    local pids=$(get_pids $*)
+    if [ -n "${pids}" ]; then
+        sudo kill -9 ${pids}
+        return $?
+    fi
+    return 0
+}
+
 is_mounted()
 {
     local mount_point="$1"
@@ -19,11 +79,7 @@ is_mounted()
 
 container_mounted()
 {
-    if [ "${METHOD}" = "chroot" ]; then
-        is_mounted "${CHROOT_DIR}"
-    else
-        return 0
-    fi
+    is_mounted "${CHROOT_DIR}"
 }
 
 mount_part()
@@ -32,11 +88,8 @@ mount_part()
     root)
         msg -n "/ ... "
         if ! is_mounted "${CHROOT_DIR}" ; then
-            [ -d "${CHROOT_DIR}" ] || mkdir -p "${CHROOT_DIR}"
-            local mnt_opts
-            [ -d "${TARGET_PATH}" ] && mnt_opts="bind" || mnt_opts="rw,relatime"
-            mount -o ${mnt_opts} "${TARGET_PATH}" "${CHROOT_DIR}" &&
-            mount -o remount,exec,suid,dev "${CHROOT_DIR}"
+            [ -d "${CHROOT_DIR}" ] || sudo mkdir -p "${CHROOT_DIR}"
+            sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
             is_ok "fail" "done" || return 1
         else
             msg "skip"
@@ -46,8 +99,8 @@ mount_part()
         msg -n "/proc ... "
         local target="${CHROOT_DIR}/proc"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || mkdir -p "${target}"
-            mount -t proc proc "${target}"
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -t proc proc "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -57,8 +110,8 @@ mount_part()
         msg -n "/sys ... "
         local target="${CHROOT_DIR}/sys"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || mkdir -p "${target}"
-            mount -t sysfs sys "${target}"
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -t sysfs sys "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -68,8 +121,8 @@ mount_part()
         msg -n "/system ... "
         local target="${CHROOT_DIR}/system"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || mkdir -p "${target}"
-            mount -o ro /system "${target}"
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o ro /system "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -79,8 +132,8 @@ mount_part()
         msg -n "/vendor ... "
         local target="${CHROOT_DIR}/vendor"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || mkdir -p "${target}"
-            mount -o ro /vendor "${target}"
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o ro /vendor "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -90,8 +143,8 @@ mount_part()
         msg -n "/apex ... "
         local target="${CHROOT_DIR}/apex"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || mkdir -p "${target}"
-            mount -o ro /apex "${target}"
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o ro /apex "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -101,8 +154,8 @@ mount_part()
         msg -n "/apex/com.android.runtime ... "
         local target="${CHROOT_DIR}/apex/com.android.runtime"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || mkdir -p "${target}"
-            mount -o ro /apex/com.android.runtime "${target}"
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o ro /apex/com.android.runtime "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -112,8 +165,8 @@ mount_part()
         msg -n "/dev ... "
         local target="${CHROOT_DIR}/dev"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || mkdir -p "${target}"
-            mount -o bind /dev "${target}"
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o bind /dev "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -122,12 +175,12 @@ mount_part()
     shm)
         msg -n "/dev/shm ... "
         if ! is_mounted "/dev/shm" ; then
-            [ -d "/dev/shm" ] || mkdir -p /dev/shm
-            mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs /dev/shm
+            [ -d "/dev/shm" ] || sudo mkdir -p /dev/shm
+            sudo $busybox mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs /dev/shm
         fi
         local target="${CHROOT_DIR}/dev/shm"
         if ! is_mounted "${target}" ; then
-            mount -o bind /dev/shm "${target}"
+            sudo $busybox mount -o bind /dev/shm "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -136,12 +189,12 @@ mount_part()
     pts)
         msg -n "/dev/pts ... "
         if ! is_mounted "/dev/pts" ; then
-            [ -d "/dev/pts" ] || mkdir -p /dev/pts
-            mount -o rw,nosuid,noexec,gid=5,mode=620,ptmxmode=000 -t devpts devpts /dev/pts
+            [ -d "/dev/pts" ] || sudo mkdir -p /dev/pts
+            sudo $busybox mount -o rw,nosuid,noexec,gid=5,mode=620,ptmxmode=000 -t devpts devpts /dev/pts
         fi
         local target="${CHROOT_DIR}/dev/pts"
         if ! is_mounted "${target}" ; then
-            mount -o bind /dev/pts "${target}"
+            sudo $busybox mount -o bind /dev/pts "${target}"
             is_ok "fail" "done"
         else
             msg "skip"
@@ -150,24 +203,24 @@ mount_part()
     fd)
         if [ ! -e "/dev/fd" -o ! -e "/dev/stdin" -o ! -e "/dev/stdout" -o ! -e "/dev/stderr" ]; then
             msg -n "/dev/fd ... "
-            [ -e "/dev/fd" ] || ln -s /proc/self/fd /dev/
-            [ -e "/dev/stdin" ] || ln -s /proc/self/fd/0 /dev/stdin
-            [ -e "/dev/stdout" ] || ln -s /proc/self/fd/1 /dev/stdout
-            [ -e "/dev/stderr" ] || ln -s /proc/self/fd/2 /dev/stderr
+            [ -e "/dev/fd" ] || sudo ln -s /proc/self/fd /dev/
+            [ -e "/dev/stdin" ] || sudo ln -s /proc/self/fd/0 /dev/stdin
+            [ -e "/dev/stdout" ] || sudo ln -s /proc/self/fd/1 /dev/stdout
+            [ -e "/dev/stderr" ] || sudo ln -s /proc/self/fd/2 /dev/stderr
             is_ok "fail" "done"
         fi
     ;;
     tty)
         if [ ! -e "/dev/tty0" ]; then
             msg -n "/dev/tty ... "
-            ln -s /dev/null /dev/tty0
+            sudo ln -s /dev/null /dev/tty0
             is_ok "fail" "done"
         fi
     ;;
     tun)
         if [ ! -e "/dev/net/tun" ]; then
             msg -n "/dev/net/tun ... "
-            [ -d "/dev/net" ] || mkdir -p /dev/net
+            [ -d "/dev/net" ] || sudo mkdir -p /dev/net
             mknod /dev/net/tun c 10 200
             is_ok "fail" "done"
         fi
@@ -177,7 +230,7 @@ mount_part()
         local binfmt_dir="/proc/sys/fs/binfmt_misc"
         if ! is_mounted "${binfmt_dir}" ; then
             msg -n "${binfmt_dir} ... "
-            mount -t binfmt_misc binfmt_misc "${binfmt_dir}"
+            sudo $busybox mount -t binfmt_misc binfmt_misc "${binfmt_dir}"
             is_ok "fail" "done"
         fi
     ;;
@@ -188,18 +241,10 @@ mount_part()
 
 container_mount()
 {
-    [ "${METHOD}" = "chroot" ] || return 0
-
     if [ $# -eq 0 ]; then
         container_mount root proc sys system vendor apex com.android.runtime dev shm pts fd tty tun binfmt_misc
         return $?
     fi
-
-    params_check TARGET_PATH || return 1
-
-    msg -n "Checking file system ... "
-    fs_check
-    is_ok "skip" "done"
 
     msg "Mounting the container: "
     local item
@@ -213,7 +258,6 @@ container_mount()
 
 container_umount()
 {
-    params_check TARGET_PATH || return 1
     container_mounted || { msg "The container is not mounted." ; return 0; }
 
     msg -n "Release resources ... "
@@ -231,7 +275,7 @@ container_umount()
     local mask
     for mask in '.*' '*'
     do
-        local parts=$(cat /proc/mounts | awk '{print $2}' | grep "^${CHROOT_DIR%/}/${mask}$" | sort -r)
+        local parts=$(sudo cat /proc/mounts | awk '{print $2}' | grep "^${CHROOT_DIR%/}/${mask}$" | sort -r)
         local part
         for part in ${parts}
         do
@@ -239,7 +283,7 @@ container_umount()
             msg -n "${part_name} ... "
             for i in 1 2 3
             do
-                umount ${part} && break
+                sudo $busybox umount ${part} && break
                 sleep 1
             done
             is_ok "fail" "done"
@@ -248,38 +292,7 @@ container_umount()
     done
     [ "${is_mnt}" -eq 1 ]; is_ok " ...nothing mounted"
 
-    local loop=$(losetup -a | grep "${TARGET_PATH%/}" | awk -F: '{print $1}')
-    if [ -n "${loop}" ]; then
-        msg -n "Disassociating loop device ... "
-        losetup -d "${loop}"
-        is_ok "fail" "done"
-    fi
-
     return 0
-}
-
-container_start()
-{
-    container_mounted || { msg "The container is not mounted." ; return 1; }
-
-    DO_ACTION='do_start'
-    if [ $# -gt 0 ]; then
-        component_exec "$@"
-    else
-        component_exec "${INCLUDE}"
-    fi
-}
-
-container_stop()
-{
-    container_mounted || { msg "The container is not mounted." ; return 1; }
-
-    DO_ACTION='do_stop'
-    if [ $# -gt 0 ]; then
-        component_exec "$@"
-    else
-        component_exec "${INCLUDE}"
-    fi
 }
 
 # Fix setuid issue
