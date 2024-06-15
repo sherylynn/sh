@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../../win-git/toolsinit.sh
 debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
 DEBIANPATH=$debian_folder_path

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/data/data/com.termux/files/usr/bin/bash
 
 #apatch busybox
 busybox=/data/adb/ap/bin/busybox
