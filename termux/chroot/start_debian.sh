@@ -295,6 +295,8 @@ container_umount()
     return 0
 }
 
+before_fun()
+{
 # Fix setuid issue
 sudo $busybox mount -o remount,dev,suid /data
 
@@ -310,11 +312,13 @@ sudo $busybox mount -t tmpfs -o size=256M tmpfs $DEBIANPATH/dev/shm
 # Mount sdcard
 sudo mkdir -p $DEBIANPATH/sdcard
 sudo $busybox mount --bind /sdcard $DEBIANPATH/sdcard
-
+}
 # chroot into DEBIAN
 #sudo $busybox chroot $DEBIANPATH /bin/su - root
 #sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'export XDG_RUNTIME_DIR=${TMPDIR} && export PULSE_SERVER=tcp:127.0.0.1:4713 && sudo service dbus start && su - lynn -c "env DISPLAY=:0 startxfce4"'
 #for fcitx5
+
+$(container_mount)
 sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
