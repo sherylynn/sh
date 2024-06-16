@@ -335,8 +335,10 @@ sudo $busybox mount -t tmpfs -o size=256M tmpfs $CHROOT_DIR/dev/shm
 # Mount sdcard
 sudo mkdir -p $CHROOT_DIR/sdcard
 sudo $busybox mount --bind /sdcard $CHROOT_DIR/sdcard
-}
 
+# Mount tmp
+sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
+}
 
 
 after_umount_fun()
@@ -347,6 +349,5 @@ after_umount_fun()
     sudo $busybox umount $CHROOT_DIR/proc
     sudo $busybox umount $CHROOT_DIR/sys
     sudo $busybox umount $CHROOT_DIR/sdcard
+    sudo $busybox umount $CHROOT_DIR/tmp
 }
-realmount=$before_mount_fun
-realumount=$after_umount_fun
