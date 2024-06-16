@@ -1,26 +1,22 @@
 #!/data/data/com.termux/files/usr/bin/bash
 #apatch busybox
 busybox=/data/adb/ap/bin/busybox
+#for run in native emacs
+PREFIX=/data/data/com.termux/files/usr
 
 #Path of DEBIAN rootfs
-debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
-DEBIANPATH=$debian_folder_path
-
-msg()
-{
-    echo "$@"
-}
+CHROOT_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
 
 is_ok()
 {
     if [ $? -eq 0 ]; then
         if [ -n "$2" ]; then
-            msg "$2"
+            echo "$2"
         fi
         return 0
     else
         if [ -n "$1" ]; then
-            msg "$1"
+            echo "$1"
         fi
         return 1
     fi
@@ -79,101 +75,102 @@ is_mounted()
 
 container_mounted()
 {
-    is_mounted "${CHROOT_DIR}"
+    is_mounted "${CHROOT_DIR}/proc"
 }
 
 mount_part()
 {
     case "$1" in
     root)
-        msg -n "/ ... "
+        echo -n "/ ... "
         if ! is_mounted "${CHROOT_DIR}" ; then
             [ -d "${CHROOT_DIR}" ] || sudo mkdir -p "${CHROOT_DIR}"
-            sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
+	    sudo $busybox mount -o remount,dev,suid /data
+            #sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
             is_ok "fail" "done" || return 1
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     proc)
-        msg -n "/proc ... "
+        echo -n "/proc ... "
         local target="${CHROOT_DIR}/proc"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
             sudo $busybox mount -t proc proc "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     sys)
-        msg -n "/sys ... "
+        echo -n "/sys ... "
         local target="${CHROOT_DIR}/sys"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
             sudo $busybox mount -t sysfs sys "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     system)
-        msg -n "/system ... "
+        echo -n "/system ... "
         local target="${CHROOT_DIR}/system"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
             sudo $busybox mount -o ro /system "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     vendor)
-        msg -n "/vendor ... "
+        echo -n "/vendor ... "
         local target="${CHROOT_DIR}/vendor"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
             sudo $busybox mount -o ro /vendor "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     apex)
-        msg -n "/apex ... "
+        echo -n "/apex ... "
         local target="${CHROOT_DIR}/apex"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
             sudo $busybox mount -o ro /apex "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     com.android.runtime)
-        msg -n "/apex/com.android.runtime ... "
+        echo -n "/apex/com.android.runtime ... "
         local target="${CHROOT_DIR}/apex/com.android.runtime"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
             sudo $busybox mount -o ro /apex/com.android.runtime "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     dev)
-        msg -n "/dev ... "
+        echo -n "/dev ... "
         local target="${CHROOT_DIR}/dev"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
             sudo $busybox mount -o bind /dev "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     shm)
-        msg -n "/dev/shm ... "
+        echo -n "/dev/shm ... "
         if ! is_mounted "/dev/shm" ; then
             [ -d "/dev/shm" ] || sudo mkdir -p /dev/shm
             sudo $busybox mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs /dev/shm
@@ -183,11 +180,11 @@ mount_part()
             sudo $busybox mount -o bind /dev/shm "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     pts)
-        msg -n "/dev/pts ... "
+        echo -n "/dev/pts ... "
         if ! is_mounted "/dev/pts" ; then
             [ -d "/dev/pts" ] || sudo mkdir -p /dev/pts
             sudo $busybox mount -o rw,nosuid,noexec,gid=5,mode=620,ptmxmode=000 -t devpts devpts /dev/pts
@@ -197,12 +194,12 @@ mount_part()
             sudo $busybox mount -o bind /dev/pts "${target}"
             is_ok "fail" "done"
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     fd)
         if [ ! -e "/dev/fd" -o ! -e "/dev/stdin" -o ! -e "/dev/stdout" -o ! -e "/dev/stderr" ]; then
-            msg -n "/dev/fd ... "
+            echo -n "/dev/fd ... "
             [ -e "/dev/fd" ] || sudo ln -s /proc/self/fd /dev/
             [ -e "/dev/stdin" ] || sudo ln -s /proc/self/fd/0 /dev/stdin
             [ -e "/dev/stdout" ] || sudo ln -s /proc/self/fd/1 /dev/stdout
@@ -212,14 +209,14 @@ mount_part()
     ;;
     tty)
         if [ ! -e "/dev/tty0" ]; then
-            msg -n "/dev/tty ... "
+            echo -n "/dev/tty ... "
             sudo ln -s /dev/null /dev/tty0
             is_ok "fail" "done"
         fi
     ;;
     tun)
         if [ ! -e "/dev/net/tun" ]; then
-            msg -n "/dev/net/tun ... "
+            echo -n "/dev/net/tun ... "
             [ -d "/dev/net" ] || sudo mkdir -p /dev/net
             mknod /dev/net/tun c 10 200
             is_ok "fail" "done"
@@ -229,7 +226,7 @@ mount_part()
         multiarch_support || return 0
         local binfmt_dir="/proc/sys/fs/binfmt_misc"
         if ! is_mounted "${binfmt_dir}" ; then
-            msg -n "${binfmt_dir} ... "
+            echo -n "${binfmt_dir} ... "
             sudo $busybox mount -t binfmt_misc binfmt_misc "${binfmt_dir}"
             is_ok "fail" "done"
         fi
@@ -246,7 +243,7 @@ container_mount()
         return $?
     fi
 
-    msg "Mounting the container: "
+    echo "Mounting the container: "
     local item
     for item in $*
     do
@@ -258,9 +255,9 @@ container_mount()
 
 container_umount()
 {
-    container_mounted || { msg "The container is not mounted." ; return 0; }
+    container_mounted || { echo "The container is not mounted." ; return 0; }
 
-    msg -n "Release resources ... "
+    echo -n "Release resources ... "
     local is_release=0
     local lsof_full=$(lsof | awk '{print $1}' | grep -c '^lsof')
     if [ "${lsof_full}" -eq 0 ]; then
@@ -270,7 +267,7 @@ container_umount()
     fi
     kill_pids ${pids}; is_ok "fail" "done"
 
-    msg "Unmounting partitions: "
+    echo "Unmounting partitions: "
     local is_mnt=0
     local mask
     for mask in '.*' '*'
@@ -280,7 +277,7 @@ container_umount()
         for part in ${parts}
         do
             local part_name=$(echo ${part} | sed "s|^${CHROOT_DIR%/}/*|/|g")
-            msg -n "${part_name} ... "
+            echo -n "${part_name} ... "
             for i in 1 2 3
             do
                 sudo $busybox umount ${part} && break
@@ -300,28 +297,19 @@ before_fun()
 # Fix setuid issue
 sudo $busybox mount -o remount,dev,suid /data
 
-sudo $busybox mount --bind /dev $DEBIANPATH/dev
-sudo $busybox mount --bind /sys $DEBIANPATH/sys
-sudo $busybox mount --bind /proc $DEBIANPATH/proc
-sudo $busybox mount -t devpts devpts $DEBIANPATH/dev/pts
+sudo $busybox mount --bind /dev $CHROOT_DIR/dev
+sudo $busybox mount --bind /sys $CHROOT_DIR/sys
+sudo $busybox mount --bind /proc $CHROOT_DIR/proc
+sudo $busybox mount -t devpts devpts $CHROOT_DIR/dev/pts
 
 # /dev/shm for Electron apps
-sudo mkdir -p $DEBIANPATH/dev/shm
-sudo $busybox mount -t tmpfs -o size=256M tmpfs $DEBIANPATH/dev/shm
+sudo mkdir -p $CHROOT_DIR/dev/shm
+sudo $busybox mount -t tmpfs -o size=256M tmpfs $CHROOT_DIR/dev/shm
 
 # Mount sdcard
-sudo mkdir -p $DEBIANPATH/sdcard
-sudo $busybox mount --bind /sdcard $DEBIANPATH/sdcard
+sudo mkdir -p $CHROOT_DIR/sdcard
+sudo $busybox mount --bind /sdcard $CHROOT_DIR/sdcard
 }
 # chroot into DEBIAN
-#sudo $busybox chroot $DEBIANPATH /bin/su - root
-#sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'export XDG_RUNTIME_DIR=${TMPDIR} && export PULSE_SERVER=tcp:127.0.0.1:4713 && sudo service dbus start && su - lynn -c "env DISPLAY=:0 startxfce4"'
-#for fcitx5
-
-$(container_mount)
-sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
-export GTK_IM_MODULE="fcitx" && \
-export QT_IM_MODULE="fcitx" && \
-export XMODIFIERS="@im=fcitx" && \
-#fcitx5 && \
-dbus-launch --exit-with-session startxfce4'
+#sudo $busybox chroot $CHROOT_DIR /bin/su - root
+#sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export XDG_RUNTIME_DIR=${TMPDIR} && export PULSE_SERVER=tcp:127.0.0.1:4713 && sudo service dbus start && su - lynn -c "env DISPLAY=:0 startxfce4"'

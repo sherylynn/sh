@@ -1,12 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../../win-git/toolsinit.sh
-debian_folder_path="/data/data/com.termux/files/home/Desktop/chrootdebian"
+. ./start_debian.sh
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4_chrootDebian.sh"
-
-#apatch busybox
-busybox=/data/adb/ap/bin/busybox
-sudo mkdir -p $debian_folder_path
 
 pkg update
 pkg install x11-repo root-repo termux-x11-nightly -y
@@ -49,33 +45,22 @@ extract_file() {
 # Function to configure Debian chroot environment
 configure_debian_chroot() {
     progress "Configuring Debian chroot environment..."
-    DEBIANPATH=$debian_folder_path
 
-    # Check if DEBIANPATH directory exists
-    if [ ! -d "$DEBIANPATH" ]; then
-        sudo mkdir -p "$DEBIANPATH"
+    # Check if CHROOT_DIR directory exists
+    if [ ! -d "$CHROOT_DIR" ]; then
+        sudo mkdir -p "$CHROOT_DIR"
         if [ $? -eq 0 ]; then
-            success "Created directory: $DEBIANPATH"
+            success "Created directory: $CHROOT_DIR"
         else
-            echo "[!] Error creating directory: $DEBIANPATH. Exiting..."
+            echo "[!] Error creating directory: $CHROOT_DIR. Exiting..."
             goodbye
         fi
     fi
 
-    sudo $busybox mount -o remount,dev,suid /data
-    sudo $busybox mount --bind /dev $DEBIANPATH/dev
-    sudo $busybox mount --bind /sys $DEBIANPATH/sys
-    sudo $busybox mount --bind /proc $DEBIANPATH/proc
-    sudo $busybox mount -t devpts devpts $DEBIANPATH/dev/pts
-
-    sudo mkdir -p $DEBIANPATH/dev/shm
-    sudo $busybox mount -t tmpfs -o size=256M tmpfs $DEBIANPATH/dev/shm
-
-    sudo mkdir -p $DEBIANPATH/sdcard
-    sudo $busybox mount --bind /sdcard $DEBIANPATH/sdcard
+    container_mount
     
-    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt upgrade -y'
-    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
     groupadd -g 3003 aid_inet; \
     groupadd -g 3004 aid_net_raw; \
@@ -95,13 +80,13 @@ configure_debian_chroot() {
     fi
 
     progress "Installing XFCE4..."
-    sudo $busybox chroot $DEBIANPATH /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal firefox-esr fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei -y'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal firefox-esr fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei -y'
 }
 
 
 # Main function
 main() {
-        download_dir=$debian_folder_path
+        download_dir=$CHROOT_DIR
         if [ ! -d "$download_dir" ]; then
             sudo mkdir -p "$download_dir"
             success "Created directory: $download_dir"
