@@ -32,37 +32,6 @@ multiarch_support()
     fi
 }
 
-get_pids()
-{
-    local pid pidfile pids
-    for pid in $*
-    do
-        pidfile="${CHROOT_DIR}${pid}"
-        if [ -e "${pidfile}" ]; then
-            pid=$(cat "${pidfile}")
-        fi
-        if [ -e "/proc/${pid}" ]; then
-            pids="${pids} ${pid}"
-        fi
-    done
-    if [ -n "${pids}" ]; then
-        echo ${pids}
-        return 0
-    else
-        return 1
-    fi
-}
-
-kill_pids()
-{
-    local pids=$(get_pids $*)
-    if [ -n "${pids}" ]; then
-        sudo kill -9 ${pids}
-        return $?
-    fi
-    return 0
-}
-
 is_mounted()
 {
     local mount_point="$1"
@@ -199,13 +168,10 @@ container_umount()
 
     echo -n "Release resources ... "
     local is_release=0
-    local lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
-    if [ "${lsof_full}" -eq 0 ]; then
-        local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
-    else
-        local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $2}' | uniq)
-    fi
-    kill_pids ${pids}; is_ok "fail" "done"
+    local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
+    #local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $2}' | uniq)
+    echo ${pids}
+    sudo kill ${pids}; is_ok "fail" "done"
 
     echo "Unmounting partitions: "
     local is_mnt=0
