@@ -318,7 +318,7 @@ container_umount()
     return 0
 }
 
-before_fun()
+before_mount_fun()
 {
 # Fix setuid issue
 sudo $busybox mount -o remount,dev,suid /data
@@ -336,6 +336,17 @@ sudo $busybox mount -t tmpfs -o size=256M tmpfs $CHROOT_DIR/dev/shm
 sudo mkdir -p $CHROOT_DIR/sdcard
 sudo $busybox mount --bind /sdcard $CHROOT_DIR/sdcard
 }
-# chroot into DEBIAN
-#sudo $busybox chroot $CHROOT_DIR /bin/su - root
-#sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export XDG_RUNTIME_DIR=${TMPDIR} && export PULSE_SERVER=tcp:127.0.0.1:4713 && sudo service dbus start && su - lynn -c "env DISPLAY=:0 startxfce4"'
+
+
+
+after_umount_fun()
+{
+    sudo $busybox umount $CHROOT_DIR/dev/shm
+    sudo $busybox umount $CHROOT_DIR/dev/pts
+    sudo $busybox umount $CHROOT_DIR/dev
+    sudo $busybox umount $CHROOT_DIR/proc
+    sudo $busybox umount $CHROOT_DIR/sys
+    sudo $busybox umount $CHROOT_DIR/sdcard
+}
+realmount=$before_mount_fun
+realumount=$after_umount_fun
