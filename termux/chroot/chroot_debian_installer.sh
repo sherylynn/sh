@@ -57,7 +57,7 @@ configure_debian_chroot() {
         fi
     fi
 
-    container_mount
+    container_mounted || container_mount
     
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
