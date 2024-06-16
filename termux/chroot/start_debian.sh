@@ -75,7 +75,8 @@ is_mounted()
 
 container_mounted()
 {
-    is_mounted "${CHROOT_DIR}/proc"
+    #is_mounted "${CHROOT_DIR}/proc"
+    is_mounted "${CHROOT_DIR}"
 }
 
 mount_part()
@@ -85,8 +86,8 @@ mount_part()
         echo -n "/ ... "
         if ! is_mounted "${CHROOT_DIR}" ; then
             [ -d "${CHROOT_DIR}" ] || sudo mkdir -p "${CHROOT_DIR}"
-	    sudo $busybox mount -o remount,dev,suid /data
-            #sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
+	    #sudo $busybox mount -o remount,dev,suid /data
+            sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
             is_ok "fail" "done" || return 1
         else
             echo "skip"
