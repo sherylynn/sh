@@ -5,8 +5,8 @@ busybox=/data/adb/ap/bin/busybox
 PREFIX=/data/data/com.termux/files/usr
 
 #Path of DEBIAN rootfs
-#CHROOT_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
-CHROOT_DIR="/data/local/tmp/chrootdebian"
+CHROOT_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
+#CHROOT_DIR="/data/local/tmp/chrootdebian"
 
 is_ok()
 {

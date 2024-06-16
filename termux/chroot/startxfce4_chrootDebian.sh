@@ -29,5 +29,5 @@ export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
-dbus-launch --exit-with-session zsh '
-#dbus-launch --exit-with-session startxfce4'
+dbus-launch --exit-with-session startxfce4'
+#dbus-launch --exit-with-session zsh '
