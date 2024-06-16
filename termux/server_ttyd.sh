@@ -20,5 +20,5 @@ echo $(whoami)
 #ttyd -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
 sshd
-ttyd -p 3333 -6 --client-option fontSize=18 --writable ssh localhost -p 8022
+ttyd -p 3333 --ipv6 --client-option enableZmodem=true  --client-option fontSize=18 --writable ssh localhost -p 8022
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
