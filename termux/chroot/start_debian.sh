@@ -5,7 +5,8 @@ busybox=/data/adb/ap/bin/busybox
 PREFIX=/data/data/com.termux/files/usr
 
 #Path of DEBIAN rootfs
-CHROOT_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
+#CHROOT_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
+CHROOT_DIR="/data/local/tmp/chrootdebian"
 
 is_ok()
 {
@@ -75,33 +76,24 @@ is_mounted()
 
 container_mounted()
 {
-    #is_mounted "${CHROOT_DIR}/proc"
-    is_mounted "${CHROOT_DIR}"
+    is_mounted "${CHROOT_DIR}/tmp"
+    #is_mounted "${CHROOT_DIR}"
 }
 
 mount_part()
 {
     case "$1" in
-    root)
-        echo -n "/ ... "
-        if ! is_mounted "${CHROOT_DIR}" ; then
-            [ -d "${CHROOT_DIR}" ] || sudo mkdir -p "${CHROOT_DIR}"
-	    #sudo $busybox mount -o remount,dev,suid /data
-	    #mnt_opts="bind"
-	    mnt_opts="rw,relatime"
-            sudo $busybox mount -o ${mnt_opts} "${CHROOT_DIR}" "${CHROOT_DIR}" &&
-            sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
-            is_ok "fail" "done" || return 1
-        else
-            echo "skip"
-        fi
+    data)
+        echo -n "/data ... "
+        sudo $busybox mount -o remount,dev,suid /data
+        is_ok "fail" "done" || return 1
     ;;
-    proc)
-        echo -n "/proc ... "
-        local target="${CHROOT_DIR}/proc"
+    dev)
+        echo -n "/dev ... "
+        local target="${CHROOT_DIR}/dev"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
-            sudo $busybox mount -t proc proc "${target}"
+            sudo $busybox mount -o bind /dev "${target}"
             is_ok "fail" "done"
         else
             echo "skip"
@@ -118,70 +110,12 @@ mount_part()
             echo "skip"
         fi
     ;;
-    system)
-        echo -n "/system ... "
-        local target="${CHROOT_DIR}/system"
+    proc)
+        echo -n "/proc ... "
+        local target="${CHROOT_DIR}/proc"
         if ! is_mounted "${target}" ; then
             [ -d "${target}" ] || sudo mkdir -p "${target}"
-            sudo $busybox mount -o ro /system "${target}"
-            is_ok "fail" "done"
-        else
-            echo "skip"
-        fi
-    ;;
-    vendor)
-        echo -n "/vendor ... "
-        local target="${CHROOT_DIR}/vendor"
-        if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || sudo mkdir -p "${target}"
-            sudo $busybox mount -o ro /vendor "${target}"
-            is_ok "fail" "done"
-        else
-            echo "skip"
-        fi
-    ;;
-    apex)
-        echo -n "/apex ... "
-        local target="${CHROOT_DIR}/apex"
-        if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || sudo mkdir -p "${target}"
-            sudo $busybox mount -o ro /apex "${target}"
-            is_ok "fail" "done"
-        else
-            echo "skip"
-        fi
-    ;;
-    com.android.runtime)
-        echo -n "/apex/com.android.runtime ... "
-        local target="${CHROOT_DIR}/apex/com.android.runtime"
-        if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || sudo mkdir -p "${target}"
-            sudo $busybox mount -o ro /apex/com.android.runtime "${target}"
-            is_ok "fail" "done"
-        else
-            echo "skip"
-        fi
-    ;;
-    dev)
-        echo -n "/dev ... "
-        local target="${CHROOT_DIR}/dev"
-        if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || sudo mkdir -p "${target}"
-            sudo $busybox mount -o bind /dev "${target}"
-            is_ok "fail" "done"
-        else
-            echo "skip"
-        fi
-    ;;
-    shm)
-        echo -n "/dev/shm ... "
-        if ! is_mounted "/dev/shm" ; then
-            [ -d "/dev/shm" ] || sudo mkdir -p /dev/shm
-            sudo $busybox mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs /dev/shm
-        fi
-        local target="${CHROOT_DIR}/dev/shm"
-        if ! is_mounted "${target}" ; then
-            sudo $busybox mount -o bind /dev/shm "${target}"
+            sudo $busybox mount -t proc proc "${target}"
             is_ok "fail" "done"
         else
             echo "skip"
@@ -201,12 +135,15 @@ mount_part()
             echo "skip"
         fi
     ;;
-    tmp)
-        echo -n "/tmp... "
-        local target="${CHROOT_DIR}/tmp"
+    shm)
+        echo -n "/dev/shm ... "
+        if ! is_mounted "/dev/shm" ; then
+            [ -d "/dev/shm" ] || sudo mkdir -p /dev/shm
+            sudo $busybox mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs /dev/shm
+        fi
+        local target="${CHROOT_DIR}/dev/shm"
         if ! is_mounted "${target}" ; then
-            [ -d "${target}" ] || sudo mkdir -p "${target}"
-            sudo $busybox mount -o bind $PREFIX/tmp "${target}"
+            sudo $busybox mount -o bind /dev/shm "${target}"
             is_ok "fail" "done"
         else
             echo "skip"
@@ -223,38 +160,15 @@ mount_part()
             echo "skip"
         fi
     ;;
-    fd)
-        if [ ! -e "/dev/fd" -o ! -e "/dev/stdin" -o ! -e "/dev/stdout" -o ! -e "/dev/stderr" ]; then
-            echo -n "/dev/fd ... "
-            [ -e "/dev/fd" ] || sudo ln -s /proc/self/fd /dev/
-            [ -e "/dev/stdin" ] || sudo ln -s /proc/self/fd/0 /dev/stdin
-            [ -e "/dev/stdout" ] || sudo ln -s /proc/self/fd/1 /dev/stdout
-            [ -e "/dev/stderr" ] || sudo ln -s /proc/self/fd/2 /dev/stderr
+    tmp)
+        echo -n "/tmp... "
+        local target="${CHROOT_DIR}/tmp"
+        if ! is_mounted "${target}" ; then
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o bind $PREFIX/tmp "${target}"
             is_ok "fail" "done"
-        fi
-    ;;
-    tty)
-        if [ ! -e "/dev/tty0" ]; then
-            echo -n "/dev/tty ... "
-            sudo ln -s /dev/null /dev/tty0
-            is_ok "fail" "done"
-        fi
-    ;;
-    tun)
-        if [ ! -e "/dev/net/tun" ]; then
-            echo -n "/dev/net/tun ... "
-            [ -d "/dev/net" ] || sudo mkdir -p /dev/net
-            mknod /dev/net/tun c 10 200
-            is_ok "fail" "done"
-        fi
-    ;;
-    binfmt_misc)
-        multiarch_support || return 0
-        local binfmt_dir="/proc/sys/fs/binfmt_misc"
-        if ! is_mounted "${binfmt_dir}" ; then
-            echo -n "${binfmt_dir} ... "
-            sudo $busybox mount -t binfmt_misc binfmt_misc "${binfmt_dir}"
-            is_ok "fail" "done"
+        else
+            echo "skip"
         fi
     ;;
     esac
@@ -265,7 +179,7 @@ mount_part()
 container_mount()
 {
     if [ $# -eq 0 ]; then
-        container_mount root proc sys system vendor apex com.android.runtime dev shm pts tmp sdcard fd tty tun binfmt_misc
+        container_mount data dev sys proc pts sdcard tmp
         return $?
     fi
 
@@ -285,11 +199,11 @@ container_umount()
 
     echo -n "Release resources ... "
     local is_release=0
-    local lsof_full=$(lsof | awk '{print $1}' | grep -c '^lsof')
+    local lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
     if [ "${lsof_full}" -eq 0 ]; then
-        local pids=$(lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
+        local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
     else
-        local pids=$(lsof | grep "${CHROOT_DIR%/}" | awk '{print $2}' | uniq)
+        local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $2}' | uniq)
     fi
     kill_pids ${pids}; is_ok "fail" "done"
 
