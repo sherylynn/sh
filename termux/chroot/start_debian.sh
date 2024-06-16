@@ -197,6 +197,28 @@ mount_part()
             echo "skip"
         fi
     ;;
+    tmp)
+        echo -n "/tmp... "
+        local target="${CHROOT_DIR}/tmp"
+        if ! is_mounted "${target}" ; then
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o bind $PREFIX/tmp "${target}"
+            is_ok "fail" "done"
+        else
+            echo "skip"
+        fi
+    ;;
+    sdcard)
+        echo -n "/sdcard... "
+        local target="${CHROOT_DIR}/sdcard"
+        if ! is_mounted "${target}" ; then
+            [ -d "${target}" ] || sudo mkdir -p "${target}"
+            sudo $busybox mount -o bind /sdcard "${target}"
+            is_ok "fail" "done"
+        else
+            echo "skip"
+        fi
+    ;;
     fd)
         if [ ! -e "/dev/fd" -o ! -e "/dev/stdin" -o ! -e "/dev/stdout" -o ! -e "/dev/stderr" ]; then
             echo -n "/dev/fd ... "
@@ -239,7 +261,7 @@ mount_part()
 container_mount()
 {
     if [ $# -eq 0 ]; then
-        container_mount root proc sys system vendor apex com.android.runtime dev shm pts fd tty tun binfmt_misc
+        container_mount root proc sys system vendor apex com.android.runtime dev shm pts tmp sdcard fd tty tun binfmt_misc
         return $?
     fi
 
