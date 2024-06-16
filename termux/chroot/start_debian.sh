@@ -87,6 +87,9 @@ mount_part()
         if ! is_mounted "${CHROOT_DIR}" ; then
             [ -d "${CHROOT_DIR}" ] || sudo mkdir -p "${CHROOT_DIR}"
 	    #sudo $busybox mount -o remount,dev,suid /data
+	    #mnt_opts="bind"
+	    mnt_opts="rw,relatime"
+            sudo $busybox mount -o ${mnt_opts} "${CHROOT_DIR}" "${CHROOT_DIR}" &&
             sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
             is_ok "fail" "done" || return 1
         else

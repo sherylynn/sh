@@ -22,6 +22,7 @@ virgl_test_server_android &
 
 # Execute chroot script
 container_mounted || container_mount
+#container_mount
 sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
