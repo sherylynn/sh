@@ -88,6 +88,9 @@ configure_debian_chroot() {
     progress "Installing XFCE4..."
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal firefox-esr chromium fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei -y'
 
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'chsh /bin/zsh'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && /root/sh/win-git/move2zsh.sh && /root/sh/win-git/noVNC.sh'
+
 
 }
 
