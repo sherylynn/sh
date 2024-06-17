@@ -29,8 +29,12 @@ if [[ $(platform) == *linux* ]]; then
 #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
 #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   echo "export PATH=$SOFT_HOME:"'$PATH' > ${TOOLSRC}
-  cd ${SOFT_HOME}
-  ./utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
+  cd ${SOFT_HOME}/../../
+  rm -rf /tmp/.X*
+  rm -rf /tmp/.x*
+  vncserver -kill :0
+  vncserver -geometry 1920x966 :0
+  ./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
 
 #  ./systemd_novnc.sh
 fi
