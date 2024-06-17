@@ -77,6 +77,7 @@ configure_debian_chroot() {
     ~/sh/debian/debian_mirror.sh; \
     apt update; \
     apt upgrade; \
+    apt autoremove -y; \
     apt install emacs net-tools sudo zsh -y; \
     echo "Debian chroot environment configured"'
 
