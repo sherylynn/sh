@@ -5,8 +5,9 @@ busybox=/data/adb/ap/bin/busybox
 PREFIX=/data/data/com.termux/files/usr
 
 #Path of DEBIAN rootfs
-CHROOT_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
-#CHROOT_DIR="/data/local/tmp/chrootdebian"
+DEBIAN_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
+#Path of chroot mount dir
+CHROOT_DIR="/data/local/mnt"
 
 is_ok()
 {
@@ -45,17 +46,29 @@ is_mounted()
 
 container_mounted()
 {
-    is_mounted "${CHROOT_DIR}/tmp"
-    #is_mounted "${CHROOT_DIR}"
+    is_mounted "${CHROOT_DIR}"
 }
 
 mount_part()
 {
     case "$1" in
-    data)
-        echo -n "/data ... "
-        sudo $busybox mount -o remount,dev,suid /data
-        is_ok "fail" "done" || return 1
+    #data)
+    #    echo -n "/data ... "
+    #    sudo $busybox mount -o remount,dev,suid /data
+    #    is_ok "fail" "done" || return 1
+    #;;
+    root)
+        msg -n "/ ... "
+        if ! is_mounted "${CHROOT_DIR}" ; then
+            [ -d "${CHROOT_DIR}" ] || mkdir -p "${CHROOT_DIR}"
+            local mnt_opts
+            [ -d "${DEBIAN_DIR}" ] && mnt_opts="bind" || mnt_opts="rw,relatime"
+            mount -o ${mnt_opts} "${DEBIAN_DIR}" "${CHROOT_DIR}" &&
+            mount -o remount,exec,suid,dev "${CHROOT_DIR}"
+            is_ok "fail" "done" || return 1
+        else
+            msg "skip"
+        fi
     ;;
     dev)
         echo -n "/dev ... "
@@ -148,7 +161,8 @@ mount_part()
 container_mount()
 {
     if [ $# -eq 0 ]; then
-        container_mount data dev sys proc pts sdcard tmp
+        #container_mount data dev sys proc pts sdcard tmp
+        container_mount root dev sys proc pts sdcard tmp
         return $?
     fi
 

@@ -47,13 +47,13 @@ extract_file() {
 configure_debian_chroot() {
     progress "Configuring Debian chroot environment..."
 
-    # Check if CHROOT_DIR directory exists
-    if [ ! -d "$CHROOT_DIR" ]; then
-        sudo mkdir -p "$CHROOT_DIR"
+    # Check if DEBIAN_DIR directory exists
+    if [ ! -d "$DEBIAN_DIR" ]; then
+        sudo mkdir -p "$DEBIAN_DIR"
         if [ $? -eq 0 ]; then
-            success "Created directory: $CHROOT_DIR"
+            success "Created directory: $DEBIAN_DIR"
         else
-            echo "[!] Error creating directory: $CHROOT_DIR. Exiting..."
+            echo "[!] Error creating directory: $DEBIAN_DIR. Exiting..."
             goodbye
         fi
     fi
@@ -97,7 +97,7 @@ configure_debian_chroot() {
 
 # Main function
 main() {
-        download_dir=$CHROOT_DIR
+        download_dir=$DEBIAN_DIR
         if [ ! -d "$download_dir" ]; then
             sudo mkdir -p "$download_dir"
             success "Created directory: $download_dir"
