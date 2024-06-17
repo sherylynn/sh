@@ -280,7 +280,8 @@ fi
 if [[ "$(platform)" == "win" ]]; then 
   EDITOR=vim
   export EDITOR=vim
-  code(){
+  code()
+  {
     "C:/\Users\lynn\AppData\Local\Programs\Microsoft VS Code\Code.exe" $1
     "C:\Program Files\Microsoft VS Code\Code.exe" $1
     "Code.exe" $1

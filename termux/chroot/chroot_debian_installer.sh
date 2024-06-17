@@ -91,7 +91,7 @@ configure_debian_chroot() {
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal firefox-esr chromium fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei tigervnc-standalone-server openssh-server -y'
 
     unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'chsh /bin/zsh'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'chsh -s /bin/zsh'
     unset LD_PRELOAD LD_DEBUG
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && /root/sh/win-git/move2zsh.sh && /root/sh/win-git/noVNC.sh && /root/sh/win-git/zlua_new.sh && /root/sh/win-git/init_d_noVNC.sh'
 
