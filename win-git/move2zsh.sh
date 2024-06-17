@@ -74,14 +74,14 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
   zplug load
 fi
 bindkey -e
-#方法一 autoload 加载后执行，无法script里调用toolsinit.sh内部函数，但是script可以手动呼唤toolsinit.sh
+#方法一 autoload 加载后执行，无法 script 里调用 toolsinit.sh 内部函数，但是 script 可以手动呼唤 toolsinit.sh
 #fpath+=$(cd "$(dirname "$0")";pwd)
 #autoload -U $(cd "$(dirname "$0")";pwd)/toolsinit.sh
 #toolsinit.sh
-#直接执行 理同方法一，但script必须手动指定 路径来 source toolsinit.sh
+#直接执行 理同方法一，但 script 必须手动指定 路径来 source toolsinit.sh
 #. $(cd "$(dirname "$0")";pwd)/toolsinit.sh
-#方法三 写入 .zshenv [需要看uname 路径]
-#方法三 写入 .zshenv [需要看uname 路径]
+#方法三 写入 .zshenv [需要看 uname 路径]
+#方法三 写入 .zshenv [需要看 uname 路径]
 #. $(cd "$(dirname "$0")";pwd)/proxy.sh
 setopt no_nomatch
 EOF
@@ -94,4 +94,6 @@ fi
 cd ~
 #compaudit | xargs chown -R "$(whoami)"
 #compaudit | xargs chmod -R go-w
-brew install wget curl
+if [[ $(platform) == *macos* ]]; then
+    brew install wget curl
+fi
