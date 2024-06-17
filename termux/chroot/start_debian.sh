@@ -58,16 +58,16 @@ mount_part()
     #    is_ok "fail" "done" || return 1
     #;;
     root)
-        msg -n "/ ... "
+        echo -n "/ ... "
         if ! is_mounted "${CHROOT_DIR}" ; then
             [ -d "${CHROOT_DIR}" ] || mkdir -p "${CHROOT_DIR}"
             local mnt_opts
             [ -d "${DEBIAN_DIR}" ] && mnt_opts="bind" || mnt_opts="rw,relatime"
-            mount -o ${mnt_opts} "${DEBIAN_DIR}" "${CHROOT_DIR}" &&
-            mount -o remount,exec,suid,dev "${CHROOT_DIR}"
+            sudo $busybox mount -o ${mnt_opts} "${DEBIAN_DIR}" "${CHROOT_DIR}" &&
+            sudo $busybox mount -o remount,exec,suid,dev "${CHROOT_DIR}"
             is_ok "fail" "done" || return 1
         else
-            msg "skip"
+            echo "skip"
         fi
     ;;
     dev)
