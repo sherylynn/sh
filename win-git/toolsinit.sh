@@ -280,12 +280,12 @@ fi
 if [[ "$(platform)" == "win" ]]; then 
   EDITOR=vim
   export EDITOR=vim
-  code()
-  {
-    "C:/\Users\lynn\AppData\Local\Programs\Microsoft VS Code\Code.exe" $1
-    "C:\Program Files\Microsoft VS Code\Code.exe" $1
-    "Code.exe" $1
-  }
+  #code()
+  #{
+  #  "C:/\Users\lynn\AppData\Local\Programs\Microsoft VS Code\Code.exe" $1
+  #  "C:\Program Files\Microsoft VS Code\Code.exe" $1
+  #  "Code.exe" $1
+  #}
 elif [[ "$(whoami)" == "root" ]]; then
   alias code='code --no-sandbox --user-data-dir /root/tools/vscode'
 else
