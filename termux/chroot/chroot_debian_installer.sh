@@ -71,7 +71,7 @@ configure_debian_chroot() {
     usermod -G 3003 -a root; \
     apt update; \
     apt upgrade; \
-    apt install git vim -y; \
+    apt install git vim wget curl -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
     ~/sh/debian/debian_mirror.sh; \
     apt update; \
@@ -93,7 +93,7 @@ configure_debian_chroot() {
     unset LD_PRELOAD LD_DEBUG
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'chsh /bin/zsh'
     unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && /root/sh/win-git/move2zsh.sh && /root/sh/win-git/noVNC.sh'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && /root/sh/win-git/move2zsh.sh && /root/sh/win-git/noVNC.sh && /root/sh/win-git/zlua_new.sh && /root/sh/win-git/init_d_noVNC.sh'
 
 
 }
