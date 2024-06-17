@@ -73,6 +73,7 @@ configure_debian_chroot() {
     apt upgrade; \
     apt install git vim wget curl -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
+    git -C ~/sh pull; \
     ~/sh/debian/debian_mirror.sh; \
     apt update; \
     apt upgrade; \
