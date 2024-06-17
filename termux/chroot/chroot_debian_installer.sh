@@ -94,7 +94,7 @@ configure_debian_chroot() {
     unset LD_PRELOAD LD_DEBUG
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'chsh -s /bin/zsh'
     unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && /root/sh/win-git/move2zsh.sh && /root/sh/win-git/noVNC.sh && /root/sh/win-git/zlua_new.sh && /root/sh/win-git/init_d_noVNC.sh'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && zsh /root/sh/win-git/move2zsh.sh && zsh /root/sh/win-git/noVNC.sh && zsh /root/sh/win-git/zlua_new.sh && zsh /root/sh/win-git/init_d_noVNC.sh'
 
 
 }
