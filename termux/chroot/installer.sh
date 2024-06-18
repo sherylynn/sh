@@ -90,17 +90,8 @@ configure_debian_chroot() {
 
     progress "Installing XFCE4..."
     unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal chromium fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei tigervnc-standalone-server tigervnc-tools openssh-server -y'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
 
-    unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'chsh -s /bin/zsh'
-    unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh; \
-    proxy; \
-    zsh /root/sh/win-git/move2zsh.sh; \
-    zsh /root/sh/win-git/zlua_new.sh; \
-    zsh /root/sh/win-git/init_d_noVNC.sh; \
-    zsh /root/sh/win-git/noVNC.sh'
     #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && zsh /root/sh/win-git/move2zsh.sh'
     #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && zsh /root/sh/win-git/zlua_new.sh && zsh /root/sh/win-git/init_d_noVNC.sh'
     #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && zsh /root/sh/win-git/noVNC.sh'
