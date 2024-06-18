@@ -90,7 +90,7 @@ configure_debian_chroot() {
 
     progress "Installing XFCE4..."
     unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal chromium fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei tigervnc-standalone-server openssh-server -y'
+    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install dbus-x11 xfce4 xfce4-terminal chromium fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei tigervnc-standalone-server tigervnc-tools openssh-server -y'
 
     unset LD_PRELOAD LD_DEBUG
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'chsh -s /bin/zsh'
