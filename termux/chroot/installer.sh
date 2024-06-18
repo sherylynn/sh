@@ -1,8 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../../win-git/toolsinit.sh
-. ./start_debian.sh
-debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/start_debian.sh"
-debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/startxfce4_chrootDebian.sh"
+. ./cli.sh
+debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/cli.sh"
+debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/x11.sh"
 
 sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
 apt update && apt upgrade -y && apt autoremove -y
