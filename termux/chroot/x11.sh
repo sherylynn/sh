@@ -24,6 +24,14 @@ virgl_test_server_android &
 container_mounted || container_mount
 #before_mount_fun
 
+
+termux_data_path=/data/data/com.termux/files/home
+termux_gitcredentials=$termux_data_path/.git-credentials
+termux_gitconfig=$termux_data_path/.gitconfig
+
+test -f  $termux_gitconfig && cp $termux_gitconfig $CHROOT_DIR/
+test -f  $termux_gitcredentials && cp $termux_gitcredentials $CHROOT_DIR/
+
 sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
