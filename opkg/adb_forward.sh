@@ -8,6 +8,7 @@ opkg install adb
 cat << "EOF" > /root/adb-watchdog.sh
 #!/bin/sh
 adb -a forward tcp:10086 tcp:10086
+adb -a forward tcp:10000 tcp:10000
 adb -a forward tcp:10808 tcp:10808
 adb -a forward tcp:3000 tcp:3000
 adb -a forward tcp:3333 tcp:3333
@@ -19,6 +20,7 @@ adb -a forward tcp:1122 tcp:1122
 sysctl -w net.ipv4.ip_forward=1
 sysctl -w net.ipv4.conf.all.route_localnet=1
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 10086 -j DNAT --to-destination 127.0.0.1:10086
+iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 10000 -j DNAT --to-destination 127.0.0.1:10000
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 10808 -j DNAT --to-destination 127.0.0.1:10808
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 5555 -j DNAT --to-destination 127.0.0.1:5555
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 5900 -j DNAT --to-destination 127.0.0.1:5900
@@ -27,6 +29,7 @@ iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 3333 -j DNAT --to-destina
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 8022 -j DNAT --to-destination 127.0.0.1:8022
 iptables -t nat -A PREROUTING -i br-lan -p tcp --dport 1122 -j DNAT --to-destination 127.0.0.1:1122
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 10086 -j DNAT --to-destination 127.0.0.1:10086
+iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 10000 -j DNAT --to-destination 127.0.0.1:10000
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 10808 -j DNAT --to-destination 127.0.0.1:10808
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5555 -j DNAT --to-destination 127.0.0.1:5555
 iptables-nft -t nat -A PREROUTING -i br-lan -p tcp --dport 5244 -j DNAT --to-destination 127.0.0.1:5244
