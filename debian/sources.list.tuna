@@ -1,0 +1,9 @@
+deb http://mirrors.tuna.tsinghua.edu.cn/debian/ testing non-free contrib main    
+deb-src http://mirrors.tuna.tsinghua.edu.cn/debian/ testing non-free contrib main   
+
+deb http://mirrors.tuna.tsinghua.edu.cn/debian-security/ testing/updates non-free contrib main   
+deb-src http://mirrors.tuna.tsinghua.edu.cn/debian-security/ testing/updates non-free contrib main  
+
+deb http://mirrors.tuna.tsinghua.edu.cn/debian/ testing-updates non-free contrib main    
+deb-src http://mirrors.tuna.tsinghua.edu.cn/debian/ testing-updates non-free contrib main   
+

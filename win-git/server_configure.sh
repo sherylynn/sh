@@ -29,9 +29,11 @@ termux_gitconfig=$termux_data_path/.gitconfig
 test -f  $termux_gitconfig && sudo cp $termux_gitconfig ~/
 test -f  $termux_gitcredentials && sudo cp $termux_gitcredentials ~/
 
-~/sh/debian/debian_mirror.sh
+#~/sh/debian/debian_mirror.sh
+sudo cp ~/sh/debian/sources.list.tuna /etc/apt/sources.list
 sudo apt update
 sudo apt upgrade
+sudo apt dist-upgrade
 sudo apt autoremove -y
 sudo apt install sudo zsh -y
 sudo apt install dbus-x11 xfce4 xfce4-terminal chromium fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei tigervnc-standalone-server tigervnc-tools openssh-server -y
