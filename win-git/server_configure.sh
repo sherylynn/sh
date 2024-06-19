@@ -40,6 +40,7 @@ sudo apt install dbus-x11 xfce4 xfce4-terminal chromium fcitx5 fcitx5-rime fonts
 sudo chsh -s /bin/zsh
 source ~/sh/win-git/toolsinit.sh
 proxy
+zsh ~/sh/debian/emacs.sh
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
 zsh ~/sh/win-git/init_d_noVNC.sh 
