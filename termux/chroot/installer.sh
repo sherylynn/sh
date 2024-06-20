@@ -115,6 +115,7 @@ main() {
             sudo mkdir -p "$download_dir"
             success "Created directory: $download_dir"
         fi
+	proxy
 	$(cache_downloader "debian12-arm64.tar.gz" "https://github.com/LinuxDroidMaster/Termux-Desktops/releases/download/Debian/debian12-arm64.tar.gz")
 	sudo cp $(cache_folder)/debian12-arm64.tar.gz $download_dir/
         extract_file "$download_dir"
