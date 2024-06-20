@@ -1,5 +1,6 @@
 #!/bin/bash
-. $(dirname "$0")/toolsinit.sh
+. $(dirname "$0")/../win-git/toolsinit.sh
+#. $(dirname "$0")/toolsinit.sh
 NAME=vnc
 USER=$(whoami)
 TOOLSRC_NAME=${NAME}rc
