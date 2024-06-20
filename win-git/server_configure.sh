@@ -22,13 +22,6 @@ sudo apt install git vim wget curl -y
 git clone --depth 1 http://github.com/sherylynn/sh ~/sh
 git -C ~/sh pull
 
-termux_data_path=/data/data/com.termux/files/home
-termux_gitcredentials=$termux_data_path/.git-credentials
-termux_gitconfig=$termux_data_path/.gitconfig
-
-test -f  $termux_gitconfig && sudo cp $termux_gitconfig ~/
-test -f  $termux_gitcredentials && sudo cp $termux_gitcredentials ~/
-
 #~/sh/debian/debian_mirror.sh
 sudo cp ~/sh/debian/sources.list.tuna /etc/apt/sources.list
 sudo apt update
