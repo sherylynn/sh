@@ -21,3 +21,7 @@ sudo apt-get update && sudo apt-get install firefox -y
 
 #使用 .deb 包设置 Firefox 语言
 sudo apt-get install firefox-l10n-zh-cn -y
+
+#如果是testing版本
+sudo apt-get install firefox-nightly -y
+sudo apt-get install firefox-nightly-l10n-zh-cn -y
