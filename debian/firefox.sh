@@ -16,8 +16,8 @@ Pin-Priority: 1000
 ' | sudo tee /etc/apt/preferences.d/mozilla
 
 #更新软件列表并安装 Firefox .deb 包： 
-sudo apt-get update && sudo apt-get install firefox -y
 sudo apt remove firefox-esr -y && sudo apt autoremove -y
+sudo apt-get update && sudo apt-get install firefox -y
 
 #使用 .deb 包设置 Firefox 语言
 sudo apt-get install firefox-l10n-zh-cn -y
