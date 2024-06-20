@@ -39,3 +39,5 @@ zsh ~/sh/win-git/zlua_new.sh
 zsh ~/sh/win-git/init_d_noVNC.sh 
 zsh ~/sh/win-git/noVNC.sh 
 zsh ~/sh/debian/firefox.sh 
+zsh ~/sh/myemacs.sh
+emacs -nw
