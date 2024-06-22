@@ -13,6 +13,7 @@ case $(arch) in
     wps_name="wps-office_11.1.0.11719_arm64.deb"
     ;;
 esac
+proxy
 $(cache_downloader $wps_name $wps_url)
 sudo dpkg -i  $(cache_folder)/$wps_name 
 sudo apt install -f -y
