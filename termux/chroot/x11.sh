@@ -40,4 +40,7 @@ export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
+vncserver -kill :0 && \
+rm -rf /tmp/.X* && \
+rm -rf /tmp/.X* && \
 dbus-launch --exit-with-session startxfce4'
