@@ -13,7 +13,7 @@ case $(arch) in
   armhf) SOFT_ARCH=armv7l;;
   aarch64)
     mesa_url=https://raw.githubusercontent.com/sherylynn/fonts/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
-    mesa_name="https://raw.githubusercontent.com/sherylynn/fonts/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
+    mesa_name="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
     ;;
 esac
 $(cache_downloader $mesa_name $mesa_url)
