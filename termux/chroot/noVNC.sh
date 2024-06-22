@@ -32,6 +32,7 @@ termux_gitconfig=$termux_data_path/.gitconfig
 test -f  $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
 test -f  $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
 
+unset LD_PRELOAD LD_DEBUG
 sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
