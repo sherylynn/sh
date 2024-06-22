@@ -1,0 +1,11 @@
+#!/bin/bash
+. $(dirname "$0")/../win-git/toolsinit.sh
+
+sudo cp ~/sh/debian/sources.list.tuna /etc/apt/sources.list
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 425956BB3E31DF51
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B8F213033DB6B2D6
+
+sudo apt update
+sudo apt upgrade -y
+sudo apt dist-upgrade -y
+sudo apt autoremove -y

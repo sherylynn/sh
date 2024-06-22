@@ -12,3 +12,10 @@ deb-src https://mirrors.tuna.tsinghua.edu.cn/debian/ testing-backports main cont
 deb https://mirrors.tuna.tsinghua.edu.cn/debian-security testing-security main contrib non-free non-free-firmware
 deb-src https://mirrors.tuna.tsinghua.edu.cn/debian-security testing-security main contrib non-free non-free-firmware
 
+
+# deepin 有用包
+deb https://community-packages.deepin.com/beige/ beige main commercial community
+
+deb-src https://community-packages.deepin.com/beige/ beige main commercial community
+
+deb https://home-store-packages.uniontech.com/appstore eagle appstore

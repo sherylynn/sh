@@ -22,12 +22,9 @@ sudo apt install git vim wget curl -y
 git clone --depth 1 http://github.com/sherylynn/sh ~/sh
 git -C ~/sh pull
 
-#~/sh/debian/debian_mirror.sh
-sudo cp ~/sh/debian/sources.list.tuna /etc/apt/sources.list
-sudo apt update
-sudo apt upgrade -y
-sudo apt dist-upgrade -y
-sudo apt autoremove -y
+#. ~/sh/win-git/toolsinit.sh
+zsh ~/sh/debian/testing_mirror.sh
+
 sudo apt install sudo zsh -y
 sudo apt install dbus-x11 xfce4 xfce4-terminal chromium fcitx5 fcitx5-rime fonts-wqy-zenhei ttf-wqy-zenhei tigervnc-standalone-server tigervnc-tools openssh-server -y
 sudo chsh -s /bin/zsh
