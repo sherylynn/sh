@@ -4,7 +4,8 @@ TOOLSRC_NAME=mesarc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 
 echo 'export MESA_LOADER_DRIVER_OVERRIDE=zink'>${TOOLSRC}
-echo 'export GALLIUM_DRIVER=zink'>>${TOOLSRC}
+#echo 'export GALLIUM_DRIVER=zink'>>${TOOLSRC}
+echo 'export TU_DEBUG=noconform'>>${TOOLSRC}
 echo 'export XDG_RUNTIME_DIR=/tmp'>>${TOOLSRC}
 
 case $(arch) in 
