@@ -21,12 +21,15 @@ echo $(whoami)
 # login need systemd user $(whoami)
 
 cd ../../
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!now is in "
-pwd
 vncserver -kill :0
 rm -rf /tmp/.X*
 rm -rf /tmp/.x*
 vncserver -geometry 1920x966 :0
-./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
+file_path="./tools/noVNC/utils/novnc_proxy"
+if [ -e "$file_path" ]; then
+    ./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
+else
+    ~/tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
+fi
 #./utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10086
 #su $(whoami) -c 'novnc -p 3000 -t fontSize=18 ssh localhost'
