@@ -37,4 +37,4 @@ export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
-dbus-launch --exit-with-session zsh ~/sh/win-git/noVNC.sh'
+dbus-launch --exit-with-session zsh ~/sh/win-git/server_noVNC.sh'
