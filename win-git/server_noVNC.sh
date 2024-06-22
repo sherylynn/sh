@@ -29,6 +29,7 @@ file_path="./tools/noVNC/utils/novnc_proxy"
 if [ -e "$file_path" ]; then
     ./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
 else
+    cd ~
     ~/tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
 fi
 #./utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10086
