@@ -34,6 +34,7 @@ notneed()
     sudo apt-get install firefox-nightly -y
     sudo apt-get install firefox-nightly-l10n-zh-cn -y
 }
+sudo apt install firefox-esr -y
 if [[ $(whoami) == "root" ]]; then
     #如果是root则关闭sandbox
     echo 'export MOZ_DISABLE_CONTENT_SANDBOX=1'>${TOOLSRC}
