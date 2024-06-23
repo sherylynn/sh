@@ -41,5 +41,5 @@ export XMODIFIERS="@im=fcitx" && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
 cd ~ && \
-zsh ~/sh/win-git/server_noVNC.sh'
+sh ~/sh/win-git/server_noVNC.sh'
 #dbus-launch --exit-with-session zsh ~/sh/win-git/server_noVNC.sh'
