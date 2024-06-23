@@ -1,6 +1,6 @@
 #!/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
-TOOLSRC_NAME=mesarc
+TOOLSRC_NAME=firefoxrc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 #创建一个保存 APT 库密钥的目录： 
 sudo install -d -m 0755 /etc/apt/keyrings 
