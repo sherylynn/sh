@@ -17,3 +17,5 @@ proxy
 $(cache_downloader $wps_name $wps_url)
 sudo dpkg -i  $(cache_folder)/$wps_name 
 sudo apt install -f -y
+#为了解决wps打不开缺少依赖
+sudo apt install python3-lxml -y
