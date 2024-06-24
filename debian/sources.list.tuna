@@ -20,6 +20,8 @@ deb-src https://community-packages.deepin.com/beige/ beige main commercial commu
 
 deb https://home-store-packages.uniontech.com/appstore eagle appstore
 
-#test
-deb https://community-packages.deepin.com/deepin/ apricot main contrib non-free
+#deepin
+#deb https://community-packages.deepin.com/deepin/ apricot main contrib non-free
 #deb-src https://community-packages.deepin.com/deepin/ apricot main contrib non-free
+
+#deb https://com-store-packages.uniontech.com/appstore deepin appstore
