@@ -38,6 +38,7 @@ zsh ~/sh/win-git/init_d_noVNC.sh
 zsh ~/sh/win-git/noVNC.sh 
 zsh ~/sh/debian/wps.sh 
 zsh ~/sh/debian/firefox.sh
-#zsh ~/sh/debian/firefox.sh 
+#确保toolsrc正确
+zsh ~/sh/debian/firefox.sh 
 zsh ~/sh/myemacs.sh
 emacs -nw
