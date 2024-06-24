@@ -1,0 +1,26 @@
+# 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
+deb http://mirrors.huaweicloud.com/debian/ bullseye main contrib non-free
+# deb-src http://mirrors.huaweicloud.com/debian/ bullseye main contrib non-free
+
+deb http://mirrors.huaweicloud.com/debian/ bullseye-updates main contrib non-free
+# deb-src http://mirrors.huaweicloud.com/debian/ bullseye-updates main contrib non-free
+
+deb http://mirrors.huaweicloud.com/debian/ bullseye-backports main contrib non-free
+# deb-src http://mirrors.huaweicloud.com/debian/ bullseye-backports main contrib non-free
+
+# 以下安全更新软件源包含了官方源与镜像站配置，如有需要可自行修改注释切换
+deb https://security.debian.org/debian-security bullseye-security main contrib non-free
+# deb-src https://security.debian.org/debian-security bullseye-security main contrib non-free
+
+# deepin 有用包 beige deepin v23
+deb https://community-packages.deepin.com/beige/ beige main commercial community
+
+deb-src https://community-packages.deepin.com/beige/ beige main commercial community
+
+deb https://home-store-packages.uniontech.com/appstore eagle appstore
+
+#deepin v20 apricot
+#deb https://community-packages.deepin.com/deepin/ apricot main contrib non-free
+#deb-src https://community-packages.deepin.com/deepin/ apricot main contrib non-free
+
+#deb https://com-store-packages.uniontech.com/appstore deepin appstore
