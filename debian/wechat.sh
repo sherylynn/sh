@@ -33,3 +33,5 @@ Type=Application
 Categories=Utility;Office;
 Comment=微信桌面版
 EOF
+
+chmod 777 /usr/share/applications/wechat.desktop 

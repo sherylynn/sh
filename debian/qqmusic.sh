@@ -22,7 +22,7 @@ sudo apt install -f -y
 
 if [[ $(whoami) == "root" ]]; then
     #如果是root则关闭sandbox
-tee /usr/share/applications/wechat.desktop <<-'EOF'
+tee /usr/share/applications/qqmusic.desktop <<-'EOF'
 [Desktop Entry]
 Name=QQmusic
 Exec=/opt/QQmusic/qqmusic %U --no-sandbox
@@ -34,3 +34,5 @@ Comment=QQMusic
 Categories=AudioVideo;
 EOF
 fi
+
+chmod 777 /usr/share/applications/qqmusic.desktop 
