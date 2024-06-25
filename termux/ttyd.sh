@@ -25,8 +25,11 @@ if [[ $(platform) == *linux* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   
   rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
-  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
-  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
+  #cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
+  #chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
+  # 不用直接下载的ttyd了
+  pkg install termux-service -y
+  pkg install ttyd -y
   echo "export PATH=$SOFT_HOME:"'$PATH' > ${TOOLSRC}
 
   ./termux_service_ttyd.sh
