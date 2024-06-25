@@ -16,20 +16,21 @@ lib_url=$mirrors$lib_name
 proxy
 $(cache_downloader $lib_name $lib_url)
 #为了解决wechat缺少的依赖
-sudo dpkg -i  $(cache_folder)/$lib_name 
-sudo apt install com.tencent.wechat -y
+#sudo dpkg -i  $(cache_folder)/$lib_name 
+sudo apt install com.qqmusic.y -y
 sudo apt install -f -y
 
-#sudo cp /opt/apps/com.tencent.wechat/entries/applications/com.tencent.wechat.desktop ~/Desktop/
+if [[ $(whoami) == "root" ]]; then
+    #如果是root则关闭sandbox
 tee /usr/share/applications/wechat.desktop <<-'EOF'
 [Desktop Entry]
-Name=微信
-GenericName=WeChat
-Exec=/usr/bin/sh -c "QT_QPA_PLATFORM='' /usr/bin/wechat %U"
-StartupNotify=true
+Name=QQmusic
+Exec=/opt/QQmusic/qqmusic %U --no-sandbox
 Terminal=false
-Icon=com.tencent.wechat
 Type=Application
-Categories=Utility;Office;
-Comment=微信桌面版
+Icon=qqmusic
+StartupWMClass=QQmusic
+Comment=QQMusic
+Categories=AudioVideo;
 EOF
+fi
