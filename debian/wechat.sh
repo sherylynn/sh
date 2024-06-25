@@ -19,3 +19,5 @@ $(cache_downloader $lib_name $lib_url)
 sudo dpkg -i  $(cache_folder)/$lib_name 
 sudo apt install com.tencent.wechat -y
 sudo apt install -f -y
+
+sudo cp /opt/apps/com.tencent.wechat/entries/applications/com.tencent.wechat.desktop ~/Desktop/
