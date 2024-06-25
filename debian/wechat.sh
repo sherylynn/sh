@@ -28,10 +28,9 @@ GenericName=WeChat
 Exec=/usr/bin/sh -c "QT_QPA_PLATFORM='' /usr/bin/wechat %U"
 StartupNotify=true
 Terminal=false
-Icon=com.tencent.wechat
+Icon=/opt/apps/com.tencent.wechat/entries/icons/hicolor/256x256/apps/com.tencent.wechat.png
 Type=Application
-Categories=Utility;Office;
+Categories=Network;
 Comment=微信桌面版
 EOF
-
 chmod 777 /usr/share/applications/wechat.desktop 
