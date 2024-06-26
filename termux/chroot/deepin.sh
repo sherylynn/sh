@@ -27,23 +27,6 @@ success() {
     echo "[✓] $1"
 }
 
-# Function to extract file
-extract_file() {
-    progress "Extracting file..."
-    if [ -d "$1/usr/lib/apt" ]; then
-        echo "[!] Directory already exists: $1/usr/lib/apt"
-        echo "[!] Skipping extraction..."
-    else
-        sudo tar xpvf "$1/debian12-arm64.tar.gz" -C "$1" --numeric-owner >/dev/null 2>&1
-        if [ $? -eq 0 ]; then
-            success "File extracted successfully: $1/debian12-arm64"
-        else
-            echo "[!] Error extracting file. Exiting..."
-            goodbye
-        fi
-    fi
-}
-
 # Function to configure Debian chroot environment
 configure_debian_chroot() {
     progress "Configuring Debian chroot environment..."
@@ -111,15 +94,8 @@ configure_debian_chroot() {
 
 # Main function
 main() {
-        download_dir=$DEBIAN_DIR
-        if [ ! -d "$download_dir" ]; then
-            sudo mkdir -p "$download_dir"
-            success "Created directory: $download_dir"
-        fi
 	proxy
-	$(cache_downloader "debian12-arm64.tar.gz" "https://github.com/LinuxDroidMaster/Termux-Desktops/releases/download/Debian/debian12-arm64.tar.gz")
-	sudo cp $(cache_folder)/debian12-arm64.tar.gz $download_dir/
-        extract_file "$download_dir"
+    sudo debootstrap --arch=arm64 bookworm debian-arm64 http://deb.debian.org/debian/
         configure_debian_chroot
 }
 
