@@ -2,9 +2,9 @@
 . $(dirname "$0")/../win-git/toolsinit.sh
 pkg update -y
 pkg upgrade -y
-sh ~/sh/termux/init.sh
-sh ~/sh/myemacs.sh
-sh ~/sh/termux/emacs.sh
-sh ~/sh/termux/emacs_native.sh 
-sh ~/sh/termux/ttyd.sh
-sh ~/sh/win-git/zlua_new.sh 
+zsh ~/sh/termux/init.sh
+zsh ~/sh/myemacs.sh
+zsh ~/sh/termux/emacs.sh
+zsh ~/sh/termux/emacs_native.sh 
+zsh ~/sh/termux/ttyd.sh
+zsh ~/sh/win-git/zlua_new.sh 
