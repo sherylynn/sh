@@ -85,7 +85,7 @@ configure_debian_chroot() {
     #~/sh/debian/debian_mirror.sh; \
     cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list; \
     apt update; \
-    apt upgrade; \
+    apt upgrade -y; \
     apt autoremove -y; \
     apt install emacs net-tools sudo zsh -y; \
     echo "Debian chroot environment configured"'

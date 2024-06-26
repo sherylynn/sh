@@ -34,7 +34,6 @@ sudo chsh -s /bin/zsh
 source ~/sh/win-git/toolsinit.sh
 proxy
 zsh ~/sh/raspberry/chinese.sh 
-zsh ~/sh/debian/emacs.sh
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
 zsh ~/sh/win-git/init_d_noVNC.sh 
@@ -44,4 +43,5 @@ zsh ~/sh/debian/firefox.sh
 #确保toolsrc正确
 zsh ~/sh/debian/firefox.sh 
 zsh ~/sh/myemacs.sh
+zsh ~/sh/debian/emacs.sh
 emacs -nw
