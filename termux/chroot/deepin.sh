@@ -43,8 +43,8 @@ configure_debian_chroot() {
         fi
     fi
 
-    #sudo debootstrap --arch=arm64 bookworm debian-arm64 http://deb.debian.org/debian/
-    sudo debootstrap --arch=arm64 beige $DEBIAN_DIR https://community-packages.deepin.com/beige/
+    sudo debootstrap --arch=arm64 bookworm $DEBIAN_DIR http://mirrors.tuna.tsinghua.edu.cn/debian
+    #sudo debootstrap --arch=arm64 beige $DEBIAN_DIR http://community-packages.deepin.com/beige/
 
     container_mounted || container_mount
     #git config
