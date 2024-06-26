@@ -44,7 +44,7 @@ configure_debian_chroot() {
     fi
 
     #sudo debootstrap --arch=arm64 bookworm $DEBIAN_DIR http://mirrors.tuna.tsinghua.edu.cn/debian
-    sudo debootstrap --arch=arm64 testing $DEBIAN_DIR http://mirrors.tuna.tsinghua.edu.cn/debian
+    sudo debootstrap --arch=arm64 testing $DEBIAN_DIR http://mirrors.huaweicloud.com/debian/
     #sudo debootstrap --arch=arm64 beige $DEBIAN_DIR http://community-packages.deepin.com/beige/
     # deepin需要mmdebstrap
     #sudo debootstrap --arch=arm64 beige $DEBIAN_DIR http://community-packages.deepin.com/beige/
