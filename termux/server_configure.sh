@@ -8,3 +8,4 @@ zsh ~/sh/termux/emacs.sh
 zsh ~/sh/termux/emacs_native.sh 
 zsh ~/sh/termux/ttyd.sh
 zsh ~/sh/win-git/zlua_new.sh 
+emacs
