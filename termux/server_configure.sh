@@ -7,3 +7,4 @@ sh ~/sh/myemacs.sh
 sh ~/sh/termux/emacs.sh
 sh ~/sh/termux/emacs_native.sh 
 sh ~/sh/termux/ttyd.sh
+sh ~/sh/win-git/zlua_new.sh 
