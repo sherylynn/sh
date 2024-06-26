@@ -21,7 +21,7 @@ CACHE_HOME=$HOME/
 NATIVE_EMACS_FONT_DIR=$TERMUX_HOME/fonts
 
 #安装依赖包
-apt install -y libvterm build-essential wget
+apt install -y libvterm build-essential wget librime
 #干掉默认的emacs的HOME，链接termux的HOME
 rm -rf $NATIVE_EMACS_HOME
 ln -s $TERMUX_HOME $NATIVE_EMACS_HOME
