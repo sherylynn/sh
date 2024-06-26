@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
 
 #中文字体

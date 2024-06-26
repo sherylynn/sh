@@ -4,8 +4,8 @@
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/cli.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/x11.sh"
 
-sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
-apt update && apt upgrade -y && apt autoremove -y
+#sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
+#apt update && apt upgrade -y && apt autoremove -y
 pkg install x11-repo root-repo termux-x11-nightly -y
 apt update
 pkg install tsu pulseaudio virglrenderer-android -y
