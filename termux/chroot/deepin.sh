@@ -42,6 +42,9 @@ configure_debian_chroot() {
         fi
     fi
 
+    #sudo debootstrap --arch=arm64 bookworm debian-arm64 http://deb.debian.org/debian/
+    sudo debootstrap --arch=arm64 beige $DEBIAN_DIR https://community-packages.deepin.com/beige/
+
     container_mounted || container_mount
     #git config
     termux_data_path=/data/data/com.termux/files/home
@@ -63,6 +66,7 @@ configure_debian_chroot() {
     usermod -G 3003 -a root; \
     apt update; \
     apt upgrade; \
+    apt install deepin-keyring -y; \
     apt install git vim wget curl -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
     git -C ~/sh pull; \
@@ -84,19 +88,15 @@ configure_debian_chroot() {
     unset LD_PRELOAD LD_DEBUG
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
 
-    #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && zsh /root/sh/win-git/move2zsh.sh'
-    #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && zsh /root/sh/win-git/zlua_new.sh && zsh /root/sh/win-git/init_d_noVNC.sh'
-    #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'source /root/sh/win-git/toolsinit.sh && proxy && zsh /root/sh/win-git/noVNC.sh'
-
+    
 
 }
 
 
 # Main function
 main() {
-	proxy
-    sudo debootstrap --arch=arm64 bookworm debian-arm64 http://deb.debian.org/debian/
-        configure_debian_chroot
+    proxy
+    configure_debian_chroot
 }
 
 # Call the main function
