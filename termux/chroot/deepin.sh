@@ -7,8 +7,9 @@ debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/x11.sh"
 sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
 apt update && apt upgrade -y && apt autoremove -y
 #pkg install x11-repo root-repo termux-x11-nightly qemu-system-aarch64-headless -y
-pkg install x11-repo root-repo termux-x11-nightly debootstrap -y
-apt update
+pkg install x11-repo root-repo -y
+pkg update
+pkg install termux-x11-nightly debootstrap -y
 pkg install tsu pulseaudio virglrenderer-android -y
 
 # Function to show farewell message
