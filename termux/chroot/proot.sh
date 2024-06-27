@@ -65,7 +65,7 @@ configure_debian_chroot() {
     usermod -g 3003 -G 3003,3004 -a _apt; \
     usermod -G 3003 -a root; \
     apt update; \
-    apt upgrade; \
+    apt upgrade -y; \
     apt install deepin-keyring -y; \
     apt install git vim wget curl sudo -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
