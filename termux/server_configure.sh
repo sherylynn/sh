@@ -2,6 +2,8 @@
 . $(dirname "$0")/../win-git/toolsinit.sh
 pkg update -y
 pkg upgrade -y
+pkg install zsh -y
+zsh ~/sh/termux/vmos_android13.sh
 zsh ~/sh/termux/init.sh
 zsh ~/sh/termux/emacs.sh
 zsh ~/sh/termux/myemacs.sh

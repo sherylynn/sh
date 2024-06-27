@@ -16,6 +16,8 @@ if [[ $ANDROID_VERSION == 12 ]]; then
   echo "android12"
   adb shell "su -c '/system/bin/device_config set_sync_disabled_for_tests persistent'"
   adb shell "su -c '/system/bin/device_config put activity_manager max_phantom_processes 2147483647'"
+  sudo /system/bin/device_config set_sync_disabled_for_tests persistent
+  sudo /system/bin/device_config put activity_manager max_phantom_processes 2147483647
 fi
 if [[ $ANDROID_VERSION == 13 ]]; then
   sudo settings put global settings_enable_monitor_phantom_proc false
