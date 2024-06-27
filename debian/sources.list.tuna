@@ -14,11 +14,11 @@ deb-src https://mirrors.tuna.tsinghua.edu.cn/debian-security testing-security ma
 
 
 # deepin 有用包 beige deepin v23
-deb [trusted=yes] https://community-packages.deepin.com/beige/ beige main commercial community
+#deb [trusted=yes] https://community-packages.deepin.com/beige/ beige main commercial community
 
-deb-src [trusted=yes] https://community-packages.deepin.com/beige/ beige main commercial community
+#deb-src [trusted=yes] https://community-packages.deepin.com/beige/ beige main commercial community
 
-deb [trusted=yes] https://home-store-packages.uniontech.com/appstore eagle appstore
+#deb [trusted=yes] https://home-store-packages.uniontech.com/appstore eagle appstore
 
 #deepin v20 apricot
 #deb https://community-packages.deepin.com/deepin/ apricot main contrib non-free
