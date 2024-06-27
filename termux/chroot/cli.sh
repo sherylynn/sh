@@ -5,7 +5,9 @@ busybox=/data/adb/ap/bin/busybox
 PREFIX=/data/data/com.termux/files/usr
 
 #Path of DEBIAN rootfs
-DEBIAN_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
+#DEBIAN_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
+#proot 地址
+DEBIAN_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian"
 #Path of chroot mount dir
 CHROOT_DIR="/data/local/mnt"
 
