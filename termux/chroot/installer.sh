@@ -68,8 +68,8 @@ configure_debian_chroot() {
     test -f  $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
     test -f  $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
 
-    unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install -f -y && apt upgrade -y'
+    #unset LD_PRELOAD LD_DEBUG
+    #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt install -f -y && apt upgrade -y'
     unset LD_PRELOAD LD_DEBUG
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
@@ -79,12 +79,11 @@ configure_debian_chroot() {
     usermod -g 3003 -G 3003,3004 -a _apt; \
     usermod -G 3003 -a root; \
     apt update; \
-    apt upgrade -y; \
     apt install git vim wget sudo curl -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
     git -C ~/sh pull; \
-    #~/sh/debian/debian_mirror.sh; \
-    cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list; \
+    ~/sh/debian/debian_mirror.sh; \
+    #cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list; \
     apt update; \
     apt upgrade -y; \
     apt autoremove -y; \
