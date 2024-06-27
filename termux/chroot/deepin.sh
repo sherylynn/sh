@@ -49,7 +49,6 @@ configure_debian_chroot() {
     # deepin需要mmdebstrap
     #sudo debootstrap --arch=arm64 beige $DEBIAN_DIR http://community-packages.deepin.com/beige/
 
-    proot-distro install debian
 
     container_mounted || container_mount
     #git config
@@ -103,6 +102,8 @@ configure_debian_chroot() {
 # Main function
 main() {
     proxy
+    #proot下需要先安装再确认是否创建目录，不然就会提示已经安装了debian
+    proot-distro install debian
     configure_debian_chroot
 }
 

@@ -43,8 +43,6 @@ configure_debian_chroot() {
         fi
     fi
 
-    proot-distro install debian
-
     container_mounted || container_mount
     #git config
     termux_data_path=/data/data/com.termux/files/home
@@ -96,6 +94,8 @@ configure_debian_chroot() {
 # Main function
 main() {
     proxy
+    #proot下需要先安装再确认是否创建目录，不然就会提示已经安装了debian
+    proot-distro install debian
     configure_debian_chroot
 }
 
