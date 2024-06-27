@@ -8,3 +8,4 @@
 
 #sudo rm -rf ~/Desktop/chrootdebian/
 sudo rm -rf $DEBIAN_DIR
+proot remove debian
