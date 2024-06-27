@@ -17,6 +17,8 @@ proxy
 $(cache_downloader $lib_name $lib_url)
 #为了解决wechat缺少的依赖
 sudo dpkg -i  $(cache_folder)/$lib_name 
+sudo cp ~/sh/debian/sources.list.mix /etc/apt/sources.list
+sudo apt update
 sudo apt install com.tencent.wechat -y
 sudo apt install -f -y
 
