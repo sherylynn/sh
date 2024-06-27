@@ -4,8 +4,8 @@
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/cli.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/x11.sh"
 
-sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
-apt update && apt upgrade -y && apt autoremove -y
+#sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
+#apt update && apt upgrade -y && apt autoremove -y
 #pkg install x11-repo root-repo termux-x11-nightly qemu-system-aarch64-headless -y
 pkg install x11-repo root-repo -y
 pkg update
@@ -44,10 +44,12 @@ configure_debian_chroot() {
     fi
 
     #sudo debootstrap --arch=arm64 bookworm $DEBIAN_DIR http://mirrors.tuna.tsinghua.edu.cn/debian
-    sudo debootstrap --arch=arm64 testing $DEBIAN_DIR http://mirrors.huaweicloud.com/debian/
+    #sudo debootstrap --arch=arm64 testing $DEBIAN_DIR http://mirrors.huaweicloud.com/debian/
     #sudo debootstrap --arch=arm64 beige $DEBIAN_DIR http://community-packages.deepin.com/beige/
     # deepin需要mmdebstrap
     #sudo debootstrap --arch=arm64 beige $DEBIAN_DIR http://community-packages.deepin.com/beige/
+
+    proot-distro install debian
 
     container_mounted || container_mount
     #git config
@@ -70,14 +72,15 @@ configure_debian_chroot() {
     usermod -G 3003 -a root; \
     apt update; \
     apt upgrade -y; \
-    apt install deepin-keyring -y; \
-    apt install git vim wget sudo curl -y; \
+    apt install git -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
     git -C ~/sh pull; \
-    ~/sh/debian/debian_mirror.sh; \
+    cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list
     apt update; \
     apt upgrade -y; \
     apt autoremove -y; \
+    apt install deepin-keyring -y; \
+    apt install git vim wget sudo curl -y; \
     apt install emacs net-tools zsh -y; \
     echo "Debian chroot environment configured"'
 
