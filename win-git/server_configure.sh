@@ -18,7 +18,7 @@ test -f ../../tools/rc/${SCRIPT_NAME}rc && . ../../tools/rc/${SCRIPT_NAME}rc
 echo $(whoami)
 
 
-sudo apt install git vim wget curl -y
+sudo apt install git vim wget curl sudo -y
 git clone --depth 1 http://github.com/sherylynn/sh ~/sh
 git -C ~/sh pull
 
@@ -28,7 +28,7 @@ zsh ~/sh/debian/testing_mirror.sh
 #deepin
 #sudo cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list
 
-sudo apt install sudo zsh -y
+sudo apt install zsh -y
 sudo apt install dbus-x11 xfce4 tigervnc-standalone-server tigervnc-tools openssh-server -y
 sudo apt install xfce4-terminal -y
 sudo chsh -s /bin/zsh
