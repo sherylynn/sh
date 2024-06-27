@@ -23,10 +23,10 @@ git clone --depth 1 http://github.com/sherylynn/sh ~/sh
 git -C ~/sh pull
 
 #. ~/sh/win-git/toolsinit.sh
-zsh ~/sh/debian/testing_mirror.sh
+#zsh ~/sh/debian/testing_mirror.sh
 #zsh ~/sh/debian/bullseyes_mirror.sh
 #deepin
-#sudo cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list
+sudo cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list
 
 sudo apt install zsh -y
 sudo apt install dbus-x11 xfce4 tigervnc-standalone-server tigervnc-tools openssh-server -y
