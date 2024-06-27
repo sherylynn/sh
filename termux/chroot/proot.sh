@@ -55,6 +55,7 @@ configure_debian_chroot() {
     #unset LD_PRELOAD LD_DEBUG
     #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
     unset LD_PRELOAD LD_DEBUG
+    cp ~/sh/debian/sources.list.tuna $CHROOT_DIR/etc/apt/sources.list
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
     groupadd -g 3003 aid_inet; \
