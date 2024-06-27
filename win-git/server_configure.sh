@@ -29,7 +29,8 @@ git -C ~/sh pull
 sudo cp ~/sh/debian/sources.list.deepin /etc/apt/sources.list
 
 sudo apt install zsh -y
-sudo apt install dbus-x11 xfce4 tigervnc-standalone-server tigervnc-tools openssh-server -y
+sudo apt install dbus-x11 xfce4 openssh-server -y
+sudo apt install tigervnc-standalone-server tigervnc-tools -y
 sudo apt install xfce4-terminal -y
 sudo chsh -s /bin/zsh
 source ~/sh/win-git/toolsinit.sh
