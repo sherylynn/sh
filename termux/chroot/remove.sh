@@ -8,4 +8,6 @@
 
 #sudo rm -rf ~/Desktop/chrootdebian/
 sudo rm -rf $DEBIAN_DIR
+#proot-distro reset debian
+proot-distro remove debian
 proot-distro remove debian
