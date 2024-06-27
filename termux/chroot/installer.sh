@@ -79,7 +79,7 @@ configure_debian_chroot() {
     usermod -G 3003 -a root; \
     apt update; \
     apt upgrade; \
-    apt install git vim wget curl -y; \
+    apt install git vim wget sudo curl -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
     git -C ~/sh pull; \
     #~/sh/debian/debian_mirror.sh; \
@@ -87,7 +87,7 @@ configure_debian_chroot() {
     apt update; \
     apt upgrade -y; \
     apt autoremove -y; \
-    apt install net-tools sudo zsh -y; \
+    apt install net-tools zsh -y; \
     echo "Debian chroot environment configured"'
 
     if [ $? -eq 0 ]; then

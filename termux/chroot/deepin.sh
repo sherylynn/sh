@@ -71,14 +71,14 @@ configure_debian_chroot() {
     apt update; \
     apt upgrade; \
     apt install deepin-keyring -y; \
-    apt install git vim wget curl -y; \
+    apt install git vim wget sudo curl -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
     git -C ~/sh pull; \
     ~/sh/debian/debian_mirror.sh; \
     apt update; \
     apt upgrade; \
     apt autoremove -y; \
-    apt install emacs net-tools sudo zsh -y; \
+    apt install emacs net-tools zsh -y; \
     echo "Debian chroot environment configured"'
 
     if [ $? -eq 0 ]; then
