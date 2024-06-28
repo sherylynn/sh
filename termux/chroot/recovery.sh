@@ -4,4 +4,4 @@
 . ./unchroot.sh
 cd ~
 pkg install pigz -y
-tar -I pigz -xvf ~/storage/downloads/backup_termux_$(arch).tar.gz
+sudo tar -I pigz -xvf ~/storage/downloads/backup_chroot_$(arch).tar.gz
