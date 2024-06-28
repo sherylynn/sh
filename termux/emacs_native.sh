@@ -17,16 +17,16 @@ TERMUX_FONT_DIR=$TERMUX_HOME/.termux
 NATIVE_EMACS_HOME=/data/data/org.gnu.emacs/files
 TERMUX_EMACS_FONT_DIR=$TERMUX_HOME/.local/share/fonts
 CACHE_HOME=$HOME/
-#映射后的native地址
+#映射后的 native 地址
 NATIVE_EMACS_FONT_DIR=$TERMUX_HOME/fonts
 
 #安装依赖包
 apt install -y libvterm build-essential wget
-#apt install -y librime
-#干掉默认的emacs的HOME，链接termux的HOME
+apt install -y librime
+#干掉默认的 emacs 的 HOME，链接 termux 的 HOME
 rm -rf $NATIVE_EMACS_HOME
 ln -s $TERMUX_HOME $NATIVE_EMACS_HOME
-#链接termux下emacsx的fonts
+#链接 termux 下 emacsx 的 fonts
 rm -rf $NATIVE_EMACS_FONT_DIR
 mkdir -p $TERMUX_EMACS_FONT_DIR
 ln -s $TERMUX_EMACS_FONT_DIR $NATIVE_EMACS_FONT_DIR
@@ -42,13 +42,13 @@ $(cache_downloader $FONT_NAME_EN $FONT_URL_EN)
 rm $NATIVE_EMACS_FONT_DIR/$FONT_NAME_EN
 ln -s $(cache_folder)/$FONT_NAME_EN $NATIVE_EMACS_FONT_DIR/$FONT_NAME_EN
 
-#设置termux的字体 [默认安卓自带的]
+#设置 termux 的字体 [默认安卓自带的]
 rm  $TERMUX_FONT_DIR/font.ttf
 #ln -s /system/fonts/DroidSansMono.ttf  $TERMUX_FONT_DIR/font.ttf
 #用更纱黑体，中英文都对齐
 ln -s $(cache_folder)/$FONT_NAME_CN  $TERMUX_FONT_DIR/font.ttf
 
-#设置emacs的字体 [默认安卓自带的]
+#设置 emacs 的字体 [默认安卓自带的]
 #ln -s /system/fonts/DroidSansMono.ttf $NATIVE_EMACS_FONT_DIR/font.ttf
 #用更纱黑体，中英文都对齐
 ln -s $(cache_folder)/$FONT_NAME_CN  $NATIVE_EMACS_FONT_DIR/font.ttf

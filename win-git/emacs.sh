@@ -78,9 +78,10 @@ fi
 
 if [[ $(platform) == *linux* ]]; then
 	## diffcult to find lib to compile
-	#开始使用pyim，不用rime了
-	#sudo apt install libgccjit0 librime-dev fd-find ripgrep -y
-	sudo apt install libgccjit0 fd-find ripgrep -y
+	#开始使用 pyim，不用 rime 了
+        #还是 rime 方便
+	sudo apt install libgccjit0 librime-dev fd-find ripgrep -y
+	#sudo apt install libgccjit0 fd-find ripgrep -y
 	sudo apt install libvterm-dev -y
 	sudo apt install libgccjit-12-dev -y
 	sudo apt install libgccjit-10-dev -y
@@ -123,5 +124,5 @@ if [[ $(platform) == *linux* ]]; then
 	echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
 fi
 #--------------new .toolsrc-----------------------
-#windows下和linux下的不同
-#windows 下还需要增加一个HOME的环境变量去系统
+#windows 下和 linux 下的不同
+#windows 下还需要增加一个 HOME的环境变量去系统
