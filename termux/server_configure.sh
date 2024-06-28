@@ -11,6 +11,6 @@ zsh ~/sh/termux/emacs_native.sh
 zsh ~/sh/termux/ttyd.sh
 zsh ~/sh/win-git/zlua_new.sh 
 emacs
-apt remove build-essential cmake -y
-apt autoremove -y
-apt clean
+#apt remove build-essential cmake -y
+#apt autoremove -y
+#apt clean
