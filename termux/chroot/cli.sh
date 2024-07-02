@@ -194,8 +194,8 @@ mount_part()
 container_mount()
 {
     if [ $# -eq 0 ]; then
-        #container_mount data dev sys proc pts sdcard tmp
-        container_mount root dev sys proc pts sdcard tmp
+        #container_mount data dev sys proc pts shm sdcard tmp
+        container_mount root dev sys proc pts shm sdcard tmp
         return $?
     fi
 
