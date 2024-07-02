@@ -33,6 +33,7 @@ Pin-Priority: 1000
     #如果是testing版本
     sudo apt-get install firefox-nightly -y
     sudo apt-get install firefox-nightly-l10n-zh-cn -y
+    #testing版本好像有问题，无法使用proxy插件
 }
 #sudo apt install firefox-esr -y
 notneed
