@@ -4,6 +4,7 @@ apt install getconf tsu pigz -y
 . $(dirname "$0")/../win-git/toolsinit.sh
 . ./chroot/cli.sh
 . ./chroot/unchroot.sh
+. ./clean.sh
 
 cd ~
 if [ ! -d "~/storage/downloads"]; then
