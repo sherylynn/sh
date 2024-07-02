@@ -10,6 +10,7 @@ PREFIX=/data/data/com.termux/files/usr
 DEBIAN_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian"
 #Path of chroot mount dir
 CHROOT_DIR="/data/local/mnt"
+TERMUX_DIR="/data/data/com.termux/files"
 
 is_ok()
 {

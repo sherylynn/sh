@@ -1,10 +1,14 @@
 #!/bin/bash
 #------------------init function----------------
-apt install getconf tsu -y
+apt install getconf tsu pigz -y
 . $(dirname "$0")/../win-git/toolsinit.sh
-cd ~
-#sudo apt install pigz -y
-#npm cache clean --force
-termux-setup-storage
+. ./chroot/cli.sh
+. ./chroot/unchroot.sh
 
-tar -zpcvf ~/storage/downloads/backup_termux_$(arch).tar.gz --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config --exclude=storage --exclude=.x* --exclude=.vnc* --exclude=.cache --exclude=Seafile --exclude=swap ./
+cd ~
+if [ ! -d "~/storage/downloads"]; then
+  termux-setup-storage
+fi
+
+#排除chroot的文件夹，在termux的根目录中直接备份
+tar --use-compress-program="pigz -9" -pcvf ~/storage/downloads/backup_termux_$(arch).tar.gz --exclude=~/storage --exclude=swap --exclude=$DEBIAN_DIR/dev --exclude=$DEBIAN_DIR/proc --exclude=$DEBIAN_DIR/sys --exclude=$DEBIAN_DIR/sdcard --exclude=$DEBIAN_DIR/tmp --exclude=$DEBIAN_DIR --exclude=$TERMUX_DIR/lib --exclude=$TERMUX_DIR/apps $TERMUX_DIR
