@@ -3,4 +3,5 @@
 apt remove build-essential cmake -y
 apt autoremove -y
 apt clean
-rm -rf $(cache_folder)
+#可能删掉字体，不删了
+#rm -rf $(cache_folder)
