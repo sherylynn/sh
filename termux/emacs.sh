@@ -1,5 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 pkg install emacs -y
 #pkg install gh fd ripgrep -y
-pkg install cmake libvterm build-essential -y
-pkg install librime -y
+if [ ! -f "~/.emacs.d/elpa/vterm-2*/vterm-module.so"]; then
+    echo "need to download vterm and rime build deps"
+    pkg install cmake build-essential wget tsu -y
+fi
+pkg install librime libvterm -y

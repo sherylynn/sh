@@ -22,7 +22,7 @@ SOFT_FILE_PACK=${NAME}.${SOFT_ARCH}
 
 SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/${SOFT_FILE_PACK}
 if [[ $(platform) == *linux* ]]; then
-  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+  #$(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   
   rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
@@ -32,6 +32,6 @@ if [[ $(platform) == *linux* ]]; then
   pkg install ttyd -y
   echo "export PATH=$SOFT_HOME:"'$PATH' > ${TOOLSRC}
 
-  ./termux_service_ttyd.sh
+  zsh ./termux_service_ttyd.sh
   sv-enable ttyd
 fi
