@@ -4,8 +4,8 @@
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/cli.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/x11.sh"
 
-sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
-apt update && apt upgrade -y && apt autoremove -y
+#sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
+#apt update && apt upgrade -y && apt autoremove -y
 #pkg install x11-repo root-repo termux-x11-nightly qemu-system-aarch64-headless -y
 pkg install x11-repo root-repo -y
 pkg update
@@ -55,7 +55,8 @@ configure_debian_chroot() {
     #unset LD_PRELOAD LD_DEBUG
     #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
     unset LD_PRELOAD LD_DEBUG
-    cp ~/sh/debian/sources.list.tuna $CHROOT_DIR/etc/apt/sources.list
+    #cp ~/sh/debian/sources.list.tuna $CHROOT_DIR/etc/apt/sources.list
+    ~/sh/debian/debian_mirror.sh $CHROOT_DIR/etc/apt/sources.list
     sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
     groupadd -g 3003 aid_inet; \
