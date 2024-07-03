@@ -8,6 +8,7 @@ PREFIX=/data/data/com.termux/files/usr
 #DEBIAN_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
 #proot 地址
 DEBIAN_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian"
+DEBIAN_OLD_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian-oldstable"
 #Path of chroot mount dir
 CHROOT_DIR="/data/local/mnt"
 TERMUX_DIR="/data/data/com.termux/files"

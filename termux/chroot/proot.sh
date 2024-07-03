@@ -95,6 +95,7 @@ main() {
     proxy
     #proot下需要先安装再确认是否创建目录，不然就会提示已经安装了debian
     proot-distro install debian
+    #proot-distro install debian-oldstable
     configure_debian_chroot
 }
 
