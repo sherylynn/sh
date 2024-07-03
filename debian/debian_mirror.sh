@@ -5,10 +5,12 @@ if [[ $1 = "" ]]; then
     echo "edit default sources.list"
     sudo vi /etc/apt/sources.list +%s#deb.debian.org#mirrors.tuna.tsinghua.edu.cn#g +wq!
     sudo vi /etc/apt/sources.list +%s#security.debian.org#mirrors.tuna.tsinghua.edu.cn#g +wq!
+    sudo vi /etc/apt/sources.list +%s#[signed-by="/usr/share/keyrings/debian-archive-keyring.gpg"]##g +wq!
 else
     echo "edit $1"
     sudo vi $1 +%s#deb.debian.org#mirrors.tuna.tsinghua.edu.cn#g +wq!
     sudo vi $1 +%s#security.debian.org#mirrors.tuna.tsinghua.edu.cn#g +wq!
+    sudo vi $1 +%s#[signed-by="/usr/share/keyrings/debian-archive-keyring.gpg"]##g +wq!
 fi
 #sudo vi /etc/apt/sources.list +%s#security.debian.org#mirror.aliyun.com#g +wq!
 #sudo vi /etc/apt/sources.list +%s/main$/main\ contrib\ non-free/g +wq!
