@@ -33,9 +33,11 @@ sudo apt install dbus-x11 xfce4 openssh-server -y
 sudo apt install tigervnc-standalone-server tigervnc-tools -y
 sudo apt install xfce4-terminal -y
 sudo chsh -s /bin/zsh
+. $(dirname "$0")/../win-git/toolsinit.sh
 source ~/sh/win-git/toolsinit.sh
 proxy
 zsh ~/sh/raspberry/chinese.sh 
+zsh ~/sh/lynn.sh work
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
 zsh ~/sh/win-git/init_d_noVNC.sh 
