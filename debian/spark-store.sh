@@ -19,6 +19,8 @@ proxy
 $(cache_downloader $lib_name $lib_url)
 #为了解决wechat缺少的依赖
 sudo apt install -y $(cache_folder)/$lib_name 
+#for wps depends
+sudo apt install xdg-utils -y
 
 #还需要zink作为显卡才能跑起来
 
