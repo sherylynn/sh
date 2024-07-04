@@ -9,3 +9,6 @@ brew install ripgrep git fd coreutils cmake libtool libvterm
 brew install gcc@5
 # for doom emacs orgmode support mouse or M-x xterm-mouse-mode 
 brew install tmux ttyd
+
+sudo cp /home/linuxbrew/.linuxbrew/share/applications/emacs.desktop /usr/share/applications/
+sudo chmod 777 /usr/share/applications/emacs.desktop
