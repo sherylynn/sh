@@ -22,23 +22,21 @@ sudo apt install -y $(cache_folder)/$lib_name
 
 if [[ $(whoami) == "root" ]]; then
     #如果是root则关闭sandbox
-tee /usr/share/applications/baidunetdisk.desktop <<-'EOF'
+tee /usr/share/applications/spark-store.desktop <<-'EOF'
 [Desktop Entry]
-Categories=Network;
-Comment=Baidu Netdisk
-Comment[zh_CN]=百度网盘
-Comment[zh_TW]=百度网盘
-Exec="/opt/apps/com.baidu.baidunetdisk/files/baidunetdisk/baidunetdisk" --no-sandbox %U
-Icon=/opt/apps/com.baidu.baidunetdisk/entries/icons/hicolor/scalable/apps/baidunetdisk.svg
-MimeType=x-scheme-handler/baiduyunguanjia;
-Name=Baidu Netdisk
-Name[zh_CN]=百度网盘
-Name[zh_TW]=百度网盘
-StartupWMClass=baidunetdisk
-Terminal=false
+Encoding=UTF-8
 Type=Application
-X-Deepin-Vendor=user-custom
+Categories=System;
+Exec=spark-store %u --no-sandbox
+Icon=spark-store
+Name=Spark Store
+Name[zh_CN]=星火应用商店
+Keywords=appstore;
+Terminal=false
+StartupNotify=true
+StartupWMClass=spark-store
+MimeType=x-scheme-handler/spk
 EOF
 fi
 
-chmod 777 /usr/share/applications/baidunetdisk.desktop 
+chmod 777 /usr/share/applications/spark-store.desktop
