@@ -12,7 +12,7 @@ esac
 
 #直接安装商店真的很卡，不如安装终端版本，连图标都不用费心了
 #lib_name=spark-store_4.2.13.1_$SOFT_ARCH.deb
-#还方便自动化
+#还方便自动化, 商店版本chroot时候的gpu用virgl有问题，只能用pipe来算
 lib_name=spark-store-console_4.2.12_all.deb
 lib_url=$mirrors$lib_name
 proxy
