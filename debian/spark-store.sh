@@ -21,7 +21,7 @@ $(cache_downloader $lib_name $lib_url)
 sudo apt install -y $(cache_folder)/$lib_name 
 #for wps depends
 sudo apt install xdg-utils -y
-
+#sudo cp /usr/share/applications/wps-office-wps.desktop /usr/share/applications/wps-office-wps-aarch64.desktop
 #还需要zink作为显卡才能跑起来
 
 if [[ $(whoami) == "root" ]]; then
