@@ -5,7 +5,7 @@ pkg install zsh tsu -y
 zsh ~/sh/termux/vmos_android13.sh
 zsh ~/sh/termux/init.sh
 
-if [ ! -d "~/storage/downloads"]; then
+if [ ! -d "~/storage/downloads" ]; then
   termux-setup-storage
 fi
 cd ~
