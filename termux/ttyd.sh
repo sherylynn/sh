@@ -32,6 +32,7 @@ if [[ $(platform) == *linux* ]]; then
   pkg install ttyd -y
   echo "export PATH=$SOFT_HOME:"'$PATH' > ${TOOLSRC}
 
-  zsh ./termux_service_ttyd.sh
+  zsh ~/sh/termux/termux_service_ttyd.sh
+  sh ~/sh/termux/termux_service_ttyd.sh
   sv-enable ttyd
 fi
