@@ -21,7 +21,8 @@ $(cache_downloader $lib_name $lib_url)
 sudo apt install -y $(cache_folder)/$lib_name 
 #for wps depends
 sudo apt install xdg-utils -y
-#sudo cp /usr/share/applications/wps-office-wps.desktop /usr/share/applications/wps-office-wps-aarch64.desktop
+#为了解决wps打不开缺少依赖
+sudo apt install python3-lxml -y
 #还需要zink作为显卡才能跑起来
 
 if [[ $(whoami) == "root" ]]; then
@@ -44,3 +45,28 @@ EOF
 fi
 
 chmod 777 /usr/share/applications/spark-store.desktop
+
+tee /usr/share/applications/wps-office-wps-aarch64.desktop <<-'EOF'
+[Desktop Entry]
+Comment=Use WPS Writer to edit articles and reports.
+Comment[zh_CN]=使用 WPS 文字编写报告，排版文章
+Exec=/usr/bin/wps %U
+GenericName=WPS Writer
+GenericName[zh_CN]=WPS 文字
+MimeType=application/wps-office.wps;application/wps-office.wpt;application/wps-office.wpso;application/wps-office.wpss;application/wps-office.doc;application/wps-office.dot;application/vnd.ms-word;application/msword;application/x-msword;application/msword-template;application/wps-office.docx;application/wps-office.dotx;application/rtf;application/vnd.ms-word.document.macroEnabled.12;application/vnd.openxmlformats-officedocument.wordprocessingml.document;x-scheme-handler/ksoqing;x-scheme-handler/ksowps;x-scheme-handler/ksowpp;x-scheme-handler/ksoet;x-scheme-handler/ksowpscloudsvr;x-scheme-handler/ksowebstartupwps;x-scheme-handler/ksowebstartupet;x-scheme-handler/ksowebstartupwpp;application/wps-office.uot;
+Name=WPS Writer
+Name[zh_CN]=WPS 文字
+StartupNotify=false
+Terminal=false
+Type=Application
+Categories=Office;WordProcessor;Qt;
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=
+Icon=wps-office2019-wpsmain
+InitialPreference=3
+StartupWMClass=wps
+
+EOF
+fi
