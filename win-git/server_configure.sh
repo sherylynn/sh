@@ -43,6 +43,10 @@ zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
 zsh ~/sh/win-git/init_d_noVNC.sh 
 zsh ~/sh/win-git/noVNC.sh 
+zsh ~/sh/win-git/koreader.sh 
+if [ -d "/sdcard" ]; then
+    sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ /root/Documents/百度云盘
+fi
 #zsh ~/sh/debian/wps.sh 
 zsh ~/sh/debian/firefox.sh
 #确保toolsrc正确
