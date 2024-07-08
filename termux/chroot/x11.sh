@@ -1,6 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-. ./cli.sh
+. $(dirname "$0")/cli.sh
+#. ./cli.sh
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 

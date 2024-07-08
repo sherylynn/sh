@@ -1,6 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../../win-git/toolsinit.sh
-. ./cli.sh
+. $(dirname "$0")/cli.sh
+#. ./cli.sh
 debian_run_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/cli.sh"
 debian_xfce_scrpit="/data/data/com.termux/files/home/sh/termux/chroot/x11.sh"
 

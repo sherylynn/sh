@@ -1,10 +1,12 @@
 #!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../../win-git/toolsinit.sh
-. ./cli.sh
+#. ./cli.sh
+. $(dirname "$0")/cli.sh
 
-./unchroot.sh
-./unchroot.sh
-./unchroot.sh
+. $(dirname "$0")/unchroot.sh
+. $(dirname "$0")/unchroot.sh
+. $(dirname "$0")/unchroot.sh
+#./unchroot.sh
 
 #sudo rm -rf ~/Desktop/chrootdebian/
 sudo rm -rf $DEBIAN_DIR
