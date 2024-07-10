@@ -1,13 +1,14 @@
 #!/data/data/com.termux/files/usr/bin/bash
 #------------------init function----------------
-target_host=@1
+target_host=$1
+echo $target_host
 apt install getconf tsu pigz rsync -y
 . $(dirname "$0")/../../win-get/toolsinit.sh
 . ./cli.sh
 . ./unchroot.sh
 
 cd ~
-if [ ! -d "~/storage/downloads"]; then
+if [ ! -d "~/storage/downloads" ]; then
   termux-setup-storage
 fi
 echo "在外部 termux 中彻底进行备份"
