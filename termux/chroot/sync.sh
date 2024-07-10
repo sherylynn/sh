@@ -11,7 +11,7 @@ if [ ! -d "~/storage/downloads"]; then
   termux-setup-storage
 fi
 echo "在外部 termux 中彻底进行备份"
-rsync -rvz -e 'ssh -p 2222' --progress ${DEBIAN_DIR} root@${target_host}:${DEBIAN_DIR}
+rsync -avz -e 'ssh -p 2222' --progress ${DEBIAN_DIR} root@${target_host}:${DEBIAN_DIR}
 
 #sudo tar -zpcvf ~/storage/downloads/backup_chroot_$(arch).tar.gz --exclude=~/storage --exclude=swap $DEBIAN_DIR
 #去掉了文件夹以可以在使用时进行备份
