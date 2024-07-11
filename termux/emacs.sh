@@ -1,6 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 pkg install emacs -y
 sv-enable emacsd
+
+#touch ~/hello_emacs.sh
 #pkg install gh fd ripgrep -y
 if [ ! -f "~/.emacs.d/elpa/vterm-2*/vterm-module.so" ]; then
     echo "need to download vterm and rime build deps"
