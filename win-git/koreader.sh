@@ -24,9 +24,9 @@ SOFT_FILE_PACK=${SOFT_FILE_NAME}.deb
 SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/${SOFT_FILE_PACK}
 if [[ $(platform) == *linux* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  sudo apt install -y $(cache_folder)/$SOFT_FILE_PACK
-  #sudo dpkg -i $(cache_folder)/$SOFT_FILE_PACK
-  #sudo apt install -f
+  #sudo apt install -y $(cache_folder)/$SOFT_FILE_PACK
+  sudo dpkg -i $(cache_folder)/$SOFT_FILE_PACK
+  sudo apt install -f
   #rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
