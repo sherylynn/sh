@@ -15,3 +15,4 @@ if [ ! -f "~/.emacs.d/elpa/rime-2*/librime-emacs.so" ]; then
 fi
 
 pkg install librime libvterm -y
+apt install shfmt -y

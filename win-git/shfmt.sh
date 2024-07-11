@@ -1,5 +1,6 @@
 #!/bin/bash
-. $(dirname "$0")/../win-git/toolsinit.sh
+. $(dirname "$0")/toolsinit.sh
+#. $(dirname "$0")/../win-git/toolsinit.sh
 AUTHOR=mvdan
 NAME=sh
 REAL_NAME=shfmt
@@ -26,18 +27,16 @@ SOFT_FILE_PACK=${REAL_NAME}_${SOFT_VERSION}_${PLATFORM}_${SOFT_ARCH}
 
 #https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_arm64
 SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/${SOFT_FILE_PACK}
-if [[ $(platform) == *linux* ]]; then
-  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  
-  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
-  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
-  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
+    $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
 
-  #pkg install termux-services -y
-  #pkg install ttyd -y
-  echo "export PATH=$SOFT_HOME:"'$PATH' > ${TOOLSRC}
+    rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
+    cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
+    chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
+
+    #pkg install termux-services -y
+    #pkg install ttyd -y
+    echo "export PATH=$SOFT_HOME:"'$PATH' > ${TOOLSRC}
 
   #zsh ~/sh/termux/termux_service_ttyd.sh
   #sh ~/sh/termux/termux_service_ttyd.sh
   #sv-enable ttyd
-fi
