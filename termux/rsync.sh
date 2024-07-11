@@ -5,4 +5,4 @@ pkg install ttyd -y
 
 zsh ~/sh/termux/termux_service_ttyd.sh
 sh ~/sh/termux/termux_service_ttyd.sh
-  sv-enable ttyd
+sv-enable ttyd
