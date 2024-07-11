@@ -4,7 +4,23 @@ pkg install htop ncdu coreutils tsu getconf vim zsh git wget curl -y
 #pkg install nodejs golang python
 #pkg install tmux ttyd termux-services -y
 pkg install termux-services -y
-sv-enable sshd
+
+#tee /data/data/com.termux/files/usr/etc/ssh/sshd_config <<-'EOF'
+#PrintMotd yes
+#Port 8022
+#PermitRootLogin yes
+#PasswordAuthentication yes
+##PubkeyAuthentication yes
+##AuthorizedKeysFile /data/authorized_keys
+#StrictModes no
+#Subsystem sftp /data/data/com.termux/files/usr/libexec/sftp-server
+#EOF
+#echo "root passwd"
+#sudo passwd
+#sv-disable sshd
+#sv down sshd
+sv-able sshd
+echo "normal passwd"
 passwd
 #doom emacs
 #pkg install emacs ripgrep fd librime gflags -y

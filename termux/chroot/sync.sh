@@ -4,8 +4,10 @@ target_host=$1
 echo $target_host
 apt install getconf tsu pigz rsync -y
 . $(dirname "$0")/../../win-get/toolsinit.sh
-. ./cli.sh
-. ./unchroot.sh
+
+. $(dirname "$0")/cli.sh
+. $(dirname "$0")/unchroot.sh
+. $(dirname "$0")/unchroot.sh
 
 cd ~
 if [ ! -d "~/storage/downloads" ]; then
