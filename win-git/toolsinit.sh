@@ -305,7 +305,7 @@ fi
 alias go_win="GOOS=windows GOARCH=amd64 go build "
 
 alias ec="emacsclient ~/sh/win-git/toolsinit.sh"
-alias zc="emacsclient ~/sh/win-git/toolsinit.sh"
+alias zs="emacsclient ~/sh/win-git/toolsinit.sh"
 # as start function
 #  case $(platform) in
 #    win) alias zd="explorer" ;;
