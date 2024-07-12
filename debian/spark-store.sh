@@ -1,10 +1,14 @@
 #!/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
 mirrors=https://gitee.com/spark-store-project/spark-store/releases/download/4.2.13.1/
-case $(arch) in 
-  amd64) SOFT_ARCH=amd64;;
-  386) SOFT_ARCH=x86;;
-  armhf) SOFT_ARCH=armv7l;;
+NAME=sparkSTORE
+TOOLSRC_NAME=${NAME}rc
+TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+
+case $(arch) in
+  amd64) SOFT_ARCH=amd64 ;;
+  386) SOFT_ARCH=x86 ;;
+  armhf) SOFT_ARCH=armv7l ;;
   aarch64)
     SOFT_ARCH=arm64
     ;;
@@ -18,7 +22,7 @@ lib_url=$mirrors$lib_name
 proxy
 $(cache_downloader $lib_name $lib_url)
 #为了解决wechat缺少的依赖
-sudo apt install -y $(cache_folder)/$lib_name 
+sudo apt install -y $(cache_folder)/$lib_name
 #for wps depends
 sudo apt install xdg-utils -y
 #为了解决wps打不开缺少依赖
@@ -26,8 +30,8 @@ sudo apt install python3-lxml -y
 #还需要zink作为显卡才能跑起来
 
 if [[ $(whoami) == "root" ]]; then
-    #如果是root则关闭sandbox
-tee /usr/share/applications/spark-store.desktop <<-'EOF'
+  #如果是root则关闭sandbox
+  tee /usr/share/applications/spark-store.desktop <<-'EOF'
 [Desktop Entry]
 Encoding=UTF-8
 Type=Application
@@ -46,7 +50,12 @@ fi
 
 chmod 777 /usr/share/applications/spark-store.desktop
 
-tee /usr/share/applications/wps-office-wps-aarch64.desktop <<-'EOF'
+case $(arch) in
+  amd64) SOFT_ARCH=amd64 ;;
+  386) SOFT_ARCH=x86 ;;
+  armhf) SOFT_ARCH=armv7l ;;
+  aarch64)
+    tee /usr/share/applications/wps-office-wps-aarch64.desktop <<-'EOF'
 [Desktop Entry]
 Comment=Use WPS Writer to edit articles and reports.
 Comment[zh_CN]=使用 WPS 文字编写报告，排版文章
@@ -67,6 +76,8 @@ X-KDE-Username=
 Icon=wps-office2019-wpsmain
 InitialPreference=3
 StartupWMClass=wps
-
 EOF
-fi
+    ;;
+esac
+
+#echo "alias bwrap='echo'" >${TOOLSRC}
