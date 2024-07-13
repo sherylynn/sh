@@ -329,8 +329,10 @@ alias go_win="GOOS=windows GOARCH=amd64 go build "
 #alias ec="emacsclient ~/sh/win-git/toolsinit.sh"
 zedit() {
   local filename=$1
-  echo $filename
   if [ $filename == ""]; then
+    emacsclient -a "" -c "./"
+  elif [ ! -f $filename ]; then
+    zluaload $1
     emacsclient -a "" -c "./"
   else
     emacsclient -a "" -c "$filename"
