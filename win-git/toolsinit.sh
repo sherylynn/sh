@@ -3,7 +3,7 @@
 if [[ $PREFIX == *termux* ]]; then
   alias uname=$PREFIX/bin/uname
 elif [[ $TMPDIR == *emacs* ]]; then                     #/data/data/org.gnu.emacs/cache
-  alias uname=/data/data/com.termux/files/usr/bin/uname #安卓上的emacs利用的地址是termux一样的地址
+  alias uname=/data/data/com.termux/files/usr/bin/uname #安卓上的 emacs 利用的地址是 termux 一样的地址
 elif [[ $(which uname) == *usr* ]]; then
   alias uname=/usr/bin/uname #for msys2 which can't found uname in .zshenv
 else
@@ -292,7 +292,7 @@ exist() {
 }
 if [[ "$(arch)" == "aarch64" ]]; then
   alias codium="LD_PRELOAD=$HOME/lib/libxcb.so.1 codium"
-  alias ncdu="ncdu --exclude /root/download --exclude /proc --exclude /vendor --exclude /system"
+  alias ncdu="ncdu --exclude /root/download --exclude /proc --exclude /vendor --exclude /system --exclude /sdcard"
 fi
 
 if [[ $PREFIX == *termux* ]]; then
