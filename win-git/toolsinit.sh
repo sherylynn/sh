@@ -326,8 +326,18 @@ else
 fi
 alias go_win="GOOS=windows GOARCH=amd64 go build "
 
-alias ec="emacsclient ~/sh/win-git/toolsinit.sh"
-alias zs="emacsclient ~/sh/win-git/toolsinit.sh"
+#alias ec="emacsclient ~/sh/win-git/toolsinit.sh"
+zedit() {
+  local filename=$1
+  echo $filename
+  if [ $filename == ""]; then
+    emacsclient -a "" -c "./"
+  else
+    emacsclient -a "" -c "$filename"
+  fi
+}
+alias zs="zedit ~/sh/win-git/toolsinit.sh"
+
 # as start function
 #  case $(platform) in
 #    win) alias zd="explorer" ;;
@@ -367,9 +377,9 @@ alias chromium="chromium --no-sandbox"
 zreload() {
   source $ZSH_HOME/win-git/toolsinit.sh
 }
-zedit() {
-  $EDITOR $ZSH_HOME/win-git/toolsinit.sh
-}
+#zedit() {
+#  $EDITOR $ZSH_HOME/win-git/toolsinit.sh
+#}
 zgit() {
   #$EDITOR -C "gs"
   git -C $ZSH_HOME commit -a
