@@ -114,19 +114,24 @@ make_dirs() {
 }
 
 chroot_exec() {
-  unset TMP TEMP TMPDIR LD_PRELOAD LD_DEBUG
+  #unset TMP TEMP TMPDIR LD_PRELOAD LD_DEBUG
   local path="${PATH}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   if [ "$1" = "-u" ]; then
     local username="$2"
+    #echo $username
     shift 2
   fi
   if [ -n "${username}" ]; then
     if [ $# -gt 0 ]; then
+      #  echo "$*"
       sudo $busybox chroot "${CHROOT_DIR}" /bin/su - ${username} -c "$*"
+    #  sudo $busybox chroot "${CHROOT_DIR}" /bin/su - root -c "$*"
     else
+      #  echo 2
       sudo $busybox chroot "${CHROOT_DIR}" /bin/su - ${username}
     fi
   else
+    #echo 4
     PATH="${path}" chroot "${CHROOT_DIR}" $*
   fi
 }
