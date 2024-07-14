@@ -64,6 +64,15 @@ get_pids() {
   fi
 }
 
+is_started() {
+  get_pids $* >/dev/null
+}
+
+is_stopped() {
+  is_started $*
+  test $? -ne 0
+}
+
 kill_pids() {
   local pids=$(get_pids $*)
   if [ -n "${pids}" ]; then
@@ -78,7 +87,7 @@ remove_files() {
   for item in $*; do
     target="${CHROOT_DIR}${item}"
     if [ -e "${target}" ]; then
-      rm -f "${target}"
+      sudo rm -f "${target}"
     fi
   done
   return 0
