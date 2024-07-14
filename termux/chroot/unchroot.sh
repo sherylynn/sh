@@ -7,6 +7,8 @@
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
 stop_dbus
+stop_vnc
+stop_init
 
 container_umount
 #after_umount_fun

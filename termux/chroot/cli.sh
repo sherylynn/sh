@@ -13,6 +13,15 @@ DEBIAN_OLD_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-r
 CHROOT_DIR="/data/local/mnt"
 TERMUX_DIR="/data/data/com.termux/files"
 
+#user config
+USER_NAME=root
+VNC_DISPLAY=0
+VNC_DEPTH=16
+VNC_DPI=75
+VNC_WIDTH=756
+VNC_HEIGHT=1024
+VNC_ARGS="--localhost no"
+
 is_ok() {
   if [ $? -eq 0 ]; then
     if [ -n "$2" ]; then
@@ -347,5 +356,46 @@ stop_dbus() {
   echo ":: Stopping dbus ... "
   kill_pids /run/dbus/pid /run/dbus/messagebus.pid /run/messagebus.pid /var/run/dbus/pid /var/run/dbus/messagebus.pid /var/run/messagebus.pid
   is_ok "fail" "done"
+  return 0
+}
+
+start_vnc() {
+  echo ":: Starting vnc ... "
+  is_stopped /tmp/xsession.pid
+  is_ok "skip" || return 0
+  # remove locks
+  remove_files "/tmp/.X${VNC_DISPLAY}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY}"
+  # exec vncserver
+  chroot_exec -u ${USER_NAME} vncserver :${VNC_DISPLAY} -depth ${VNC_DEPTH} -dpi ${VNC_DPI} -geometry ${VNC_WIDTH}x${VNC_HEIGHT} ${VNC_ARGS}
+  is_ok "fail" "done"
+  return 0
+}
+
+stop_vnc() {
+  echo ":: Stopping vnc ... "
+  chroot_exec -u ${USER_NAME} vncserver -kill :${VNC_DISPLAY}
+  kill_pids /tmp/xsession.pid
+  is_ok "fail" "done"
+  return 0
+}
+
+stop_init() {
+  [ -n "${INIT_LEVEL}" ] || return 0
+
+  local services=$(ls "${CHROOT_DIR}/etc/rc6.d/" | grep '^K')
+  if [ -n "${services}" ]; then
+    echo ":: Stopping ${COMPONENT}: "
+    local item
+    for item in ${services}; do
+      echo "${item/K[0-9][0-9]/} ... "
+      if [ "${INIT_ASYNC}" = "true" ]; then
+        chroot_exec -u ${INIT_USER} "/etc/rc6.d/${item} stop" 1>&2 &
+      else
+        chroot_exec -u ${INIT_USER} "/etc/rc6.d/${item} stop" 1>&2
+      fi
+      is_ok "fail" "done"
+    done
+  fi
+
   return 0
 }
