@@ -23,6 +23,7 @@ VNC_HEIGHT=1024
 VNC_ARGS="--localhost no"
 INIT_LEVEL=3
 [ -n "${INIT_USER}" ] || INIT_USER="root"
+#INIT_ASYNC="true"
 is_ok() {
   if [ $? -eq 0 ]; then
     if [ -n "$2" ]; then
@@ -115,7 +116,7 @@ make_dirs() {
 }
 
 chroot_exec() {
-  #unset TMP TEMP TMPDIR LD_PRELOAD LD_DEBUG
+  unset TMP TEMP TMPDIR LD_PRELOAD LD_DEBUG
   local path="${PATH}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   if [ "$1" = "-u" ]; then
     local username="$2"
@@ -396,7 +397,7 @@ stop_init() {
     echo ":: Stopping init: "
     local item
     for item in ${services}; do
-      echo "${item/K[0-9][0-9]/} ... "
+      echo -n "${item/K[0-9][0-9]/} ... "
       if [ "${INIT_ASYNC}" = "true" ]; then
         chroot_exec -u ${INIT_USER} "/etc/rc6.d/${item} stop" 1>&2 &
       else
