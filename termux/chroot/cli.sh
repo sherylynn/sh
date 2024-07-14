@@ -21,7 +21,8 @@ VNC_DPI=75
 VNC_WIDTH=756
 VNC_HEIGHT=1024
 VNC_ARGS="--localhost no"
-
+INIT_LEVEL=3
+[ -n "${INIT_USER}" ] || INIT_USER="root"
 is_ok() {
   if [ $? -eq 0 ]; then
     if [ -n "$2" ]; then
@@ -118,20 +119,15 @@ chroot_exec() {
   local path="${PATH}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   if [ "$1" = "-u" ]; then
     local username="$2"
-    #echo $username
     shift 2
   fi
   if [ -n "${username}" ]; then
     if [ $# -gt 0 ]; then
-      #  echo "$*"
       sudo $busybox chroot "${CHROOT_DIR}" /bin/su - ${username} -c "$*"
-    #  sudo $busybox chroot "${CHROOT_DIR}" /bin/su - root -c "$*"
     else
-      #  echo 2
       sudo $busybox chroot "${CHROOT_DIR}" /bin/su - ${username}
     fi
   else
-    #echo 4
     PATH="${path}" chroot "${CHROOT_DIR}" $*
   fi
 }
@@ -395,7 +391,7 @@ stop_init() {
   }
   [ -n "${INIT_LEVEL}" ] || return 0
 
-  local services=$(ls "${CHROOT_DIR}/etc/rc6.d/" | grep '^K')
+  local services=$(sudo ls "${CHROOT_DIR}/etc/rc6.d/" | grep '^K')
   if [ -n "${services}" ]; then
     echo ":: Stopping init: "
     local item
