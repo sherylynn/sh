@@ -325,7 +325,7 @@ config_dbus() {
 }
 
 start_dbus() {
-  echo ":: Starting ${COMPONENT} ... "
+  echo ":: Starting dbus ... "
   is_stopped /run/dbus/pid /run/dbus/messagebus.pid /run/messagebus.pid /var/run/dbus/pid /var/run/dbus/messagebus.pid /var/run/messagebus.pid
   is_ok "skip" || return 0
   remove_files /run/dbus/pid /run/dbus/messagebus.pid /run/messagebus.pid /var/run/dbus/pid /var/run/dbus/messagebus.pid /var/run/messagebus.pid
@@ -335,7 +335,7 @@ start_dbus() {
 }
 #
 stop_dbus() {
-  echo ":: Stopping ${COMPONENT} ... "
+  echo ":: Stopping dbus ... "
   kill_pids /run/dbus/pid /run/dbus/messagebus.pid /run/messagebus.pid /var/run/dbus/pid /var/run/dbus/messagebus.pid /var/run/messagebus.pid
   is_ok "fail" "done"
   return 0
