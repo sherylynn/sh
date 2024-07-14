@@ -377,6 +377,10 @@ start_vnc() {
 }
 
 stop_vnc() {
+  container_mounted || {
+    echo "The container is not mounted."
+    return 0
+  }
   echo ":: Stopping vnc ... "
   chroot_exec -u ${USER_NAME} vncserver -kill :${VNC_DISPLAY}
   kill_pids /tmp/xsession.pid
@@ -385,11 +389,15 @@ stop_vnc() {
 }
 
 stop_init() {
+  container_mounted || {
+    echo "The container is not mounted."
+    return 0
+  }
   [ -n "${INIT_LEVEL}" ] || return 0
 
   local services=$(ls "${CHROOT_DIR}/etc/rc6.d/" | grep '^K')
   if [ -n "${services}" ]; then
-    echo ":: Stopping ${COMPONENT}: "
+    echo ":: Stopping init: "
     local item
     for item in ${services}; do
       echo "${item/K[0-9][0-9]/} ... "
