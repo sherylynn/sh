@@ -330,15 +330,20 @@ alias go_win="GOOS=windows GOARCH=amd64 go build "
 zedit() {
   local filename="$1"
   if [[ -z "$filename" ]]; then
-    emacsclient -a "" -c "./"
+    #emacsclient -a "" -c "./"
+    #希望能看到原来的窗口而不是新建一个
+    emacsclient -a "" "./"
   elif [[ ! -f "$filename" ]]; then
     zluaload "$filename"
-    emacsclient -a "" -c "./"
+    #emacsclient -a "" -c "./"
+    emacsclient -a "" "./"
   else
-    emacsclient -a "" -c "$filename"
+    #emacsclient -a "" -c "$filename"
+    emacsclient -a "" "$filename"
   fi
 }
 alias zs="zedit ~/sh/win-git/toolsinit.sh"
+alias zo="zedit ~/work/todo.org"
 
 # as start function
 #  case $(platform) in
