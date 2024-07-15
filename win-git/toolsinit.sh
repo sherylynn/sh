@@ -434,7 +434,12 @@ wsl_ip() {
 }
 
 wsl_adb() {
-  adb connect $(wsl_ip):5555
+  local_ip=$1
+  if [[ $local_ip != "" ]]; then
+    adb connect $local_ip:5555
+  else
+    adb connect $(wsl_ip):5555
+  fi
 }
 
 wsl_ssh() {
@@ -467,7 +472,12 @@ proxy_adb() {
 }
 
 scrcpy_adb() {
-  wsl_adb
+  local_ip=$1
+  if [[ $local_ip != "" ]]; then
+    wsl_adb $local_ip
+  else
+    wsl_adb
+  fi
   scrcpy --turn-screen-off --stay-awake
 }
 
