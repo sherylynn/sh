@@ -14,7 +14,6 @@ brew install ripgrep fd libvterm libtool
 brew tap d12frosted/emacs-plus
 brew install emacs-plus@$SOFT_VERSION --with-native-comp --with-tree-sitter
 
-
 mkdir -p $SOFT_HOME
 cd $SOFT_HOME
 git clone --recursive https://github.com/rime/librime.git $SOFT_HOME_LIBRIME
@@ -31,14 +30,16 @@ make deps
 make
 #make install
 
-cd $SOFT_HOME
-#git clone https://github.com/merrickluo/liberime $SOFT_HOME_LIBERIME
-git clone https://github.com/sherylynn/liberime $SOFT_HOME_LIBERIME
-export RIME_PATH=$SOFT_HOME_LIBRIME
-export EMACS_PLUS_PATH=/opt/homebrew/opt/emacs-plus/include
-cd $SOFT_HOME_LIBERIME
-#export rime-emacs-module-header-root=/opt/homebrew/opt/emacs-plus/include
-#make CFLAGS = -fPIC -O2 -Wall -I $SOFT_HOME_LIBRIME -I $SOFT_HOME_LIBRIME/src/
-make
-echo 'export PATH=$PATH:'${SOFT_BIN}>${TOOLSRC}
-echo 'export RIME_PATH='${SOFT_HOME_LIBRIME}>>${TOOLSRC}
+test() {
+  cd $SOFT_HOME
+  #git clone https://github.com/merrickluo/liberime $SOFT_HOME_LIBERIME
+  git clone https://github.com/sherylynn/liberime $SOFT_HOME_LIBERIME
+  export RIME_PATH=$SOFT_HOME_LIBRIME
+  export EMACS_PLUS_PATH=/opt/homebrew/opt/emacs-plus/include
+  cd $SOFT_HOME_LIBERIME
+  #export rime-emacs-module-header-root=/opt/homebrew/opt/emacs-plus/include
+  #make CFLAGS = -fPIC -O2 -Wall -I $SOFT_HOME_LIBRIME -I $SOFT_HOME_LIBRIME/src/
+  make
+}
+echo 'export PATH=$PATH:'${SOFT_BIN} >${TOOLSRC}
+echo 'export RIME_PATH='${SOFT_HOME_LIBRIME} >>${TOOLSRC}
