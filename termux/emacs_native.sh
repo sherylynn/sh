@@ -1,6 +1,12 @@
 #!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
 
+#termux 里面emacsclient连接的地址
+#/data/data/com.termux/files/usr/var/run/emacs10567/
+
+#emacs native里面 emacsclient 地址是
+#暂时不知道具体的位置
+
 #中文字体
 #FONT_NAME_CN=PingFang-Regular.ttf
 #FONT_URL_CN=https://github.com/ShmilyHTT/PingFang/raw/master/PingFang-Regular.ttf
@@ -41,12 +47,12 @@ rm $NATIVE_EMACS_FONT_DIR/$FONT_NAME_EN
 ln -s $(cache_folder)/$FONT_NAME_EN $NATIVE_EMACS_FONT_DIR/$FONT_NAME_EN
 
 #设置 termux 的字体 [默认安卓自带的]
-rm  $TERMUX_FONT_DIR/font.ttf
+rm $TERMUX_FONT_DIR/font.ttf
 #ln -s /system/fonts/DroidSansMono.ttf  $TERMUX_FONT_DIR/font.ttf
 #用更纱黑体，中英文都对齐
-ln -s $(cache_folder)/$FONT_NAME_CN  $TERMUX_FONT_DIR/font.ttf
+ln -s $(cache_folder)/$FONT_NAME_CN $TERMUX_FONT_DIR/font.ttf
 
 #设置 emacs 的字体 [默认安卓自带的]
 #ln -s /system/fonts/DroidSansMono.ttf $NATIVE_EMACS_FONT_DIR/font.ttf
 #用更纱黑体，中英文都对齐
-ln -s $(cache_folder)/$FONT_NAME_CN  $NATIVE_EMACS_FONT_DIR/font.ttf
+ln -s $(cache_folder)/$FONT_NAME_CN $NATIVE_EMACS_FONT_DIR/font.ttf
