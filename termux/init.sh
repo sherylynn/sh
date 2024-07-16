@@ -19,7 +19,7 @@ pkg install termux-services -y
 #sudo passwd
 #sv-disable sshd
 #sv down sshd
-sv-able sshd
+sv-enable sshd
 echo "normal passwd"
 passwd
 #doom emacs
