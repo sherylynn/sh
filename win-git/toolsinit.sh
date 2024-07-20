@@ -543,7 +543,7 @@ proxy() {
 
 proxyu() {
   #proxy usbhost
-  local normal_IP=127.0.0.1
+  local normal_IP=192.168.1.1
   proxy_ip $normal_IP
 }
 
