@@ -541,6 +541,12 @@ proxy() {
   proxy_ip $normal_IP
 }
 
+proxyu() {
+  #proxy usbhost
+  local normal_IP=127.0.0.1
+  proxy_ip $normal_IP
+}
+
 proxyw() {
   local normal_IP=$(wsl_ip)
   proxy_ip $normal_IP
