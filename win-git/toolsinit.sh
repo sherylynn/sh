@@ -400,13 +400,13 @@ zgitaddall() {
   git -C $ZSH_HOME add --all
 }
 zpush() {
-  git -C $ZSH_HOME push
-  git -C ~/.emacs.d/ push
+  git -C $ZSH_HOME push &
+  git -C ~/.emacs.d/ push &
   git -C ~/work/ push
 }
 zfetch() {
-  git -C $ZSH_HOME pull
-  git -C ~/.emacs.d/ pull
+  git -C $ZSH_HOME pull &
+  git -C ~/.emacs.d/ pull &
   git -C ~/work/ pull
 }
 ztermuxpaste() {
