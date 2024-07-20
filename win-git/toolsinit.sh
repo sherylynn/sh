@@ -401,6 +401,8 @@ zgitaddall() {
 }
 zpush() {
   git -C $ZSH_HOME push
+  git -C ~/.emacs.d/ push
+  git -C ~/work/ push
 }
 zfetch() {
   git -C $ZSH_HOME pull
