@@ -48,3 +48,4 @@ brew install --cask wez/wezterm/wezterm
 
 #r 语言
 brew install r
+brew install rstudio
