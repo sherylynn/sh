@@ -407,7 +407,8 @@ zpush() {
 zfetch() {
   git -C $ZSH_HOME pull &
   git -C ~/.emacs.d/ pull &
-  git -C ~/work/ pull
+  git -C ~/work/ pull &
+  git -C ~/toys/ pull
 }
 ztermuxpaste() {
   echo $(termux-clipboard-get)
