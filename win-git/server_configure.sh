@@ -1,19 +1,19 @@
 #!/bin/bash
 SCRIPT_NAME="configure"
 realpath() {
-	local x=$1
-	echo $(
-		cd $(dirname $0)
-		pwd
-	)/$x
+  local x=$1
+  echo $(
+    cd $(dirname $0)
+    pwd
+  )/$x
 
 }
 realpathdir() {
-	local x=$1
-	echo $(
-		cd $(dirname $0)
-		pwd
-	)
+  local x=$1
+  echo $(
+    cd $(dirname $0)
+    pwd
+  )
 
 }
 cd $(realpathdir ./server_${SCRIPT_NAME}.sh)
@@ -50,12 +50,12 @@ zsh ~/sh/win-git/init_d_noVNC.sh
 zsh ~/sh/win-git/noVNC.sh
 zsh ~/sh/win-git/koreader.sh
 if [ -d "/sdcard" ]; then
-	sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ /root/Documents/百度云盘
+  sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ /root/Documents/百度云盘
 fi
 #zsh ~/sh/debian/wps.sh
 zsh ~/sh/debian/firefox.sh
 if [[ $(platform) == *wsl* ]]; then
-	sh ~/sh/win-git/ssh.sh
+  sh ~/sh/win-git/ssh.sh
 fi
 #确保toolsrc正确
 #zsh ~/sh/debian/firefox.sh
@@ -64,4 +64,5 @@ zsh ~/sh/debian/spark-store.sh
 zsh ~/sh/debian/vlc.sh
 zsh ~/sh/myemacs.sh
 zsh ~/sh/debian/emacs.sh
+zsh ~/sh/debian/R.sh
 emacs -nw
