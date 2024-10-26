@@ -483,7 +483,8 @@ scrcpy_adb() {
   else
     wsl_adb
   fi
-  scrcpy --turn-screen-off --stay-awake
+  scrcpy --turn-screen-off --stay-awake --keyboard=uhid
+  #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
 }
 
 scrcpy_termux_hold_video() {
