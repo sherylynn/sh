@@ -447,6 +447,33 @@ wsl_adb() {
   fi
 }
 
+#连接无线调试的设备
+wifi_adb() {
+  local_ip=$1
+  if [[ $local_ip == "" ]]; then
+    #如果留空，则设置为默认地址
+    local_ip=127.0.0.1
+  fi
+  adb kill-server
+  PORTS=$(nmap -sT -p30000-45000 --open $local_ip | grep "open" | sed -r 's/([1-9][0-9]+)(\/tcp.+)/\1/')
+  for PORT in $PORTS; do
+    if [ -n "$PORT" ]; then
+      RESULT=$(adb connect $local_ip:"$PORT")
+    fi
+    if [[ "$RESULT" =~ "" && ! "$RESULT" =~ "already" && ! "$RESULT" =~ "failed" ]]; then
+      :
+    elif [[ "$RESULT" =~ "connected" && ! "$RESULT" =~ "already" ]]; then
+      echo "$RESULT"
+      echo "adb $local_ip 5555"
+      TCPPORT=$(echo "$RESULT" | sed -e "s/connected to //g")
+      #echo "$TCPPORT"
+      #选择指定设备的adb
+      adb -s "$TCPPORT" tcpip 5555
+    fi
+  done
+  adb connect $local_ip
+}
+
 wsl_ssh() {
   ssh root@$(wsl_ip)
   ssh root@$(wsl_ip) -p 8022
@@ -485,6 +512,16 @@ scrcpy_adb() {
   fi
   scrcpy --turn-screen-off --stay-awake --keyboard=uhid
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
+}
+
+scrcpy_wifi() {
+  local_ip=$1
+  if [[ $local_ip != "" ]]; then
+    wifi_adb $local_ip
+  else
+    wifi_adb
+  fi
+  scrcpy --turn-screen-off --stay-awake --keyboard=uhid
 }
 
 scrcpy_termux_hold_video() {
