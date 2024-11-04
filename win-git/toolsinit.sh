@@ -454,7 +454,8 @@ wifi_adb() {
     #如果留空，则设置为默认地址
     local_ip=127.0.0.1
   fi
-  adb kill-server
+  #adb kill-server
+  #不重启服务，节省一点点时间
   PORTS=$(nmap -sT -p30000-45000 --open $local_ip | grep "open" | sed -r 's/([1-9][0-9]+)(\/tcp.+)/\1/')
   for PORT in $PORTS; do
     if [ -n "$PORT" ]; then
@@ -467,11 +468,14 @@ wifi_adb() {
       echo "adb $local_ip 5555"
       TCPPORT=$(echo "$RESULT" | sed -e "s/connected to //g")
       #echo "$TCPPORT"
-      #选择指定设备的adb
-      adb -s "$TCPPORT" tcpip 5555
+      #选择指定设备的adb，然后重新设置端口为5555
+      # 这个命令好像会影响无线调试，会直接失败，但是在termux里就能行，奇怪
+      #adb -s "$TCPPORT" tcpip 5555
+      scrcpy -s "$TCPPORT" --turn-screen-off --stay-awake --keyboard=uhid
     fi
   done
-  adb connect $local_ip
+  #scrcpy --turn-screen-off --stay-awake --keyboard=uhid
+  #adb connect $local_ip
 }
 
 wsl_ssh() {
