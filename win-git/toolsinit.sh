@@ -518,16 +518,6 @@ scrcpy_adb() {
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
 }
 
-scrcpy_wifi() {
-  local_ip=$1
-  if [[ $local_ip != "" ]]; then
-    wifi_adb $local_ip
-  else
-    wifi_adb
-  fi
-  scrcpy --turn-screen-off --stay-awake --keyboard=uhid
-}
-
 scrcpy_termux_hold_video() {
   scrcpy --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
 }
