@@ -410,6 +410,11 @@ zfetch() {
   git -C ~/work/ pull &
   git -C ~/toys/ pull
 }
+
+zchat() {
+  /Applications/WeChat.app/Contents/MacOS/WeChat
+}
+
 ztermuxpaste() {
   echo $(termux-clipboard-get)
 }
