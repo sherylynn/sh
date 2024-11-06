@@ -1,8 +1,8 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
 echo $(bash_file)
-if [[ ! -f $(alltoolsrc_file) ]];then
-  cat $(bash_file) |grep test >$(alltoolsrc_file)
+if [[ ! -f $(alltoolsrc_file) ]]; then
+  cat $(bash_file) | grep test >$(alltoolsrc_file)
 fi
 if [[ "$(cat $(bash_file))" != *zsh* ]]; then
   echo "not zsh"
@@ -28,17 +28,17 @@ if [[ "$ZSH_PLUG" == antigen ]]; then
   ANTIGENRC=$(toolsRC $ANTIGENRC_NAME)
   ADOTDIR=$(install_path)/antigen
   git clone https://github.com/zsh-users/antigen $ADOTDIR
-  echo export ADOTDIR=$ADOTDIR > $ANTIGENRC
-  echo source $ADOTDIR/antigen.zsh >> $ANTIGENRC
+  echo export ADOTDIR=$ADOTDIR >$ANTIGENRC
+  echo source $ADOTDIR/antigen.zsh >>$ANTIGENRC
 elif [[ "$ZSH_PLUG" == zplug ]]; then
-  # load zplug 
+  # load zplug
   ZPLUG_HOME=$(install_path)/zplug
   export ZPLUG_HOME=$ZPLUG_HOME
   git clone https://github.com/zplug/zplug $ZPLUG_HOME
   ZPLUGRC_NAME=zplugrc
   ZPLUGRC=$(toolsRC $ZPLUGRC_NAME)
-  echo export ZPLUG_HOME=$ZPLUG_HOME > $ZPLUGRC
-  echo source $ZPLUG_HOME/init.zsh >> $ZPLUGRC
+  echo export ZPLUG_HOME=$ZPLUG_HOME >$ZPLUGRC
+  echo source $ZPLUG_HOME/init.zsh >>$ZPLUGRC
 fi
 # load myzshrc
 TOOLSRC_NAME=myzshrc
@@ -60,6 +60,7 @@ if [[ \$ZSH_PLUG == antigen ]]; then
   #antigen bundle skywind3000/z.lua
   antigen bundle zdharma/fast-syntax-highlighting
   #antigen bundle sherylynn/fast-syntax-highlighting
+  antigen bundle zsh-users/zsh-autosuggestions
   antigen apply
   autoload -U deer
   zle -N deer
@@ -75,25 +76,40 @@ elif [[ \$ZSH_PLUG == zplug ]]; then
 fi
 bindkey -e
 #方法一 autoload 加载后执行，无法 script 里调用 toolsinit.sh 内部函数，但是 script 可以手动呼唤 toolsinit.sh
-#fpath+=$(cd "$(dirname "$0")";pwd)
-#autoload -U $(cd "$(dirname "$0")";pwd)/toolsinit.sh
+#fpath+=$(
+  cd "$(dirname "$0")"
+  pwd
+)
+#autoload -U $(
+  cd "$(dirname "$0")"
+  pwd
+)/toolsinit.sh
 #toolsinit.sh
 #直接执行 理同方法一，但 script 必须手动指定 路径来 source toolsinit.sh
-#. $(cd "$(dirname "$0")";pwd)/toolsinit.sh
+#. $(
+  cd "$(dirname "$0")"
+  pwd
+)/toolsinit.sh
 #方法三 写入 .zshenv [需要看 uname 路径]
 #方法三 写入 .zshenv [需要看 uname 路径]
-#. $(cd "$(dirname "$0")";pwd)/proxy.sh
+#. $(
+  cd "$(dirname "$0")"
+  pwd
+)/proxy.sh
 setopt no_nomatch
 EOF
-echo ".  $(cd "$(dirname "$0")";pwd)/toolsinit.sh " > $(zshenv)
-if [[ $syntax ]];then
-cd ~
+echo ".  $(
+  cd "$(dirname "$0")"
+  pwd
+)/toolsinit.sh " >$(zshenv)
+if [[ $syntax ]]; then
+  cd ~
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
-  echo "source ~/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
+  echo "source ~/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >>~/.zshrc
 fi
 cd ~
 #compaudit | xargs chown -R "$(whoami)"
 #compaudit | xargs chmod -R go-w
 if [[ $(platform) == *macos* ]]; then
-    brew install wget curl
+  brew install wget curl
 fi
