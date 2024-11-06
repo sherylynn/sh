@@ -58,7 +58,8 @@ ZSH_PLUG=$ZSH_PLUG
 if [[ \$ZSH_PLUG == antigen ]]; then
   antigen bundle Vifon/deer
   #antigen bundle skywind3000/z.lua
-  antigen bundle zdharma/fast-syntax-highlighting
+  #antigen bundle zdharma/fast-syntax-highlighting
+  antigen bundle z-shell/F-Sy-H --branch=main
   #antigen bundle sherylynn/fast-syntax-highlighting
   antigen bundle zsh-users/zsh-autosuggestions
   antigen apply
