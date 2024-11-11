@@ -57,7 +57,7 @@ configure_debian_chroot() {
   test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
   #复用输入法词库
   rm -rf $CHROOT_DIR/root/rime
-  test -f $termux_rime && sudo ln -s $termux_rime $CHROOT_DIR/root/rime
+  test -d $termux_rime && sudo ln -s $termux_rime $CHROOT_DIR/root/rime
 
   #unset LD_PRELOAD LD_DEBUG
   #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
