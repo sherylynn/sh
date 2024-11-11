@@ -46,12 +46,18 @@ configure_debian_chroot() {
 
   container_mounted || container_mount
   #git config
-  termux_data_path=/data/data/com.termux/files/home
+  #termux_data_path=/data/data/com.termux/files/home
+  termux_data_path=/data/data/com.termux/files/home/storage/downloads
+
   termux_gitcredentials=$termux_data_path/.git-credentials
   termux_gitconfig=$termux_data_path/.gitconfig
+  termux_rime=$termux_data_path/rime
 
   test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
   test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
+  #复用输入法词库
+  rm -rf $CHROOT_DIR/root/rime
+  test -f $termux_rime && sudo ln -s $termux_rime $CHROOT_DIR/root/rime
 
   #unset LD_PRELOAD LD_DEBUG
   #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
