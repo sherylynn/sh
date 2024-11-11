@@ -15,50 +15,50 @@ pkg install tsu pulseaudio virglrenderer-android -y
 
 # Function to show farewell message
 goodbye() {
-    echo "Something went wrong. Exiting..."
-    exit 1
+  echo "Something went wrong. Exiting..."
+  exit 1
 }
 
 # Function to show progress message
 progress() {
-    echo "[+] $1"
+  echo "[+] $1"
 }
 
 # Function to show success message
 success() {
-    echo "[✓] $1"
+  echo "[✓] $1"
 }
 
 # Function to configure Debian chroot environment
 configure_debian_chroot() {
-    progress "Configuring Debian chroot environment..."
+  progress "Configuring Debian chroot environment..."
 
-    # Check if DEBIAN_DIR directory exists
-    if [ ! -d "$DEBIAN_DIR" ]; then
-        sudo mkdir -p "$DEBIAN_DIR"
-        if [ $? -eq 0 ]; then
-            success "Created directory: $DEBIAN_DIR"
-        else
-            echo "[!] Error creating directory: $DEBIAN_DIR. Exiting..."
-            goodbye
-        fi
+  # Check if DEBIAN_DIR directory exists
+  if [ ! -d "$DEBIAN_DIR" ]; then
+    sudo mkdir -p "$DEBIAN_DIR"
+    if [ $? -eq 0 ]; then
+      success "Created directory: $DEBIAN_DIR"
+    else
+      echo "[!] Error creating directory: $DEBIAN_DIR. Exiting..."
+      goodbye
     fi
+  fi
 
-    container_mounted || container_mount
-    #git config
-    termux_data_path=/data/data/com.termux/files/home
-    termux_gitcredentials=$termux_data_path/.git-credentials
-    termux_gitconfig=$termux_data_path/.gitconfig
+  container_mounted || container_mount
+  #git config
+  termux_data_path=/data/data/com.termux/files/home
+  termux_gitcredentials=$termux_data_path/.git-credentials
+  termux_gitconfig=$termux_data_path/.gitconfig
 
-    test -f  $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
-    test -f  $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
+  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
+  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
 
-    #unset LD_PRELOAD LD_DEBUG
-    #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
-    unset LD_PRELOAD LD_DEBUG
-    #cp ~/sh/debian/sources.list.tuna $CHROOT_DIR/etc/apt/sources.list
-    ~/sh/debian/debian_mirror.sh $CHROOT_DIR/etc/apt/sources.list
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
+  #unset LD_PRELOAD LD_DEBUG
+  #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
+  unset LD_PRELOAD LD_DEBUG
+  #cp ~/sh/debian/sources.list.tuna $CHROOT_DIR/etc/apt/sources.list
+  ~/sh/debian/debian_mirror.sh $CHROOT_DIR/etc/apt/sources.list
+  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
     groupadd -g 3003 aid_inet; \
     groupadd -g 3004 aid_net_raw; \
@@ -76,33 +76,32 @@ configure_debian_chroot() {
     apt install emacs net-tools zsh -y; \
     echo "Debian chroot environment configured"'
 
-    if [ $? -eq 0 ]; then
-        success "Debian chroot environment configured"
-    else
-        echo "[!] Error configuring Debian chroot environment. Exiting..."
-        goodbye
-    fi
+  if [ $? -eq 0 ]; then
+    success "Debian chroot environment configured"
+  else
+    echo "[!] Error configuring Debian chroot environment. Exiting..."
+    goodbye
+  fi
 
-    progress "Installing XFCE4..."
-    unset LD_PRELOAD LD_DEBUG
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
-
-    
+  progress "Installing XFCE4..."
+  unset LD_PRELOAD LD_DEBUG
+  #在chroot里面执行配置文件
+  #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
+  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
 
 }
-
 
 # Main function
 main() {
-    proxy
-    #proot下需要先安装再确认是否创建目录，不然就会提示已经安装了debian
-    proot-distro install debian
-    #proot-distro install debian-oldstable
-    configure_debian_chroot
+  proxy
+  #proot下需要先安装再确认是否创建目录，不然就会提示已经安装了debian
+  proot-distro install debian
+  #proot-distro install debian-oldstable
+  configure_debian_chroot
 }
 
 # Call the main function
-cat << "EOF"
+cat <<"EOF"
 ___  ____ ____ _ ___  _  _ ____ ____ ___ ____ ____    ____ _  _ ____ ____ ____ ___ 
 |  \ |__/ |  | | |  \ |\/| |__| [__   |  |___ |__/    |    |__| |__/ |  | |  |  |  
 |__/ |  \ |__| | |__/ |  | |  | ___]  |  |___ |  \    |___ |  | |  \ |__| |__|  |  
