@@ -13,6 +13,8 @@ DEBIAN_OLD_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-r
 CHROOT_DIR="/data/local/mnt"
 TERMUX_DIR="/data/data/com.termux/files"
 
+SDCARD_DIR="/sdcard"
+
 #user config
 USER_NAME=root
 VNC_DISPLAY=0
