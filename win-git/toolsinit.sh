@@ -512,6 +512,12 @@ proxy_adb() {
   proxy_wsl
 }
 
+phone() {
+  adb forward tcp:3333 tcp:3333
+  open http://127.0.0.1:3333
+  scrcpy_adb
+}
+
 scrcpy_adb() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
