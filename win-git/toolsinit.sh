@@ -524,10 +524,10 @@ scrcpy_adb() {
     #tcpip命令会尝试直接重新连接adb指定地址
     #所以废弃直接用wsl来连接
     #wsl_adb $local_ip
-    scrcpy --tcpip=$local_ip:5555 --turn-screen-off --stay-awake --keyboard=uhid #
+    scrcpy --max-size=1980 --tcpip=$local_ip:5555 --turn-screen-off --stay-awake --keyboard=uhid #
   else
     wsl_adb
-    scrcpy --turn-screen-off --stay-awake --keyboard=uhid
+    scrcpy --max-size=1980 --turn-screen-off --stay-awake --keyboard=uhid
   fi
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
 }
