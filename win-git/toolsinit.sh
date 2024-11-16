@@ -521,11 +521,14 @@ phone() {
 scrcpy_adb() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
-    wsl_adb $local_ip
+    #tcpip命令会尝试直接重新连接adb指定地址
+    #所以废弃直接用wsl来连接
+    #wsl_adb $local_ip
+    scrcpy --tcpip=$local_ip:5555 --turn-screen-off --stay-awake --keyboard=uhid #
   else
     wsl_adb
+    scrcpy --turn-screen-off --stay-awake --keyboard=uhid
   fi
-  scrcpy --turn-screen-off --stay-awake --keyboard=uhid
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
 }
 
