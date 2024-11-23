@@ -4,21 +4,21 @@
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
-# Execute chroot script
-container_mounted || container_mount
-#before_mount_fun
-
-termux_data_path=/data/data/com.termux/files/home
-termux_gitcredentials=$termux_data_path/.git-credentials
-termux_gitconfig=$termux_data_path/.gitconfig
-
-test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
-test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
-
-unset LD_PRELOAD LD_DEBUG
-#sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
-
 if [ -e "$busybox" ]; then
+  # Execute chroot script
+  container_mounted || container_mount
+  #before_mount_fun
+
+  termux_data_path=/data/data/com.termux/files/home
+  termux_gitcredentials=$termux_data_path/.git-credentials
+  termux_gitconfig=$termux_data_path/.gitconfig
+
+  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
+  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
+
+  unset LD_PRELOAD LD_DEBUG
+  #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+
   start_dbus
   sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
@@ -35,7 +35,7 @@ zsh '
 #rm -rf /tmp/.X* && \
 else
   #解除挂载
-  sudo ruri -U $CHROOT_DIR
+  sudo ruri -U $DEBIAN_DIR
   #挂载
-  sudo ruri -S -m /sdcard /sdcard -p $CHROOT_DIR
+  sudo ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR
 fi
