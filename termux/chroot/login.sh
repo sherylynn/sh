@@ -18,8 +18,9 @@ test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/roo
 unset LD_PRELOAD LD_DEBUG
 #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 
-start_dbus
-sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export PULSE_SERVER=127.0.0.1 && \
+if [ -e "$busybox" ]; then
+  start_dbus
+  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
@@ -32,3 +33,9 @@ zsh '
 #startxfce4'
 #vncserver -kill :0 && \
 #rm -rf /tmp/.X* && \
+else
+  #解除挂载
+  sudo ruri -U $CHROOT_DIR
+  #挂载
+  sudo ruri -S -m /sdcard /sdcard -p $CHROOT_DIR
+fi
