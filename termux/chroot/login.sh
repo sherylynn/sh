@@ -34,6 +34,12 @@ zsh '
 #vncserver -kill :0 && \
 #rm -rf /tmp/.X* && \
 else
+  sdcard_rime=/sdcard/Download/rime
+  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
+  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
+  #复用输入法词库
+  rm -rf $DEBIAN_DIR/root/rime
+  test -d $sdcard_rime && sudo ln -s $termux_rime $DEBIAN_DIR/root/rime
   #解除挂载
   sudo ruri -U $DEBIAN_DIR
   #挂载

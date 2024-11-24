@@ -15,5 +15,5 @@ if [ -e "$busybox" ]; then
   container_umount
 #after_umount_fun
 else
-  sudo ruri -U ./test
+  sudo ruri -U $DEBIAN_DIR
 fi
