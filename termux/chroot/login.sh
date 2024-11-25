@@ -35,14 +35,16 @@ zsh '
 #rm -rf /tmp/.X* && \
 else
   sdcard_rime=/sdcard/Download/rime
+  sdcard_gitconfig=/sdcard/Download/.gitconfig
+  sdcard_gitcredentials=/sdcard/Download/.gitcredentials
   rm -rf $DEBIAN_DIR/root/.gitconfig
-  test -f $termux_gitconfig && sudo ln -s $termux_gitconfig $DEBIAN_DIR/root/.gitconfig
-  test -f $termux_gitcredentials && sudo ln -s $termux_gitcredentials $DEBIAN_DIR/root/.gitcredentials
+  test -f $sdcard_gitconfig && sudo ln -s $sdcard_gitconfig $DEBIAN_DIR/root/.gitconfig
+  test -f $sdcard_gitcredentials && sudo ln -s $sdcard_gitcredentials $DEBIAN_DIR/root/.gitcredentials
   #复用输入法词库
   rm -rf $DEBIAN_DIR/root/rime
-  test -d $sdcard_rime && sudo ln -s $termux_rime $DEBIAN_DIR/root/rime
+  test -d $sdcard_rime && sudo ln -s $sdcard_rime $DEBIAN_DIR/root/rime
   #解除挂载
   sudo ruri -U $DEBIAN_DIR
   #挂载
-  sudo ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR
+  sudo ruri -k -S -m /sdcard /sdcard -p $DEBIAN_DIR
 fi
