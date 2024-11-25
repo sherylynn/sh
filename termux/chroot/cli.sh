@@ -1,6 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
+#kernelsu busybox
+test -f /data/adb/ksu/bin/busybox && busybox=/data/adb/ksu/bin/busybox
 #apatch busybox
-busybox=/data/adb/ap/bin/busybox
+test -f /data/adb/ap/bin/busybox && busybox=/data/adb/ap/bin/busybox
 #for run in native emacs
 PREFIX=/data/data/com.termux/files/usr
 
