@@ -38,11 +38,11 @@ else
   #sudo mount -o remount,suid /data
   sdcard_rime=/sdcard/Download/rime
   sdcard_gitconfig=/sdcard/Download/.gitconfig
-  sdcard_gitcredentials=/sdcard/Download/.gitcredentials
+  sdcard_gitcredentials=/sdcard/Download/.git-credentials
   sudo rm -rf $DEBIAN_DIR/root/.gitconfig
   test -f $sdcard_gitconfig && sudo ln -s $sdcard_gitconfig $DEBIAN_DIR/root/.gitconfig
-  sudo rm -rf $DEBIAN_DIR/root/.gitcredentials
-  test -f $sdcard_gitcredentials && sudo ln -s $sdcard_gitcredentials $DEBIAN_DIR/root/.gitcredentials
+  sudo rm -rf $DEBIAN_DIR/root/.git-credentials
+  test -f $sdcard_gitcredentials && sudo ln -s $sdcard_gitcredentials $DEBIAN_DIR/root/.git-credentials
   #复用输入法词库
   sudo rm -rf $DEBIAN_DIR/root/rime
   test -d $sdcard_rime && sudo ln -s $sdcard_rime $DEBIAN_DIR/root/rime
