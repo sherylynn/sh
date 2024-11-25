@@ -35,8 +35,9 @@ zsh '
 #rm -rf /tmp/.X* && \
 else
   sdcard_rime=/sdcard/Download/rime
-  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
-  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
+  rm -rf $DEBIAN_DIR/root/.gitconfig
+  test -f $termux_gitconfig && sudo ln -s $termux_gitconfig $DEBIAN_DIR/root/.gitconfig
+  test -f $termux_gitcredentials && sudo ln -s $termux_gitcredentials $DEBIAN_DIR/root/.gitcredentials
   #复用输入法词库
   rm -rf $DEBIAN_DIR/root/rime
   test -d $sdcard_rime && sudo ln -s $termux_rime $DEBIAN_DIR/root/rime
