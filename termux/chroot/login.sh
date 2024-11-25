@@ -34,6 +34,7 @@ zsh '
 #vncserver -kill :0 && \
 #rm -rf /tmp/.X* && \
 else
+  sudo mount -o remount,suid /data
   sdcard_rime=/sdcard/Download/rime
   sdcard_gitconfig=/sdcard/Download/.gitconfig
   sdcard_gitcredentials=/sdcard/Download/.gitcredentials
