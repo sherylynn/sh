@@ -4,7 +4,7 @@
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
-if [ -e "$busybox" ]; then
+if [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
   #before_mount_fun
