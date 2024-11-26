@@ -212,9 +212,7 @@ cache_unpacker() {
     elif [[ ${soft_file_pack} != *gz* ]]; then
       mkdir ${soft_file_name}
       tar -xf ${soft_file_pack} -C ${soft_file_name}
-    else
-      #tar.gz
-      echo "unpacking tar.gz"
+    elif [[ ${soft_file_pack} == *tar.gz* ]]; then
       mkdir ${soft_file_name}
       tar -xzf ${soft_file_pack} -C ${soft_file_name}
     fi
