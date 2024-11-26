@@ -28,7 +28,7 @@ if [[ $(platform) == *linux* ]]; then
     SOFT_URL=https://github.com/Genymobile/${NAME}/releases/download/${SOFT_VERSION}/${SOFT_FILE_PACK}
     #if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
-      $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+      $(cache_downloader $SOFT_FILE_PACK_TAR $SOFT_URL)
       $(cache_unpacker $SOFT_FILE_PACK_TAR $SOFT_FILE_NAME)
 
       rm -rf ${SOFT_HOME} &&
