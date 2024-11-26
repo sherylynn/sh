@@ -213,6 +213,8 @@ cache_unpacker() {
       mkdir ${soft_file_name}
       tar -xf ${soft_file_pack} -C ${soft_file_name}
     else
+      #tar.gz
+      echo "unpacking tar.gz"
       mkdir ${soft_file_name}
       tar -xzf ${soft_file_pack} -C ${soft_file_name}
     fi
@@ -476,8 +478,8 @@ wifi_adb() {
       echo "adb $local_ip 5555"
       TCPPORT=$(echo "$RESULT" | sed -e "s/connected to //g")
       #echo "$TCPPORT"
-      #选择指定设备的adb，然后重新设置端口为5555
-      # 这个命令好像会影响无线调试，会直接失败，但是在termux里就能行，奇怪
+      #选择指定设备的 adb，然后重新设置端口为 5555
+      # 这个命令好像会影响无线调试，会直接失败，但是在 termux 里就能行，奇怪
       #adb -s "$TCPPORT" tcpip 5555
       scrcpy -s "$TCPPORT" --turn-screen-off --stay-awake --keyboard=uhid
     fi
@@ -525,8 +527,8 @@ phone() {
 scrcpy_adb() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
-    #tcpip命令会尝试直接重新连接adb指定地址
-    #所以废弃直接用wsl来连接
+    #tcpip 命令会尝试直接重新连接 adb 指定地址
+    #所以废弃直接用 wsl 来连接
     #wsl_adb $local_ip
     scrcpy --max-size=1920 --tcpip=$local_ip:5555 --turn-screen-off --stay-awake --keyboard=uhid #
   else
