@@ -534,6 +534,10 @@ scrcpy_adb() {
     scrcpy --max-size=1920 --turn-screen-off --stay-awake --keyboard=uhid
   fi
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
+  #scrcpy 3.0
+  #scrcpy --new-display=1080x1920 --start-app=com.atomicadd.tinylauncher
+  #scrcpy --new-display --start-app=com.nightmare.sula
+  #scrcpy --new-display --start-app=com.microsoft.launcher --keyboard=uhid
 }
 
 scrcpy_termux_hold_video() {
