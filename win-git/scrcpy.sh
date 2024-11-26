@@ -21,6 +21,7 @@ if [[ $(platform) == *linux* ]]; then
     SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_VERSION}
     #action 自动打包有问题，其实没有用 gzip 压缩，手动修改一下
     SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
+    SOFT_FILE_PACK_TAR=${SOFT_FILE_NAME}.tar
     # init pwd
     cd $HOME
 
@@ -28,7 +29,7 @@ if [[ $(platform) == *linux* ]]; then
     #if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
       $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-      $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+      $(cache_unpacker $SOFT_FILE_PACK_TAR $SOFT_FILE_NAME)
 
       rm -rf ${SOFT_HOME} &&
         mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
