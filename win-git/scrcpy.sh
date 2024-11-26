@@ -18,7 +18,7 @@ if [[ $(platform) == *linux* ]]; then
   esac
 
   if [[ $SOFT_ARCH == *64* ]]; then
-    SOFT_FILE_NAME=${NAME}-${PLATFORM}${SOFT_ARCH}-${SOFT_VERSION}
+    SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_VERSION}
     SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
     # init pwd
     cd $HOME
