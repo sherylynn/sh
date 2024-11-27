@@ -5,8 +5,9 @@ NAME=scrcpy
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-#SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
-SOFT_VERSION=v2.7
+SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+#SOFT_VERSION=v2.7
+#2.7的居然没有预编译的版本可以下载，离谱
 echo "soft version is $SOFT_VERSION"
 SOFT_ARCH=64
 
