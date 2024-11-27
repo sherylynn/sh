@@ -14,7 +14,7 @@ SOFT_ARCH=64
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 PLATFORM=$(platform)
 if [[ $(platform) == *mac* ]]; then
-  if [[ $SOFT_ARCH == *64* ]]; then
+  if [[ $SOFT_VERSION != *3.0* ]]; then
     SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_VERSION}
     #action 自动打包有问题，其实没有用 gzip 压缩，手动修改一下
     SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
