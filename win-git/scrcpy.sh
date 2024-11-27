@@ -17,7 +17,7 @@ if [[ $(platform) == *linux* ]]; then
     386) SOFT_ARCH=32 ;;
   esac
 
-  if [[ $SOFT_ARCH == *64* ]]; then
+  if [[ $SOFT_ARCH == *64* ]] && [[ "$(uname -a)" != *KYLINOS* ]]; then
     SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_VERSION}
     #action 自动打包有问题，其实没有用 gzip 压缩，手动修改一下
     SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
