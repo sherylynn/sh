@@ -88,5 +88,5 @@ chmod +x /root/adb-watchdog.sh
 
 # Add cron job
 cat <<"EOF" >>/etc/crontabs/root
-* * * * * /root/adb-watchdog.sh
+*/10 * * * * /root/adb-watchdog.sh
 EOF
