@@ -37,10 +37,12 @@ if [[ $(platform) == *mac* ]]; then
     echo 'export PATH=$PATH:'${SOFT_HOME}/${SOFT_FILE_NAME} >${TOOLSRC}
   else
     #build
-    sudo apt install -y ffmpeg libsdl2-2.0-0 adb wget \
-      gcc git pkg-config meson ninja-build libsdl2-dev \
-      libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev \
-      libusb-1.0-0 libusb-1.0-0-dev
+    # runtime dependencies
+    brew install sdl2 ffmpeg libusb
+
+    # client build dependencies
+    brew install pkg-config meson
+
     cd $(install_path)
     git clone https://github.com/${AUTHOR}/${NAME} $SOFT_HOME
     cd $SOFT_HOME
