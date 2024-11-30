@@ -46,8 +46,8 @@ function network() {
 	local timeout=30
 
 	#目标网站
-	#local target=www.baidu.com
-	local target=114.114.114.114
+	local target=www.baidu.com
+	#local target=114.114.114.114
 
 	#获取响应状态码
 	#local ret_code=$(curl -I -s --connect-timeout ${timeout} ${target} -w %{http_code} | tail -n1)
