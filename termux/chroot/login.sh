@@ -7,16 +7,8 @@ sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-
 if [ -f ~/tools/rurima/rurima ]; then
   sudo mount -o remount,dev,suid /data
   #sudo mount -o remount,suid /data
-  sdcard_rime=/sdcard/Download/rime
-  sdcard_gitconfig=/sdcard/Download/.gitconfig
-  sdcard_gitcredentials=/sdcard/Download/.git-credentials
-  sudo rm -rf $DEBIAN_DIR/root/.gitconfig
-  test -f $sdcard_gitconfig && sudo ln -s $sdcard_gitconfig $DEBIAN_DIR/root/.gitconfig
-  sudo rm -rf $DEBIAN_DIR/root/.git-credentials
-  test -f $sdcard_gitcredentials && sudo ln -s $sdcard_gitcredentials $DEBIAN_DIR/root/.git-credentials
-  #复用输入法词库
-  sudo rm -rf $DEBIAN_DIR/root/rime
-  test -d $sdcard_rime && sudo ln -s $sdcard_rime $DEBIAN_DIR/root/rime
+  #挂载sdcard隐私文件
+  sdcard_link
   #解除挂载
   sudo rurima ruri -U $DEBIAN_DIR
   #挂载
