@@ -45,3 +45,5 @@ sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'echo "n
     apt autoremove -y; \
     apt install emacs net-tools zsh -y; \
     echo "Debian chroot environment configured"'
+
+sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
