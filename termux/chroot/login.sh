@@ -4,7 +4,24 @@
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
-if [ -n "$busybox" ]; then
+if [ -f ~/tools/rurima/rurima ]; then
+  sudo mount -o remount,dev,suid /data
+  #sudo mount -o remount,suid /data
+  sdcard_rime=/sdcard/Download/rime
+  sdcard_gitconfig=/sdcard/Download/.gitconfig
+  sdcard_gitcredentials=/sdcard/Download/.git-credentials
+  sudo rm -rf $DEBIAN_DIR/root/.gitconfig
+  test -f $sdcard_gitconfig && sudo ln -s $sdcard_gitconfig $DEBIAN_DIR/root/.gitconfig
+  sudo rm -rf $DEBIAN_DIR/root/.git-credentials
+  test -f $sdcard_gitcredentials && sudo ln -s $sdcard_gitcredentials $DEBIAN_DIR/root/.git-credentials
+  #复用输入法词库
+  sudo rm -rf $DEBIAN_DIR/root/rime
+  test -d $sdcard_rime && sudo ln -s $sdcard_rime $DEBIAN_DIR/root/rime
+  #解除挂载
+  sudo rurima ruri -U $DEBIAN_DIR
+  #挂载
+  sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR
+elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
   #before_mount_fun
@@ -33,21 +50,5 @@ zsh '
 #startxfce4'
 #vncserver -kill :0 && \
 #rm -rf /tmp/.X* && \
-else
-  sudo mount -o remount,dev,suid /data
-  #sudo mount -o remount,suid /data
-  sdcard_rime=/sdcard/Download/rime
-  sdcard_gitconfig=/sdcard/Download/.gitconfig
-  sdcard_gitcredentials=/sdcard/Download/.git-credentials
-  sudo rm -rf $DEBIAN_DIR/root/.gitconfig
-  test -f $sdcard_gitconfig && sudo ln -s $sdcard_gitconfig $DEBIAN_DIR/root/.gitconfig
-  sudo rm -rf $DEBIAN_DIR/root/.git-credentials
-  test -f $sdcard_gitcredentials && sudo ln -s $sdcard_gitcredentials $DEBIAN_DIR/root/.git-credentials
-  #复用输入法词库
-  sudo rm -rf $DEBIAN_DIR/root/rime
-  test -d $sdcard_rime && sudo ln -s $sdcard_rime $DEBIAN_DIR/root/rime
-  #解除挂载
-  sudo ruri -U $DEBIAN_DIR
-  #挂载
-  sudo ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR
+
 fi

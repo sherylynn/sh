@@ -6,7 +6,9 @@
 # Kill all old prcoesses for umount tmp
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
-if [ -n "$busybox" ]; then
+if [ -f ~/tools/rurima/rurima ]; then
+  sudo rurima ruri -U $DEBIAN_DIR
+elif [ -n "$busybox" ]; then
   unset LD_PRELOAD LD_DEBUG
   stop_dbus
   stop_vnc
@@ -14,6 +16,4 @@ if [ -n "$busybox" ]; then
 
   container_umount
 #after_umount_fun
-else
-  sudo ruri -U $DEBIAN_DIR
 fi
