@@ -13,7 +13,9 @@ pkg install tsu pulseaudio virglrenderer-android -y
 #sudo rurima docker pull -m dockerpull.org -i debian -s ./test
 mkdir -p $DEBIAN_DIR
 #testing
-sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t testing -s $DEBIAN_DIR
+#sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t testing -s $DEBIAN_DIR
+#bookworm
+sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t bookworm -s $DEBIAN_DIR
 #链接私人文件
 sdcard_link
 #卸载
@@ -24,7 +26,7 @@ unset LD_PRELOAD LD_DEBUG
 #sudo cp ~/sh/debian/sources.list.tuna $DEBIAN_DIR/etc/apt/sources.list
 #docker里的sources.list压根没东西 ,换了一个位置
 #~/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list
-sudo ~/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
+sudo /data/data/com.termux/files/home/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
 
 sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
