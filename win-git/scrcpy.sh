@@ -65,6 +65,7 @@ fi
 if [[ $(platform) == *linux* ]]; then
   case $(arch) in
     amd64) SOFT_ARCH=64 ;;
+    aarch64) SOFT_ARCH=arm ;;
     386) SOFT_ARCH=32 ;;
   esac
 
