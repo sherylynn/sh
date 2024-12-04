@@ -12,7 +12,9 @@ if [ -f ~/tools/rurima/rurima ]; then
   #解除挂载
   sudo rurima ruri -U $DEBIAN_DIR
   #挂载
-  sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR
+  #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
+  unset LD_PRELOAD
+  sudo rurima ruri -S -m /sdcard /sdcard -m $PERFIX/tmp /tmp -p $DEBIAN_DIR
 elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
