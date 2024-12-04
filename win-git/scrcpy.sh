@@ -111,8 +111,10 @@ if [[ $(platform) == *linux* ]]; then
       -Dprebuilt_server=${SOFT_FILE_NAME}
     ninja -Cx
     #install
-    #sudo ninja -Cx install
-    echo 'alias scrcpy="'${SOFT_HOME}/run ${SOFT_HOME}/x'"' >${TOOLSRC}
+    sudo ninja -Cx install
+    #echo 'alias scrcpy="'${SOFT_HOME}/run ${SOFT_HOME}/x'"' >${TOOLSRC}
+    #uninstall
+    #sudo ninja -Cx uninstall
   fi
 fi
 if [[ $(platform) == *win* ]]; then
