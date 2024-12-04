@@ -32,7 +32,7 @@ if [ -f ~/tools/rurima/rurima ]; then
   #挂载
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
-  sudo rurima ruri -S -m $PERFIX/tmp /tmp -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+  sudo rurima ruri -S -m /data/data/com.termux/files/usr/tmp /tmp -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
