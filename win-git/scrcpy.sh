@@ -100,6 +100,7 @@ if [[ $(platform) == *linux* ]]; then
     git clone https://github.com/${AUTHOR}/${NAME} $SOFT_HOME
     cd $SOFT_HOME
     git pull
+    git checkout $SOFT_VERSION
     #prebuilt server
     SOFT_URL=https://github.com/Genymobile/${NAME}/releases/download/${SOFT_VERSION}/${NAME}-server-${SOFT_VERSION}
     SOFT_FILE_NAME=${NAME}-server-${SOFT_VERSION}
