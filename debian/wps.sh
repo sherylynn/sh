@@ -9,6 +9,8 @@ case $(arch) in
   386) SOFT_ARCH=x86 ;;
   armhf) SOFT_ARCH=armv7l ;;
   aarch64)
+    wechat_url=https://dldir1v6.qq.com/weixin/Universal/Linux/WeChatLinux_arm64.deb
+    wechat_name=WeChatLinux_arm64.deb
     wps_url=https://github.com/sherylynn/fonts/releases/download/wps/wps-office_11.1.0.11719_arm64.deb
     wps_name="wps-office_11.1.0.11719_arm64.deb"
     ;;
@@ -16,6 +18,7 @@ esac
 proxy
 #不再使用固定版本，使用源自带版本
 $(cache_downloader $wps_name $wps_url)
+$(cache_downloader $wechat_name $wechat_url)
 tee /usr/share/applications/wps-office-wps-aarch64.desktop <<-'EOF'
 [Desktop Entry]
 Comment=Use WPS Writer to edit articles and reports.
@@ -52,3 +55,7 @@ sudo apt install xdg-utils -y
 sudo apt install -f -y
 #为了解决wps打不开缺少依赖
 sudo apt install python3-lxml -y
+
+#解决微信的问题
+sudo apt install libtiff6 -y
+sudo ln -s /usr/lib/aarch64-linux-gnu/libtiff.so.6 /usr/lib/aarch64-linux-gnu/libtiff.so.5
