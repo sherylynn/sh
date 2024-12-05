@@ -58,8 +58,8 @@ if [[ $(platform) == *mac* ]]; then
       -Dprebuilt_server=${SOFT_FILE_NAME}
     ninja -Cx
     #install
-    #sudo ninja -Cx install
-    echo 'alias scrcpy="'${SOFT_HOME}/run ${SOFT_HOME}/x'"' >${TOOLSRC}
+    sudo ninja -Cx install
+    #echo 'alias scrcpy="'${SOFT_HOME}/run ${SOFT_HOME}/x'"' >${TOOLSRC}
   fi
 fi
 if [[ $(platform) == *linux* ]]; then
