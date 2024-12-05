@@ -9,7 +9,8 @@ am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 
 sudo rm -rf $PREFIX/tmp/rime*
 sudo rm -rf $PREFIX/tmp/tigervnc*
-sudo rm -rf $PREFIX/tmp/ssh*
+sudo rm -rf $PREFIX/tmp/ssh-*
+sudo rm -rf $PREFIX/tmp/pulse-*
 
 #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
 
