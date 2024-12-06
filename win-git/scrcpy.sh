@@ -7,6 +7,8 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 #SOFT_VERSION=v2.7
+#
+#SOFT_VERSION=v3.0
 SOFT_VERSION=v3.0.2
 #2.7 的居然没有预编译的版本可以下载，离谱
 echo "soft version is $SOFT_VERSION"
@@ -14,7 +16,7 @@ SOFT_ARCH=64
 
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 PLATFORM=$(platform)
-if [[ $(platform) == *mac* ]]; then
+if [[ $(platform) == *mac* ]]o; then
   if [[ $SOFT_VERSION == *3.0* ]]; then
     SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_VERSION}
     #action 自动打包有问题，其实没有用 gzip 压缩，手动修改一下
