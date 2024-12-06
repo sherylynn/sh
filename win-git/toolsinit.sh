@@ -572,16 +572,22 @@ proxy_ip() {
   #export http_proxy=http://127.0.0.1:8087
   local IP=$1
 
-  export http_proxy=http://$IP:10808
-  export https_proxy=http://$IP:10808
+  #export http_proxy=http://$IP:10808
+  #export https_proxy=http://$IP:10808
+  #有时候代理变了
+  export http_proxy=socks5://$IP:1080
+  export https_proxy=socks5://$IP:1080
 
   #export http_proxy=socks5://127.0.0.1:1080
   #export https_proxy=socks5://127.0.0.1:1080
   #export ALL_PROXY=socks5://127.0.0.1:1080
   #export all_proxy=socks5://127.0.0.1:1080
 
-  git config --global http.proxy http://$IP:10808
-  git config --global https.proxy https://$IP:10808
+  #git config --global http.proxy http://$IP:10808
+  #git config --global https.proxy https://$IP:10808
+  #有时候代理变了
+  git config --global http.proxy socks5://$IP:1080
+  git config --global https.proxy socks5://$IP:1080
 
   #git config --global http.proxy socks5://127.0.0.1:1080
   #git config --global https.proxy socks5://127.0.0.1:1080
