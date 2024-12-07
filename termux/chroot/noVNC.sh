@@ -7,10 +7,7 @@ sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-
 ## Start Termux X11
 am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 
-sudo rm -rf $PREFIX/tmp/rime*
-sudo rm -rf $PREFIX/tmp/tigervnc*
-sudo rm -rf $PREFIX/tmp/ssh-*
-sudo rm -rf $PREFIX/tmp/pulse-*
+clean_tmp
 
 #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
 

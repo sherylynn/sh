@@ -4,11 +4,7 @@
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
-sudo rm -rf $PREFIX/tmp/rime*
-sudo rm -rf $PREFIX/tmp/tigervnc*
-sudo rm -rf $PREFIX/tmp/ssh-*
-sudo rm -rf $PREFIX/tmp/pulse-*
-
+clean_tmp
 XDG_RUNTIME_DIR=${TMPDIR} sleep 3
 
 if [ -f ~/tools/rurima/rurima ]; then

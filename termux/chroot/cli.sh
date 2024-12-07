@@ -426,3 +426,11 @@ sdcard_link() {
   sudo rm -rf $DEBIAN_DIR/root/rime
   test -d $sdcard_rime && sudo ln -s $sdcard_rime $DEBIAN_DIR/root/rime
 }
+
+clean_tmp() {
+  sudo rm -rf $PREFIX/tmp/rime*
+  sudo rm -rf $PREFIX/tmp/tigervnc*
+  sudo rm -rf $PREFIX/tmp/ssh-*
+  sudo rm -rf $PREFIX/tmp/pulse-*
+  sudo rm -rf $DEBIAN_DIR/root/tigervnc*
+}
