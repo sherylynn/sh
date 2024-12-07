@@ -20,7 +20,7 @@ case $(arch) in
   amd64) SOFT_ARCH=x86_64 ;;
   386) SOFT_ARCH=32-bit ;;
   armhf) SOFT_ARCH=ARM_v6 ;;
-  aarch64) SOFT_ARCH=aarch64 ;;
+  aarch64) SOFT_ARCH=arm64 ;;
 esac
 
 SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_ARCH}
@@ -40,6 +40,8 @@ if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
 
   rm -rf ${SOFT_HOME} &&
     mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
+  mv ${SOFT_HOME}/${SOFT_FILE_NAME}/${SOFT_FILE_NAME} ${SOFT_HOME}/${NAME}
+  chmod 777 ${SOFT_HOME}/${NAME}
 fi
 
 SOFT_ROOT=${SOFT_HOME}
