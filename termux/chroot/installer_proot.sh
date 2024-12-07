@@ -47,23 +47,25 @@ configure_debian_chroot() {
   container_mounted || container_mount
   #git config
   #termux_data_path=/data/data/com.termux/files/home
-  termux_data_path=/data/data/com.termux/files/home/storage/downloads
+  #termux_data_path=/data/data/com.termux/files/home/storage/downloads
 
-  termux_gitcredentials=$termux_data_path/.git-credentials
-  termux_gitconfig=$termux_data_path/.gitconfig
-  termux_rime=$termux_data_path/rime
+  #termux_gitcredentials=$termux_data_path/.git-credentials
+  #termux_gitconfig=$termux_data_path/.gitconfig
+  #termux_rime=$termux_data_path/rime
 
-  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
-  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
+  #test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
+  #test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
   #复用输入法词库
-  rm -rf $CHROOT_DIR/root/rime
-  test -d $termux_rime && sudo ln -s $termux_rime $CHROOT_DIR/root/rime
+  #rm -rf $CHROOT_DIR/root/rime
+  #test -d $termux_rime && sudo ln -s $termux_rime $CHROOT_DIR/root/rime
+  sdcard_link
 
   #unset LD_PRELOAD LD_DEBUG
   #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'apt update -y && apt upgrade -y'
   unset LD_PRELOAD LD_DEBUG
   #cp ~/sh/debian/sources.list.tuna $CHROOT_DIR/etc/apt/sources.list
-  ~/sh/debian/debian_mirror.sh $CHROOT_DIR/etc/apt/sources.list
+  #~/sh/debian/debian_mirror.sh $CHROOT_DIR/etc/apt/sources.list
+  /data/data/com.termux/files/home/sh/debian/debian_mirror.sh $CHROOT_DIR/etc/apt/sources.list.d/debian.sources
   sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
     groupadd -g 3003 aid_inet; \
