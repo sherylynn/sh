@@ -1,8 +1,15 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-. ./cli.sh
+. $(dirname "$0")/cli.sh
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
+
+sudo rm -rf $PREFIX/tmp/rime*
+sudo rm -rf $PREFIX/tmp/tigervnc*
+sudo rm -rf $PREFIX/tmp/ssh-*
+sudo rm -rf $PREFIX/tmp/pulse-*
+
+XDG_RUNTIME_DIR=${TMPDIR} sleep 3
 
 if [ -f ~/tools/rurima/rurima ]; then
   sudo mount -o remount,dev,suid /data
@@ -14,7 +21,7 @@ if [ -f ~/tools/rurima/rurima ]; then
   #挂载
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
-  sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR
+  sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su -root
 elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
