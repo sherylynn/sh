@@ -33,15 +33,16 @@ if [ -f ~/tools/rurima/rurima ]; then
   #挂载
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
-  sudo rurima ruri -S -m /data/data/com.termux/files/usr/tmp /tmp -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
-export GTK_IM_MODULE="fcitx" && \
-export QT_IM_MODULE="fcitx" && \
-export XMODIFIERS="@im=fcitx" && \
-#fcitx5 && \
-export GALLIUM_DRIVER=virpipe && \
-export MESA_GL_VERSION_OVERRIDE=4.0 && \
-zsh ~/tools/rc/allToolsrc; \
-dbus-launch --exit-with-session startxfce4'
+  #sudo rurima ruri -S -m /data/data/com.termux/files/usr/tmp /tmp -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 &&
+  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+    export GTK_IM_MODULE="fcitx" &&
+    export QT_IM_MODULE="fcitx" &&
+    export XMODIFIERS="@im=fcitx" &&
+    #fcitx5 && \
+    export GALLIUM_DRIVER=virpipe &&
+    export MESA_GL_VERSION_OVERRIDE=4.0 &&
+    zsh ~/tools/rc/allToolsrc
+  dbus-launch --exit-with-session startxfce4'
 elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
@@ -55,15 +56,15 @@ elif [ -n "$busybox" ]; then
   test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
 
   unset LD_PRELOAD LD_DEBUG
-  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
-export GTK_IM_MODULE="fcitx" && \
-export QT_IM_MODULE="fcitx" && \
-export XMODIFIERS="@im=fcitx" && \
-#fcitx5 && \
-export GALLIUM_DRIVER=virpipe && \
-export MESA_GL_VERSION_OVERRIDE=4.0 && \
-zsh ~/tools/rc/allToolsrc; \
-dbus-launch --exit-with-session startxfce4'
+  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 &&
+    export GTK_IM_MODULE="fcitx" &&
+    export QT_IM_MODULE="fcitx" &&
+    export XMODIFIERS="@im=fcitx" &&
+    #fcitx5 && \
+    export GALLIUM_DRIVER=virpipe &&
+    export MESA_GL_VERSION_OVERRIDE=4.0 &&
+    zsh ~/tools/rc/allToolsrc
+  dbus-launch --exit-with-session startxfce4'
 #startxfce4'
 #vncserver -kill :0 && \
 #rm -rf /tmp/.X* && \
