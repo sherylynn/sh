@@ -18,6 +18,7 @@ if [ -f ~/tools/rurima/rurima ]; then
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
   sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su - root
+  #sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root
 elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
