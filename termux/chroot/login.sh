@@ -5,7 +5,7 @@
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
 clean_tmp
-XDG_RUNTIME_DIR=${TMPDIR} sleep 3
+#XDG_RUNTIME_DIR=${TMPDIR} sleep 3
 
 if [ -f ~/tools/rurima/rurima ]; then
   sudo mount -o remount,dev,suid /data
