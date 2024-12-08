@@ -335,19 +335,23 @@ zedit() {
   if [[ -z "$filename" ]]; then
     #emacsclient -a "" -c "./"
     #希望能看到原来的窗口而不是新建一个
-    #emacsclient -a "" "./"
-    emacsclient -a "" "./" --server-file "$HOME/.emacs.d/server/server"
+    #可用
+    emacsclient -a "" "./"
+    #指定端口，会有一些冲突
+    #emacsclient -a "" "./" --server-file "$HOME/.emacs.d/server/server"
   elif [[ ! -f "$filename" ]]; then
     zluaload "$filename"
     #emacsclient -a "" -c "./"
     #可用
-    #emacsclient -a "" "./"
-    emacsclient -a "" "./" --server-file "$HOME/.emacs.d/server/server"
+    emacsclient -a "" "./"
+    #指定端口，会有一些冲突
+    #emacsclient -a "" "./" --server-file "$HOME/.emacs.d/server/server"
   else
     #emacsclient -a "" -c "$filename"
     #可用
-    #emacsclient -a "" "$filename"
-    emacsclient -a "" "$filename" --server-file "$HOME/.emacs.d/server/server"
+    emacsclient -a "" "$filename"
+    #指定端口，会有一些冲突
+    #emacsclient -a "" "$filename" --server-file "$HOME/.emacs.d/server/server"
   fi
 }
 alias zs="zedit ~/sh/win-git/toolsinit.sh"
