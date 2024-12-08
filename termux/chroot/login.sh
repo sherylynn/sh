@@ -17,7 +17,17 @@ if [ -f ~/tools/rurima/rurima ]; then
   #挂载
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
-  sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su - root -c 'zsh ~/tools/rc/allToolsrc; \
+
+  #sudo rm -rf $DEBIAN_DIR/run/dbus/pid
+  #sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su - root -c 'dbus-daemon --system --fork' &
+  sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su - root -c 'export PULSE_SERVER=127.0.0.1 && \
+export GTK_IM_MODULE="fcitx" && \
+export QT_IM_MODULE="fcitx" && \
+export XMODIFIERS="@im=fcitx" && \
+#fcitx5 && \
+export GALLIUM_DRIVER=virpipe && \
+export MESA_GL_VERSION_OVERRIDE=4.0 && \
+zsh ~/tools/rc/allToolsrc; \
 zsh '
   #sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root
 elif [ -n "$busybox" ]; then
