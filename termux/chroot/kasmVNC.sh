@@ -42,7 +42,7 @@ export XMODIFIERS="@im=fcitx" && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
 cd ~ && \
-sh ~/sh/win-git/server_noVNC.sh'
+sh ~/sh/win-git/server_kasmVNC.sh'
 elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
@@ -66,7 +66,7 @@ export XMODIFIERS="@im=fcitx" && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
 cd ~ && \
-sh ~/sh/win-git/server_noVNC.sh'
+sh ~/sh/win-git/server_kasmVNC.sh'
 #dbus-launch --exit-with-session zsh ~/sh/win-git/server_noVNC.sh'
 
 fi
