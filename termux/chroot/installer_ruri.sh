@@ -30,7 +30,7 @@ unset LD_PRELOAD LD_DEBUG
 #sudo /data/data/com.termux/files/home/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
 /data/data/com.termux/files/home/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
 
-sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
+sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \
     groupadd -g 3003 aid_inet; \
     groupadd -g 3004 aid_net_raw; \
@@ -48,4 +48,4 @@ sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'echo "n
     apt install emacs net-tools zsh -y; \
     echo "Debian chroot environment configured"'
 
-sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
+sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
