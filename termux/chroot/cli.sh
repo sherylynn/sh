@@ -416,6 +416,7 @@ stop_init() {
 
 sdcard_link() {
   sdcard_rime=/sdcard/Download/rime
+  sdcard_ssh=/sdcard/Download/.ssh
   sdcard_gitconfig=/sdcard/Download/.gitconfig
   sdcard_gitcredentials=/sdcard/Download/.git-credentials
   sudo rm -rf $DEBIAN_DIR/root/.gitconfig
@@ -425,6 +426,9 @@ sdcard_link() {
   #复用输入法词库
   sudo rm -rf $DEBIAN_DIR/root/rime
   test -d $sdcard_rime && sudo ln -s $sdcard_rime $DEBIAN_DIR/root/rime
+  #复用.ssh
+  sudo rm -rf $DEBIAN_DIR/root/.ssh
+  test -d $sdcard_ssh && sudo ln -s $sdcard_ssh $DEBIAN_DIR/root/.ssh
 }
 
 clean_tmp() {
