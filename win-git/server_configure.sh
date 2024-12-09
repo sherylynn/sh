@@ -56,7 +56,7 @@ if [[ $SOFT_VNC == *tigervnc* ]]; then
   zsh ~/sh/win-git/init_d_noVNC.sh
   zsh ~/sh/win-git/noVNC.sh
 else
-  zsh ~/sh/win-git/kasmvnc.sh
+  zsh ~/sh/win-git/kasmVNC.sh
 fi
 zsh ~/sh/win-git/koreader.sh
 if [ -d "/sdcard" ]; then
