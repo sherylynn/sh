@@ -52,15 +52,17 @@ zsh ~/sh/win-git/koreader.sh
 if [ -d "/sdcard" ]; then
   sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ /root/Documents/百度云盘
 fi
-#zsh ~/sh/debian/wps.sh
 zsh ~/sh/debian/firefox.sh
 if [[ $(platform) == *wsl* ]]; then
   sh ~/sh/win-git/ssh.sh
 fi
 #确保toolsrc正确
 #zsh ~/sh/debian/firefox.sh
-#zsh ~/sh/debian/wps.sh
-zsh ~/sh/debian/spark-store.sh
+zsh ~/sh/debian/wps.sh
+#zsh ~/sh/debian/todesk.sh
+#todesk无法联网
+zsh ~/sh/debian/wechat.sh
+#zsh ~/sh/debian/spark-store.sh
 zsh ~/sh/debian/vlc.sh
 zsh ~/sh/myemacs.sh
 zsh ~/sh/debian/emacs.sh
