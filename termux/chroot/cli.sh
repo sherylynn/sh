@@ -429,7 +429,7 @@ sdcard_link() {
   #复用.ssh
   #权限问题只能拷贝.ssh
   sudo rm -rf $DEBIAN_DIR/root/.ssh
-  test -d $sdcard_ssh && sudo cp $sdcard_ssh $DEBIAN_DIR/root/.ssh
+  test -d $sdcard_ssh && sudo cp -r $sdcard_ssh $DEBIAN_DIR/root/.ssh
   sudo chmod 600 $DEBIAN_DIR/.ssh/config
   sudo chown $USER $DEBIAN_DIR/.ssh/config
 }
