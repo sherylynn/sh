@@ -13,12 +13,15 @@ case $(arch) in
     wechat_name=WeChatLinux_arm64.deb
     wps_url=https://github.com/sherylynn/fonts/releases/download/wps/wps-office_11.1.0.11719_arm64.deb
     wps_name="wps-office_11.1.0.11719_arm64.deb"
+    todesk_url=https://dl.todesk.com/linux/todesk-v4.7.2.0-arm64.deb
+    todesk_name=todesk-v4.7.2.0-arm64.deb
     ;;
 esac
 proxy
 #不再使用固定版本，使用源自带版本
 $(cache_downloader $wps_name $wps_url)
 $(cache_downloader $wechat_name $wechat_url)
+$(cache_downloader $todesk_name $todesk_url)
 tee /usr/share/applications/wps-office-wps-aarch64.desktop <<-'EOF'
 [Desktop Entry]
 Comment=Use WPS Writer to edit articles and reports.
@@ -57,5 +60,10 @@ sudo apt install -f -y
 sudo apt install python3-lxml -y
 
 #解决微信的问题
+sudo dpkg -i $(cache_folder)/$wechat_name
 sudo apt install libtiff6 -y
 sudo ln -s /usr/lib/aarch64-linux-gnu/libtiff.so.6 /usr/lib/aarch64-linux-gnu/libtiff.so.5
+
+#解决todesk的问题
+sudo apt-get install libappindicator3-1
+sudo dpkg -i $(cache_folder)/$todesk_name
