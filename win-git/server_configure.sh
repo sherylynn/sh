@@ -1,5 +1,7 @@
 #!/bin/bash
 SCRIPT_NAME="configure"
+SOFT_VNC=kasmvnc
+#SOFT_VNC=tigervnc
 realpath() {
   local x=$1
   echo $(
@@ -35,7 +37,10 @@ git -C ~/sh pull
 
 sudo apt install zsh -y
 sudo apt install dbus-x11 xfce4 openssh-server -y
-sudo apt install tigervnc-standalone-server tigervnc-tools -y
+#换一种vnc
+if [[ $SOFT_VNC == *tigervnc* ]]; then
+  sudo apt install tigervnc-standalone-server tigervnc-tools -y
+fi
 sudo apt install xfce4-terminal -y
 sudo apt install telegram-desktop ncdu htop -y
 sudo chsh -s /bin/zsh
@@ -46,8 +51,13 @@ zsh ~/sh/raspberry/chinese.sh
 zsh ~/sh/lynn.sh work
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
-zsh ~/sh/win-git/init_d_noVNC.sh
-zsh ~/sh/win-git/noVNC.sh
+#换一种新式vnc来玩玩
+if [[ $SOFT_VNC == *tigervnc* ]]; then
+  zsh ~/sh/win-git/init_d_noVNC.sh
+  zsh ~/sh/win-git/noVNC.sh
+else
+  zsh ~/sh/win-git/kasmvnc.sh
+fi
 zsh ~/sh/win-git/koreader.sh
 if [ -d "/sdcard" ]; then
   sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ /root/Documents/百度云盘
