@@ -36,15 +36,16 @@ SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/
 
 if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
+  #解压稍微有点不一样
   $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
-
+  #tar -xzvf $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}
   rm -rf ${SOFT_HOME} &&
     mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
-  mv ${SOFT_HOME}/${SOFT_FILE_NAME}/${SOFT_FILE_NAME} ${SOFT_HOME}/${NAME}
-  chmod 777 ${SOFT_HOME}/${NAME}
+  #mv ${SOFT_HOME}/${SOFT_FILE_NAME}/${SOFT_FILE_NAME} ${SOFT_HOME}/${NAME}
+  #chmod 777 ${SOFT_HOME}/${NAME}
 fi
 
-SOFT_ROOT=${SOFT_HOME}
+SOFT_ROOT=${SOFT_HOME}/bin
 
 export PATH=$PATH:${SOFT_ROOT}
 echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}

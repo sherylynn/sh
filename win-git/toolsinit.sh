@@ -203,6 +203,9 @@ cache_unpacker() {
       cp ${soft_file_pack} ${soft_file_name}/${name}.exe
     elif [[ ${soft_file_pack} == *zip* ]]; then
       unzip -q ${soft_file_pack} -d ${soft_file_name}
+    elif [[ ${soft_file_pack} == *tgz* ]]; then
+      mkdir ${soft_file_name}
+      tar -xvzf ${soft_file_pack} -C ${soft_file_name}
     elif [[ ${soft_file_pack} != *tar* ]]; then
       mkdir -p ${soft_file_name}/${soft_file_name}
       gunzip -c ${soft_file_pack} >${soft_file_name}/${soft_file_name}/${soft_file_name}
