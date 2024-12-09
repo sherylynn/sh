@@ -29,6 +29,7 @@ echo $(whoami)
 cd ../../
 vncserver -kill :0
 vncserver -kill :1
+killall Xvnc
 rm -rf /tmp/.X*
 rm -rf /tmp/.x*
 vncserver -hw3d -drinode /dev/dri/renderD128 -geometry 1920x966 :0
