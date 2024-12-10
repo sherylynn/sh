@@ -1,5 +1,5 @@
 #!/bin/bash
-. $(dirname "$0")/toolsinit.sh
+. $(dirname "$0")/../win-git/toolsinit.sh
 AUTHOR=ollama
 NAME=ollama
 TOOLSRC_NAME=${NAME}rc
