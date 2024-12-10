@@ -6,8 +6,8 @@ TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
-SOFT_VERSION=v2.7
-#
+#SOFT_VERSION=v2.7
+SOFT_VERSION=v3.1
 #SOFT_VERSION=v3.0
 #SOFT_VERSION=v3.0.2
 #都很卡，离谱了
