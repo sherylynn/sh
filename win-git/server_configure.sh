@@ -1,7 +1,7 @@
 #!/bin/bash
 SCRIPT_NAME="configure"
-SOFT_VNC=kasmvnc
-#SOFT_VNC=tigervnc
+#SOFT_VNC=kasmvnc
+SOFT_VNC=tigervnc
 realpath() {
   local x=$1
   echo $(
