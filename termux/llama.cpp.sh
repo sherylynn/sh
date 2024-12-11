@@ -9,7 +9,9 @@ SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION="b4098"
 #SOFT_VERSION="b4100"
 #SOFT_VERSION="b4200"
-SOFT_VERSION="b4250"
+#SOFT_VERSION="b4253"
+SOFT_VERSION="b4272"
+#SOFT_VERSION="b4288" #fail
 #SOFT_VERSION="b4300" #失败
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
