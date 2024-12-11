@@ -1,4 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
+SCRIPT_NAME="ollama"
 #change bash from /usr/bin/bash to realpath
 realpath() {
   local x=$1
@@ -16,14 +17,17 @@ realpathdir() {
   )
 
 }
-cd $(realpathdir ./server_code-server.sh)
+cd $(realpathdir ./server_${SCRIPT_NAME}.sh)
 pwd
 #load env
-test -f ../../tools/rc/ttydrc && . ../../tools/rc/ttydrc
+test -f ../../tools/rc/${SCRIPT_NAME}rc && . ../../tools/rc/${SCRIPT_NAME}rc
 
 echo $(whoami)
 # login need systemd user root
 #ttyd -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
+
+#cd ../../tools/noVNC
+cd ../../
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
 ollama serve
