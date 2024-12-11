@@ -29,6 +29,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   #pkg install git cmake -y
+  sudo apt install libcurl4-openssl-dev -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   git pull
@@ -37,7 +38,7 @@ if [[ $(platform) == *linux* ]]; then
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   cd ${SOFT_HOME}
-  cmake -B build -DBUILD_SHARED_LIBS=OFF
+  cmake -B build -DLLAMA_CURL=ON #-DBUILD_SHARED_LIBS=OFF
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
