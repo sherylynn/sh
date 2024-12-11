@@ -5,7 +5,8 @@ NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+SOFT_VERSION=b4014
+#SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
 
 case $(platform) in
@@ -30,11 +31,14 @@ if [[ $(platform) == *linux* ]]; then
   pkg install git cmake -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
+  git pull
+  git checkout $SOFT_VERSION
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   cd ${SOFT_HOME}
-  cmake -B build -DBUILD_SHARED_LIBS=OFF
+  #带着下载curl一起编译
+  cmake -B build -DLLAMA_CURL=ON #-DBUILD_SHARED_LIBS=OFF
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
