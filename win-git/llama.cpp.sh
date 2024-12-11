@@ -4,6 +4,7 @@ AUTHOR=ggerganov
 NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+SOFT_VERSION=b4014
 SOFT_HOME=$(install_path)/${NAME}
 SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
@@ -30,6 +31,8 @@ if [[ $(platform) == *linux* ]]; then
   #pkg install git cmake -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
+  git pull
+  git checkout $SOFT_VERSION
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
