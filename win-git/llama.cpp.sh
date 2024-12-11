@@ -27,7 +27,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  pkg install git cmake -y
+  #pkg install git cmake -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
