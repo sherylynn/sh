@@ -5,7 +5,10 @@ NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=b4014
+#SOFT_VERSION=b4014
+#连接失败
+SOFT_VERSION=b3996
+#SOFT_VERSION=b3772
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
 
