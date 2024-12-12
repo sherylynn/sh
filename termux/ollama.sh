@@ -5,7 +5,11 @@ NAME=ollama
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+#SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+#SOFT_VERSION=v0.4.2 #导入失败
+SOFT_VERSION=v0.4.1 #和arm 量化有关但是编译失败
+#SOFT_VERSION=v0.4.0 #和arm 量化有关但是编译失败
+#SOFT_VERSION=v0.3.14 #导入失败
 echo "soft version is $SOFT_VERSION"
 
 case $(platform) in
@@ -34,6 +38,8 @@ if [[ $(platform) == *linux* ]]; then
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   cd ${SOFT_HOME}
+  git pull
+  git checkout ${SOFT_VERSION}
   go generate ./...
   go build .
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
