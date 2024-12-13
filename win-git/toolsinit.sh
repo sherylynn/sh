@@ -415,15 +415,16 @@ zgitaddall() {
   git -C $ZSH_HOME add --all
 }
 zpush() {
-  git -C $ZSH_HOME push &
-  git -C ~/.emacs.d/ push &
-  git -C ~/work/ push
+  test -d $ZSH_HOME && git -C $ZSH_HOME push &
+  test -d ~/.emacs.d && git -C ~/.emacs.d/ push &
+  test -d ~/work && git -C ~/work/ push
+  test -d ~/toys && git -C ~/toys/ pull
 }
 zfetch() {
-  git -C $ZSH_HOME pull &
-  git -C ~/.emacs.d/ pull &
-  git -C ~/work/ pull &
-  git -C ~/toys/ pull
+  test -d $ZSH_HOME && git -C $ZSH_HOME pull &
+  test -d ~/.emacs.d && git -C ~/.emacs.d/ pull &
+  test -d ~/workd && git -C ~/work/ pull &
+  test -d ~/toys && git -C ~/toys/ pull
 }
 
 zchat() {
