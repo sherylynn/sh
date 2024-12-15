@@ -541,10 +541,10 @@ scrcpy_adb() {
     #tcpip 命令会尝试直接重新连接 adb 指定地址
     #所以废弃直接用 wsl 来连接
     #wsl_adb $local_ip
-    scrcpy --max-size=1920 --tcpip=$local_ip:5555 --turn-screen-off --stay-awake --keyboard=uhid #--display-id=0
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --screen-off-timeout=3000
   else
     wsl_adb
-    scrcpy --max-size=1920 --turn-screen-off --stay-awake --keyboard=uhid #--display-id=0
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --screen-off-timeout=3000
   fi
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
   #scrcpy 3.0
