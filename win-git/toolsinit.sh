@@ -553,7 +553,6 @@ scrcpy_adb() {
   #scrcpy --new-display --start-app=com.microsoft.launcher --keyboard=uhid
 }
 scrcpy_new() {
-
   local_ip=$1
   if [[ $local_ip != "" ]]; then
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
