@@ -567,10 +567,14 @@ scrcpy_new() {
 scrcpy_big() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
-    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/343 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    #scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    #scrcpy --stay-awake --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2376x1080/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   else
     wsl_adb
-    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display=2560x1600/343 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    #scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    #scrcpy --stay-awake --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --new-display=3168x1440/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   fi
 }
 
