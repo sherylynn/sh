@@ -564,6 +564,18 @@ scrcpy_new() {
   fi
 }
 
+scrcpy_big() {
+  local_ip=$1
+  if [[ $local_ip != "" ]]; then
+    #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=1920x872 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+  else
+    wsl_adb
+    #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display=1920x872 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+  fi
+}
+
 scrcpy_termux_hold_video() {
   scrcpy --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
 }
