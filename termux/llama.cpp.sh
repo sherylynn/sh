@@ -10,7 +10,7 @@ SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION="b4100"
 #SOFT_VERSION="b4200"
 #SOFT_VERSION="b4253"
-SOFT_VERSION="b4272"
+SOFT_VERSION="b4333" #opencl
 #SOFT_VERSION="b4288" #fail
 #SOFT_VERSION="b4300" #失败
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
@@ -35,7 +35,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  pkg install git cmake -y
+  pkg install git cmake ccache -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   git pull
