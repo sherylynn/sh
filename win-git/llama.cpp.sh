@@ -5,9 +5,9 @@ NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-#SOFT_VERSION=b4014
+SOFT_VERSION=b4333
 #连接失败
-SOFT_VERSION=b3996
+#SOFT_VERSION=b3996 #能正常运行但是卡
 #SOFT_VERSION=b3772
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
@@ -31,7 +31,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  sudo apt install libcurl4-openssl-dev -y
+  sudo apt install libcurl4-openssl-dev ccache -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   git pull
@@ -41,8 +41,10 @@ if [[ $(platform) == *linux* ]]; then
   cd ${SOFT_HOME}
   git checkout $SOFT_VERSION
   #带着下载curl一起编译
-  cmake -B build -DLLAMA_CURL=ON #-DBUILD_SHARED_LIBS=OFF
-  cmake --build build --config Release -j $(nproc)
+  # 带着repack功能 看起来运行的时候有 AARCH64_REPACK = 1应该就是正常的 #4248
+  CMAKE_ARGS="-DLLAMA_CURL=ON -DGGML_CPU_AARCH64=ON DCMAKE_C_FLAGS=-march=armv8.7a GGML_RUNTIME_REPACK=ON" cmake --build build --config Release -j $(nproc)
+  #3996
+  #cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
   #echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
