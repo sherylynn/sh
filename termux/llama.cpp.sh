@@ -10,7 +10,7 @@ SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION="b4100"
 #SOFT_VERSION="b4200"
 #SOFT_VERSION="b4253"
-SOFT_VERSION="b4333" #opencl
+SOFT_VERSION="b4337" #opencl
 #SOFT_VERSION="b4288" #fail
 #SOFT_VERSION="b4300" #失败
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
@@ -37,7 +37,7 @@ if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   pkg install git cmake ccache -y
   # opencl
-  pkg install opencl-headers opencl-clhpp opencl-vendor-driver -y
+  pkg install opencl-headers opencl-clhpp opencl-vendor-driver python -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   git pull
