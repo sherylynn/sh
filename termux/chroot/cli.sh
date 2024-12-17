@@ -433,7 +433,9 @@ sdcard_link() {
   #sudo chmod 600 $DEBIAN_DIR/.ssh/config
   #sudo chown $USER $DEBIAN_DIR/.ssh/config
 }
-
+kill_need() {
+  sudo killall emacs
+}
 clean_tmp() {
   sudo rm -rf $PREFIX/tmp/rime*
   sudo rm -rf $PREFIX/tmp/tigervnc*

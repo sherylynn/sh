@@ -36,6 +36,8 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   pkg install git cmake ccache -y
+  # opencl
+  pkg install opencl-headers opencl-clhpp opencl-vendor-driver -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   git pull
@@ -45,7 +47,15 @@ if [[ $(platform) == *linux* ]]; then
   cd ${SOFT_HOME}
   git checkout ${SOFT_VERSION}
   #带着下载curl一起编译
-  cmake -B build -DLLAMA_CURL=ON #-DBUILD_SHARED_LIBS=OFF
+  cmake \
+    -D LLAMA_CURL=ON \
+    -D CMAKE_C_FLAGS="-march=armv8.7a" \
+    -D CMAKE_CXX_FLAGS="-march=armv8.7a" \
+    -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
+    -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
+    -B build
+
+  #-DBUILD_SHARED_LIBS=OFF
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}

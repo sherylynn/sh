@@ -17,6 +17,7 @@ if [ -f ~/tools/rurima/rurima ]; then
   #挂载
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
+  kill_need
 
   #sudo rm -rf $DEBIAN_DIR/run/dbus/pid
   #sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su - root -c 'dbus-daemon --system --fork' &
