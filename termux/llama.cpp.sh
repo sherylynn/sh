@@ -38,7 +38,8 @@ if [[ $(platform) == *linux* ]]; then
   pkg install git cmake ccache -y
   # opencl
   #pkg install opencl-headers opencl-clhpp opencl-vendor-driver python -y
-  pkg install opencl-headers opencl-vendor-driver python -y
+  #pkg install opencl-headers opencl-vendor-driver python -y
+  pkg install opencl-headers ocl-icd python -y
   #pkg install opencl-headers opencl-clhpp clvk python -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
@@ -51,13 +52,13 @@ if [[ $(platform) == *linux* ]]; then
   #带着下载curl一起编译
   cmake \
     -D LLAMA_CURL=ON \
-    -D CMAKE_C_FLAGS="-march=armv8.7a" \
-    -D CMAKE_CXX_FLAGS="-march=armv8.7a" \
     -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
+    -D BUILD_SHARED_LIBS=OFF \
     -B build
+  #-D CMAKE_C_FLAGS="-march=armv8.7a" \
+  #-D CMAKE_CXX_FLAGS="-march=armv8.7a" \
 
-  #-DBUILD_SHARED_LIBS=OFF
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
