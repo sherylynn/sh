@@ -423,7 +423,7 @@ zpush() {
 zfetch() {
   test -d $ZSH_HOME && git -C $ZSH_HOME pull &
   test -d ~/.emacs.d && git -C ~/.emacs.d/ pull &
-  test -d ~/workd && git -C ~/work/ pull &
+  test -d ~/work && git -C ~/work/ pull &
   test -d ~/toys && git -C ~/toys/ pull
 }
 
