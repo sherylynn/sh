@@ -417,8 +417,8 @@ zgitaddall() {
 zpush() {
   test -d $ZSH_HOME && git -C $ZSH_HOME push &
   test -d ~/.emacs.d && git -C ~/.emacs.d/ push &
-  test -d ~/work && git -C ~/work/ push
-  test -d ~/toys && git -C ~/toys/ pull
+  test -d ~/work && git -C ~/work/ push &
+  test -d ~/toys && git -C ~/toys/ push
 }
 zfetch() {
   test -d $ZSH_HOME && git -C $ZSH_HOME pull &
