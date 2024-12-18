@@ -54,10 +54,10 @@ if [[ $(platform) == *linux* ]]; then
     -D LLAMA_CURL=ON \
     -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
-    -D BUILD_SHARED_LIBS=OFF \
     -B build
   #-D CMAKE_C_FLAGS="-march=armv8.7a" \
   #-D CMAKE_CXX_FLAGS="-march=armv8.7a" \
+    # -D BUILD_SHARED_LIBS=OFF \
 
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
