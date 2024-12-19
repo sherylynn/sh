@@ -79,7 +79,6 @@ if [[ $(platform) == *linux* ]]; then
     -D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-28" \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
     -D CMAKE_TOOLCHAIN_FILE="${ANDROID_NDK}/build/cmake/android.toolchain.cmake" \
-    -D CMAKE_PREFIX_PATH="$LIB_PREFIX_HOME" \
     -D GGML_OPENMP=OFF \
     -D CMAKE_C_FLAGS="-march=armv8.7a" \
     -D CMAKE_CXX_FLAGS="-march=armv8.7a" \
@@ -88,6 +87,7 @@ if [[ $(platform) == *linux* ]]; then
     -B build
   #android is no curl
   #-D LLAMA_CURL=ON \
+  #-D CMAKE_PREFIX_PATH="$LIB_PREFIX_HOME" \
 
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
