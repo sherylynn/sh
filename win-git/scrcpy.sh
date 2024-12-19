@@ -73,13 +73,13 @@ if [[ $(platform) == *mac* ]]; then
 fi
 if [[ $(platform) == *linux* ]]; then
   case $(arch) in
-    amd64) SOFT_ARCH=64 ;;
+    amd64) SOFT_ARCH=x86_64 ;;
     aarch64) SOFT_ARCH=arm ;;
     386) SOFT_ARCH=32 ;;
   esac
 
   if [[ $SOFT_ARCH == *64* ]] && [[ "$(uname -a)" != *KYLINOS* ]]; then
-    SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_VERSION}
+    SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_ARCH}-${SOFT_VERSION}
     #action 自动打包有问题，其实没有用 gzip 压缩，手动修改一下
     SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
     SOFT_FILE_PACK_TAR=${SOFT_FILE_NAME}.tar
