@@ -6,6 +6,10 @@ NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
+LIB_HEADER_HOME=$(install_path)/OpenCL-Headers
+LIB_HOLDER_HOME=$(install_path)/OpenCL-ICD-Loader
+LIB_PREFIX_HOME=$(install_path)/OpenCL-Prefix
+mkdir -p $LIB_PREFIX_HOME
 #SOFT_VERSION=b4014
 #SOFT_VERSION="b4098"
 #SOFT_VERSION="b4100"
@@ -44,13 +48,28 @@ if [[ $(platform) == *linux* ]]; then
   #pkg install opencl-headers ocl-icd python -y
   #pkg install opencl-headers opencl-clhpp clvk python -y
   #需要后续手动下载目标库
+  git clone https://github.com/KhronosGroup/OpenCL-Headers $LIB_HEADER_HOME
+  cd $LIB_HEADER_HOME
+  cmake \
+    -D CMAKE_INSTALL_PREFIX="$LIB_PREFIX_HOME" \
+    -B build
+  cmake --build build --target install
+
+  git clone https://github.com/KhronosGroup/OpenCL-ICD-Loader $LIB_HOLDER_HOME
+  cd $LIB_HOLDER_HOME
+  cmake \
+    -A arm64 \
+    -D CMAKE_PREFIX_PATH="$LIB_PREFIX_HOME" \
+    -D CMAKE_INSTALL_PREFIX="$LIB_PREFIX_HOME" \
+    -B build
+  cmake --build build --target install --config release
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
-  git pull
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   cd ${SOFT_HOME}
+  git pull
   git checkout ${SOFT_VERSION}
   #带着下载curl一起编译
   cmake \
@@ -58,7 +77,7 @@ if [[ $(platform) == *linux* ]]; then
     -D LLAMA_CURL=ON \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
     -D CMAKE_TOOLCHAIN_FILE="${ANDROID_NDK}/build/cmake/android.toolchain.cmake" \
-    -D CMAKE_PREFIX_PATH=path-to-opencl \
+    -D CMAKE_PREFIX_PATH="$LIB_PREFIX_HOME" \
     -D CMAKE_C_FLAGS="-march=armv8.7a" \
     -D CMAKE_CXX_FLAGS="-march=armv8.7a" \
     -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
