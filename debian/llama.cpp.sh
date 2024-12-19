@@ -1,6 +1,7 @@
 #!/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
 AUTHOR=ggerganov
+ANDROID_NDK=$HOME/Android/Sdk/ndk/28.0.12674087
 NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
