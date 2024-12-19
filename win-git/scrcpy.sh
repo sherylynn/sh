@@ -78,7 +78,7 @@ if [[ $(platform) == *linux* ]]; then
     386) SOFT_ARCH=32 ;;
   esac
 
-  if [[ $SOFT_ARCH == *64* ]] && [[ "$(uname -a)" != *KYLINOS* ]]; then
+  if [[ $SOFT_ARCH == *64* ]] && [[ "$(uname -a)" != *KYLINOS* ]] && [[ $test_command == "还是不要直接下载，全部编译" ]]; then
     SOFT_FILE_NAME=${NAME}-${PLATFORM}-${SOFT_ARCH}-${SOFT_VERSION}
     #action 自动打包有问题，其实没有用 gzip 压缩，手动修改一下
     SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
@@ -96,9 +96,11 @@ if [[ $(platform) == *linux* ]]; then
         mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
     fi
     #--------------new .toolsrc-----------------------
-    export PATH=$PATH:${SOFT_HOME}
+    SOFT_ROOT=${SOFT_HOME}/${SOFT_FILE_NAME}
+    #export PATH=$PATH:${SOFT_HOME}
+    export PATH=$PATH:${SOFT_ROOT}
 
-    echo 'export PATH=$PATH:'${SOFT_HOME} >${TOOLSRC}
+    echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
   else
     #deb apt
     sudo apt install -y ffmpeg libsdl2-2.0-0 adb wget \
