@@ -54,7 +54,7 @@ if [[ $(platform) == *linux* ]]; then
   git checkout ${SOFT_VERSION}
   #带着下载curl一起编译
   cmake \
-    -D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-31" \
+    -D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-34" \
     -D LLAMA_CURL=ON \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
     -D CMAKE_TOOLCHAIN_FILE="${ANDROID_NDK}/build/cmake/android.toolchain.cmake" \
