@@ -68,8 +68,8 @@ if [[ $(platform) == *linux* ]]; then
     -D OPENCL_ICD_LOADER_HEADERS_DIR=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include \
     -D ANDROID_ABI=arm64-v8a \
     -D ANDROID_PLATFORM=35 \
-    -D ANDROID_STL=c++_shared \
-    make
+    -D ANDROID_STL=c++_shared
+  make
   cp libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
