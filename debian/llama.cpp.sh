@@ -67,12 +67,10 @@ if [[ $(platform) == *linux* ]]; then
     -D CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
     -D OPENCL_ICD_LOADER_HEADERS_DIR=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include \
     -D ANDROID_ABI=arm64-v8a \
-    \
     -D ANDROID_PLATFORM=35 \
     -D ANDROID_STL=c++_shared \
-    make \
-    cp libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android #-D ANDROID_PLATFORM=24 \
-
+    make
+  cp libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
@@ -82,7 +80,6 @@ if [[ $(platform) == *linux* ]]; then
   git checkout ${SOFT_VERSION}
   #带着下载curl一起编译
   cmake \
-    \
     -D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-35" \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
     -D CMAKE_TOOLCHAIN_FILE="${ANDROID_NDK}/build/cmake/android.toolchain.cmake" \
@@ -91,7 +88,7 @@ if [[ $(platform) == *linux* ]]; then
     -D CMAKE_CXX_FLAGS="-march=armv8.7a" \
     -D BUILD_SHARED_LIBS=OFF \
     -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
-    -B build #-D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-28" \
+    -B build
   #android is no curl
   #-D LLAMA_CURL=ON \
   #-D CMAKE_PREFIX_PATH="$LIB_PREFIX_HOME" \
