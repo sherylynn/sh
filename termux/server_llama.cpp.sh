@@ -35,3 +35,9 @@ cd ../../
 #LD_LIBRARY_PATH=/vendor/lib64:$PREFIX/lib:$LD_LIBRARY_PATH llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
 LD_LIBRARY_PATH=/vendor/lib64 /data/data/com.termux/files/home/tools/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
 #llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
+#linux-vdso.so.1 => [vdso] (0x7ba294d000)
+#       libm.so => /apex/com.android.runtime/lib64/bionic/libm.so (0x7b9e7c7000)
+#       libdl.so => /apex/com.android.runtime/lib64/bionic/libdl.so (0x7b9f2b3000)
+#       libOpenCL.so => /vendor/lib64/libOpenCL.so (0x7b9f242000)
+#       libc.so => /apex/com.android.runtime/lib64/bionic/libc.so (0x7b9f2e1000)
+#       libc++.so => /system/lib64/libc++.so (0x7b9e63e000)

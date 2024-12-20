@@ -40,7 +40,9 @@ if [[ $(platform) == *linux* ]]; then
   #pkg install opencl-headers opencl-clhpp opencl-vendor-driver python -y
   #pkg install opencl-headers opencl-vendor-driver python -y
   #pkg install opencl-headers ocl-icd python -y
-  pkg install opencl-headers opencl-vendor-driver python -y #一个提供opencl-header，一个提供libopencl.so
+  # opencl-vendor-driver 会把ocl-icd也安装，不合适
+  pkg install opencl-headers python -y #一个提供opencl-header，一个提供libopencl.so
+  #pkg install opencl-headers opencl-vendor-driver python -y #一个提供opencl-header，一个提供libopencl.so
   #pkg install opencl-headers opencl-clhpp clvk python -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
@@ -51,6 +53,7 @@ if [[ $(platform) == *linux* ]]; then
   cd ${SOFT_HOME}
   git checkout ${SOFT_VERSION}
   #带着下载curl一起编译
+  #LD_LIBRARY_PATH=/vendor/lib64:$PREFIX/lib:$LD_LIBRARY_PATH cmake \
   cmake \
     -D LLAMA_CURL=ON \
     -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
@@ -59,6 +62,7 @@ if [[ $(platform) == *linux* ]]; then
   #-D CMAKE_C_FLAGS="-march=armv8.7a" \
   #-D CMAKE_CXX_FLAGS="-march=armv8.7a" \
   # -D BUILD_SHARED_LIBS=OFF \
+  #-D CMAKE_PREFIX_PATH="/vendor/lib64" \
 
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
