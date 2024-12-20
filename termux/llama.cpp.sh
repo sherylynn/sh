@@ -39,7 +39,8 @@ if [[ $(platform) == *linux* ]]; then
   # opencl
   #pkg install opencl-headers opencl-clhpp opencl-vendor-driver python -y
   #pkg install opencl-headers opencl-vendor-driver python -y
-  pkg install opencl-headers ocl-icd python -y
+  #pkg install opencl-headers ocl-icd python -y
+  pkg install opencl-headers opencl-vendor-driver python -y #一个提供opencl-header，一个提供libopencl.so
   #pkg install opencl-headers opencl-clhpp clvk python -y
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
@@ -57,7 +58,7 @@ if [[ $(platform) == *linux* ]]; then
     -B build
   #-D CMAKE_C_FLAGS="-march=armv8.7a" \
   #-D CMAKE_CXX_FLAGS="-march=armv8.7a" \
-    # -D BUILD_SHARED_LIBS=OFF \
+  # -D BUILD_SHARED_LIBS=OFF \
 
   cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
