@@ -123,6 +123,7 @@ if [[ $(platform) == *win* ]]; then
   pacman -S --needed base-devel gcc git mingw-w64-x86_64-toolchain \
     mingw-w64-x86_64-xpm-nox \
     mingw-w64-x86_64-libtiff \
+    mingw-w64-x86_64-ccache \
     mingw-w64-x86_64-giflib \
     mingw-w64-x86_64-tree-sitter \
     mingw-w64-x86_64-libpng \
