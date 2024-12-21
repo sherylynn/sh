@@ -63,9 +63,8 @@ elif [[ $(platform) == *win* ]]; then
   pacman -S git \
     mingw-w64-ucrt-x86_64-gcc \
     mingw-w64-ucrt-x86_64-cmake \
-    mingw-w64-ucrt-x86_64-vulkan-devel \
     mingw-w64-ucrt-x86_64-shaderc
-  cmake -B build -DGGML_VULKAN=ON
+  cmake -B build
   cmake --build build --config Release
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
