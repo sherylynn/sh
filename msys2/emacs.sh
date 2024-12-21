@@ -124,6 +124,7 @@ if [[ $(platform) == *win* ]]; then
     mingw-w64-x86_64-xpm-nox \
     mingw-w64-x86_64-libtiff \
     mingw-w64-x86_64-giflib \
+    mingw-w64-x86_64-tree-sitter \
     mingw-w64-x86_64-libpng \
     mingw-w64-x86_64-libjpeg-turbo \
     mingw-w64-x86_64-librsvg \
@@ -133,7 +134,7 @@ if [[ $(platform) == *win* ]]; then
     mingw-w64-x86_64-gnutls \
     mingw-w64-x86_64-zlib \
     mingw-w64-x86_64-harfbuzz \
-    autoconfig \
+    autoconf \
     cmake
   ##  sudo apt install cmake libtool-bin libvterm-dev -y
   ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
@@ -156,9 +157,9 @@ if [[ $(platform) == *win* ]]; then
   #--------------new .toolsrc-----------------------
   ./autogen.sh
   if [[ "$(uname)" == *CGYWIN* ]]; then
-    ./configure --with-w32 --without-dbus --with-native-compilation --with-modules
+    ./configure --with-w32 --without-dbus --with-native-compilation --with-modules --with-tree-sitter
   else
-    ./configure --without-dbus --with-native-compilation --with-modules
+    ./configure --without-dbus --with-native-compilation --with-modules --with-tree-sitter
   fi
   make -j$(nproc)
   make install
