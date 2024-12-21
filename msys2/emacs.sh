@@ -5,7 +5,8 @@ NAME=emacs
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=28.1
+#SOFT_VERSION=28.1
+SOFT_VERSION=29.3
 SOFT_ARCH=x86_64
 OS=windows
 cd ~
@@ -14,9 +15,9 @@ cd ~
 #--------------------------------------
 if [[ $(platform) == *win_exe* ]]; then
   PLATFORM=windows
-  case $(arch) in 
-    amd64) SOFT_ARCH=x86_64;;
-    386) SOFT_ARCH=i686;;
+  case $(arch) in
+    amd64) SOFT_ARCH=x86_64 ;;
+    386) SOFT_ARCH=i686 ;;
   esac
 
   SOFT_FILE_NAME=${NAME}-${SOFT_VERSION}-${SOFT_ARCH}
@@ -24,40 +25,40 @@ if [[ $(platform) == *win_exe* ]]; then
   # init pwd
   cd $HOME
 
-  SOFT_URL=http://mirrors.nju.edu.cn/gnu/${NAME}/${PLATFORM}/${NAME}-$(echo ${SOFT_VERSION}|cut -d '.' -f 1)/${SOFT_FILE_PACK} 
+  SOFT_URL=http://mirrors.nju.edu.cn/gnu/${NAME}/${PLATFORM}/${NAME}-$(echo ${SOFT_VERSION} | cut -d '.' -f 1)/${SOFT_FILE_PACK}
   #if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
   if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
     $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
-    
-    rm -rf ${SOFT_HOME} && \
-      mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+
+    rm -rf ${SOFT_HOME} &&
+      mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
   fi
   #--------------new .toolsrc-----------------------
   SOFT_ROOT=${SOFT_HOME}/bin
   export PATH=$PATH:${SOFT_ROOT}
-  echo "set HOME=$(cygpath $HOME -d)">${SOFT_ROOT}/emacs_win.cmd
-  echo "emacs" >> ${SOFT_ROOT}emacs_win.cmd
+  echo "set HOME=$(cygpath $HOME -d)" >${SOFT_ROOT}/emacs_win.cmd
+  echo "emacs" >>${SOFT_ROOT}emacs_win.cmd
 
-  echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
+  echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
 fi
 
 if [[ $(platform) == *appimage* ]]; then
-	## diffcult to find lib to compile
-##  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
-##  sudo apt install cmake libtool-bin libvterm-dev -y
-##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
+  ## diffcult to find lib to compile
+  ##  sudo apt install emacs-gtk librime-dev fd-find ripgrep -y
+  ##  sudo apt install cmake libtool-bin libvterm-dev -y
+  ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
 
-  case $(arch) in 
-    amd64) SOFT_ARCH=x86_64;;
-    386) SOFT_ARCH=i686;;
+  case $(arch) in
+    amd64) SOFT_ARCH=x86_64 ;;
+    386) SOFT_ARCH=i686 ;;
   esac
   SOFT_FILE_NAME=Emacs-${SOFT_VERSION}.glibc2.16-${SOFT_ARCH}
   SOFT_FILE_PACK=$SOFT_FILE_NAME.AppImage
   # init pwd
   cd $HOME
 
-  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK} 
+  SOFT_URL=https://github.com/probonopd/Emacs.AppImage/releases/download/continuous/${SOFT_FILE_PACK}
   if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
     $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
     ## no need to extract
@@ -73,21 +74,21 @@ if [[ $(platform) == *appimage* ]]; then
   #--------------new .toolsrc-----------------------
   SOFT_ROOT=${SOFT_HOME}
   export PATH=$PATH:${SOFT_ROOT}
-  echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
+  echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
 fi
 
 if [[ $(platform) == *linux* ]]; then
-	## diffcult to find lib to compile
+  ## diffcult to find lib to compile
   sudo apt install libgccjit0 librime-dev fd-find ripgrep -y
   sudo apt install libgccjit-10-dev -y
   sudo apt install libgccjit-8-dev -y
   sudo apt build-dep emacs -y
-##  sudo apt install cmake libtool-bin libvterm-dev -y
-##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
+  ##  sudo apt install cmake libtool-bin libvterm-dev -y
+  ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
 
   case $(arch) in
-    amd64) SOFT_ARCH=x86_64;;
-    386) SOFT_ARCH=i686;;
+    amd64) SOFT_ARCH=x86_64 ;;
+    386) SOFT_ARCH=i686 ;;
   esac
   SOFT_FILE_NAME=${NAME}-${SOFT_VERSION}
   SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
@@ -104,7 +105,7 @@ if [[ $(platform) == *linux* ]]; then
     #cd ${SOFT_HOME}
     #git checkout tags/${SOFT_VERSION}
     ##rm -rf ${SOFT_HOME} && \
-    ##  mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+    ##  mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
   fi
   #--------------new .toolsrc-----------------------
   ##SOFT_ROOT=${SOFT_HOME}/${NAME}-${NAME}-${SOFT_VERSION}
@@ -115,12 +116,11 @@ if [[ $(platform) == *linux* ]]; then
   make -j$(nproc)
   sudo make install
   export PATH=$PATH:${SOFT_ROOT}
-  echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
+  echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
 fi
 if [[ $(platform) == *win* ]]; then
-	## diffcult to find lib to compile
-  pacman -S --needed base-devel gcc git\
-    mingw-w64-x86_64-toolchain \
+  ## diffcult to find lib to compile
+  pacman -S --needed base-devel gcc git mingw-w64-x86_64-toolchain \
     mingw-w64-x86_64-xpm-nox \
     mingw-w64-x86_64-libtiff \
     mingw-w64-x86_64-giflib \
@@ -135,12 +135,12 @@ if [[ $(platform) == *win* ]]; then
     mingw-w64-x86_64-harfbuzz \
     autoconfig \
     cmake
-##  sudo apt install cmake libtool-bin libvterm-dev -y
-##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
+  ##  sudo apt install cmake libtool-bin libvterm-dev -y
+  ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
 
   case $(arch) in
-    amd64) SOFT_ARCH=x86_64;;
-    386) SOFT_ARCH=i686;;
+    amd64) SOFT_ARCH=x86_64 ;;
+    386) SOFT_ARCH=i686 ;;
   esac
   SOFT_FILE_NAME=${NAME}-${SOFT_VERSION}
   SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
@@ -157,7 +157,7 @@ if [[ $(platform) == *win* ]]; then
     #cd ${SOFT_HOME}
     #git checkout tags/${SOFT_VERSION}
     ##rm -rf ${SOFT_HOME} && \
-    ##  mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
+    ##  mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
   fi
   #--------------new .toolsrc-----------------------
   ##SOFT_ROOT=${SOFT_HOME}/${NAME}-${NAME}-${SOFT_VERSION}
@@ -172,7 +172,7 @@ if [[ $(platform) == *win* ]]; then
   make -j$(nproc)
   make install
   export PATH=$PATH:${SOFT_ROOT}
-  echo 'export PATH=$PATH:'${SOFT_ROOT}>${TOOLSRC}
+  echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
 fi
 #--------------new .toolsrc-----------------------
 #windows下和linux下的不同
