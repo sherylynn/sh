@@ -146,6 +146,7 @@ if [[ $(platform) == *win* ]]; then
   SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
 
   SOFT_GIT_URL=https://github.com/emacs-mirror/emacs.git
+  SOFT_VERSION=emacs-29.4
   # init pwd
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   cd ${SOFT_HOME}
