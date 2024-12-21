@@ -18,4 +18,5 @@ TOOLSRC=$(toolsRC $TOOLSRC_NAME)
 
 #vi /etc/nsswitch.conf -c '%s/cygwin/windows cygwin/g'
 sed -i 's/: cygwin/: windows cygwin/g' /etc/nsswitch.conf
-echo "SHELL=/usr/bin/zsh" >> /mingw64.ini
+echo "SHELL=/usr/bin/zsh" >>/mingw64.ini
+echo "SHELL=/usr/bin/zsh" >>/ucrt64.ini
