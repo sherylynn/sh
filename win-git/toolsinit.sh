@@ -418,13 +418,15 @@ zpush() {
   test -d $ZSH_HOME && git -C $ZSH_HOME push &
   test -d ~/.emacs.d && git -C ~/.emacs.d/ push &
   test -d ~/work && git -C ~/work/ push &
-  test -d ~/toys && git -C ~/toys/ push
+  test -d ~/toys && git -C ~/toys/ push &
+  echo push
 }
 zfetch() {
   test -d $ZSH_HOME && git -C $ZSH_HOME pull &
   test -d ~/.emacs.d && git -C ~/.emacs.d/ pull &
   test -d ~/work && git -C ~/work/ pull &
-  test -d ~/toys && git -C ~/toys/ pull
+  test -d ~/toys && git -C ~/toys/ pull &
+  echo git fetch
 }
 
 zchat() {
