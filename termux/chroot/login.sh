@@ -21,7 +21,16 @@ if [ -f ~/tools/rurima/rurima ]; then
 
   #sudo rm -rf $DEBIAN_DIR/run/dbus/pid
   #sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su - root -c 'dbus-daemon --system --fork' &
-  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR
+  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export PULSE_SERVER=127.0.0.1 && \
+export GTK_IM_MODULE="fcitx" && \
+export QT_IM_MODULE="fcitx" && \
+export XMODIFIERS="@im=fcitx" && \
+#fcitx5 && \
+export GALLIUM_DRIVER=virpipe && \
+export MESA_GL_VERSION_OVERRIDE=4.0 && \
+zsh ~/tools/rc/allToolsrc; \
+zsh '
+
   #sudo rurima ruri -S -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root
 elif [ -n "$busybox" ]; then
   # Execute chroot script
