@@ -119,26 +119,45 @@ if [[ $(platform) == *linux* ]]; then
   echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
 fi
 if [[ $(platform) == *win* ]]; then
-  ## diffcult to find lib to compile
-  pacman -S --needed base-devel gcc git mingw-w64-x86_64-toolchain \
-    mingw-w64-x86_64-xpm-nox \
-    mingw-w64-x86_64-libtiff \
-    mingw-w64-x86_64-ccache \
-    mingw-w64-x86_64-giflib \
-    mingw-w64-x86_64-tree-sitter \
-    mingw-w64-x86_64-libpng \
-    mingw-w64-x86_64-libjpeg-turbo \
-    mingw-w64-x86_64-librsvg \
-    mingw-w64-x86_64-lcms2 \
-    mingw-w64-x86_64-jansson \
-    mingw-w64-x86_64-libxml2 \
-    mingw-w64-x86_64-gnutls \
-    mingw-w64-x86_64-zlib \
-    mingw-w64-x86_64-harfbuzz \
+  #pacman -S --needed base-devel gcc git mingw-w64-x86_64-toolchain \
+  #  mingw-w64-x86_64-xpm-nox \
+  #  mingw-w64-x86_64-libtiff \
+  #  mingw-w64-x86_64-ccache \
+  #  mingw-w64-x86_64-giflib \
+  #  mingw-w64-x86_64-tree-sitter \
+  #  mingw-w64-x86_64-libpng \
+  #  mingw-w64-x86_64-libjpeg-turbo \
+  #  mingw-w64-x86_64-librsvg \
+  #  mingw-w64-x86_64-lcms2 \
+  #  mingw-w64-x86_64-jansson \
+  #  mingw-w64-x86_64-libxml2 \
+  #  mingw-w64-x86_64-gnutls \
+  #  mingw-w64-x86_64-zlib \
+  #  mingw-w64-x86_64-harfbuzz \
+  #  autoconf \
+  #  cmake
+  pacman -S --needed base-devel git \
+    mingw-w64-ucrt-x86_64-toolchain \
+    mingw-w64-ucrt-x86_64-gcc \
+    mingw-w64-ucrt-x86_64-xpm-nox \
+    mingw-w64-ucrt-x86_64-libtiff \
+    mingw-w64-ucrt-x86_64-ccache \
+    mingw-w64-ucrt-x86_64-giflib \
+    mingw-w64-ucrt-x86_64-tree-sitter \
+    mingw-w64-ucrt-x86_64-libtree-sitter \
+    mingw-w64-ucrt-x86_64-librime \
+    mingw-w64-ucrt-x86_64-libvterm \
+    mingw-w64-ucrt-x86_64-libpng \
+    mingw-w64-ucrt-x86_64-libjpeg-turbo \
+    mingw-w64-ucrt-x86_64-librsvg \
+    mingw-w64-ucrt-x86_64-lcms2 \
+    mingw-w64-ucrt-x86_64-jansson \
+    mingw-w64-ucrt-x86_64-libxml2 \
+    mingw-w64-ucrt-x86_64-gnutls \
+    mingw-w64-ucrt-x86_64-zlib \
+    mingw-w64-ucrt-x86_64-harfbuzz \
     autoconf \
-    cmake
-  ##  sudo apt install cmake libtool-bin libvterm-dev -y
-  ##  sudo apt install libxpm-dev libgtk-3-dev build-essential libjpeg-dev libtiff-dev libgif-dev -y
+    mingw-w64-ucrt-x86_64-cmake
 
   case $(arch) in
     amd64) SOFT_ARCH=x86_64 ;;
