@@ -56,8 +56,8 @@ if [[ $(platform) == *linux* ]]; then
 #  ./systemd_novnc.sh
 elif [[ $(platform) == *win* ]]; then
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
-  git pull
   cd ${SOFT_HOME}
+  git pull
   git checkout $SOFT_VERSION
   pacman -R cmake
   pacman -S git \

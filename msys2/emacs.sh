@@ -6,7 +6,7 @@ TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION=28.1
-SOFT_VERSION=29.3
+SOFT_VERSION=29.4
 SOFT_ARCH=x86_64
 OS=windows
 cd ~
@@ -145,24 +145,14 @@ if [[ $(platform) == *win* ]]; then
   SOFT_FILE_NAME=${NAME}-${SOFT_VERSION}
   SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
 
+  SOFT_GIT_URL=https://github.com/emacs-mirror/emacs.git
   # init pwd
-  cd $HOME
-  ##SOFT_URL=https://github.com/emacs-mirror/emacs/archive/refs/tags/emacs-$SOFT_VERSION.tar.gz
-
-  if [[ "$(${NAME} --version)" != *${NAME}\ ${SOFT_VERSION}* ]]; then
-    ##$(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-    ##$(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
-    cd $(install_path)
-    git clone -b emacs-${SOFT_VERSION} --depth 1 https://github.com/emacs-mirror/emacs.git
-    #cd ${SOFT_HOME}
-    #git checkout tags/${SOFT_VERSION}
-    ##rm -rf ${SOFT_HOME} && \
-    ##  mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
-  fi
-  #--------------new .toolsrc-----------------------
-  ##SOFT_ROOT=${SOFT_HOME}/${NAME}-${NAME}-${SOFT_VERSION}
-  ##cd $SOFT_ROOT
+  git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   cd ${SOFT_HOME}
+  git pull
+  git checkout $SOFT_VERSION
+
+  #--------------new .toolsrc-----------------------
   ./autogen.sh
   if [[ "$(uname)" == *CGYWIN* ]]; then
     ./configure --with-w32 --without-dbus --with-native-compilation --with-modules
