@@ -18,10 +18,11 @@ zsh ~/sh/lynn.sh work
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
 zsh ~/sh/termux/ttyd.sh
+zsh ~/sh/termux/chinese.sh
 zsh ~/sh/termux/emacs.sh
 zsh ~/sh/myemacs.sh
-zsh ~/sh/termux/emacs_native.sh 
-zsh ~/sh/win-git/zlua_new.sh 
+zsh ~/sh/termux/emacs_native.sh
+zsh ~/sh/win-git/zlua_new.sh
 unproxy
 emacs
 zsh ~/sh/termux/clean.sh
