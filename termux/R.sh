@@ -4,9 +4,10 @@ NAME=R
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION="b4337" #opencl
+SOFT_VERSION="b4337"
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
+#https://mirrors.tuna.tsinghua.edu.cn/CRAN/src/base/R-3/R-3.5.3.tar.gz
 
 case $(platform) in
   macos) PLATFORM=darwin ;;
