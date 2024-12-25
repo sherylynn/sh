@@ -23,6 +23,7 @@ zsh ~/sh/termux/emacs.sh
 zsh ~/sh/myemacs.sh
 zsh ~/sh/termux/emacs_native.sh
 zsh ~/sh/win-git/zlua_new.sh
+zsh ~/sh/win-git/rurima.sh
 unproxy
 emacs
 zsh ~/sh/termux/clean.sh
