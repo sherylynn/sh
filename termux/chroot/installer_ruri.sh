@@ -45,7 +45,7 @@ sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp 
     apt update; \
     apt upgrade -y; \
     apt autoremove -y; \
-    apt install emacs net-tools zsh -y; \
+    apt install net-tools zsh -y; \
     echo "Debian chroot environment configured"'
 
 sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
