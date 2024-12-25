@@ -8,6 +8,8 @@ chmod 700 ~/.ssh
 #sudo apt install openssh-server -y
 update_config /etc/ssh/sshd_config Port 22 sudo
 update_config /etc/ssh/sshd_config PasswordAuthentication yes sudo
+update_config /etc/ssh/sshd_config PermitRootLogin yes sudo
+update_config /etc/ssh/sshd_config AcceptEnv LANG yes sudo
 
 sudo service ssh --full-restart
 #sudo systemctl restart ssh
