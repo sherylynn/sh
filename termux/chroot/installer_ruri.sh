@@ -24,11 +24,11 @@ sudo rurima ruri -U $DEBIAN_DIR
 unset LD_PRELOAD LD_DEBUG
 #testing
 #sudo cp ~/sh/debian/sources.list.tuna $DEBIAN_DIR/etc/apt/sources.list
-#sudo cp ~/sh/debian/debian.sources.tuna $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
+#1
+sudo cp ~/sh/debian/debian.sources.tuna $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
+#2
 #docker里的sources.list压根没东西 ,换了一个位置
-#~/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list
-#sudo /data/data/com.termux/files/home/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
-/data/data/com.termux/files/home/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
+#/data/data/com.termux/files/home/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
 
 sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'echo "nameserver 114.114.114.114" > /etc/resolv.conf; \
     echo "127.0.0.1 localhost" > /etc/hosts; \

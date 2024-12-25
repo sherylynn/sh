@@ -75,6 +75,7 @@ zsh ~/sh/debian/wechat.sh
 #zsh ~/sh/debian/spark-store.sh
 zsh ~/sh/debian/vlc.sh
 zsh ~/sh/myemacs.sh
-zsh ~/sh/debian/emacs.sh
+#zsh ~/sh/debian/emacs.sh
+zsh ~/sh/win-git/emacs.sh
 zsh ~/sh/debian/R.sh
 emacs -nw
