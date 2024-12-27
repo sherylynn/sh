@@ -35,7 +35,7 @@ if [[ $(platform) == *linux* ]]; then
 
   #treesitter-R
   sudo apt install cargo -y
-elif [[ $(platform) == *darwin* ]]; then
-  brew install R -y
-  brew install libpng cairo libtiff -y
+elif [[ $(platform) == *macos* ]]; then
+  brew install R
+  brew install libpng cairo libtiff
 fi
