@@ -9,7 +9,9 @@ chmod 700 ~/.ssh
 update_config /etc/ssh/sshd_config Port 22 sudo
 update_config /etc/ssh/sshd_config PasswordAuthentication yes sudo
 update_config /etc/ssh/sshd_config PermitRootLogin yes sudo
-update_config /etc/ssh/sshd_config AcceptEnv LANG yes sudo
+#update_config /etc/ssh/sshd_config AcceptEnv LANG sudo
 
-sudo service ssh --full-restart
+#sudo service ssh --full-restart
 #sudo systemctl restart ssh
+
+/usr/sbin/sshd --port 22
