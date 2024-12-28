@@ -1,7 +1,7 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
 mkdir -p ~/.ssh
-cat ~/id_rsa.pub >>~/.ssh/authorized_keys
+cat ~/id_rsa.pub >~/.ssh/authorized_keys
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
 #sudo apt purge openssh-server -y
@@ -11,7 +11,7 @@ update_config /etc/ssh/sshd_config Port 22 sudo
 #update_config /etc/ssh/sshd_config PasswordAuthentication yes sudo
 update_config /etc/ssh/sshd_config PubkeyAuthentication yes sudo
 update_config /etc/ssh/sshd_config AuthorizedKeysFile .ssh/authorized_keys sudo
-update_config /etc/ssh/sshd_config PasswordAuthentication no sudo
+update_config /etc/ssh/sshd_config PasswordAuthentication yes sudo
 update_config /etc/ssh/sshd_config PermitRootLogin yes sudo
 #update_config /etc/ssh/sshd_config AcceptEnv LANG sudo
 
