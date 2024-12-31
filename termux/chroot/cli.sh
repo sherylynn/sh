@@ -435,6 +435,7 @@ sdcard_link() {
 }
 kill_need() {
   sudo killall emacs
+  sudo killall emacs-*
 }
 clean_tmp() {
   sudo rm -rf $PREFIX/tmp/rime*
