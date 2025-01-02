@@ -60,6 +60,17 @@ else
 fi
 zsh ~/sh/win-git/koreader.sh
 if [ -d "/sdcard" ]; then
+  sdcard_rime=/sdcard/Download/rime
+  sdcard_ssh=/sdcard/Download/.ssh
+  sdcard_gitconfig=/sdcard/Download/.gitconfig
+  sdcard_gitcredentials=/sdcard/Download/.git-credentials
+  sudo rm -rf ~/.gitconfig
+  test -f $sdcard_gitconfig && sudo ln -s $sdcard_gitconfig ~/.gitconfig
+  sudo rm -rf ~/.git-credentials
+  test -f $sdcard_gitcredentials && sudo ln -s $sdcard_gitcredentials ~/.git-credentials
+  #复用输入法词库
+  sudo rm -rf ~/rime
+  test -d $sdcard_rime && sudo ln -s $sdcard_rime ~/rime
   sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ /root/Documents/百度云盘
 fi
 zsh ~/sh/debian/firefox.sh
