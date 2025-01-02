@@ -533,6 +533,10 @@ proxy_adb() {
 phone() {
   adb forward tcp:3333 tcp:3333
   adb forward tcp:8888 tcp:8888
+  adb forward tcp:10001 tcp:10001
+  adb forward tcp:10086 tcp:10086
+  adb forward tcp:5900 tcp:5900
+  #adb forward tcp:10808 tcp:10808
   #open http://127.0.0.1:3333
   scrcpy_adb
 }
