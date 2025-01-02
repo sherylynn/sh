@@ -5,4 +5,4 @@ git clone https://github.com/sherylynn/toys ~/toys
 sudo apt install libfontconfig1-dev libcairo2-dev libtiff-dev -y
 
 #treesitter-R
-sudo apt install cargo -y
+#sudo apt install cargo -y
