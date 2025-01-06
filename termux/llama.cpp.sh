@@ -36,9 +36,9 @@ if [[ $(platform) == *linux* ]]; then
   #pkg install opencl-headers opencl-clhpp opencl-vendor-driver python -y
   #pkg install opencl-headers opencl-vendor-driver python -y
   #pkg install opencl-headers ocl-icd python -y
-  # opencl-vendor-driver 会把ocl-icd也安装，不合适
-  #pkg install opencl-headers python -y #一个提供opencl-header，一个提供libopencl.so
-  #pkg install opencl-headers opencl-vendor-driver python -y #一个提供opencl-header，一个提供libopencl.so
+  # opencl-vendor-driver 会把 ocl-icd 也安装，不合适
+  #pkg install opencl-headers python -y #一个提供 opencl-header，一个提供 libopencl.so
+  #pkg install opencl-headers opencl-vendor-driver python -y #一个提供 opencl-header，一个提供 libopencl.so
   #pkg install opencl-headers opencl-clhpp clvk python -y
 
   #需要手动下载目标库
@@ -67,18 +67,24 @@ if [[ $(platform) == *linux* ]]; then
   cp libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
+  cd ${SOFT_HOME}
   git pull
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   cd ${SOFT_HOME}
   git checkout ${SOFT_VERSION}
-  #带着下载curl一起编译
+  #带着下载 curl 一起编译
   #LD_LIBRARY_PATH=/vendor/lib64:$PREFIX/lib:$LD_LIBRARY_PATH cmake \
   cmake \
-    -D LLAMA_CURL=ON \
-    -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
+    -D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-35" \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
+    -D CMAKE_TOOLCHAIN_FILE="${ANDROID_NDK}/build/cmake/android.toolchain.cmake" \
+    -D GGML_OPENMP=OFF \
+    -D CMAKE_C_FLAGS="-march=armv8.7a" \
+    -D CMAKE_CXX_FLAGS="-march=armv8.7a" \
+    -D BUILD_SHARED_LIBS=OFF \
+    -D GGML_OPENCL=ON -D GGML_OPENCL_USE_ADRENO_KERNELS=ON \
     -B build
   #-D CMAKE_C_FLAGS="-march=armv8.7a" \
   #-D CMAKE_CXX_FLAGS="-march=armv8.7a" \
