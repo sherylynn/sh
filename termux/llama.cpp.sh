@@ -1,7 +1,7 @@
 #!/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
 AUTHOR=ggerganov
-ANDROID_NDK=$HOME/tools/termux-ndk/android-ndk-r27b
+ANDROID_NDK=$HOME/tools/android-ndk/android-ndk-r27b
 NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
