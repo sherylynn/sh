@@ -32,8 +32,8 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  pkg install git cmake ccache -y
-  #pkg install git ccache -y
+  #pkg install git cmake ccache -y
+  pkg install git ccache -y
   # opencl
   #pkg install opencl-headers opencl-clhpp opencl-vendor-driver python -y
   #pkg install opencl-headers opencl-vendor-driver python -y

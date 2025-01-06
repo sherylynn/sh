@@ -29,5 +29,5 @@ if [[ $(platform) == *linux* ]]; then
   rm -rf ${SOFT_HOME} &&
     mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
   #chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
-  echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
+  echo "export PATH=$SOFT_HOME/$SOFT_VERSION/cmake/bin:"'$PATH' >${TOOLSRC}
 fi
