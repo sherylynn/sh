@@ -7,8 +7,9 @@ TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 LIB_PREFIX_HOME=$(install_path)/OpenCL-Prefix
-SOFT_VERSION="b4337" #opencl
-LIB_VERSION="2024.10.24"
+SOFT_VERSION="b4417" #opencl
+#LIB_VERSION="2024.10.24"
+LIB_VERSION="2022.05.18"
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
 
@@ -32,6 +33,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   pkg install git cmake ccache -y
+  #pkg install git ccache -y
   # opencl
   #pkg install opencl-headers opencl-clhpp opencl-vendor-driver python -y
   #pkg install opencl-headers opencl-vendor-driver python -y
@@ -61,7 +63,7 @@ if [[ $(platform) == *linux* ]]; then
     -D CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
     -D OPENCL_ICD_LOADER_HEADERS_DIR=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include \
     -D ANDROID_ABI=arm64-v8a \
-    -D ANDROID_PLATFORM=35 \
+    -D ANDROID_PLATFORM=24 \
     -D ANDROID_STL=c++_shared
   make
   cp libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
@@ -77,7 +79,7 @@ if [[ $(platform) == *linux* ]]; then
   #带着下载 curl 一起编译
   #LD_LIBRARY_PATH=/vendor/lib64:$PREFIX/lib:$LD_LIBRARY_PATH cmake \
   cmake \
-    -D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-35" \
+    -D ANDROID_ABI="arm64-v8a" -D ANDROID_PLATFORM="android-28" \
     -D GGML_CPU_AARCH64=ON -D GGML_RUNTIME_REPACK=ON \
     -D CMAKE_TOOLCHAIN_FILE="${ANDROID_NDK}/build/cmake/android.toolchain.cmake" \
     -D GGML_OPENMP=OFF \
@@ -95,6 +97,7 @@ if [[ $(platform) == *linux* ]]; then
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
   #echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
+  tar zcf /sdcard/Download/build.tar.gz build
 
   #zsh ~/sh/termux/termux_service_${NAME}.sh
   #sh ~/sh/termux/termux_service_${NAME}.sh
