@@ -31,10 +31,10 @@ echo $(whoami)
 cd ../../
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
 #llama-server -m /sdcard/Download/Qwen2.5.1-Coder-7B-Instruct-Q4_0_4_8.gguf --host 0.0.0.0
-#llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888
+llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
 #LD_LIBRARY_PATH=/vendor/lib64:$PREFIX/lib:$LD_LIBRARY_PATH llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
-unset LD_LIBRARY_PATH
-LD_LIBRARY_PATH=/vendor/lib64:/apex/com.android.runtime/lib64/bionic/:/system/lib64 llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
+#unset LD_LIBRARY_PATH
+#D_LIBRARY_PATH=/vendor/lib64:/apex/com.android.runtime/lib64/bionic/:/system/lib64 llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
 #LD_LIBRARY_PATH=/vendor/lib64 /data/data/com.termux/files/home/tools/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
 #llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
 #linux-vdso.so.1 => [vdso] (0x7ba294d000)
