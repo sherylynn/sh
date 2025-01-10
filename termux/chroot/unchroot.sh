@@ -4,7 +4,7 @@
 #. ./cli.sh
 
 # Kill all old prcoesses for umount tmp
-sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
+sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock virgl_test_server
 
 if [ -f ~/tools/rurima/rurima ]; then
   sudo killall sshd
