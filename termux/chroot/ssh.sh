@@ -55,7 +55,7 @@ export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
-zsh ~/tools/rc/allToolsrc && \
+#zsh ~/tools/rc/allToolsrc && \
 zsh ~/sh/win-git/ssh.sh'
 #dbus-launch --exit-with-session startxfce4'
 #startxfce4'
