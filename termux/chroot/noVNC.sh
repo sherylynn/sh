@@ -39,6 +39,9 @@ export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
+#export MESA_LOADER_DRIVER_OVERRIDE=zink && \
+#export GALLIUM_DRIVER=zink && \
+#export XDG_RUNTIME_DIR=/tmp && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
 cd ~ && \
