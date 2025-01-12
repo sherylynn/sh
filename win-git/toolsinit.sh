@@ -595,7 +595,9 @@ scrcpy_big() {
     #scrcpy --stay-awake --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --new-display=3168x1440/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   fi
 }
-
+alias scb='scrcpy_big'
+alias sca='scrcpy_new'
+alias sc='scrcpy_adb'
 scrcpy_termux_hold_video() {
   scrcpy --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
 }
