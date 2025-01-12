@@ -597,6 +597,7 @@ scrcpy_big() {
 }
 alias scb='scrcpy_big'
 alias sca='scrcpy_new'
+alias scn='scrcpy_new'
 alias sc='scrcpy_adb'
 scrcpy_termux_hold_video() {
   scrcpy --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
