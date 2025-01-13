@@ -38,6 +38,7 @@ if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
   sudo apt purge tightvnc* -y
   sudo dpkg -i $(cache_folder)/${SOFT_FILE_PACK}
   sudo apt install -f -y
+  sudo adduser $USER ssl-cert
 fi
 
 SOFT_ROOT=${SOFT_HOME}
