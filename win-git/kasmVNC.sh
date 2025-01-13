@@ -35,6 +35,7 @@ SOFT_URL=https://github.com/${AUTHOR}/${NAME}/releases/download/${SOFT_VERSION}/
 if [[ "$(${NAME} -v)" != *${SOFT_VERSION}* ]]; then
   $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   #解压稍微有点不一样
+  sudo apt purge tightvnc* -y
   sudo dpkg -i $(cache_folder)/${SOFT_FILE_PACK}
   sudo apt install -f -y
 fi
