@@ -14,7 +14,9 @@ pkg install tsu pulseaudio virglrenderer-android -y
 mkdir -p $DEBIAN_DIR
 #testing
 #sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t testing -s $DEBIAN_DIR
-sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m registry.dockermirror.com -i debian -t testing -s $DEBIAN_DIR
+#sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m hub.fast360.xyz -i debian -t testing -s $DEBIAN_DIR
+sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m docker.m.daocloud.io -i debian -t testing -s $DEBIAN_DIR
+#sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m registry.dockermirror.com -i debian -t testing -s $DEBIAN_DIR
 #bookworm
 #sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t bookworm -s $DEBIAN_DIR
 #链接私人文件
@@ -26,7 +28,8 @@ unset LD_PRELOAD LD_DEBUG
 #testing
 #sudo cp ~/sh/debian/sources.list.tuna $DEBIAN_DIR/etc/apt/sources.list
 #1
-sudo cp ~/sh/debian/debian.sources.tuna $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
+sudo cp ~/sh/debian/debian.sources.tuna.testing $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
+#sudo cp ~/sh/debian/debian.sources.tuna $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
 #2
 #docker里的sources.list压根没东西 ,换了一个位置
 #/data/data/com.termux/files/home/sh/debian/debian_mirror.sh $DEBIAN_DIR/etc/apt/sources.list.d/debian.sources
