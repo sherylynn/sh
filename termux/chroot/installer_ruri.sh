@@ -14,8 +14,9 @@ pkg install tsu pulseaudio virglrenderer-android -y
 mkdir -p $DEBIAN_DIR
 #testing
 #sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t testing -s $DEBIAN_DIR
+sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m registry.dockermirror.com -i debian -t testing -s $DEBIAN_DIR
 #bookworm
-sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t bookworm -s $DEBIAN_DIR
+#sudo test ! -e $DEBIAN_DIR/bin/dpkg && sudo rurima docker pull -m dockerpull.org -i debian -t bookworm -s $DEBIAN_DIR
 #链接私人文件
 sdcard_link
 #卸载
