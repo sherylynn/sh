@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPT_NAME="noVNC"
+SCRIPT_NAME="kasmVNC"
 realpath() {
   local x=$1
   echo $(
