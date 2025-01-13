@@ -52,9 +52,6 @@ fi
 sudo apt install zsh -y
 sudo apt install dbus-x11 xfce4 openssh-server -y
 #换一种vnc
-if [[ $SOFT_VNC == *tigervnc* ]]; then
-  sudo apt install tigervnc-standalone-server tigervnc-tools -y
-fi
 sudo apt install xfce4-terminal -y
 sudo apt install telegram-desktop ncdu htop -y
 sudo chsh -s /bin/zsh
