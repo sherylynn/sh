@@ -25,9 +25,10 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
-  cd ${SOFT_HOEM}
-  git clone
+  cd ${SOFT_HOME}
+  git pull
   sudo apt purge kasmvncserver -y
+  sudo apt autoremove -y
   sudo apt install tigervnc-standalone-server tigervnc-tools -y
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
