@@ -42,6 +42,7 @@ export XMODIFIERS="@im=fcitx" && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
 cd ~ && \
+chmod 1777 /dev/shm && \
 sh ~/sh/win-git/server_noVNC.sh'
 elif [ -n "$busybox" ]; then
   # Execute chroot script
