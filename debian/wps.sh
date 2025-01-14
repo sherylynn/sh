@@ -49,6 +49,6 @@ sudo apt update
 #处理官方包图标的依赖
 sudo apt install xdg-utils -y
 #sudo apt install cn.wps.wps-office-pro -y
-sudo apt install -f -y
+sudo apt --fix-broken install -y
 #为了解决wps打不开缺少依赖
 sudo apt install python3-lxml -y

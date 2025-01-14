@@ -53,4 +53,6 @@ sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp 
     apt install net-tools zsh -y; \
     echo "Debian chroot environment configured"'
 
-sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'test -f ~/tools/rc/allToolsrc && zsh ~/tools/rc/allToolsrc && zsh /root/sh/win-git/server_configure.sh'
+#不知道为啥后来无法zsh allToolsrc了
+#sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'test -f ~/tools/rc/allToolsrc && zsh ~/tools/rc/allToolsrc && zsh /root/sh/win-git/server_configure.sh'
+sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
