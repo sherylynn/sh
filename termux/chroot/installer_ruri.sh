@@ -45,7 +45,7 @@ sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp 
     apt install git vim wget curl sudo -y; \
     git clone --depth 1 http://github.com/sherylynn/sh  ~/sh; \
     git -C ~/sh pull; \
-    test -f ~/tools/rc/allToolsrc && zsh ~/tools/rc/allToolsrc \
+    test -f ~/tools/rc/allToolsrc && source ~/tools/rc/allToolsrc \
     ~/sh/debian/debian_mirror.sh; \
     apt update; \
     apt upgrade -y; \
@@ -54,5 +54,8 @@ sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp 
     echo "Debian chroot environment configured"'
 
 #不知道为啥后来无法zsh allToolsrc了
+#原来是zsh all 后 并不能用 &&，而且好像并没有引入
 #sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'test -f ~/tools/rc/allToolsrc && zsh ~/tools/rc/allToolsrc && zsh /root/sh/win-git/server_configure.sh'
-sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
+sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'test -f ~/tools/rc/allToolsrc && source  ~/tools/rc/allToolsrc ;\
+zsh /root/sh/win-git/server_configure.sh'
+#sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
