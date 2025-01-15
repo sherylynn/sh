@@ -3,7 +3,8 @@
 . $(dirname "$0")/cli.sh
 #. ./cli.sh
 # Kill all old prcoesses
-sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
+#sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
+. $(dirname "$0")/unchroot.sh
 
 ## Start Termux X11
 am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
@@ -38,10 +39,11 @@ if [ -f ~/tools/rurima/rurima ]; then
     export GTK_IM_MODULE="fcitx" &&
     export QT_IM_MODULE="fcitx" &&
     export XMODIFIERS="@im=fcitx" &&
-    #fcitx5 && \
+    export XDG_RUNTIME_DIR=/tmp &&
     export GALLIUM_DRIVER=virpipe &&
     export MESA_GL_VERSION_OVERRIDE=4.0 &&
-    zsh ~/tools/rc/allToolsrc
+    #fcitx5 & 
+    source ~/tools/rc/allToolsrc
   dbus-launch --exit-with-session startxfce4'
 elif [ -n "$busybox" ]; then
   # Execute chroot script
