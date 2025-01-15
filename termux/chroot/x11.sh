@@ -39,7 +39,7 @@ if [ -f ~/tools/rurima/rurima ]; then
     export GTK_IM_MODULE="fcitx" &&
     export QT_IM_MODULE="fcitx" &&
     export XMODIFIERS="@im=fcitx" &&
-    export XDG_RUNTIME_DIR=/tmp &&
+    #export XDG_RUNTIME_DIR=/tmp && #不能设置，设置后chroot会改变tmp的权限，影响termux的tmp使用
     export GALLIUM_DRIVER=virpipe &&
     export MESA_GL_VERSION_OVERRIDE=4.0 &&
     #fcitx5 & 
