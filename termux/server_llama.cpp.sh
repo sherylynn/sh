@@ -27,7 +27,8 @@ cd ../../
 #LD_LIBRARY_PATH=/vendor/lib64:/apex/com.android.runtime/lib64/bionic/:/system/lib64 llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99 -t 8
-sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 80 -t 8
+#sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 80 -t 8
+sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-7B-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 80 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/phi-4-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 80 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/phi-4-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 70 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/phi-4-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 99 -t 8
