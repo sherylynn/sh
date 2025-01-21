@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
 ANDROID_LOCAL=/data/local/tmp
 AUTHOR=ggerganov
@@ -9,7 +9,8 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 #SOFT_HOME=$(install_path)/${NAME}
 SOFT_HOME=${ANDROID_LOCAL}/${NAME}
 sudo mkdir -p $ANDROID_LOCAL/$NAME
-SOFT_VERSION="b4417" #opencl
+SOFT_VERSION="b4519" #opencl
+#SOFT_VERSION="b4417" #opencl
 #LIB_VERSION="2024.10.24"
 LIB_VERSION="2022.05.18"
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
