@@ -27,7 +27,8 @@ echo $(whoami)
 # login need systemd user $(whoami)
 
 #virgl
-if [ -e "/sdcard/Download/.gitconfig" ]; then
+#if [ -e "/sdcard/Download/.gitconfig" ]; then
+if pgrep -f "virgl_test" >/dev/null; then
   export DISPLAY=:0
   export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"
