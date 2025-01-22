@@ -15,6 +15,8 @@ case $(arch) in
 esac
 
 SOFT_URL=https://dldir1v6.qq.com/weixin/Universal/Linux/${NAME}_${SOFT_ARCH}.deb
+#qq download url
+#https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.15_250110_arm64_01.deb
 SOFT_NAME=${NAME}_${SOFT_ARCH}.deb
 
 #不再使用固定版本，使用源自带版本
