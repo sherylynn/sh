@@ -26,6 +26,17 @@ echo $(whoami)
 #novnc -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
 
+#virgl
+if [ -e "/sdcard/Download/.gitconfig" ]; then
+  export DISPLAY=:0
+  export PULSE_SERVER=127.0.0.1
+  export GTK_IM_MODULE="fcitx"
+  export QT_IM_MODULE="fcitx"
+  export XMODIFIERS="@im=fcitx"
+  export GALLIUM_DRIVER=virpipe
+  export MESA_GL_VERSION_OVERRIDE=4.0
+fi
+
 cd ../../
 vncserver -kill :0
 rm -rf /tmp/.X*
