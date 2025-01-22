@@ -445,6 +445,16 @@ zxserver() {
   local normal_scale=1
   zxserver_scale $normal_scale
 }
+virgl() {
+  export DISPLAY=:0
+  export PULSE_SERVER=127.0.0.1
+  export GTK_IM_MODULE="fcitx"
+  export QT_IM_MODULE="fcitx"
+  export XMODIFIERS="@im=fcitx"
+  export GALLIUM_DRIVER=virpipe
+  export MESA_GL_VERSION_OVERRIDE=4.0
+}
+
 alias zc="zcode"
 alias zg="zgit"
 alias zgs="zgitstatus"
