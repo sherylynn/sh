@@ -4,7 +4,7 @@ mirrors=https://gitee.com/spark-store-project/spark-store/releases/download/4.2.
 NAME=sparkSTORE
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
-#SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+#SOFT_VERSION=$(get_gitee_release_version $AUTHOR/$NAME)
 
 case $(arch) in
   amd64) SOFT_ARCH=amd64 ;;
