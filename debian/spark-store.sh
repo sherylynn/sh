@@ -1,7 +1,7 @@
 #!/bin/bash
 . $(dirname "$0")/../win-git/toolsinit.sh
-mirrors=https://gitee.com/spark-store-project/spark-store/releases/download/4.2.13.1/
-NAME=sparkSTORE
+AUTHOR=spark-store-project
+NAME=spark-store
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_VERSION=$(get_gitee_release_version $AUTHOR/$NAME)
@@ -18,7 +18,10 @@ esac
 #直接安装商店真的很卡，不如安装终端版本，连图标都不用费心了
 #lib_name=spark-store_4.2.13.1_$SOFT_ARCH.deb
 #还方便自动化, 商店版本chroot时候的gpu用virgl有问题，只能用pipe来算
-lib_name=spark-store-console_4.2.13_all.deb
+mirrors=https://gitee.com/$AUTHOR/${NAME}/releases/download/${SOFT_VERSION}/
+lib_name=spark-store-console_${SOFT_VERSION}-console1_all.deb
+#新版本死活拉不起gui界面
+#lib_name=spark-store_${SOFT_VERSION}_arm64.deb
 lib_url=$mirrors$lib_name
 #proxy
 $(cache_downloader $lib_name $lib_url)
