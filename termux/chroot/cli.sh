@@ -443,4 +443,7 @@ clean_tmp() {
   sudo rm -rf $PREFIX/tmp/ssh-*
   sudo rm -rf $PREFIX/tmp/pulse-*
   sudo rm -rf $DEBIAN_DIR/root/tigervnc*
+
+  sudo rm -rf $DEBIAN_DIR/etc/xrdp/km-*.ini
+  #default /etc/xrdp/sesman.ini X11DisplayOffset=10
 }
