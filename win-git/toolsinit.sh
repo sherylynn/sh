@@ -446,7 +446,7 @@ zxserver() {
   zxserver_scale $normal_scale
 }
 virgl() {
-  export DISPLAY=:0
+  #export DISPLAY=:0
   export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"
   export QT_IM_MODULE="fcitx"
