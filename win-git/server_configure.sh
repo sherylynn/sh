@@ -25,7 +25,7 @@ test -f ../../tools/rc/${SCRIPT_NAME}rc && . ../../tools/rc/${SCRIPT_NAME}rc
 
 echo $(whoami)
 
-sudo apt install git vim wget curl sudo -y
+sudo apt install git vim wget curl sudo jq -y
 git clone --depth 1 http://github.com/sherylynn/sh ~/sh
 git -C ~/sh pull
 

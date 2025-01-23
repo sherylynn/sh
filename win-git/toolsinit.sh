@@ -254,8 +254,7 @@ get_github_release_version() {
 get_gitee_release_version() {
   local author_softname=$1
   curl --silent "https://gitee.com/api/v5/repos/${author_softname}/releases/latest" |
-    grep '"tag_name":' |
-    awk -F '["]' '{print $4}'
+    jq -r ".tag_name"
 }
 
 version_without_prefix_v() {

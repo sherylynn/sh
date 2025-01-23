@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 pkg update -y
 pkg upgrade -y
-pkg install zsh tsu git -y
+pkg install zsh tsu git jq -y
 git clone http://github.com/sherylynn/sh ~/sh
 git -C ~/sh pull
 zsh ~/sh/termux/vmos_android13.sh
