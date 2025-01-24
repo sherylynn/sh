@@ -5,7 +5,8 @@
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
 ## Start Termux X11
-am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
+#尝试换一种方法激活，原来不需要有实际的x窗口的
+#am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 
 clean_tmp
 
