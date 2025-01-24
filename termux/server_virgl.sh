@@ -26,11 +26,14 @@ echo $(whoami)
 . ./chroot/cli.sh
 
 # Kill all old prcoesses
+#sudo pkill -f "termux-x11|Xwayland|pulseaudio|virgl_test_server_android"
+#sudo killall -9 $(pgrep -f "termux-x11|Xwayland|pulseaudio|virgl_test_server_android")
 sudo killall -9 termux-x11 pulseaudio virgl_test_server_android
 
 clean_tmp
 
-XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :0 -ac &
+#从:0 换到:1
+XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :1 -ac &
 
 sleep 3
 
@@ -39,4 +42,5 @@ pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth
 pacmd load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1
 
 # Start virgl server
-virgl_test_server_android &
+#virgl_test_server_android &
+virgl_test_server_android
