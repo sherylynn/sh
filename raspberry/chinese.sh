@@ -35,3 +35,15 @@ export XMODIFIERS=@im=fcitx
 export SDL_IM_MODULE=fcitx
 export GLFW_IM_MODULE=ibus
 EOF
+
+fcitx5_path=$(
+  cd "$(dirname "$0")"
+  pwd
+)/../linuxdeploy/fcitx.sh
+tee ~/.config/autostart/fcitx5.desktop <<EOF
+ [Desktop Entry]
+Type=Application
+Name=FCITX5 Input Method
+Exec=$fcitx5_path
+Comment=Auto-start fcitx5 in chroot
+EOF
