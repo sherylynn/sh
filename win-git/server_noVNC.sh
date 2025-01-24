@@ -54,16 +54,3 @@ else
 fi
 #./utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10086
 #su $(whoami) -c 'novnc -p 3000 -t fontSize=18 ssh localhost'
-
-#if ! pgrep -f "fcitx5" >/dev/null; then
-#  export GTK_IM_MODULE="fcitx"
-#  export QT_IM_MODULE="fcitx"
-#  export XMODIFIERS="@im=fcitx"
-#  fcitx5 &
-#else
-#  pkill -x "fcitx5"
-#  export GTK_IM_MODULE="fcitx"
-#  export QT_IM_MODULE="fcitx"
-#  export XMODIFIERS="@im=fcitx"
-#  fcitx5 &
-#fi
