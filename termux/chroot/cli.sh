@@ -439,13 +439,24 @@ kill_need() {
 }
 clean_tmp() {
   sudo rm -rf $PREFIX/tmp/rime*
-  sudo rm -rf $DEBIAN_DIR/tmp/rime*
   sudo rm -rf $PREFIX/tmp/tigervnc*
-  sudo rm -rf $DEBIAN_DIR/tmp/tigervnc*
   sudo rm -rf $PREFIX/tmp/ssh-*
-  sudo rm -rf $DEBIAN_DIR/tmp/ssh-*
   sudo rm -rf $PREFIX/tmp/pulse-*
+  sudo rm -rf $PREFIX/tmp/dbus-*
+  sudo rm -rf $PREFIX/tmp/vscode-*
+  sudo rm -rf $PREFIX/tmp/Rtmp*
+  sudo rm -rf $PREFIX/tmp/.X0-lock
+  sudo rm -rf $PREFIX/tmp/.X10-lock
+
+  sudo rm -rf $DEBIAN_DIR/tmp/rime*
+  sudo rm -rf $DEBIAN_DIR/tmp/tigervnc*
+  sudo rm -rf $DEBIAN_DIR/tmp/ssh-*
   sudo rm -rf $DEBIAN_DIR/tmp/pulse-*
+  sudo rm -rf $DEBIAN_DIR/tmp/dbus-*
+  sudo rm -rf $DEBIAN_DIR/tmp/vscode-*
+  sudo rm -rf $DEBIAN_DIR/tmp/Rtmp*
+  sudo rm -rf $DEBIAN_DIR/tmp/.X0-lock*
+  sudo rm -rf $DEBIAN_DIR/tmp/.X10-lock*
 
   sudo rm -rf $DEBIAN_DIR/root/tigervnc*
   #sudo rm -rf $DEBIAN_DIR/etc/xrdp/km-*.ini
