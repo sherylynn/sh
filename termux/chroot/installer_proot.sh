@@ -13,6 +13,10 @@ pkg update
 pkg install termux-x11-nightly proot-distro -y
 pkg install tsu pulseaudio virglrenderer-android -y
 
+#加入服务
+zsh ~/sh/termux/termux_service_virgl.sh
+zsh ~/sh/termux/termux_service_pulseaudio.sh
+
 # Function to show farewell message
 goodbye() {
   echo "Something went wrong. Exiting..."
