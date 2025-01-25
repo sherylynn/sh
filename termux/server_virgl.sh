@@ -31,7 +31,7 @@ echo $(whoami)
 sudo killall -9 termux-x11 pulseaudio virgl_test_server_android
 sudo pkill -f com.termux.x11
 clean_tmp
-sudo setenforce 0
+#sudo setenforce 0
 #从:0 换到:1
 #XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :1 -ac &
 TERMUX_X11_DEBUG=1 termux-x11 :1 -ac -xstartup "virgl_test_server_android"
