@@ -31,12 +31,12 @@ sudo killall -9 pulseaudio
 clean_tmp
 
 #从:0 换到:1
-XDG_RUNTIME_DIR=${TMPDIR}
+#XDG_RUNTIME_DIR=${TMPDIR}
 
 # Start Pulse Audio of Termux
 #pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
 #去掉--start来让termux services管理进程
 
-#但是这个东西要求有x环境，不然连不上dbus
+#但是这个东西要求有x环境，不然连不上dbus，实际运行发现报错不影响使用
 pulseaudio --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
 pacmd load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1
