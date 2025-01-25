@@ -17,7 +17,7 @@ XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :0 -ac &
 sleep 3
 
 # Start virgl server
-virgl_test_server_android &
+#virgl_test_server_android &
 
 if [ -f ~/tools/rurima/rurima ]; then
 
