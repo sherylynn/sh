@@ -13,4 +13,4 @@ ln -sf $PREFIX/share/termux-services/svlogger ${SCRIPT_NAME}/log/run
 mkdir -p ~/.shortcuts
 echo 'exec $PREFIX/../home/sh/termux/server_'${SCRIPT_NAME}'.sh' >~/.shortcuts/${SCRIPT_NAME}.sh
 
-sv enable ${SCRIPT_NAME}
+#sv-enable ${SCRIPT_NAME}
