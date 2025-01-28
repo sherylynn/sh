@@ -35,7 +35,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
   #pkg install git cmake ccache -y
-  pkg install git ccache -y
+  #pkg install git ccache -y
   # opencl
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
@@ -43,13 +43,39 @@ if [[ $(platform) == *linux* ]]; then
   git pull
   cd project/android
   mkdir -p build_64
-  cd build_64/
+  cd build_64
+  cmake ../../../ \
+    -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DANDROID_ABI="arm64-v8a" \
+    -DANDROID_STL=c++_static \
+    -DMNN_BUILD_BENCHMARK=ON \
+    -DMNN_USE_SSE=OFF \
+    -DMNN_BUILD_TEST=ON \
+    -DANDROID_NATIVE_API_LEVEL=android-21 \
+    -DMNN_BUILD_FOR_ANDROID_COMMAND=true \
+    -DNATIVE_LIBRARY_OUTPUT=. -DNATIVE_INCLUDE_OUTPUT=. \
+    -DMNN_LOW_MEMORY=true \
+    -DMNN_CPU_WEIGHT_DEQUANT_GEMM=true \
+    -DMNN_BUILD_LLM=true \
+    -DMNN_SUPPORT_TRANSFORMER_FUSE=true \
+    -DMNN_ARM82=true \
+    -DMNN_USE_LOGCAT=true \
+    -DMNN_OPENCL=true \
+    -DLLM_SUPPORT_VISION=true \
+    -DMNN_BUILD_OPENCV=true \
+    -DMNN_IMGCODECS=true \
+    -DLLM_SUPPORT_AUDIO=true \
+    -DMNN_BUILD_AUDIO=true \
+    -DMNN_BUILD_DIFFUSION=ON \
+    -DMNN_SEP_BUILD=ON
+  make -j $(nproc)
   #../build_64.sh "-DMNN_LOW_MEMORY=true -DMNN_CPU_WEIGHT_DEQUANT_GEMM=true -DMNN_BUILD_LLM=true -DMNN_SUPPORT_TRANSFORMER_FUSE=true -DMNN_ARM82=true -DMNN_USE_LOGCAT=true -DMNN_OPENCL=true -DLLM_SUPPORT_VISION=true -DMNN_BUILD_OPENCV=true -DMNN_IMGCODECS=true -DLLM_SUPPORT_AUDIO=true -DMNN_BUILD_AUDIO=true -DMNN_BUILD_DIFFUSION=ON -DMNN_SEP_BUILD=ON"
   #加载奇慢，试试关闭低内存
-  ../build_64.sh "-DMNN_CPU_WEIGHT_DEQUANT_GEMM=true -DMNN_BUILD_LLM=true -DMNN_SUPPORT_TRANSFORMER_FUSE=true -DMNN_ARM82=true -DMNN_USE_LOGCAT=true -DMNN_OPENCL=true -DLLM_SUPPORT_VISION=true -DMNN_BUILD_OPENCV=true -DMNN_IMGCODECS=true -DLLM_SUPPORT_AUDIO=true -DMNN_BUILD_AUDIO=true -DMNN_BUILD_DIFFUSION=ON -DMNN_SEP_BUILD=ON"
+
   #复制到 LLM Android 应用项目：
-  find . -name "*.so" -exec cp {} ../apps/MnnLlmApp/app/src/main/jniLibs/arm64-v8a/ \;
+  #find . -name "*.so" -exec cp {} ../apps/MnnLlmApp/app/src/main/jniLibs/arm64-v8a/ \;
   #构建 Android 应用项目并安装：
-  cd ../apps/MnnLlmApp/
-  ./gradlew installDebug
+  #cd ../apps/MnnLlmApp/
+  #./gradlew installDebug
 fi
