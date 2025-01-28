@@ -34,7 +34,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  #pkg install git cmake ccache -y
+  pkg install git cmake ccache -y
   #pkg install git ccache -y
   # opencl
 
@@ -70,12 +70,11 @@ if [[ $(platform) == *linux* ]]; then
     -DMNN_BUILD_DIFFUSION=ON \
     -DMNN_SEP_BUILD=ON
   make -j $(nproc)
-  #../build_64.sh "-DMNN_LOW_MEMORY=true -DMNN_CPU_WEIGHT_DEQUANT_GEMM=true -DMNN_BUILD_LLM=true -DMNN_SUPPORT_TRANSFORMER_FUSE=true -DMNN_ARM82=true -DMNN_USE_LOGCAT=true -DMNN_OPENCL=true -DLLM_SUPPORT_VISION=true -DMNN_BUILD_OPENCV=true -DMNN_IMGCODECS=true -DLLM_SUPPORT_AUDIO=true -DMNN_BUILD_AUDIO=true -DMNN_BUILD_DIFFUSION=ON -DMNN_SEP_BUILD=ON"
   #加载奇慢，试试关闭低内存
 
   #复制到 LLM Android 应用项目：
-  #find . -name "*.so" -exec cp {} ../apps/MnnLlmApp/app/src/main/jniLibs/arm64-v8a/ \;
+  find . -name "*.so" -exec cp {} ../apps/MnnLlmApp/app/src/main/jniLibs/arm64-v8a/ \;
   #构建 Android 应用项目并安装：
-  #cd ../apps/MnnLlmApp/
-  #./gradlew installDebug
+  cd ../apps/MnnLlmApp/
+  ./gradlew installDebug
 fi
