@@ -34,7 +34,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  pkg install git cmake ccache -y
+  pkg install git cmake ccache openjdk-21 -y
   #pkg install git ccache -y
   # opencl
 
