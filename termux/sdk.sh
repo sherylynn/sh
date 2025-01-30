@@ -29,6 +29,7 @@ if [[ $(platform) == *linux* ]]; then
 
   rm -rf ${SOFT_HOME} &&
     mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
+  #ln -s ~/tools/android-ndk/android-ndk-r27b ~/tools/android-sdk/android-sdk/ndk
   #chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   echo "export PATH=$SOFT_HOME/$SOFT_VERSION/cmdline-tools/latest/bin:$SOFT_HOME/$SOFT_VERSION/platform-tools"'$PATH' >${TOOLSRC}
   echo "export ANDROID_HOME=$SOFT_HOME/$SOFT_VERSION" >>${TOOLSRC}

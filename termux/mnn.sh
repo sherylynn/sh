@@ -56,6 +56,7 @@ if [[ $(platform) == *linux* ]]; then
     -DMNN_BUILD_FOR_ANDROID_COMMAND=true \
     -DNATIVE_LIBRARY_OUTPUT=. -DNATIVE_INCLUDE_OUTPUT=. \
     -DMNN_LOW_MEMORY=true \
+    -DMNN_use_mmap=true \
     -DMNN_CPU_WEIGHT_DEQUANT_GEMM=true \
     -DMNN_BUILD_LLM=true \
     -DMNN_SUPPORT_TRANSFORMER_FUSE=true \
