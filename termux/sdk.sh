@@ -2,11 +2,12 @@
 . $(dirname "$0")/../win-git/toolsinit.sh
 AUTHOR=lzhiyong
 NAME=termux-ndk
-TOOLSRC_NAME=${NAME}rc
+SDK_VERSION=android-sdk
+#TOOLSRC_NAME=${NAME}rc
+TOOLSRC_NAME=${SDK_VERSION}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 SOFT_VERSION=android-sdk
-SDK_VERSION=android-sdk
 SOFT_HOME=$(install_path)/${SOFT_VERSION}
 echo "soft version is $SOFT_VERSION"
 
@@ -29,5 +30,6 @@ if [[ $(platform) == *linux* ]]; then
   rm -rf ${SOFT_HOME} &&
     mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
   #chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
-  echo "export PATH=$SOFT_HOME/$SOFT_VERSION/cmake/bin:"'$PATH' >${TOOLSRC}
+  echo "export PATH=$SOFT_HOME/$SOFT_VERSION/cmdline-tools/latest/bin:$SOFT_HOME/$SOFT_VERSION/platform-tools"'$PATH' >${TOOLSRC}
+  echo "export ANDROID_HOME=$SOFT_HOME/$SOFT_VERSION" >>${TOOLSRC}
 fi
