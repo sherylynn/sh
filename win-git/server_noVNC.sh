@@ -39,13 +39,13 @@ fi
 
 #x11
 DISPLAY_PORT=0
+cd ../../
 if pgrep -f "com.termux.x11" >/dev/null; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
-  source ~/tools/rc/allToolsrc
+  zsh ~/tools/rc/allToolsrc
   dbus-launch --exit-with-session startxfce4
 else
-  cd ../../
   vncserver -kill :${DISPLAY_PORT}
   rm -rf /tmp/.X*
   rm -rf /tmp/.x*
