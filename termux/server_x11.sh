@@ -28,9 +28,12 @@ echo $(whoami)
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland termux-wake-lock
 
-pkill -f com.termux.x11
-am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11
+sudo pkill -f com.termux.x11
+sduo am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11
 #sudo pkill -f com.termux.x11
 clean_tmp
 #TERMUX_X11_DEBUG=1 termux-x11 :1 -ac -xstartup "virgl_test_server_android"
+
+## Start Termux X11
+am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 XDG_RUNTIME_DIR=${TMPDIR} TERMUX_X11_DEBUG=1 termux-x11 :1 -ac
