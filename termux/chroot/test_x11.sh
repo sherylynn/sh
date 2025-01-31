@@ -4,7 +4,7 @@
 #. ./cli.sh
 # Kill all old prcoesses
 #sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
-. $(dirname "$0")/unchroot.sh
+. $(dirname "$0")./test_unchroot.sh
 
 ## Start Termux X11
 am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
