@@ -27,7 +27,6 @@ echo $(whoami)
 # login need systemd user $(whoami)
 
 #virgl
-#if [ -e "/sdcard/Download/.gitconfig" ]; then
 if pgrep -f "virgl_test" >/dev/null; then
   #export DISPLAY=:0
   export PULSE_SERVER=127.0.0.1
@@ -38,11 +37,18 @@ if pgrep -f "virgl_test" >/dev/null; then
   export MESA_GL_VERSION_OVERRIDE=4.0
 fi
 
+#x11
+DISPLAY_PORT=0
+if pgrep -f "termux-x11" >/dev/null; then
+  DISPLAY_PORT=1
+  export DISPLAY=:${DISPLAY_PORT}
+else
+fi
 cd ../../
-vncserver -kill :0
+vncserver -kill :${DISPLAY_PORT}
 rm -rf /tmp/.X*
 rm -rf /tmp/.x*
-vncserver -geometry 1920x966 -localhost no :0
+vncserver -geometry 1920x966 -localhost no :${DISPLAY_PORT}
 file_path="./tools/noVNC/utils/novnc_proxy"
 if [ -e "$file_path" ]; then
   ./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10086
