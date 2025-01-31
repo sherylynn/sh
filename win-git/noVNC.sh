@@ -29,7 +29,7 @@ if [[ $(platform) == *linux* ]]; then
   git pull
   sudo apt purge kasmvncserver -y
   sudo apt autoremove -y
-  sudo apt install tigervnc-standalone-server tigervnc-tools -y
+  sudo apt install x11vnc tigervnc-standalone-server tigervnc-tools -y
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
