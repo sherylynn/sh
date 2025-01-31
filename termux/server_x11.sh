@@ -26,11 +26,10 @@ echo $(whoami)
 . ./chroot/cli.sh
 
 # Kill all old prcoesses
-#sudo pkill -f "termux-x11|Xwayland|pulseaudio|virgl_test_server_android"
-#sudo killall -9 $(pgrep -f "termux-x11|Xwayland|pulseaudio|virgl_test_server_android")
-#sudo killall -9 termux-x11 pulseaudio virgl_test_server_android
+sudo killall -9 termux-x11 Xwayland termux-wake-lock
 
-sudo killall -9 virgl_test_server_android
+pkill -f com.termux.x11
+am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11
 #sudo pkill -f com.termux.x11
 clean_tmp
 #TERMUX_X11_DEBUG=1 termux-x11 :1 -ac -xstartup "virgl_test_server_android"
