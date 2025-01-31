@@ -24,6 +24,9 @@ zsh ~/sh/myemacs.sh
 zsh ~/sh/termux/emacs_native.sh
 zsh ~/sh/win-git/zlua_new.sh
 zsh ~/sh/win-git/rurima.sh
+zsh ~/sh/termux/termux_service_x11.sh
+zsh ~/sh/termux/termux_service_virgl.sh
+zsh ~/sh/termux/termux_service_pulseaudio.sh
 unproxy
 emacs
 zsh ~/sh/termux/clean.sh
