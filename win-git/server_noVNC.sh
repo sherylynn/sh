@@ -43,12 +43,12 @@ if pgrep -f "termux-x11" >/dev/null; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
 else
+  cd ../../
+  vncserver -kill :${DISPLAY_PORT}
+  rm -rf /tmp/.X*
+  rm -rf /tmp/.x*
+  vncserver -geometry 1920x966 -localhost no :${DISPLAY_PORT}
 fi
-cd ../../
-vncserver -kill :${DISPLAY_PORT}
-rm -rf /tmp/.X*
-rm -rf /tmp/.x*
-vncserver -geometry 1920x966 -localhost no :${DISPLAY_PORT}
 file_path="./tools/noVNC/utils/novnc_proxy"
 if [ -e "$file_path" ]; then
   ./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10086
