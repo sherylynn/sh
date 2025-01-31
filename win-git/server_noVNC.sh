@@ -47,6 +47,8 @@ if pgrep -f "com.termux.x11" >/dev/null; then
   #source  ~/tools/rc/allToolsrc
   zsh ~/tools/rc/allToolsrc
   dbus-launch --exit-with-session startxfce4
+  #x11vnc -display :1 -rfbport 5900 -passwd yourpasswd -forever --noshm
+
 else
   vncserver -kill :${DISPLAY_PORT}
   rm -rf /tmp/.X*
