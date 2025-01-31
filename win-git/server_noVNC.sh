@@ -39,7 +39,7 @@ fi
 
 #x11
 DISPLAY_PORT=0
-if pgrep -f "termux-x11" >/dev/null; then
+if pgrep -f "com.termux.x11" >/dev/null; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
   source ~/tools/rc/allToolsrc
