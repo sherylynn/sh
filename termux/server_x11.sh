@@ -29,7 +29,7 @@ echo $(whoami)
 sudo killall -9 termux-x11 Xwayland termux-wake-lock
 
 sudo pkill -f com.termux.x11
-sduo am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11
+sudo am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11
 #sudo pkill -f com.termux.x11
 clean_tmp
 #TERMUX_X11_DEBUG=1 termux-x11 :1 -ac -xstartup "virgl_test_server_android"
