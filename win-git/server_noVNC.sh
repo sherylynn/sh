@@ -43,8 +43,12 @@ cd ../../
 if pgrep -f "com.termux.x11" >/dev/null; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
+  #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
+  #source  ~/tools/rc/allToolsrc
   zsh ~/tools/rc/allToolsrc
   dbus-launch --exit-with-session startxfce4
+  #x11vnc -display :1 -rfbport 5900 -passwd yourpasswd -forever --noshm
+
 else
   vncserver -kill :${DISPLAY_PORT}
   rm -rf /tmp/.X*
