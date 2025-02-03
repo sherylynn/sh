@@ -37,10 +37,33 @@ if [[ $(platform) == *linux* ]]; then
   #pkg install git cmake ccache -y
   pkg install git ccache -y
   # opencl
-  pkg remove opencl-vendor-driver -y
-  pkg install opencl-headers -y
-  sudo cp /vendor/lib64/libOpenCL.so /sdcard/Download/libOpenCL.so
-  cp /sdcard/Download/libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
+  #pkg remove opencl-vendor-driver -y
+  #pkg install opencl-headers -y
+  #sudo cp /vendor/lib64/libOpenCL.so /sdcard/Download/libOpenCL.so
+  #cp /sdcard/Download/libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
+  LIB_NAME_1=OpenCL-Headers
+  LIB_PACK_1=${LIB_NAME_1}_v${LIB_VERSION}.tar.gz
+  $(cache_downloader ${LIB_PACK_1} https://github.com/KhronosGroup/${LIB_NAME_1}/archive/refs/tags/v${LIB_VERSION}.tar.gz)
+  cd $(cache_folder)
+  tar xvzf ${LIB_PACK_1}
+  cd ${LIB_NAME_1}-${LIB_VERSION} &&
+    cp -r CL ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
+
+  LIB_NAME_2=OpenCL-ICD-Loader
+  LIB_PACK_2=${LIB_NAME_2}_v${LIB_VERSION}.tar.gz
+  $(cache_downloader ${LIB_PACK_2} https://github.com/KhronosGroup/${LIB_NAME_2}/archive/refs/tags/v${LIB_VERSION}.tar.gz)
+  cd $(cache_folder)
+  tar xvzf ${LIB_PACK_2}
+  cd ${LIB_NAME_2}-${LIB_VERSION}
+  mkdir -p build_ndk && cd build_ndk
+  cmake .. -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
+    -D OPENCL_ICD_LOADER_HEADERS_DIR=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include \
+    -D ANDROID_ABI=arm64-v8a \
+    -D ANDROID_PLATFORM=35 \
+    -D ANDROID_STL=c++_shared
+  make
+  cp libOpenCL.so ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
 
   sudo git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   cd ${SOFT_HOME}
