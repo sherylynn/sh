@@ -6,8 +6,8 @@ TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 
-#SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
-SOFT_VERSION=v0.4.1
+SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+#SOFT_VERSION=v0.4.1
 #SOFT_ARCH=amd64
 SOFT_ARCH=arm64
 
