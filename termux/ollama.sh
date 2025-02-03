@@ -41,8 +41,10 @@ if [[ $(platform) == *linux* ]]; then
   cd ${SOFT_HOME}
   git pull
   git checkout ${SOFT_VERSION}
-  go generate ./...
-  go build .
+  cmake -B build
+  cmake --build build
+  #go generate ./...
+  #go build .
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
 
   zsh ~/sh/termux/termux_service_${NAME}.sh
