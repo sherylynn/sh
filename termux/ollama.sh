@@ -44,9 +44,9 @@ if [[ $(platform) == *linux* ]]; then
   #指定版本反而导致编译失败
   cmake -B build
   cmake --build build
-  go run . serve
-  #go generate ./...
-  #go build .
+  #go run . serve
+  go generate ./...
+  go build .
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
 
   #zsh ~/sh/termux/termux_service_${NAME}.sh
