@@ -40,15 +40,16 @@ if [[ $(platform) == *linux* ]]; then
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   cd ${SOFT_HOME}
   git pull
-  git checkout ${SOFT_VERSION}
+  #git checkout ${SOFT_VERSION}
+  #指定版本反而导致编译失败
   cmake -B build
   cmake --build build
   #go generate ./...
   #go build .
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
 
-  zsh ~/sh/termux/termux_service_${NAME}.sh
-  sh ~/sh/termux/termux_service_${NAME}.sh
-  sv-enable ${NAME}
+  #zsh ~/sh/termux/termux_service_${NAME}.sh
+  #sh ~/sh/termux/termux_service_${NAME}.sh
+  #sv-enable ${NAME}
 #  ./systemd_novnc.sh
 fi
