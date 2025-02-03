@@ -7,7 +7,8 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 #SOFT_VERSION=v0.4.2 #导入失败
-SOFT_VERSION=v0.4.1 #和arm 量化有关但是编译失败
+SOFT_VERSION=v0.5.7 #导入失败
+#SOFT_VERSION=v0.4.1 #和arm 量化有关但是编译失败
 #SOFT_VERSION=v0.4.0 #和arm 量化有关但是编译失败
 #SOFT_VERSION=v0.3.14 #导入失败
 echo "soft version is $SOFT_VERSION"
