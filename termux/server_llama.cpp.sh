@@ -31,7 +31,10 @@ cd ../../
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-32B-abliterated-IQ4_XS.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-14B-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-32B-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
-sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-1M-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
+#sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-Sex.f16.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
+#sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Tifa-Deepsex-14b-CoT-Q4_K_M.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
+sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
+#sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/Qwen2.5-7B-Instruct-1M-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-7B-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/uncensoredai_UncensoredLM-DeepSeek-R1-Distill-Qwen-14B-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
 #sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-7B-abliterated-Q4_K_M.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 8
