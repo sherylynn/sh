@@ -42,5 +42,6 @@ am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 #am start --user 0 -n com.gitee.connect_screen/com.termux.x11.MainActivity
 #XDG_RUNTIME_DIR=${TMPDIR} TERMUX_X11_DEBUG=1 termux-x11 :1 -ac
 XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :1 -ac +extension DPMS -force-sysvshm
-#以下参数对x11vnc没用, 但是 -force-sysvshm 对 x11vnc有用
+#以下参数对x11vnc没用
+#-force-sysvshm
 #+extension MIT-SHM
