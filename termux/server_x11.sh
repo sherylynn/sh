@@ -40,4 +40,5 @@ am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
 
 ## Start connect_screen Termux X11
 #am start --user 0 -n com.gitee.connect_screen/com.termux.x11.MainActivity
-XDG_RUNTIME_DIR=${TMPDIR} TERMUX_X11_DEBUG=1 termux-x11 :1 -ac
+#XDG_RUNTIME_DIR=${TMPDIR} TERMUX_X11_DEBUG=1 termux-x11 :1 -ac
+XDG_RUNTIME_DIR=${TMPDIR} termux-x11 :1 -ac
