@@ -35,6 +35,8 @@ if pgrep -f "virgl_test" >/dev/null; then
   export XMODIFIERS="@im=fcitx"
   export GALLIUM_DRIVER=virpipe
   export MESA_GL_VERSION_OVERRIDE=4.0
+  #尝试解决glx错误
+  export vblank_mode=0
 fi
 
 #x11

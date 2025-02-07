@@ -66,7 +66,6 @@ export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
 export GALLIUM_DRIVER=virpipe && \
 export MESA_GL_VERSION_OVERRIDE=4.0 && \
-export vblank_mode=0 && \
 cd ~ && \
 sh ~/sh/win-git/server_noVNC.sh'
 #dbus-launch --exit-with-session zsh ~/sh/win-git/server_noVNC.sh'
