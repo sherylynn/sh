@@ -95,9 +95,9 @@ if pgrep -f "com.termux.x11" >/dev/null; then
     -rfbauth "$VNC_PASSWD_FILE" \
     -rfbport "$VNC_PORT" \
     -forever \
+    -noshm \
     -shared \
     -o "$LOG_FILE" &
-  #-noshm \
   #-nodpms \
 
   # 验证启动状态
