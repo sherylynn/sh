@@ -94,10 +94,10 @@ if pgrep -f "com.termux.x11" >/dev/null; then
     -auth "$HOME/.Xauthority" \
     -rfbauth "$VNC_PASSWD_FILE" \
     -rfbport "$VNC_PORT" \
-    -noshm \
     -forever \
     -shared \
     -o "$LOG_FILE" &
+  #-noshm \
   #-nodpms \
 
   # 验证启动状态
