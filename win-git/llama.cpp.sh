@@ -5,7 +5,7 @@ NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=b4667
+SOFT_VERSION="b4667" #编译不了，linux下认不出cpu
 #连接失败
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
@@ -29,7 +29,9 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  sudo apt install libcurl4-openssl-dev ccache -y
+  sudo apt install libcurl4-openssl-dev ccache clang libomp-dev -y
+  #GGML_NATIVE 需要指定clang，发现还是不好用，手动去指定了
+  #openmp需要libomp-dev
 
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   git pull
@@ -40,12 +42,26 @@ if [[ $(platform) == *linux* ]]; then
   git checkout $SOFT_VERSION
   #带着下载curl一起编译
   # 带着repack功能 看起来运行的时候有 AARCH64_REPACK = 1应该就是正常的 #4248
-  CMAKE_ARGS="-DLLAMA_CURL=ON -DGGML_CPU_AARCH64=ON DCMAKE_C_FLAGS=-march=armv8.7a GGML_RUNTIME_REPACK=ON" cmake --build build --config Release -j $(nproc)
-  #3996
-  #cmake --build build --config Release -j $(nproc)
+  cmake \
+    -D GGML_NATIVE=OFF -D GGML_CPU_ARM_ARCH=armv8.7-a+dotprod+i8mm+nosve \
+    -D CMAKE_C_COMPILER="/usr/bin/gcc" \
+    -D CMAKE_CXX_COMPILER="/usr/bin/g++" \
+    -D GGML_RUNTIME_REPACK=ON \
+    -B build
+  #-D GGML_CPU_AARCH64=ON \
+  #-D GGML_NATIVE=ON \
+  #-D CMAKE_C_FLAGS="-march=armv8.7-a" \
+  #-D CMAKE_CXX_FLAGS="-march=armv8.7-a" \
+  #-D GGML_NATIVE=OFF -D GGML_CPU_ARM_ARCH=armv8.7-a+dotprod+i8mm+nosve \
+  #-D CMAKE_C_COMPILER="/usr/bin/clang" \
+  #-D CMAKE_CXX_COMPILER="/usr/bin/clang" \
+  cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
-  echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
-  #echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
+  tee ${TOOLSRC} <<-EOF
+  export PATH=$SOFT_ROOT:'$PATH'
+alias llama-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 4'
+alias llama-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
+EOF
 
   #zsh ~/sh/termux/termux_service_${NAME}.sh
   #sh ~/sh/termux/termux_service_${NAME}.sh
