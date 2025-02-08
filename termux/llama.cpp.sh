@@ -9,7 +9,8 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 #SOFT_HOME=$(install_path)/${NAME}
 SOFT_HOME=${ANDROID_LOCAL}/${NAME}
 sudo mkdir -p $ANDROID_LOCAL/$NAME
-SOFT_VERSION="b4585" #opencl
+SOFT_VERSION="b4667" #opencl
+#SOFT_VERSION="b4585" #opencl
 LIB_VERSION="2024.10.24"
 #LIB_VERSION="2022.05.18"
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
@@ -68,7 +69,12 @@ if [[ $(platform) == *linux* ]]; then
 
   sudo cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
-  echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
+  #echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
+  tee ${TOOLSRC} <<-'EOF'
+alias llama-server='sudo /data/local/tmp/llama.cpp/build/bin/llama-server'
+alias llama-cli='sudo /data/local/tmp/llama.cpp/build/bin/llama-cli'
+alais llama-sex='sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 4'
+EOF
   #echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
   #tar zcf /sdcard/Download/build.tar.gz build
 fi
