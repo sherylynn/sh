@@ -73,7 +73,7 @@ if [[ $(platform) == *linux* ]]; then
   tee ${TOOLSRC} <<-'EOF'
 alias llama-server='sudo /data/local/tmp/llama.cpp/build/bin/llama-server'
 alias llama-cli='sudo /data/local/tmp/llama.cpp/build/bin/llama-cli'
-alais llama-sex='sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 4'
+alias llama-sex='sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 4'
 EOF
   #echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
   #tar zcf /sdcard/Download/build.tar.gz build
