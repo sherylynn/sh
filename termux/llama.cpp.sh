@@ -74,6 +74,7 @@ if [[ $(platform) == *linux* ]]; then
 alias llama-server='sudo /data/local/tmp/llama.cpp/build/bin/llama-server'
 alias llama-cli='sudo /data/local/tmp/llama.cpp/build/bin/llama-cli'
 alias llama-sex='sudo /data/local/tmp/llama.cpp/build/bin/llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 4'
+alias llama-story='sudo /data/local/tmp/llama.cpp/build/bin/llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
 EOF
   #echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
   #tar zcf /sdcard/Download/build.tar.gz build
