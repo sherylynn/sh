@@ -56,15 +56,27 @@ if [[ $(platform) == *linux* ]]; then
   #-D CMAKE_C_COMPILER="/usr/bin/clang" \
   #-D CMAKE_CXX_COMPILER="/usr/bin/clang" \
   cmake --build build --config Release -j $(nproc)
-  SOFT_ROOT=$(install_path)/${NAME}/build/bin
-  tee ${TOOLSRC} <<-EOF
-  export PATH=$SOFT_ROOT:'$PATH'
-alias llama-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
-alias llama-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
-EOF
 
   #zsh ~/sh/termux/termux_service_${NAME}.sh
   #sh ~/sh/termux/termux_service_${NAME}.sh
   #sv-enable ${NAME}
 #  ./systemd_novnc.sh
+elif [[ $(platform) == *win* ]]; then
+  git clone ${SOFT_GIT_URL} ${SOFT_HOME}
+  cd ${SOFT_HOME}
+  git pull
+  git checkout $SOFT_VERSION
+  pacman -R cmake
+  pacman -S git \
+    mingw-w64-ucrt-x86_64-gcc \
+    mingw-w64-ucrt-x86_64-cmake \
+    mingw-w64-ucrt-x86_64-shaderc
+  cmake -B build
+  cmake --build build --config Release
 fi
+SOFT_ROOT=$(install_path)/${NAME}/build/bin
+tee ${TOOLSRC} <<-EOF
+export PATH=$SOFT_ROOT:'$PATH'
+alias ll-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
+alias ll-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
+EOF
