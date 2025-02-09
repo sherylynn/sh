@@ -75,8 +75,9 @@ alias llama-server='sudo /data/local/tmp/llama.cpp/build/bin/llama-server'
 alias llama-cli='sudo /data/local/tmp/llama.cpp/build/bin/llama-cli'
 alias ll-server='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
 alias ll-think='llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-1.5B-Abliterated-dpo.i1-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
-alias ll-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
-alias ll-sex='llama-cli -m /sdcard/Download/Qwen2.5-Sex.Q4_0.gguf --chat-template deepseek3 -p "这是一场酣畅淋漓的做爱" -no-cnv -t 1 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
+alias ll-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1' 
+alias ll-sex='llama-cli -m /sdcard/Download/Qwen2.5-Sex.Q8_0.gguf --chat-template deepseek3 -p "这是一场酣畅淋漓的做爱" -no-cnv -t 1 --temp 0.6 --repeat-penalty 1.1' 
+alias ll-fuck='llama-cli -m /sdcard/Download/Qwen2.5-Sex.Q8_0.gguf --chat-template deepseek3 -p "我已经忍不住想和你做爱了" -no-cnv -t 1 --temp 0.6 --repeat-penalty 1.1' 
 EOF
   #echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
   #tar zcf /sdcard/Download/build.tar.gz build
