@@ -9,8 +9,8 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 #SOFT_HOME=$(install_path)/${NAME}
 SOFT_HOME=${ANDROID_LOCAL}/${NAME}
 sudo mkdir -p $ANDROID_LOCAL/$NAME
-SOFT_VERSION="b4667" #opencl
-#SOFT_VERSION="b4585" #opencl
+SOFT_VERSION="b4708" #opencl
+#SOFT_VERSION="b4667" #opencl
 LIB_VERSION="2024.10.24"
 #LIB_VERSION="2022.05.18"
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
@@ -70,11 +70,12 @@ if [[ $(platform) == *linux* ]]; then
   sudo cmake --build build --config Release -j $(nproc)
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   #echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
+  sudo /data/local/tmp/llama.cpp/build/bin/llama-cli --completion-bash >~/.llama-completion.bash
   tee ${TOOLSRC} <<-'EOF'
 alias llama-server='sudo /data/local/tmp/llama.cpp/build/bin/llama-server'
 alias llama-cli='sudo /data/local/tmp/llama.cpp/build/bin/llama-cli'
 alias ll-server='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
-alias ll-think='llama-server -m /sdcard/Download/DeepSeek-R1-Distill-Qwen-1.5B-Abliterated-dpo.i1-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
+alias ll-think='llama-server -m /sdcard/Download/BaiduNetdisk/_pcs_.workspace/share/AI/agentica-org_DeepScaleR-1.5B-Preview-Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
 alias ll-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1' 
 alias ll-sex='llama-cli -m /sdcard/Download/Qwen2.5-Sex.f16.gguf --chat-template deepseek3 -p "这是一场酣畅淋漓的做爱" -no-cnv -t 1 --temp 0.7 --repeat-penalty 1.1' 
 alias ll-fuck='llama-cli -m /sdcard/Download/L3-Hecate-8B-v1.0.i1-Q4_0.gguf --chat-template deepseek3 -p "我已经忍不住想和你做爱了" -no-cnv -t 1 --temp 0.6 --repeat-penalty 1.1' 
