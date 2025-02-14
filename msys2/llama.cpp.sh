@@ -5,7 +5,8 @@ NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION="b4519" #opencl
+#SOFT_VERSION="b4519" #opencl
+SOFT_VERSION="b4708" #opencl
 #连接失败
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
@@ -38,8 +39,8 @@ if [[ $(platform) == *linux* ]]; then
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
   cd ${SOFT_HOME}
   git checkout $SOFT_VERSION
-  #带着下载curl一起编译
-  # 带着repack功能 看起来运行的时候有 AARCH64_REPACK = 1应该就是正常的 #4248
+  #带着下载 curl 一起编译
+  # 带着 repack 功能 看起来运行的时候有 AARCH64_REPACK = 1 应该就是正常的 #4248
   CMAKE_ARGS="-DLLAMA_CURL=ON -DGGML_CPU_AARCH64=ON DCMAKE_C_FLAGS=-march=armv8.7a GGML_RUNTIME_REPACK=ON" cmake --build build --config Release -j $(nproc)
   #3996
   #cmake --build build --config Release -j $(nproc)
