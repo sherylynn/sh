@@ -59,7 +59,8 @@ elif [[ $(platform) == *win* ]]; then
   git checkout $SOFT_VERSION
   pacman -R \
     mingw-w64-ucrt-x86_64-gcc \
-    mingw-w64-ucrt-x86_64-cmake
+    mingw-w64-ucrt-x86_64-cmake \
+    mingw-w64-ucrt-x86_64-shaderc
   pacman -S git cmake gcc
   #pacman -S git \
   #  mingw-w64-ucrt-x86_64-gcc \
