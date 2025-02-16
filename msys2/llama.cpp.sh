@@ -66,7 +66,11 @@ elif [[ $(platform) == *win* ]]; then
   #  mingw-w64-ucrt-x86_64-gcc \
   #  mingw-w64-ucrt-x86_64-cmake \
   #  mingw-w64-ucrt-x86_64-shaderc
-  cmake -B build
+  cmake \
+    -D CMAKE_C_COMPILER="/usr/bin/gcc" \
+    -D CMAKE_CXX_COMPILER="/usr/bin/g++" \
+    -D GGML_RUNTIME_REPACK=ON \
+    -B build
   cmake --build build --config Release
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
