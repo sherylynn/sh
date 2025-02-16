@@ -57,11 +57,14 @@ elif [[ $(platform) == *win* ]]; then
   cd ${SOFT_HOME}
   git pull
   git checkout $SOFT_VERSION
-  pacman -R cmake
-  pacman -S git \
+  pacman -R \
     mingw-w64-ucrt-x86_64-gcc \
-    mingw-w64-ucrt-x86_64-cmake \
-    mingw-w64-ucrt-x86_64-shaderc
+    mingw-w64-ucrt-x86_64-cmake
+  pacman -S git cmake gcc
+  #pacman -S git \
+  #  mingw-w64-ucrt-x86_64-gcc \
+  #  mingw-w64-ucrt-x86_64-cmake \
+  #  mingw-w64-ucrt-x86_64-shaderc
   cmake -B build
   cmake --build build --config Release
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
