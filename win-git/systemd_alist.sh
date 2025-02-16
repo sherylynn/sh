@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPT_NAME="webdav"
+SCRIPT_NAME="alist"
 
 sudo tee /etc/systemd/system/${SCRIPT_NAME}.service <<EOF
 [Unit]
@@ -18,7 +18,10 @@ Type=simple
 ;EnvironmentFile=$HOME/.env.file
 PrivateTmp=true
 Restart=on-abnormal
-ExecStart=$(cd "$(dirname "$0")";pwd)/server_${SCRIPT_NAME}.sh
+ExecStart=$(
+  cd "$(dirname "$0")"
+  pwd
+)/server_${SCRIPT_NAME}.sh
 EOF
 
 sudo tee -a /etc/systemd/system/${SCRIPT_NAME}.service <<-'EOF'
