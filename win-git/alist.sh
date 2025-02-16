@@ -52,3 +52,6 @@ echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
 
 #webdav -c /root/tools/rc/weddav.yaml
 #有专门的 server_webdav.sh 和 systemd_webdav.sh
+
+#alist --data ~/data admin set NEW_PASSWORD
+#设置密码
