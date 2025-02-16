@@ -57,20 +57,18 @@ elif [[ $(platform) == *win* ]]; then
   cd ${SOFT_HOME}
   git pull
   git checkout $SOFT_VERSION
-  pacman -R \
-    mingw-w64-ucrt-x86_64-gcc \
-    mingw-w64-ucrt-x86_64-cmake \
-    mingw-w64-ucrt-x86_64-shaderc
-  pacman -S git cmake gcc
-  #pacman -S git \
-  #  mingw-w64-ucrt-x86_64-gcc \
-  #  mingw-w64-ucrt-x86_64-cmake \
-  #  mingw-w64-ucrt-x86_64-shaderc
+  #pacman -S git cmake gcc
+  #pacman -S git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-shaderc
+  #pacman -R mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-shaderc
+  pacman -R git cmake gcc
+  pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc 
   cmake \
     -D CMAKE_C_COMPILER="/usr/bin/gcc" \
     -D CMAKE_CXX_COMPILER="/usr/bin/g++" \
     -D GGML_RUNTIME_REPACK=ON \
     -B build
+  #  -D CMAKE_C_COMPILER="/mingw64/bin/gcc" \
+  #  -D CMAKE_CXX_COMPILER="/mingw64/bin/g++" \
   cmake --build build --config Release
   SOFT_ROOT=$(install_path)/${NAME}/build/bin
   echo "export PATH=$SOFT_ROOT:"'$PATH' >${TOOLSRC}
