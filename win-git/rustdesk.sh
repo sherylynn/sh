@@ -5,6 +5,8 @@ NAME=rustdesk
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
+#SOFT_VERSION=1.3.2
+#SOFT_VERSION=1.3.5
 SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
 
