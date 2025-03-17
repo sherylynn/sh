@@ -3,15 +3,15 @@ NAME=homebrew
 SOFT_ROOT=/opt/homebrew/bin
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
-#/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 brew uninstall --force $(brew list)
 brew cleanup
 sudo rm -rf /opt/homebrew
 cd ~
-curl -LJO https://github.com/Homebrew/brew/archive/refs/tags/4.1.0.zip
-unzip brew-4.1.0.zip
-sudo mv brew-4.1.0 /opt/homebrew
-sudo chown -R $(whoami) /opt/homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+#curl -LJO https://github.com/Homebrew/brew/archive/refs/tags/4.1.0.zip
+#unzip brew-4.1.0.zip
+#sudo mv brew-4.1.0 /opt/homebrew
+#sudo chown -R $(whoami) /opt/homebrew
 
 export HOMEBREW_NO_INSTALL_FROM_API=1
 #export PATH=$SOFT_ROOT:$PATH
