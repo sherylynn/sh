@@ -28,6 +28,6 @@ export ANDROID_NDK=$SOFT_HOME/ndk-bundle
 export CLASSPATH=.:$LIBS_HOME/jre/lib/tools.jar:$LIBS_HOME/jre/lib/dt.jar:$LIBS_HOME/jre/jre/lib/rt.jar
 export JAVA_HOME=$LIBS_HOME/jre
 export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1
-export PATH=\$PATH:$GRADLE_HOME/bin:$ANDROID_STUDIO_HOME/jre/jre/bin:$ANDROID_STUDIO_HOME/jre/bin:$ANDROID_STUDIO_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools
+export PATH=\$PATH:$GRADLE_HOME/bin:$ANDROID_STUDIO_HOME/jre/jre/bin:$ANDROID_STUDIO_HOME/jre/bin:$ANDROID_STUDIO_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools:$ANDROID_STUDIO_HOME/jbr/bin
 EOF
 sudo apt-get install qemu-kvm libvirt-clients libvirt-daemon-system virtinst bridge-utils -y
