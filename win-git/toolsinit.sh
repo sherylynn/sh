@@ -586,6 +586,18 @@ scrcpy_new() {
   fi
 }
 
+scrcpy_origin() {
+  local_ip=$1
+  if [[ $local_ip != "" ]]; then
+    #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display --no-vd-destroy-content --screen-off-timeout=3000
+  else
+    wsl_adb
+    #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display  --no-vd-destroy-content --screen-off-timeout=3000
+  fi
+}
+
 scrcpy_audio() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
@@ -613,6 +625,7 @@ scrcpy_big() {
 }
 alias scb='scrcpy_big'
 alias sca='scrcpy_new'
+alias sco='scrcpy_origin'
 alias scn='scrcpy_new'
 alias sc='scrcpy_adb'
 scrcpy_termux_hold_video() {
