@@ -73,7 +73,7 @@ ANDROID_NAME=$(adb shell getprop ro.product.name)
 
 if [ $ANDROID_NAME = 'gauguinpro' ]; then
 	echo "is gauguinpro"
-	network
+	#network
 	if [ $? -eq 0 ]; then
 		echo "网络不畅"
 		adb shell svc usb setFunctions rndis
