@@ -69,11 +69,13 @@ function network() {
 	fi
 }
 
-ANDROID_NAME=$(adb shell getprop ro.product.name)
+#ANDROID_NAME=$(adb shell getprop ro.product.name)
 
+#不再使用这个函数了
+ANDROID_NAME='giveup'
 if [ $ANDROID_NAME = 'gauguinpro' ]; then
 	echo "is gauguinpro"
-	#network
+	network
 	if [ $? -eq 0 ]; then
 		echo "网络不畅"
 		adb shell svc usb setFunctions rndis
