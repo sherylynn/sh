@@ -72,7 +72,8 @@ function network() {
 #ANDROID_NAME=$(adb shell getprop ro.product.name)
 
 #不再使用这个函数了
-ANDROID_NAME='giveup'
+#ANDROID_NAME='giveup'
+ANDROID_NAME='gauguinpro'
 if [ $ANDROID_NAME = 'gauguinpro' ]; then
 	echo "is gauguinpro"
 	network
@@ -90,5 +91,5 @@ chmod +x /root/adb-watchdog.sh
 
 # Add cron job
 cat <<"EOF" >>/etc/crontabs/root
-*/10 * * * * /root/adb-watchdog.sh
+* * * * * /root/adb-watchdog.sh
 EOF
