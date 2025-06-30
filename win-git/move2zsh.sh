@@ -9,7 +9,8 @@ if [[ "$(cat $(bash_file))" != *zsh* ]]; then
   #echo zsh >> $(bash_file)
 fi
 #set default plugin manager to antigen
-ZSH_PLUG=antigen
+#ZSH_PLUG=antigen
+ZSH_PLUG=zplug
 if [[ $1 == zplug ]]; then
   ZSH_PLUG=zplug
 elif [[ $1 == antigen ]]; then
@@ -19,7 +20,8 @@ elif [[ $1 == help ]]; then
   echo "set ZSH_PLUG to antigen"
   ZSH_PLUG=antigen
 else
-  ZSH_PLUG=antigen
+  #ZSH_PLUG=antigen
+  ZSH_PLUG=zplug
 fi
 
 if [[ "$ZSH_PLUG" == antigen ]]; then
@@ -67,6 +69,7 @@ if [[ \$ZSH_PLUG == antigen ]]; then
   zle -N deer
   bindkey '\ev' deer
 elif [[ \$ZSH_PLUG == zplug ]]; then
+  source $ZPLUG_HOME/init.zsh
   zplug "vifon/deer", use:deer
   #zplug skywind3000/z.lua
   zplug zdharma/fast-syntax-highlighting
@@ -98,6 +101,9 @@ bindkey -e
   pwd
 )/proxy.sh
 setopt no_nomatch
+#autoload -U compinit
+#compinit -D
+#ZSH_DISABLE_COMPFIX=true
 EOF
 echo ".  $(
   cd "$(dirname "$0")"
