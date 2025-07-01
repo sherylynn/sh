@@ -4,13 +4,15 @@
 cd ~
 #sudo apt install pigz -y
 #npm cache clean --force
-mkdir -p ~/download
-#tar -zpcvf ~/download/backup.tar.gz --exclude=download --exclude=.cache ./*
-#tar -pcvf ~/download/backup.tar.gz --exclude=download --exclude=.cache -I pigz ./*
 
-#tar --use-compress-program="pigz -9" -pcvf ~/download/backup.tar.gz --exclude=download --exclude=.cache  ./*
-#./* 会没有隐藏文件
-#tar --exclude=download --exclude=.cache  -pcvf - ./*  |pigz --best > ~/download/backup.tar.gz
-#tar --exclude=.dbus --exclude=.config --exclude=download --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > ~/download/backup.tar.gz
+BACKUP_DIR="$HOME/download"
+if [ -d "/sdcard/Download" ]; then
+    BACKUP_DIR="/sdcard/Download"
+fi
+mkdir -p "$BACKUP_DIR"
 
-tar --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config/chromium --exclude=.config/gtk-3.0 --exclude=.config/pulse --exclude=.config/dconf --exclude=.config/htop  --exclude=download --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > ~/download/backup_$(arch).tar.gz
+if [ -d "/sdcard/Download" ]; then
+    tar --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config/chromium --exclude=.config/gtk-3.0 --exclude=.config/pulse --exclude=.config/dconf --exclude=.config/htop  --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > "$BACKUP_DIR"/backup_$(arch).tar.gz
+elif
+    tar --exclude=.gvfs --exclude=.gnupg --exclude=.X* --exclude=.dbus --exclude=.config/chromium --exclude=.config/gtk-3.0 --exclude=.config/pulse --exclude=.config/dconf --exclude=.config/htop  --exclude=download --exclude=.x* --exclude=.vnc* --exclude=.cache  -pcvf - ./  |pigz --best > "$BACKUP_DIR"/backup_$(arch).tar.gz
+fi
