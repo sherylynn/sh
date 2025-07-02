@@ -18,6 +18,35 @@ export CLASSPATH=.:$LIBS_HOME/jre/lib/tools.jar:$LIBS_HOME/jre/lib/dt.jar:$LIBS_
 export JAVA_HOME=$LIBS_HOME/jbr
 export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1
 
+# --- SDK Installation (from termux/sdk.sh) ---
+SDK_VERSION=android-sdk
+SOFT_FILE_PACK_SDK=${SDK_VERSION}-aarch64.zip
+SOFT_URL_SDK=https://github.com/lzhiyong/termux-ndk/releases/download/${SDK_VERSION}/${SOFT_FILE_PACK_SDK}
+
+if [[ $(platform) == *linux* ]] && [[ $(arch) == aarch64 ]]; then
+  echo "Downloading and installing Android SDK..."
+  $(cache_downloader $SOFT_FILE_PACK_SDK $SOFT_URL_SDK)
+  $(cache_unpacker $SOFT_FILE_PACK_SDK $SDK_VERSION)
+
+  rm -rf ${SDK_HOME} && \
+    mv $(cache_folder)/${SDK_VERSION} ${SDK_HOME}
+fi
+
+# --- NDK Installation (from termux/ndk.sh) ---
+NDK_VERSION_NAME=android-ndk
+NDK_VERSION_FULL=android-ndk-r27b
+SOFT_FILE_PACK_NDK=${NDK_VERSION_FULL}-aarch64.zip
+SOFT_URL_NDK=https://github.com/lzhiyong/termux-ndk/releases/download/${NDK_VERSION_NAME}/${SOFT_FILE_PACK_NDK}
+
+if [[ $(platform) == *linux* ]] && [[ $(arch) == aarch64 ]]; then
+  echo "Downloading and installing Android NDK..."
+  $(cache_downloader $SOFT_FILE_PACK_NDK $SOFT_URL_NDK)
+  $(cache_unpacker $SOFT_FILE_PACK_NDK ${NDK_VERSION_FULL})
+
+  rm -rf ${SDK_HOME}/ndk && \
+    mv $(cache_folder)/${NDK_VERSION_FULL} ${SDK_HOME}/ndk
+fi
+
 tee $TOOLSRC <<EOF
 export ANDROID_STUDIO_HOME=$LIBS_HOME
 export SDK_HOME=$SOFT_HOME
@@ -25,12 +54,11 @@ export ANDROID_HOME=$SOFT_HOME
 export ANDROID_ABI=$ANDROID_ABI
 export ANDROID_SDK_ROOT=$SOFT_HOME
 export ANDROID_SDK=$SOFT_HOME
-#export ANDROID_NDK=$SOFT_HOME/ndk-bundle
-export ANDROID_NDK=$SOFT_HOME/ndk
+export ANDROID_NDK=$SDK_HOME/ndk
 export CLASSPATH=.:$LIBS_HOME/jre/lib/tools.jar:$LIBS_HOME/jre/lib/dt.jar:$LIBS_HOME/jre/jre/lib/rt.jar
 #export JAVA_HOME=$LIBS_HOME/jre
 export JAVA_HOME=$LIBS_HOME/jbr
 export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1
-export PATH=\$PATH:$GRADLE_HOME/bin:$ANDROID_STUDIO_HOME/jre/jre/bin:$ANDROID_STUDIO_HOME/jre/bin:$ANDROID_STUDIO_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools:$ANDROID_STUDIO_HOME/jbr/bin
+export PATH=\$PATH:$GRADLE_HOME/bin:$ANDROID_STUDIO_HOME/jre/jre/bin:$ANDROID_STUDIO_HOME/jre/bin:$ANDROID_STUDIO_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools:$ANDROID_STUDIO_HOME/jbr/bin:$SDK_HOME/cmdline-tools/latest/bin:$SDK_HOME/ndk
 EOF
 sudo apt-get install qemu-kvm libvirt-clients libvirt-daemon-system virtinst bridge-utils -y
