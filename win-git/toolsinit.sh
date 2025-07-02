@@ -91,11 +91,11 @@ toolsRC() {
   local toolsrc=$BASH_DIR/${toolsrc_name}
   #--------------new .toolsrc-----------------------
   if [ ! -d "${BASH_DIR}" ]; then
-    mkdir $BASH_DIR
+    mkdir -p $BASH_DIR
   fi
   touch ${ALLTOOLSRC_FILE}
   if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
-    echo "not exist ${toolsrc}"
+    echo "not exist ${toolsrc}" >&2
   else
     if [[ $(platform) == macos ]]; then
       #fuck sed in mac need ""
@@ -657,32 +657,34 @@ ssh_hotspot() {
 }
 
 proxy_ip() {
-  #export http_proxy=http://127.0.0.1:8087
   local IP=$1
+  local PROXY_PORT=10808
+  local PROXY_TYPE=http
+  local TOOLSRC_NAME=proxyrc
+  local TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 
-  export http_proxy=http://$IP:10808
-  export https_proxy=http://$IP:10808
-  #有时候代理变了
-  #export http_proxy=socks5://$IP:1080
-  #export https_proxy=socks5://$IP:1080
+  cat >${TOOLSRC} <<EOF
+export http_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
+export https_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
+EOF
 
-  #export http_proxy=socks5://127.0.0.1:1080
-  #export https_proxy=socks5://127.0.0.1:1080
-  #export ALL_PROXY=socks5://127.0.0.1:1080
-  #export all_proxy=socks5://127.0.0.1:1080
+  export http_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
+  export https_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
 
-  git config --global http.proxy http://$IP:10808
-  git config --global https.proxy https://$IP:10808
-  #有时候代理变了
-  #git config --global http.proxy socks5://$IP:1080
-  #git config --global https.proxy socks5://$IP:1080
-
-  #git config --global http.proxy socks5://127.0.0.1:1080
-  #git config --global https.proxy socks5://127.0.0.1:1080
-
+  git config --global http.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
+  git config --global https.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
 }
 
 unproxy() {
+  local TOOLSRC_NAME=proxyrc
+  local TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
+  if [ -f "$TOOLSRC" ]; then
+    echo -n > "$TOOLSRC"
+  fi
+
+  unset http_proxy
+  unset https_proxy
+
   git config --global --unset http.proxy
   git config --global --unset https.proxy
 }
