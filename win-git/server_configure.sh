@@ -1,7 +1,7 @@
 #!/bin/bash
 SCRIPT_NAME="configure"
 #SOFT_VNC=kasmvnc
-OFT_VNC=tigervnc
+SOFT_VNC=tigervnc
 realpath() {
   local x=$1
   echo $(
@@ -53,7 +53,8 @@ sudo apt install zsh -y
 sudo apt install dbus-x11 xfce4 openssh-server -y
 #换一种vnc
 sudo apt install xfce4-terminal -y
-sudo apt install telegram-desktop ncdu htop -y
+sudo apt install telegram-desktop -y
+sudo apt install ncdu htop -y
 sudo chsh -s /bin/zsh
 . $(dirname "$0")/../win-git/toolsinit.sh
 source ~/sh/win-git/toolsinit.sh
