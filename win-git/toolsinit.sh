@@ -507,6 +507,26 @@ switch_to_google_ime() {
   echo "输入法切换完成"
 }
 
+# 添加切换到讯飞输入法的函数
+switch_to_xunfei_ime() {
+  local target_device=$1
+  echo "正在切换回讯飞输入法..."
+  
+  if [[ $target_device != "" ]]; then
+    # 如果指定了设备，使用指定设备
+    adb -s "$target_device" shell ime set com.iflytek.inputmethod/.FlyIME 2>/dev/null || \
+    adb -s "$target_device" shell ime set com.iflytek.inputmethod/com.iflytek.inputmethod.FlyIME 2>/dev/null || \
+    echo "警告：无法切换到讯飞输入法，请确保已安装讯飞输入法"
+  else
+    # 没有指定设备，使用默认连接
+    adb shell ime set com.iflytek.inputmethod/.FlyIME 2>/dev/null || \
+    adb shell ime set com.iflytek.inputmethod/com.iflytek.inputmethod.FlyIME 2>/dev/null || \
+    echo "警告：无法切换到讯飞输入法，请确保已安装讯飞输入法"
+  fi
+  
+  echo "讯飞输入法切换完成"
+}
+
 #连接无线调试的设备
 wifi_adb() {
   local_ip=$1
@@ -534,6 +554,8 @@ wifi_adb() {
       # 在启动 scrcpy 前切换到谷歌输入法
       switch_to_google_ime "$TCPPORT"
       scrcpy -s "$TCPPORT" --turn-screen-off --stay-awake --keyboard=uhid
+      # scrcpy 结束后切换回讯飞输入法
+      switch_to_xunfei_ime "$TCPPORT"
     fi
   done
   #scrcpy --turn-screen-off --stay-awake --keyboard=uhid
@@ -591,11 +613,15 @@ scrcpy_adb() {
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --screen-off-timeout=3000 --turn-screen-off
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   else
     wsl_adb
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --screen-off-timeout=3000 --turn-screen-off
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   fi
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
   #scrcpy 3.0
@@ -612,12 +638,16 @@ scrcpy_new() {
     switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   else
     wsl_adb
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   fi
 }
 
@@ -630,12 +660,16 @@ scrcpy_origin() {
     switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display --no-vd-destroy-content --screen-off-timeout=3000
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   else
     wsl_adb
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display --no-vd-destroy-content --screen-off-timeout=3000
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   fi
 }
 
@@ -648,12 +682,16 @@ scrcpy_audio() {
     switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --tcpip=$local_ip:5555 --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   else
     wsl_adb
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
   fi
 }
 
@@ -666,6 +704,8 @@ scrcpy_big() {
     switch_to_google_ime
     #scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
     scrcpy --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --no-vd-destroy-content #--window-borderless --fullscreen
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
     #scrcpy --stay-awake --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2376x1080/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   else
     wsl_adb
@@ -673,6 +713,8 @@ scrcpy_big() {
     switch_to_google_ime
     #scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    # scrcpy 结束后切换回讯飞输入法
+    switch_to_xunfei_ime
     #scrcpy --stay-awake --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --new-display=3168x1440/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   fi
 }
