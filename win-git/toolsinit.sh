@@ -482,8 +482,29 @@ wsl_adb() {
   if [[ $local_ip != "" ]]; then
     adb connect $local_ip:5555
   else
-    adb connect $(wsl_ip):5555
+    # 根据用户规则，默认连接到 192.168.1.133
+    adb connect 192.168.1.133:5555
   fi
+}
+
+# 添加切换到谷歌输入法的函数
+switch_to_google_ime() {
+  local target_device=$1
+  echo "正在切换到谷歌输入法..."
+  
+  if [[ $target_device != "" ]]; then
+    # 如果指定了设备，使用指定设备
+    adb -s "$target_device" shell ime set com.google.android.inputmethod.latin/.LatinIME 2>/dev/null || \
+    adb -s "$target_device" shell ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME 2>/dev/null || \
+    echo "警告：无法切换到谷歌输入法，请确保已安装谷歌输入法"
+  else
+    # 没有指定设备，使用默认连接
+    adb shell ime set com.google.android.inputmethod.latin/.LatinIME 2>/dev/null || \
+    adb shell ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME 2>/dev/null || \
+    echo "警告：无法切换到谷歌输入法，请确保已安装谷歌输入法"
+  fi
+  
+  echo "输入法切换完成"
 }
 
 #连接无线调试的设备
@@ -510,6 +531,8 @@ wifi_adb() {
       #选择指定设备的 adb，然后重新设置端口为 5555
       # 这个命令好像会影响无线调试，会直接失败，但是在 termux 里就能行，奇怪
       #adb -s "$TCPPORT" tcpip 5555
+      # 在启动 scrcpy 前切换到谷歌输入法
+      switch_to_google_ime "$TCPPORT"
       scrcpy -s "$TCPPORT" --turn-screen-off --stay-awake --keyboard=uhid
     fi
   done
@@ -563,9 +586,15 @@ scrcpy_adb() {
     #tcpip 命令会尝试直接重新连接 adb 指定地址
     #所以废弃直接用 wsl 来连接
     #wsl_adb $local_ip
+    # 连接设备
+    adb connect $local_ip:5555
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --screen-off-timeout=3000 --turn-screen-off
   else
     wsl_adb
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --screen-off-timeout=3000 --turn-screen-off
   fi
   #scrcpy --turn-screen-off --stay-awake --keyboard=aoa
@@ -577,10 +606,16 @@ scrcpy_adb() {
 scrcpy_new() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
+    # 连接设备
+    adb connect $local_ip:5555
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   else
     wsl_adb
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   fi
@@ -589,10 +624,16 @@ scrcpy_new() {
 scrcpy_origin() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
+    # 连接设备
+    adb connect $local_ip:5555
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display --no-vd-destroy-content --screen-off-timeout=3000
   else
     wsl_adb
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display --no-vd-destroy-content --screen-off-timeout=3000
   fi
@@ -601,10 +642,16 @@ scrcpy_origin() {
 scrcpy_audio() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
+    # 连接设备
+    adb connect $local_ip:5555
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --tcpip=$local_ip:5555 --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   else
     wsl_adb
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --stay-awake --keyboard=uhid #--display-id=0
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   fi
@@ -613,21 +660,34 @@ scrcpy_audio() {
 scrcpy_big() {
   local_ip=$1
   if [[ $local_ip != "" ]]; then
+    # 连接设备
+    adb connect $local_ip:5555
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
     scrcpy --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --no-vd-destroy-content #--window-borderless --fullscreen
     #scrcpy --stay-awake --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2376x1080/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   else
     wsl_adb
+    # 在启动 scrcpy 前切换到谷歌输入法
+    switch_to_google_ime
     #scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
     scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
     #scrcpy --stay-awake --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --new-display=3168x1440/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
   fi
 }
+# 快速连接到默认设备的函数
+quick_connect() {
+  echo "正在连接到默认设备 192.168.1.133..."
+  scrcpy_adb 192.168.1.133
+}
+
 alias scb='scrcpy_big'
 alias sca='scrcpy_new'
 alias sco='scrcpy_origin'
 alias scn='scrcpy_new'
 alias sc='scrcpy_adb'
+alias qc='quick_connect'
 scrcpy_termux_hold_video() {
   scrcpy --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
 }
