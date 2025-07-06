@@ -646,7 +646,10 @@ start_init() {
 
   # 启动指定运行级别的服务 (默认级别3)
   local rc_dir="${CHROOT_DIR}/etc/rc${INIT_LEVEL}.d"
-  if [ ! -d "$rc_dir" ]; then
+  local chroot_rc_dir="/etc/rc${INIT_LEVEL}.d"
+  
+  # 使用sudo检查目录是否存在
+  if ! sudo test -d "$rc_dir"; then
     echo ":: Init level ${INIT_LEVEL} directory not found, skipping init services"
     return 0
   fi
@@ -659,10 +662,11 @@ start_init() {
       local service_name="${item/S[0-9][0-9]/}"
       echo -n "${service_name} ... "
       
+      # 使用chroot内的路径执行服务脚本
       if [ "${INIT_ASYNC}" = "true" ]; then
-        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} start" 1>&2 &
+        chroot_exec -u ${INIT_USER} "${chroot_rc_dir}/${item} start" 1>&2 &
       else
-        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} start" 1>&2
+        chroot_exec -u ${INIT_USER} "${chroot_rc_dir}/${item} start" 1>&2
       fi
       is_ok "fail" "done"
     done
@@ -688,7 +692,10 @@ stop_init() {
 
   # 停止服务 (使用rc6.d，即关机级别)
   local rc_dir="${CHROOT_DIR}/etc/rc6.d"
-  if [ ! -d "$rc_dir" ]; then
+  local chroot_rc_dir="/etc/rc6.d"
+  
+  # 使用sudo检查目录是否存在
+  if ! sudo test -d "$rc_dir"; then
     echo ":: Shutdown directory not found, skipping init services"
     return 0
   fi
@@ -701,10 +708,11 @@ stop_init() {
       local service_name="${item/K[0-9][0-9]/}"
       echo -n "${service_name} ... "
       
+      # 使用chroot内的路径执行服务脚本
       if [ "${INIT_ASYNC}" = "true" ]; then
-        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} stop" 1>&2 &
+        chroot_exec -u ${INIT_USER} "${chroot_rc_dir}/${item} stop" 1>&2 &
       else
-        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} stop" 1>&2
+        chroot_exec -u ${INIT_USER} "${chroot_rc_dir}/${item} stop" 1>&2
       fi
       is_ok "fail" "done"
     done
@@ -936,7 +944,7 @@ check_chroot_status() {
     # 检查sysv初始化系统
     if container_mounted && [ -n "${INIT_LEVEL}" ]; then
         local rc_dir="${CHROOT_DIR}/etc/rc${INIT_LEVEL}.d"
-        if [ -d "$rc_dir" ]; then
+        if sudo test -d "$rc_dir"; then
             local services_count=$(sudo ls "$rc_dir/" 2>/dev/null | grep '^S' | wc -l)
             if [ "$services_count" -gt 0 ]; then
                 echo -e "初始化系统: ${GREEN}级别${INIT_LEVEL} (${services_count}个服务)${NC}"
