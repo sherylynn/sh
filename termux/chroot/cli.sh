@@ -131,16 +131,58 @@ check_debian_installed() {
     "/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian"
   )
   
+  local debug_info=""
+  
   for debian_path in "${debian_paths[@]}"; do
-    if [ -d "$debian_path" ] && [ -f "$debian_path/bin/dpkg" ]; then
-      # 找到有效的debian安装，更新DEBIAN_DIR
-      DEBIAN_DIR="$debian_path"
-      echo "找到Debian安装: $DEBIAN_DIR" >&2
-      return 0
+    debug_info="${debug_info}检查路径: $debian_path\n"
+    
+    if sudo test -d "$debian_path"; then
+      debug_info="${debug_info}  目录存在: ✓\n"
+      
+      # 更宽松的检查条件 - 检查多个可能的dpkg位置和其他关键文件
+      local found_indicator=false
+      
+      # 检查dpkg (使用sudo提权检查)
+      if sudo test -f "$debian_path/bin/dpkg"; then
+        debug_info="${debug_info}  /bin/dpkg: ✓\n"
+        found_indicator=true
+      elif sudo test -f "$debian_path/usr/bin/dpkg"; then
+        debug_info="${debug_info}  /usr/bin/dpkg: ✓\n"
+        found_indicator=true
+      else
+        debug_info="${debug_info}  dpkg: ✗ (未找到在/bin或/usr/bin)\n"
+      fi
+      
+      # 检查其他关键文件作为备用验证 (使用sudo提权检查)
+      if [ ! "$found_indicator" = true ]; then
+        if sudo test -f "$debian_path/etc/debian_version"; then
+          debug_info="${debug_info}  /etc/debian_version: ✓ (备用验证)\n"
+          found_indicator=true
+        elif sudo test -d "$debian_path/var/lib/dpkg"; then
+          debug_info="${debug_info}  /var/lib/dpkg: ✓ (备用验证)\n"
+          found_indicator=true
+        elif sudo test -f "$debian_path/bin/bash"; then
+          debug_info="${debug_info}  /bin/bash: ✓ (最低要求)\n"
+          found_indicator=true
+        fi
+      fi
+      
+      if [ "$found_indicator" = true ]; then
+        # 找到有效的debian安装，更新DEBIAN_DIR
+        DEBIAN_DIR="$debian_path"
+        debug_info="${debug_info}  检测结果: 成功 ✓\n"
+        echo -e "找到Debian安装: $DEBIAN_DIR\n$debug_info" >&2
+        return 0
+      else
+        debug_info="${debug_info}  检测结果: 失败 ✗\n"
+      fi
+    else
+      debug_info="${debug_info}  目录存在: ✗\n"
     fi
+    debug_info="${debug_info}\n"
   done
   
-  echo "未找到Debian安装，请先运行: bash ~/sh/termux/chroot/installer_ruri.sh" >&2
+  echo -e "未找到Debian安装！\n\n详细信息:\n$debug_info\n请先运行: proot-distro install debian\n或运行诊断脚本: bash ~/sh/termux/chroot/diagnose_debian.sh" >&2
   return 1
 }
 
