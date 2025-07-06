@@ -551,10 +551,31 @@ after_umount_fun() {
 }
 
 config_dbus() {
-  echo ":: Configuring ${COMPONENT} ... "
+  echo ":: Configuring dbus ... "
   make_dirs /run/dbus /var/run/dbus
-  chmod 644 "${CHROOT_DIR}/etc/machine-id"
-  chroot_exec -u root dbus-uuidgen >"${CHROOT_DIR}/etc/machine-id"
+  
+  # 创建machine-id文件（如果不存在）
+  if ! sudo test -f "${CHROOT_DIR}/etc/machine-id"; then
+    echo "创建machine-id文件..."
+    sudo touch "${CHROOT_DIR}/etc/machine-id" || {
+      echo "警告: 无法创建machine-id文件，跳过..."
+      return 0
+    }
+  fi
+  
+  # 生成machine-id
+  echo "生成machine-id..."
+  chroot_exec -u root dbus-uuidgen 2>/dev/null | sudo tee "${CHROOT_DIR}/etc/machine-id" >/dev/null || {
+    echo "警告: 无法生成machine-id，使用默认值..."
+    echo "$(cat /proc/sys/kernel/random/uuid | tr -d '-')" | sudo tee "${CHROOT_DIR}/etc/machine-id" >/dev/null || true
+  }
+  
+  # 设置权限（使用sudo，失败不中断）
+  echo "设置machine-id权限..."
+  sudo chmod 644 "${CHROOT_DIR}/etc/machine-id" 2>/dev/null || {
+    echo "警告: 无法设置machine-id权限，继续..."
+  }
+  
   return 0
 }
 
