@@ -87,49 +87,119 @@ arch() {
 }
 
 toolsRC() {
-  local toolsrc_name=$1
-  local toolsrc=$BASH_DIR/${toolsrc_name}
-  #--------------new .toolsrc-----------------------
-  if [ ! -d "${BASH_DIR}" ]; then
-    mkdir -p $BASH_DIR
+  local toolsrc_name="$1"
+  
+  # 参数检查
+  if [ -z "$toolsrc_name" ]; then
+    echo "Error: toolsRC requires a toolsrc name parameter" >&2
+    return 1
   fi
-  touch ${ALLTOOLSRC_FILE}
-  if [[ "$(cat ${ALLTOOLSRC_FILE})" != *${toolsrc_name}* ]]; then
-    echo "not exist ${toolsrc}" >&2
-  else
-    if [[ $(platform) == macos ]]; then
-      #fuck sed in mac need ""
-      sed -i "" '/'${toolsrc_name}'/d' ${ALLTOOLSRC_FILE}
-    else
-      sed -i '/'${toolsrc_name}'/d' ${ALLTOOLSRC_FILE}
+  
+  # 变量安全检查
+  if [ -z "$BASH_DIR" ] || [ -z "$ALLTOOLSRC_FILE" ]; then
+    echo "Error: BASH_DIR or ALLTOOLSRC_FILE not set" >&2
+    return 1
+  fi
+  
+  local toolsrc="$BASH_DIR/${toolsrc_name}"
+  local source_line="test -f ${toolsrc} && . ${toolsrc}"
+  
+  #--------------new .toolsrc-----------------------
+  # 确保目录存在
+  if [ ! -d "$BASH_DIR" ]; then
+    if ! mkdir -p "$BASH_DIR"; then
+      echo "Error: Failed to create directory $BASH_DIR" >&2
+      return 1
     fi
   fi
-  echo "test -f ${toolsrc} && . ${toolsrc}" >>${ALLTOOLSRC_FILE}
-  echo $toolsrc
+  
+  # 确保主配置文件存在
+  if ! touch "$ALLTOOLSRC_FILE"; then
+    echo "Error: Failed to create/touch $ALLTOOLSRC_FILE" >&2
+    return 1
+  fi
+  
+  # 检查是否已存在完全相同的行
+  if grep -Fq "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
+    # 已存在完全相同的行，直接返回
+    echo "$toolsrc"
+    return 0
+  fi
+  
+  # 删除旧的配置行 (如果存在)
+  if grep -q "\\b${toolsrc_name}\\b" "$ALLTOOLSRC_FILE" 2>/dev/null; then
+    # 使用更精确的正则表达式，只删除包含确切 toolsrc_name 的行
+    if [[ $(platform) == macos ]]; then
+      # macOS 的 sed 需要 ""
+      if ! sed -i "" "/test -f.*${toolsrc_name}.*&&.*${toolsrc_name}/d" "$ALLTOOLSRC_FILE"; then
+        echo "Warning: Failed to remove old entry for $toolsrc_name" >&2
+      fi
+    else
+      if ! sed -i "/test -f.*${toolsrc_name}.*&&.*${toolsrc_name}/d" "$ALLTOOLSRC_FILE"; then
+        echo "Warning: Failed to remove old entry for $toolsrc_name" >&2
+      fi
+    fi
+  fi
+  
+  # 添加新的配置行
+  if ! echo "$source_line" >> "$ALLTOOLSRC_FILE"; then
+    echo "Error: Failed to add entry to $ALLTOOLSRC_FILE" >&2
+    return 1
+  fi
+  
+  echo "$toolsrc"
 }
 
 update_config() {
-  local config_path=$1
-  local config_name=$2
-  local config_value=$3
-  local local_sudo=$4
-  #--------------new config----------------------
-  if [ ! -f ${config_path} ]; then
-    touch ${config_path}
+  local config_path="$1"
+  local config_name="$2"
+  local config_value="$3"
+  local local_sudo="$4"
+  
+  # 参数检查
+  if [ -z "$config_path" ] || [ -z "$config_name" ]; then
+    echo "Error: update_config requires config_path and config_name parameters" >&2
+    return 1
   fi
-  if [[ "$(cat ${config_path})" != *${config_name}* ]]; then
-    echo "not exist ${config_name}"
-  else
-    if [[ $(platform) == macos ]]; then
-      #fuck sed in mac need ""
-      $local_sudo sed -i "" '/'${config_name}'/d' ${config_path}
-    else
-      $local_sudo sed -i '/'${config_name}'/d' ${config_path}
+  
+  #--------------new config----------------------
+  # 确保配置文件存在
+  if [ ! -f "$config_path" ]; then
+    if ! $local_sudo touch "$config_path"; then
+      echo "Error: Failed to create config file $config_path" >&2
+      return 1
     fi
   fi
-  $local_sudo tee -a ${config_path} <<EOF
+  
+  # 检查配置是否已存在
+  local config_line="${config_name} ${config_value}"
+  if grep -Fq "$config_line" "$config_path" 2>/dev/null; then
+    # 完全相同的配置已存在，直接返回
+    return 0
+  fi
+  
+  # 删除旧的配置行 (如果存在)
+  if grep -q "^${config_name}\\s" "$config_path" 2>/dev/null; then
+    if [[ $(platform) == macos ]]; then
+      # macOS 的 sed 需要 ""
+      if ! $local_sudo sed -i "" "/^${config_name}\\s/d" "$config_path"; then
+        echo "Warning: Failed to remove old config for $config_name" >&2
+      fi
+    else
+      if ! $local_sudo sed -i "/^${config_name}\\s/d" "$config_path"; then
+        echo "Warning: Failed to remove old config for $config_name" >&2
+      fi
+    fi
+  fi
+  
+  # 添加新的配置行
+  if ! $local_sudo tee -a "$config_path" <<EOF
 ${config_name} ${config_value}
 EOF
+  then
+    echo "Error: Failed to add config to $config_path" >&2
+    return 1
+  fi
 }
 
 bash_file() {
