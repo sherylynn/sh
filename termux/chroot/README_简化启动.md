@@ -55,6 +55,7 @@ tstop
 - `cstatus` - 查看 chroot 状态
 - `cshell` - 进入 chroot shell
 - `cexec "命令"` - 在 chroot 中执行命令
+- `cforce` - 强制清理挂载点 (应急用，当正常停止失败时)
 
 ### 🖥️ **X11 服务控制**
 - `x11start` - 启动 X11 服务
@@ -117,11 +118,14 @@ bash ~/sh/termux/chroot/cli.sh [start|stop|restart|status|shell|exec]
 ```
 
 **特点:**
-- ✅ 完整的挂载管理 (模拟 Linux Deploy)
-- ✅ 智能的进程清理
+- ✅ 完整的挂载管理 (参考 linuxdeploy-cli 的实现)
+- ✅ 高效的进程清理 (使用 fuser + lsof 组合)
+- ✅ sysv 初始化系统支持 (兼容 linuxdeploy，运行级别3)
+- ✅ 异步服务启动，提高启动速度
 - ✅ 详细的状态监控
 - ✅ 配置文件驱动的挂载系统
 - ✅ 安全的资源管理
+- ✅ VNC服务独立管理 (通过 sysv 初始化系统)
 
 ### 3. `setup_aliases.sh` - 快捷别名配置
 **功能:** 自动配置便捷别名
@@ -174,20 +178,124 @@ tstart
 bash ~/sh/termux/chroot/setup_aliases.sh
 ```
 
+### 问题5: 挂载点卸载失败 ("Device or resource busy")
+```bash
+# 如果正常停止失败，可以使用强制清理
+cforce
+
+# 或者使用完整命令
+bash ~/sh/termux/chroot/cli.sh force-cleanup
+
+# 这会强制终止相关进程并卸载所有挂载点
+```
+
+**注意**: `cforce` 是应急工具，只有在以下情况时使用：
+- `cstop` 显示 "Device or resource busy" 错误
+- 正常卸载失败
+- 挂载点清理不完整
+
+### sysv 初始化系统
+本系统完整实现了 sysv 初始化系统 (兼容 linuxdeploy)：
+
+```bash
+# 初始化系统配置
+INIT_LEVEL=3        # 运行级别 (3=多用户文本模式)
+INIT_USER="root"    # 执行用户
+INIT_ASYNC="true"   # 异步启动服务
+
+# 服务目录结构
+/etc/rc3.d/         # 运行级别3启动服务 (S开头)
+/etc/rc6.d/         # 关机级别停止服务 (K开头)
+/etc/init.d/        # 服务脚本存放目录
+```
+
+**服务管理示例 (以 noVNC 为例):**
+```bash
+# 注册 noVNC 为系统服务
+bash ~/sh/win-git/init_d_noVNC.sh
+
+# 这会创建:
+# /etc/init.d/noVNC              # 服务脚本
+# /etc/rc3.d/S01noVNC           # 启动链接 (级别3)
+# /etc/rc6.d/K01noVNC           # 停止链接 (级别6)
+
+# 容器启动时自动运行所有 S 开头的服务
+# 容器停止时自动运行所有 K 开头的服务
+```
+
+**手动管理服务:**
+```bash
+# 启动单个服务
+sudo chroot $CHROOT_DIR /etc/init.d/noVNC start
+
+# 停止单个服务  
+sudo chroot $CHROOT_DIR /etc/init.d/noVNC stop
+
+# 查看服务状态
+ls -la $CHROOT_DIR/etc/rc3.d/
+```
+
+### VNC 服务管理
+VNC 服务通过 sysv 初始化系统自动管理：
+
+```bash
+# VNC 服务注册脚本
+bash ~/sh/win-git/init_d_noVNC.sh   # 注册为系统服务
+
+# VNC 服务文件
+bash ~/sh/win-git/server_noVNC.sh   # 实际的 VNC 启动脚本
+bash ~/sh/win-git/noVNC.sh          # VNC 配置脚本
+
+# 参考配置文件
+~/sh/win-git/server_configure.sh    # 服务器配置脚本
+```
+
+这种设计的优势：
+- ✅ **标准化管理**: 使用标准的 sysv 初始化系统
+- ✅ **自动启动**: 容器启动时自动启动 VNC 服务
+- ✅ **兼容性**: 与 linuxdeploy 完全兼容
+- ✅ **异步启动**: 服务并行启动，提高启动速度
+- ✅ **灵活配置**: 支持用户自定义服务
+
 ## 🧭 核心技术说明
 
 ### chroot 环境管理
-我们的 `cli.sh` 实现了类似 Linux Deploy 的完整容器管理功能:
+我们的 `cli.sh` 参考 linuxdeploy-cli 实现了高效的容器管理功能:
 
 1. **正确的挂载顺序**: 根文件系统 → dev → sys → proc → pts → shm
-2. **智能资源管理**: 自动检测和清理占用资源的进程  
-3. **完整的错误处理**: 每个步骤都有详细的错误检查和回滚
-4. **状态监控**: 实时监控各个组件的运行状态
+2. **高效的进程释放**: 使用 `fuser` + `lsof` 组合，参考 linuxdeploy 的简洁实现
+3. **渐进式卸载**: 正常卸载 → 懒惰卸载 → 强制卸载，确保成功率
+4. **完整的错误处理**: 每个步骤都有详细的错误检查和回滚
+5. **状态监控**: 实时监控各个组件的运行状态
+6. **职责分离**: VNC 服务独立管理，避免复杂性
 
 ### 服务生命周期
 ```
-启动流程: 环境检查 → 基础服务 → X11 → chroot 挂载 → 服务启动
-停止流程: 服务停止 → 进程清理 → 文件系统卸载 → 资源释放
+启动流程: 环境检查 → 基础服务 → X11 → chroot 挂载 → sysv初始化(级别3) → 系统配置
+停止流程: sysv关闭(级别6) → 进程释放(fuser) → 文件系统卸载 → 资源清理
+初始化: 异步执行 /etc/rc3.d/S* 脚本 (包括用户的 noVNC 等服务)
+```
+
+### sysv 初始化系统技术实现
+```
+目录结构:
+/etc/init.d/           # 服务脚本存放目录
+/etc/rc3.d/S*          # 运行级别3启动脚本 (多用户文本模式)
+/etc/rc6.d/K*          # 运行级别6停止脚本 (系统关闭)
+
+执行顺序:
+S01service -> S02service -> S99service  (按数字排序)
+K99service -> K02service -> K01service  (逆序停止)
+
+异步模式 (INIT_ASYNC=true):
+- 所有服务并行启动，提高启动速度
+- 适合独立的服务 (如 VNC, SSH 等)
+- 启动后等待3秒确保服务稳定
+
+同步模式 (INIT_ASYNC=false):
+- 按顺序逐个启动服务
+- 适合有依赖关系的服务
+- 确保启动顺序的严格控制
 ```
 
 ## 📝 配置文件位置

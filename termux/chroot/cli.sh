@@ -22,15 +22,17 @@ MOUNT_CONFIG="$(dirname "${BASH_SOURCE[0]}")/mount_config.conf"
 
 #user config
 USER_NAME=root
-VNC_DISPLAY=0
-VNC_DEPTH=16
-VNC_DPI=75
-VNC_WIDTH=756
-VNC_HEIGHT=1024
-VNC_ARGS="--localhost no"
 INIT_LEVEL=3
 [ -n "${INIT_USER}" ] || INIT_USER="root"
-#INIT_ASYNC="true"
+[ -n "${INIT_ASYNC}" ] || INIT_ASYNC="true"
+
+# sysv初始化系统配置
+# INIT_LEVEL: 默认运行级别 (3=多用户文本模式)
+# INIT_USER: 执行初始化脚本的用户 (root)
+# INIT_ASYNC: 是否异步启动服务 (true=并行启动，false=串行启动)
+
+# 注意: VNC相关功能已移除，由用户的noVNC.sh通过sysv初始化系统管理
+# 参考: win-git/server_configure.sh 和 win-git/init_d_noVNC.sh
 is_ok() {
   if [ $? -eq 0 ]; then
     if [ -n "$2" ]; then
@@ -482,37 +484,74 @@ container_umount() {
   }
 
   echo -n "Release resources ... "
-  local is_release=0
-  local lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
-  if [ "${lsof_full}" -eq 0 ]; then
-    local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
-  else
-    local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $2}' | uniq)
+  
+  # 参考linuxdeploy的简洁高效释放逻辑
+  local pids=""
+  
+  # 方法1: 使用fuser查找进程(优先，最可靠)
+  if command -v fuser >/dev/null 2>&1; then
+    pids=$(sudo fuser -v "${CHROOT_DIR}" 2>/dev/null | awk 'NR>1 && $2~/^[0-9]+$/ {print $2}' | sort -u)
   fi
-  kill_pids ${pids}
+  
+  # 方法2: 使用lsof作为补充
+  if [ -z "$pids" ] && command -v lsof >/dev/null 2>&1; then
+    pids=$(sudo lsof +D "${CHROOT_DIR}" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u)
+  fi
+  
+  # 方法3: busybox lsof作为fallback
+  if [ -z "$pids" ] && [ -n "$busybox" ] && sudo $busybox lsof >/dev/null 2>&1; then
+    local lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
+    if [ "${lsof_full}" -eq 0 ]; then
+      pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
+    else
+      pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $2}' | uniq)
+    fi
+  fi
+  
+  # 渐进式终止进程
+  if [ -n "$pids" ]; then
+    echo -n "found PIDs: $pids ... "
+    
+    # 第一步: TERM信号
+    for pid in $pids; do
+      [ -e "/proc/$pid" ] && sudo kill -TERM "$pid" 2>/dev/null
+    done
+    sleep 1
+    
+    # 第二步: KILL信号
+    for pid in $pids; do
+      [ -e "/proc/$pid" ] && sudo kill -KILL "$pid" 2>/dev/null
+    done
+    sleep 1
+  fi
+  
   is_ok "fail" "done"
-
-  #local pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
-  #echo ${pids}
-  #sudo kill ${pids}; is_ok "fail" "done"
 
   echo "Unmounting partitions: "
   local is_mnt=0
-  local mask
-  for mask in '.*' '*'; do
-    local parts=$(sudo cat /proc/mounts | awk '{print $2}' | grep "^${CHROOT_DIR%/}/${mask}$" | sort -r)
-    local part
-    for part in ${parts}; do
-      local part_name=$(echo ${part} | sed "s|^${CHROOT_DIR%/}/*|/|g")
-      echo -n "${part_name} ... "
-      for i in 1 2 3; do
-        sudo $busybox umount ${part} && break
-        sleep 1
-      done
-      is_ok "fail" "done"
-      is_mnt=1
-    done
+  
+  # 参考linuxdeploy: 获取挂载点，按深度排序
+  local all_mounts=$(awk '$2 ~ "^'${CHROOT_DIR%/}'" {print $2}' /proc/mounts | sort -r)
+  
+  for mount_point in $all_mounts; do
+    local part_name=$(echo ${mount_point} | sed "s|^${CHROOT_DIR%/}/*|/|g")
+    echo -n "${part_name} ... "
+    
+    # linuxdeploy风格: 直接尝试多种卸载方法
+    if sudo $busybox umount "${mount_point}" 2>/dev/null || \
+       sudo umount "${mount_point}" 2>/dev/null || \
+       sudo $busybox umount -l "${mount_point}" 2>/dev/null || \
+       sudo umount -l "${mount_point}" 2>/dev/null || \
+       sudo $busybox umount -f "${mount_point}" 2>/dev/null || \
+       sudo umount -f "${mount_point}" 2>/dev/null; then
+      echo "done"
+    else
+      echo "skip (busy)"
+    fi
+    
+    is_mnt=1
   done
+  
   [ "${is_mnt}" -eq 1 ]
   is_ok " ...nothing mounted"
 
@@ -596,27 +635,47 @@ stop_dbus() {
   return 0
 }
 
-start_vnc() {
-  echo ":: Starting vnc ... "
-  is_stopped /tmp/xsession.pid
-  is_ok "skip" || return 0
-  # remove locks
-  remove_files "/tmp/.X${VNC_DISPLAY}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY}"
-  # exec vncserver
-  chroot_exec -u ${USER_NAME} vncserver :${VNC_DISPLAY} -depth ${VNC_DEPTH} -dpi ${VNC_DPI} -geometry ${VNC_WIDTH}x${VNC_HEIGHT} ${VNC_ARGS}
-  is_ok "fail" "done"
-  return 0
-}
 
-stop_vnc() {
+
+start_init() {
   container_mounted || {
     echo "The container is not mounted."
     return 0
   }
-  echo ":: Stopping vnc ... "
-  chroot_exec -u ${USER_NAME} vncserver -kill :${VNC_DISPLAY}
-  kill_pids /tmp/xsession.pid
-  is_ok "fail" "done"
+  [ -n "${INIT_LEVEL}" ] || return 0
+
+  # 启动指定运行级别的服务 (默认级别3)
+  local rc_dir="${CHROOT_DIR}/etc/rc${INIT_LEVEL}.d"
+  if [ ! -d "$rc_dir" ]; then
+    echo ":: Init level ${INIT_LEVEL} directory not found, skipping init services"
+    return 0
+  fi
+
+  local services=$(sudo ls "$rc_dir/" 2>/dev/null | grep '^S' | sort)
+  if [ -n "${services}" ]; then
+    echo ":: Starting init (level ${INIT_LEVEL}): "
+    local item
+    for item in ${services}; do
+      local service_name="${item/S[0-9][0-9]/}"
+      echo -n "${service_name} ... "
+      
+      if [ "${INIT_ASYNC}" = "true" ]; then
+        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} start" 1>&2 &
+      else
+        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} start" 1>&2
+      fi
+      is_ok "fail" "done"
+    done
+    
+    # 如果是异步启动，等待一下让服务有时间启动
+    if [ "${INIT_ASYNC}" = "true" ]; then
+      echo ":: Waiting for async services to start..."
+      sleep 3
+    fi
+  else
+    echo ":: No init services found in level ${INIT_LEVEL}"
+  fi
+
   return 0
 }
 
@@ -627,19 +686,36 @@ stop_init() {
   }
   [ -n "${INIT_LEVEL}" ] || return 0
 
-  local services=$(sudo ls "${CHROOT_DIR}/etc/rc6.d/" | grep '^K')
+  # 停止服务 (使用rc6.d，即关机级别)
+  local rc_dir="${CHROOT_DIR}/etc/rc6.d"
+  if [ ! -d "$rc_dir" ]; then
+    echo ":: Shutdown directory not found, skipping init services"
+    return 0
+  fi
+
+  local services=$(sudo ls "$rc_dir/" 2>/dev/null | grep '^K' | sort)
   if [ -n "${services}" ]; then
     echo ":: Stopping init: "
     local item
     for item in ${services}; do
-      echo -n "${item/K[0-9][0-9]/} ... "
+      local service_name="${item/K[0-9][0-9]/}"
+      echo -n "${service_name} ... "
+      
       if [ "${INIT_ASYNC}" = "true" ]; then
-        chroot_exec -u ${INIT_USER} "/etc/rc6.d/${item} stop" 1>&2 &
+        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} stop" 1>&2 &
       else
-        chroot_exec -u ${INIT_USER} "/etc/rc6.d/${item} stop" 1>&2
+        chroot_exec -u ${INIT_USER} "${rc_dir}/${item} stop" 1>&2
       fi
       is_ok "fail" "done"
     done
+    
+    # 如果是异步停止，等待一下让服务有时间停止
+    if [ "${INIT_ASYNC}" = "true" ]; then
+      echo ":: Waiting for async services to stop..."
+      sleep 2
+    fi
+  else
+    echo ":: No init services to stop"
   fi
 
   return 0
@@ -750,16 +826,67 @@ start_chroot_container() {
     chroot_exec -u root bash -c 'echo "nameserver 8.8.8.8" > /etc/resolv.conf' 2>/dev/null || true
     chroot_exec -u root bash -c 'echo "127.0.0.1 localhost" > /etc/hosts' 2>/dev/null || true
     
-    # 启动dbus服务
-    log_debug "启动D-Bus服务..."
-    config_dbus
-    start_dbus
+    # 启动 sysv 初始化系统服务 (包括用户的noVNC等服务)
+    log_debug "启动初始化系统服务 (级别 ${INIT_LEVEL})..."
+    start_init
     
     # 设置环境变量
     export DISPLAY=:1
     export PULSE_RUNTIME_PATH=/run/user/$(id -u)/pulse
     
-    log_info "Chroot Linux容器启动完成！"
+    log_info "Chroot Linux容器启动完成！(包括初始化系统服务)"
+    return 0
+}
+
+# 强制清理挂载点 - 应急工具
+force_cleanup_chroot() {
+    log_warn "执行强制清理挂载点..."
+    
+    # 获取所有相关挂载点
+    local all_mounts=$(sudo cat /proc/mounts | awk '{print $2}' | grep "^${CHROOT_DIR%/}" | sort -r)
+    
+    if [ -z "$all_mounts" ]; then
+        log_info "没有发现相关挂载点"
+        return 0
+    fi
+    
+    log_warn "发现挂载点: $(echo $all_mounts | tr '\n' ' ')"
+    
+    # 强制终止所有相关进程
+    log_debug "强制终止所有相关进程..."
+    
+    # 使用fuser强制终止(最可靠)
+    if command -v fuser >/dev/null 2>&1; then
+        local fuser_pids=$(sudo fuser -k -KILL "${CHROOT_DIR}" 2>/dev/null || true)
+        [ -n "$fuser_pids" ] && log_warn "fuser终止进程: $fuser_pids"
+    fi
+    
+    # 补充lsof查找遗漏进程
+    if command -v lsof >/dev/null 2>&1; then
+        local lsof_pids=$(sudo lsof +D "${CHROOT_DIR}" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u)
+        for pid in $lsof_pids; do
+            [ -e "/proc/$pid" ] && sudo kill -KILL "$pid" 2>/dev/null
+        done
+        [ -n "$lsof_pids" ] && log_warn "lsof终止进程: $lsof_pids"
+    fi
+    
+    sleep 1
+    
+    # 强制卸载所有挂载点
+    log_debug "强制卸载所有挂载点..."
+    for mount_point in $all_mounts; do
+        local part_name=$(echo ${mount_point} | sed "s|^${CHROOT_DIR%/}/*|/|g")
+        echo -n "强制卸载 ${part_name} ... "
+        
+        # 强制卸载: lazy + force 组合
+        sudo umount -f -l "${mount_point}" 2>/dev/null || \
+        sudo $busybox umount -f -l "${mount_point}" 2>/dev/null || \
+        true  # 确保不失败
+        
+        echo "done"
+    done
+    
+    log_info "强制清理完成"
     return 0
 }
 
@@ -772,15 +899,13 @@ stop_chroot_container() {
         return 0
     fi
     
-    # 停止服务
+    # 停止sysv初始化系统服务
+    log_debug "停止初始化系统服务..."
+    stop_init 2>/dev/null || true
+    
+    # 停止D-Bus服务
     log_debug "停止D-Bus服务..."
     stop_dbus 2>/dev/null || true
-    
-    log_debug "停止VNC服务..."
-    stop_vnc 2>/dev/null || true
-    
-    log_debug "停止初始化服务..."
-    stop_init 2>/dev/null || true
     
     # 使用现有的 container_umount 函数
     log_debug "卸载文件系统..."
@@ -806,6 +931,24 @@ check_chroot_status() {
         echo -e "容器状态: ${GREEN}已挂载${NC}"
     else
         echo -e "容器状态: ${RED}未挂载${NC}"
+    fi
+    
+    # 检查sysv初始化系统
+    if container_mounted && [ -n "${INIT_LEVEL}" ]; then
+        local rc_dir="${CHROOT_DIR}/etc/rc${INIT_LEVEL}.d"
+        if [ -d "$rc_dir" ]; then
+            local services_count=$(sudo ls "$rc_dir/" 2>/dev/null | grep '^S' | wc -l)
+            if [ "$services_count" -gt 0 ]; then
+                echo -e "初始化系统: ${GREEN}级别${INIT_LEVEL} (${services_count}个服务)${NC}"
+                echo -e "异步模式: ${BLUE}${INIT_ASYNC}${NC}"
+            else
+                echo -e "初始化系统: ${YELLOW}级别${INIT_LEVEL} (无服务)${NC}"
+            fi
+        else
+            echo -e "初始化系统: ${RED}级别${INIT_LEVEL} (目录不存在)${NC}"
+        fi
+    else
+        echo -e "初始化系统: ${RED}未配置${NC}"
     fi
     
     # 检查D-Bus服务
@@ -907,6 +1050,16 @@ chroot_manager_cli() {
                 echo "容器未挂载"
             fi
             ;;
+        force-cleanup|fc)
+            log_warn "这是应急清理功能，只有在正常停止失败时使用！"
+            read -p "确定要强制清理挂载点吗？(y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                force_cleanup_chroot
+            else
+                log_info "取消强制清理"
+            fi
+            ;;
         help|h|*)
             cat << EOF
 ${BLUE}Chroot Linux 管理命令${NC}
@@ -924,6 +1077,7 @@ ${GREEN}交互操作:${NC}
 ${GREEN}挂载操作:${NC}
   ${YELLOW}mount${NC}     - 仅挂载文件系统
   ${YELLOW}umount${NC}    - 仅卸载文件系统
+  ${YELLOW}force-cleanup${NC} - 强制清理挂载点(应急用)
 
 ${GREEN}示例:${NC}
   chroot_manager_cli start

@@ -44,6 +44,7 @@ alias crestart='bash ~/sh/termux/chroot/cli.sh restart'
 alias cstatus='bash ~/sh/termux/chroot/cli.sh status'
 alias cshell='bash ~/sh/termux/chroot/cli.sh shell'
 alias cexec='bash ~/sh/termux/chroot/cli.sh exec'
+alias cforce='bash ~/sh/termux/chroot/cli.sh force-cleanup'
 
 # X11 和图形界面
 alias x11start='bash ~/sh/termux/server_x11.sh'
@@ -102,7 +103,7 @@ alias gl='git log --oneline'
 alias gd='git diff'
 
 echo "✅ Termux 别名配置已加载！"
-echo "📋 可用的主要命令: tstart, tstop, tstatus, cshell, cstart, cstop"
+echo "📋 可用的主要命令: tstart, tstop, tstatus, cshell, cstart, cstop, cforce"
 echo "💡 运行 'alias | grep -E \"^(t|c|x11)\"' 查看所有 Termux 别名"
 EOF
 
