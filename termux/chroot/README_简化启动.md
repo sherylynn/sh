@@ -60,6 +60,41 @@ tstop
 - `x11start` - 启动 X11 服务
 - `x11stop` - 停止 X11 服务
 
+### 📁 **挂载配置管理** (新增)
+- `mlist` - 显示当前挂载配置
+- `medit` - 编辑挂载配置文件
+- `mverify` - 验证配置文件语法
+- `mstatus` - 显示当前挂载状态
+- `mconfig` - 挂载配置管理工具
+
+## 🗂️ 挂载配置系统
+
+### 配置文件位置
+- **挂载配置**: `~/sh/termux/chroot/mount_config.conf`
+- **自动挂载**: 系统会自动挂载 `/sdcard` 和 `/tmp`
+
+### 配置格式
+```
+# 格式: 名称:源路径:目标路径:挂载选项:是否启用
+sdcard:/sdcard:${CHROOT_DIR}/sdcard:bind:1
+tmp:${PREFIX}/tmp:${CHROOT_DIR}/tmp:bind:1
+```
+
+### 常用操作
+```bash
+# 查看当前挂载配置
+mlist
+
+# 编辑挂载配置
+medit
+
+# 验证配置文件
+mverify
+
+# 查看挂载状态
+mstatus
+```
+
 ## 🛠️ 核心脚本介绍
 
 ### 1. `termux_all_in_one.sh` - 一键启动脚本
@@ -75,16 +110,17 @@ bash ~/sh/termux/chroot/termux_all_in_one.sh [start|stop|restart|status|enter|in
 - ✅ 挂载和启动 chroot Linux
 - ✅ 统一的错误处理
 
-### 2. `chroot_manager.sh` - Chroot Linux 管理器
-**功能:** 专门管理 chroot Linux 环境
+### 2. `cli.sh` - Chroot Linux 核心库 (已合并管理功能)
+**功能:** 核心 chroot 管理功能和高级管理接口
 ```bash
-bash ~/sh/termux/chroot/chroot_manager.sh [start|stop|restart|status|shell|exec|install]
+bash ~/sh/termux/chroot/cli.sh [start|stop|restart|status|shell|exec]
 ```
 
 **特点:**
 - ✅ 完整的挂载管理 (模拟 Linux Deploy)
 - ✅ 智能的进程清理
 - ✅ 详细的状态监控
+- ✅ 配置文件驱动的挂载系统
 - ✅ 安全的资源管理
 
 ### 3. `setup_aliases.sh` - 快捷别名配置
@@ -141,7 +177,7 @@ bash ~/sh/termux/chroot/setup_aliases.sh
 ## 🧭 核心技术说明
 
 ### chroot 环境管理
-我们的 `chroot_manager.sh` 实现了类似 Linux Deploy 的完整容器管理功能:
+我们的 `cli.sh` 实现了类似 Linux Deploy 的完整容器管理功能:
 
 1. **正确的挂载顺序**: 根文件系统 → dev → sys → proc → pts → shm
 2. **智能资源管理**: 自动检测和清理占用资源的进程  

@@ -9,8 +9,9 @@ setup_permissions() {
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local scripts=(
         "$script_dir/termux_all_in_one.sh"
-        "$script_dir/chroot_manager.sh"
+        "$script_dir/cli.sh"
         "$script_dir/setup_aliases.sh"
+        "$script_dir/mount_config_manager.sh"
     )
     
     echo "设置脚本执行权限..."
@@ -36,17 +37,24 @@ alias trestart='bash ~/sh/termux/chroot/termux_all_in_one.sh restart'
 alias tstatus='bash ~/sh/termux/chroot/termux_all_in_one.sh status'
 alias tenter='bash ~/sh/termux/chroot/termux_all_in_one.sh enter'
 
-# Chroot Linux 管理
-alias cstart='bash ~/sh/termux/chroot/chroot_manager.sh start'
-alias cstop='bash ~/sh/termux/chroot/chroot_manager.sh stop'
-alias crestart='bash ~/sh/termux/chroot/chroot_manager.sh restart'
-alias cstatus='bash ~/sh/termux/chroot/chroot_manager.sh status'
-alias cshell='bash ~/sh/termux/chroot/chroot_manager.sh shell'
-alias cexec='bash ~/sh/termux/chroot/chroot_manager.sh exec'
+# Chroot Linux 管理 (使用合并后的cli.sh)
+alias cstart='bash ~/sh/termux/chroot/cli.sh start'
+alias cstop='bash ~/sh/termux/chroot/cli.sh stop'
+alias crestart='bash ~/sh/termux/chroot/cli.sh restart'
+alias cstatus='bash ~/sh/termux/chroot/cli.sh status'
+alias cshell='bash ~/sh/termux/chroot/cli.sh shell'
+alias cexec='bash ~/sh/termux/chroot/cli.sh exec'
 
 # X11 和图形界面
 alias x11start='bash ~/sh/termux/server_x11.sh'
 alias x11stop='sudo killall Xvfb'
+
+# 挂载配置管理
+alias mlist='bash ~/sh/termux/chroot/mount_config_manager.sh list'
+alias medit='bash ~/sh/termux/chroot/mount_config_manager.sh edit'
+alias mverify='bash ~/sh/termux/chroot/mount_config_manager.sh verify'
+alias mstatus='bash ~/sh/termux/chroot/mount_config_manager.sh status'
+alias mconfig='bash ~/sh/termux/chroot/mount_config_manager.sh'
 
 # 常用工具别名
 alias ll='ls -la'

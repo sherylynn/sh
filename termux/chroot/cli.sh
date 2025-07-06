@@ -17,6 +17,9 @@ TERMUX_DIR="/data/data/com.termux/files"
 
 SDCARD_DIR="/sdcard"
 
+# 挂载配置文件路径
+MOUNT_CONFIG="$(dirname "${BASH_SOURCE[0]}")/mount_config.conf"
+
 #user config
 USER_NAME=root
 VNC_DISPLAY=0
@@ -119,6 +122,129 @@ make_dirs() {
   return 0
 }
 
+# 检查debian安装状态
+check_debian_installed() {
+  # 检查多个可能的debian安装位置
+  local debian_paths=(
+    "$DEBIAN_DIR"
+    "$DEBIAN_OLD_DIR"
+    "/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian"
+  )
+  
+  for debian_path in "${debian_paths[@]}"; do
+    if [ -d "$debian_path" ] && [ -f "$debian_path/bin/dpkg" ]; then
+      # 找到有效的debian安装，更新DEBIAN_DIR
+      DEBIAN_DIR="$debian_path"
+      echo "找到Debian安装: $DEBIAN_DIR" >&2
+      return 0
+    fi
+  done
+  
+  echo "未找到Debian安装，请先运行: bash ~/sh/termux/chroot/installer_ruri.sh" >&2
+  return 1
+}
+
+# 读取挂载配置文件
+load_mount_config() {
+  if [ ! -f "$MOUNT_CONFIG" ]; then
+    echo "警告: 挂载配置文件不存在: $MOUNT_CONFIG" >&2
+    return 1
+  fi
+  
+  # 导出当前变量供配置文件使用
+  export DEBIAN_DIR CHROOT_DIR PREFIX
+  
+  echo "加载挂载配置: $MOUNT_CONFIG" >&2
+}
+
+# 解析配置行
+parse_mount_config_line() {
+  local line="$1"
+  
+  # 跳过注释和空行
+  case "$line" in
+    \#*|'') return 1 ;;
+  esac
+  
+  # 使用envsubst替换变量(如果可用)或使用eval
+  if command -v envsubst >/dev/null 2>&1; then
+    line=$(echo "$line" | envsubst)
+  else
+    line=$(eval echo "\"$line\"")
+  fi
+  
+  # 解析格式: name:source:target:options:enabled
+  IFS=':' read -r mount_name source_path target_path mount_options enabled <<< "$line"
+  
+  # 检查必要字段
+  if [ -z "$mount_name" ] || [ -z "$source_path" ] || [ -z "$target_path" ]; then
+    echo "配置行格式错误: $line" >&2
+    return 1
+  fi
+  
+  # 输出解析后的值
+  echo "$mount_name" "$source_path" "$target_path" "$mount_options" "$enabled"
+  return 0
+}
+
+# 根据配置文件挂载
+mount_from_config() {
+  local mount_name="$1"
+  
+  if [ ! -f "$MOUNT_CONFIG" ]; then
+    echo "配置文件不存在，使用默认挂载方式" >&2
+    return 1
+  fi
+  
+  # 导出变量供配置文件使用
+  export DEBIAN_DIR CHROOT_DIR PREFIX
+  
+  while IFS= read -r line; do
+    local parsed
+    if parsed=$(parse_mount_config_line "$line"); then
+      read -r cfg_name source target options enabled <<< "$parsed"
+      
+      if [ "$cfg_name" = "$mount_name" ] && [ "$enabled" = "1" ]; then
+        echo -n "$mount_name ($source -> $target) ... "
+        
+        # 检查是否已挂载
+        if is_mounted "$target"; then
+          echo "skip"
+          return 0
+        fi
+        
+        # 创建目标目录
+        [ -d "$target" ] || sudo mkdir -p "$target"
+        
+        # 根据挂载选项决定挂载类型
+        case "$options" in
+          *tmpfs*)
+            sudo $busybox mount -t tmpfs -o "$options" tmpfs "$target"
+            ;;
+          *sysfs*)
+            sudo $busybox mount -t sysfs sysfs "$target"
+            ;;
+          *proc*)
+            sudo $busybox mount -t proc proc "$target"
+            ;;
+          *bind*)
+            sudo $busybox mount -o "$options" "$source" "$target"
+            ;;
+          *)
+            sudo $busybox mount -o bind "$source" "$target"
+            ;;
+        esac
+        
+        is_ok "fail" "done" || return 1
+        return 0
+      fi
+    fi
+  done < "$MOUNT_CONFIG"
+  
+  echo "未找到挂载配置: $mount_name" >&2
+  return 1
+}
+
 chroot_exec() {
   unset TMP TEMP TMPDIR LD_PRELOAD LD_DEBUG
   local path="${PATH}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -142,7 +268,17 @@ container_mounted() {
 }
 
 mount_part() {
-  case "$1" in
+  local part="$1"
+  
+  # 优先尝试从配置文件挂载
+  if mount_from_config "$part"; then
+    return 0
+  fi
+  
+  # 配置文件失败，使用默认方式
+  echo "使用默认挂载方式: $part" >&2
+  
+  case "$part" in
     #data)
     #    echo -n "/data ... "
     #    sudo $busybox mount -o remount,dev,suid /data
@@ -250,13 +386,45 @@ mount_part() {
 }
 
 container_mount() {
+  # 首先检查debian是否已安装
+  if ! check_debian_installed; then
+    return 1
+  fi
+  
+  # 加载挂载配置
+  load_mount_config
+  
   if [ $# -eq 0 ]; then
-    #container_mount data dev sys proc pts shm sdcard tmp
-    container_mount root dev sys proc pts shm sdcard tmp
-    return $?
+    # 使用配置文件中启用的挂载点，如果配置文件不存在则使用默认
+    if [ -f "$MOUNT_CONFIG" ]; then
+      echo "从配置文件挂载容器: $MOUNT_CONFIG"
+      local mount_names=()
+      
+      # 导出变量
+      export DEBIAN_DIR CHROOT_DIR PREFIX
+      
+      # 读取所有启用的挂载点
+      while IFS= read -r line; do
+        local parsed
+        if parsed=$(parse_mount_config_line "$line"); then
+          read -r cfg_name source target options enabled <<< "$parsed"
+          if [ "$enabled" = "1" ]; then
+            mount_names+=("$cfg_name")
+          fi
+        fi
+      done < "$MOUNT_CONFIG"
+      
+      # 按顺序挂载
+      container_mount "${mount_names[@]}"
+      return $?
+    else
+      echo "配置文件不存在，使用默认挂载顺序"
+      container_mount root dev sys proc pts shm sdcard tmp
+      return $?
+    fi
   fi
 
-  echo "Mounting the container: "
+  echo "挂载容器组件: "
   local item
   for item in $*; do
     mount_part ${item} || return 1
@@ -462,3 +630,252 @@ clean_tmp() {
   #sudo rm -rf $DEBIAN_DIR/etc/xrdp/km-*.ini
   #default /etc/xrdp/sesman.ini X11DisplayOffset=10
 }
+
+#===============================================================================
+# 高级 Chroot 管理功能 (从 chroot_manager.sh 合并)
+#===============================================================================
+
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 高级日志函数
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+log_debug() {
+    echo -e "${BLUE}[DEBUG]${NC} $1"
+}
+
+# 高级chroot容器管理 - 启动
+start_chroot_container() {
+    log_info "启动chroot Linux容器..."
+    
+    # 检查是否已经挂载
+    if container_mounted; then
+        log_warn "容器已经在运行中"
+        return 0
+    fi
+    
+    # 检查环境安装状态
+    if ! check_debian_installed; then
+        return 1
+    fi
+    
+    log_debug "开始挂载文件系统..."
+    
+    # 使用配置文件驱动的挂载系统
+    if ! container_mount; then
+        log_error "挂载失败"
+        return 1
+    fi
+    
+    # 配置网络
+    log_debug "配置网络..."
+    chroot_exec -u root bash -c 'echo "nameserver 8.8.8.8" > /etc/resolv.conf' 2>/dev/null || true
+    chroot_exec -u root bash -c 'echo "127.0.0.1 localhost" > /etc/hosts' 2>/dev/null || true
+    
+    # 启动dbus服务
+    log_debug "启动D-Bus服务..."
+    config_dbus
+    start_dbus
+    
+    # 设置环境变量
+    export DISPLAY=:1
+    export PULSE_RUNTIME_PATH=/run/user/$(id -u)/pulse
+    
+    log_info "Chroot Linux容器启动完成！"
+    return 0
+}
+
+# 高级chroot容器管理 - 停止
+stop_chroot_container() {
+    log_info "停止chroot Linux容器..."
+    
+    if ! container_mounted; then
+        log_warn "容器未运行"
+        return 0
+    fi
+    
+    # 停止服务
+    log_debug "停止D-Bus服务..."
+    stop_dbus 2>/dev/null || true
+    
+    log_debug "停止VNC服务..."
+    stop_vnc 2>/dev/null || true
+    
+    log_debug "停止初始化服务..."
+    stop_init 2>/dev/null || true
+    
+    # 使用现有的 container_umount 函数
+    log_debug "卸载文件系统..."
+    container_umount
+    
+    log_info "Chroot Linux容器已停止"
+    return 0
+}
+
+# 检查chroot状态
+check_chroot_status() {
+    echo -e "${BLUE}=== Chroot Linux 状态 ===${NC}"
+    
+    # 检查debian安装
+    if check_debian_installed 2>/dev/null; then
+        echo -e "Debian安装: ${GREEN}已安装${NC} ($DEBIAN_DIR)"
+    else
+        echo -e "Debian安装: ${RED}未安装${NC}"
+    fi
+    
+    # 检查挂载状态
+    if container_mounted; then
+        echo -e "容器状态: ${GREEN}已挂载${NC}"
+    else
+        echo -e "容器状态: ${RED}未挂载${NC}"
+    fi
+    
+    # 检查D-Bus服务
+    if is_started /run/dbus/pid /run/dbus/messagebus.pid /run/messagebus.pid /var/run/dbus/pid /var/run/dbus/messagebus.pid /var/run/messagebus.pid >/dev/null 2>&1; then
+        echo -e "D-Bus服务: ${GREEN}运行中${NC}"
+    else
+        echo -e "D-Bus服务: ${RED}已停止${NC}"
+    fi
+    
+    # 显示挂载点信息
+    if container_mounted; then
+        echo ""
+        echo -e "${BLUE}挂载点信息:${NC}"
+        mount | grep "$CHROOT_DIR" | while read -r line; do
+            echo "  $line"
+        done
+    fi
+    
+    # 显示配置文件状态
+    if [ -f "$MOUNT_CONFIG" ]; then
+        echo -e "挂载配置: ${GREEN}已加载${NC} ($MOUNT_CONFIG)"
+    else
+        echo -e "挂载配置: ${YELLOW}使用默认${NC}"
+    fi
+}
+
+# 进入chroot shell
+enter_chroot_shell() {
+    if ! container_mounted; then
+        log_error "容器未运行，请先启动容器"
+        echo "  使用: start_chroot_container 或 cstart"
+        return 1
+    fi
+    
+    log_info "进入chroot Linux环境..."
+    chroot_exec -u root
+}
+
+# 在chroot中执行命令
+exec_chroot_command() {
+    local command="$*"
+    
+    if [ -z "$command" ]; then
+        log_error "请提供要执行的命令"
+        echo "  使用: exec_chroot_command <命令>"
+        return 1
+    fi
+    
+    if ! container_mounted; then
+        log_error "容器未运行，请先启动容器"
+        return 1
+    fi
+    
+    log_info "在chroot中执行: $command"
+    chroot_exec -u root bash -c "$command"
+}
+
+# 重启chroot容器
+restart_chroot_container() {
+    log_info "重启chroot Linux容器..."
+    stop_chroot_container
+    sleep 2
+    start_chroot_container
+}
+
+# 命令行接口
+chroot_manager_cli() {
+    case "${1:-help}" in
+        start|s)
+            start_chroot_container
+            ;;
+        stop|st)
+            stop_chroot_container
+            ;;
+        restart|r)
+            restart_chroot_container
+            ;;
+        status|stat)
+            check_chroot_status
+            ;;
+        shell|sh)
+            enter_chroot_shell
+            ;;
+        exec|e)
+            shift
+            exec_chroot_command "$@"
+            ;;
+        mount|m)
+            if ! container_mounted; then
+                container_mount
+            else
+                echo "容器已挂载"
+            fi
+            ;;
+        umount|u)
+            if container_mounted; then
+                container_umount
+            else
+                echo "容器未挂载"
+            fi
+            ;;
+        help|h|*)
+            cat << EOF
+${BLUE}Chroot Linux 管理命令${NC}
+
+${GREEN}基础操作:${NC}
+  ${YELLOW}start${NC}     - 启动chroot容器
+  ${YELLOW}stop${NC}      - 停止chroot容器  
+  ${YELLOW}restart${NC}   - 重启chroot容器
+  ${YELLOW}status${NC}    - 查看容器状态
+
+${GREEN}交互操作:${NC}
+  ${YELLOW}shell${NC}     - 进入chroot shell
+  ${YELLOW}exec${NC} <cmd> - 在chroot中执行命令
+
+${GREEN}挂载操作:${NC}
+  ${YELLOW}mount${NC}     - 仅挂载文件系统
+  ${YELLOW}umount${NC}    - 仅卸载文件系统
+
+${GREEN}示例:${NC}
+  chroot_manager_cli start
+  chroot_manager_cli shell
+  chroot_manager_cli exec "apt update"
+  chroot_manager_cli status
+
+${GREEN}如果作为独立脚本运行:${NC}
+  bash ~/sh/termux/chroot/cli.sh start
+EOF
+            ;;
+    esac
+}
+
+# 如果直接运行此脚本，则调用命令行接口
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    chroot_manager_cli "$@"
+fi

@@ -89,12 +89,7 @@ mount_chroot() {
         return 0
     fi
     
-    # 检查debian目录是否存在
-    if [ ! -d "$DEBIAN_DIR" ] || [ ! -e "$DEBIAN_DIR/bin/dpkg" ]; then
-        log "Debian环境不存在，需要先安装"
-        return 1
-    fi
-    
+    # 使用改进的检测逻辑 (已集成在container_mount中)
     # 挂载容器
     container_mount || error "挂载chroot环境失败"
     
