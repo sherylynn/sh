@@ -44,7 +44,14 @@ alias crestart='bash ~/sh/termux/chroot/cli.sh restart'
 alias cstatus='bash ~/sh/termux/chroot/cli.sh status'
 alias cshell='bash ~/sh/termux/chroot/cli.sh shell'
 alias cexec='bash ~/sh/termux/chroot/cli.sh exec'
+
+# 卸载相关 (智能卸载 vs 快速卸载)
+alias cumount='bash ~/sh/termux/chroot/cli.sh umount'
+alias cfastum='bash ~/sh/termux/chroot/cli.sh fast-umount'
 alias cforce='bash ~/sh/termux/chroot/cli.sh force-cleanup'
+
+# 卸载超时配置
+alias ctimeout='bash ~/sh/termux/chroot/cli.sh set-timeout'
 
 # X11 和图形界面
 alias x11start='bash ~/sh/termux/server_x11.sh'
@@ -103,7 +110,10 @@ alias gl='git log --oneline'
 alias gd='git diff'
 
 echo "✅ Termux 别名配置已加载！"
-echo "📋 可用的主要命令: tstart, tstop, tstatus, cshell, cstart, cstop, cforce"
+echo "📋 可用的主要命令:"
+echo "   🔧 整体服务: tstart, tstop, tstatus"
+echo "   🐧 Linux容器: cstart, cstop, cshell"  
+echo "   ⚡ 快速卸载: cfastum, cumount, cforce"
 echo "💡 运行 'alias | grep -E \"^(t|c|x11)\"' 查看所有 Termux 别名"
 EOF
 
@@ -119,6 +129,12 @@ echo "   tstart   - 启动所有服务"
 echo "   tstop    - 停止所有服务"
 echo "   tstatus  - 查看状态"
 echo "   cshell   - 进入 Linux 环境"
+echo ""
+echo "⚡ 快速卸载命令:"
+echo "   cumount  - 智能卸载 (倒计时可跳过)"
+echo "   cfastum  - 快速强制卸载 (最快)"
+echo "   cforce   - 应急清理 (失败时用)"
+echo "   ctimeout - 设置卸载超时时间"
 echo ""
 echo "📋 查看所有别名:"
 echo "   alias | grep -E '^(t|c|x11)'" 

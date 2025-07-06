@@ -31,6 +31,10 @@ INIT_LEVEL=3
 # INIT_USER: 执行初始化脚本的用户 (root)
 # INIT_ASYNC: 是否异步启动服务 (true=并行启动，false=串行启动)
 
+# 卸载超时配置
+UMOUNT_TIMEOUT="${UMOUNT_TIMEOUT:-5}"         # 进程终止超时时间(秒)
+UMOUNT_FORCE_MODE="${UMOUNT_FORCE_MODE:-false}"  # 快速强制模式
+
 # 注意: VNC相关功能已移除，由用户的noVNC.sh通过sysv初始化系统管理
 # 参考: win-git/server_configure.sh 和 win-git/init_d_noVNC.sh
 is_ok() {
@@ -477,13 +481,45 @@ container_mount() {
   return 0
 }
 
+# 倒计时函数
+countdown_with_interrupt() {
+    local timeout="$1"
+    local message="$2"
+    local skip_message="${3:-按任意键跳过等待并立即强制杀死进程}"
+    
+    echo -e "\n${message}"
+    echo -e "${skip_message}"
+    
+    for i in $(seq $timeout -1 1); do
+        printf "\r倒计时: %d秒 (按任意键跳过)" "$i"
+        
+        # 检查是否有按键输入 (使用read超时)
+        if read -t 1 -n 1 -s; then
+            echo -e "\n⚡ 用户跳过等待，立即强制终止！"
+            return 1  # 返回1表示用户选择跳过
+        fi
+    done
+    
+    echo -e "\n⏰ 倒计时结束，强制终止进程！"
+    return 0  # 返回0表示正常超时
+}
+
 container_umount() {
   container_mounted || {
     echo "The container is not mounted."
     return 0
   }
 
-  echo -n "Release resources ... "
+  echo "🔄 开始卸载容器..."
+  
+  # 检查是否启用快速强制模式
+  if [ "$UMOUNT_FORCE_MODE" = "true" ]; then
+    echo "⚡ 快速强制模式：直接强制杀死所有进程并卸载"
+    force_cleanup_chroot
+    return $?
+  fi
+  
+  echo -n "🔍 搜索占用进程... "
   
   # 参考linuxdeploy的简洁高效释放逻辑
   local pids=""
@@ -508,34 +544,64 @@ container_umount() {
     fi
   fi
   
-  # 渐进式终止进程
+  # 进程终止逻辑
   if [ -n "$pids" ]; then
-    echo -n "found PIDs: $pids ... "
+    echo "找到进程: $pids"
     
-    # 第一步: TERM信号
+    echo "🔸 第一阶段: 发送TERM信号 (温和终止)..."
     for pid in $pids; do
-      [ -e "/proc/$pid" ] && sudo kill -TERM "$pid" 2>/dev/null
+      if [ -e "/proc/$pid" ]; then
+        echo "  → 终止进程 $pid"
+        sudo kill -TERM "$pid" 2>/dev/null
+      fi
     done
-    sleep 1
     
-    # 第二步: KILL信号
+    # 倒计时等待进程自主退出
+    if ! countdown_with_interrupt "$UMOUNT_TIMEOUT" \
+        "⏳ 等待进程自主退出 (${UMOUNT_TIMEOUT}秒超时)..." \
+        "💡 提示: 按任意键可跳过等待直接强制杀死"; then
+      echo "🚀 用户选择跳过等待"
+    fi
+    
+    echo "🔸 第二阶段: 发送KILL信号 (强制终止)..."
     for pid in $pids; do
-      [ -e "/proc/$pid" ] && sudo kill -KILL "$pid" 2>/dev/null
+      if [ -e "/proc/$pid" ]; then
+        echo "  → 强制杀死进程 $pid"
+        sudo kill -KILL "$pid" 2>/dev/null
+      fi
     done
-    sleep 1
+    
+    # 短暂等待确保进程完全退出
+    sleep 0.5
+    
+    # 验证进程是否全部退出
+    local remaining_pids=""
+    for pid in $pids; do
+      [ -e "/proc/$pid" ] && remaining_pids="$remaining_pids $pid"
+    done
+    
+    if [ -n "$remaining_pids" ]; then
+      echo "⚠️  警告: 仍有进程存活: $remaining_pids"
+      echo "🔥 使用fuser -k强制清理..."
+      sudo fuser -k -KILL "${CHROOT_DIR}" 2>/dev/null || true
+    else
+      echo "✅ 所有进程已成功终止"
+    fi
+  else
+    echo "无进程占用"
   fi
-  
-  is_ok "fail" "done"
 
-  echo "Unmounting partitions: "
+  echo ""
+  echo "🗂️  开始卸载分区："
   local is_mnt=0
+  local failed_mounts=""
   
   # 参考linuxdeploy: 获取挂载点，按深度排序
   local all_mounts=$(awk '$2 ~ "^'${CHROOT_DIR%/}'" {print $2}' /proc/mounts | sort -r)
   
   for mount_point in $all_mounts; do
     local part_name=$(echo ${mount_point} | sed "s|^${CHROOT_DIR%/}/*|/|g")
-    echo -n "${part_name} ... "
+    echo -n "  📂 卸载 ${part_name} ... "
     
     # linuxdeploy风格: 直接尝试多种卸载方法
     if sudo $busybox umount "${mount_point}" 2>/dev/null || \
@@ -544,18 +610,35 @@ container_umount() {
        sudo umount -l "${mount_point}" 2>/dev/null || \
        sudo $busybox umount -f "${mount_point}" 2>/dev/null || \
        sudo umount -f "${mount_point}" 2>/dev/null; then
-      echo "done"
+      echo "✅ 完成"
     else
-      echo "skip (busy)"
+      echo "❌ 失败 (busy)"
+      failed_mounts="$failed_mounts $mount_point"
     fi
     
     is_mnt=1
   done
   
-  [ "${is_mnt}" -eq 1 ]
-  is_ok " ...nothing mounted"
-
-  return 0
+  # 处理卸载结果
+  if [ -n "$failed_mounts" ]; then
+    echo ""
+    echo "⚠️  以下挂载点卸载失败:"
+    for mount in $failed_mounts; do
+      echo "   $mount"
+    done
+    echo ""
+    echo "💡 建议使用强制清理: cforce 或 force_cleanup_chroot"
+    echo "   这会强制终止所有相关进程并卸载挂载点"
+    return 1
+  elif [ "${is_mnt}" -eq 1 ]; then
+    echo ""
+    echo "🎉 容器卸载完成！"
+    return 0
+  else
+    echo ""
+    echo "ℹ️  没有发现挂载点"
+    return 0
+  fi
 }
 
 before_mount_fun() {
@@ -831,8 +914,28 @@ start_chroot_container() {
     
     # 配置网络
     log_debug "配置网络..."
+    
+    # 配置DNS解析器
     chroot_exec -u root bash -c 'echo "nameserver 8.8.8.8" > /etc/resolv.conf' 2>/dev/null || true
-    chroot_exec -u root bash -c 'echo "127.0.0.1 localhost" > /etc/hosts' 2>/dev/null || true
+    chroot_exec -u root bash -c 'echo "nameserver 1.1.1.1" >> /etc/resolv.conf' 2>/dev/null || true
+    
+    # 强制重新创建 hosts 文件（防止空文件问题）
+    log_debug "配置 hosts 文件..."
+    chroot_exec -u root bash -c '
+        cat > /etc/hosts << "EOF"
+127.0.0.1   localhost localhost.localdomain
+::1         localhost ip6-localhost ip6-loopback
+127.0.1.1   $(hostname)
+127.0.0.1   $(hostname)
+EOF
+        echo "hosts 文件已重新创建:"
+        cat /etc/hosts
+    ' 2>/dev/null || {
+        log_warn "网络配置失败，使用备用方法..."
+        # 备用方法：直接写入文件
+        echo "127.0.0.1 localhost localhost.localdomain" | sudo tee "${CHROOT_DIR}/etc/hosts" >/dev/null
+        echo "::1 localhost ip6-localhost ip6-loopback" | sudo tee -a "${CHROOT_DIR}/etc/hosts" >/dev/null
+    }
     
     # 启动 sysv 初始化系统服务 (包括用户的noVNC等服务)
     log_debug "启动初始化系统服务 (级别 ${INIT_LEVEL})..."
@@ -1058,6 +1161,25 @@ chroot_manager_cli() {
                 echo "容器未挂载"
             fi
             ;;
+        fast-umount|fu)
+            if container_mounted; then
+                echo "🚀 启用快速强制卸载模式..."
+                UMOUNT_FORCE_MODE=true container_umount
+            else
+                echo "容器未挂载"
+            fi
+            ;;
+        set-timeout)
+            local new_timeout="$2"
+            if [[ "$new_timeout" =~ ^[0-9]+$ ]] && [ "$new_timeout" -gt 0 ] && [ "$new_timeout" -le 60 ]; then
+                export UMOUNT_TIMEOUT="$new_timeout"
+                echo "✅ 卸载超时时间已设置为: ${new_timeout}秒"
+                echo "💡 这个设置只在当前会话有效，重启后恢复默认值"
+            else
+                echo "❌ 无效的超时时间: $new_timeout"
+                echo "请输入1-60之间的数字"
+            fi
+            ;;
         force-cleanup|fc)
             log_warn "这是应急清理功能，只有在正常停止失败时使用！"
             read -p "确定要强制清理挂载点吗？(y/N): " -n 1 -r
@@ -1073,28 +1195,45 @@ chroot_manager_cli() {
 ${BLUE}Chroot Linux 管理命令${NC}
 
 ${GREEN}基础操作:${NC}
-  ${YELLOW}start${NC}     - 启动chroot容器
-  ${YELLOW}stop${NC}      - 停止chroot容器  
-  ${YELLOW}restart${NC}   - 重启chroot容器
-  ${YELLOW}status${NC}    - 查看容器状态
+  ${YELLOW}start${NC}         - 启动chroot容器
+  ${YELLOW}stop${NC}          - 停止chroot容器  
+  ${YELLOW}restart${NC}       - 重启chroot容器
+  ${YELLOW}status${NC}        - 查看容器状态
 
 ${GREEN}交互操作:${NC}
-  ${YELLOW}shell${NC}     - 进入chroot shell
-  ${YELLOW}exec${NC} <cmd> - 在chroot中执行命令
+  ${YELLOW}shell${NC}         - 进入chroot shell
+  ${YELLOW}exec${NC} <cmd>     - 在chroot中执行命令
 
 ${GREEN}挂载操作:${NC}
-  ${YELLOW}mount${NC}     - 仅挂载文件系统
-  ${YELLOW}umount${NC}    - 仅卸载文件系统
-  ${YELLOW}force-cleanup${NC} - 强制清理挂载点(应急用)
+  ${YELLOW}mount${NC}         - 仅挂载文件系统
+  ${YELLOW}umount${NC}        - 智能卸载 (倒计时+可跳过)
+  ${YELLOW}fast-umount${NC}   - 快速强制卸载 (跳过所有等待)
+  ${YELLOW}force-cleanup${NC} - 应急清理挂载点
 
-${GREEN}示例:${NC}
+${GREEN}配置选项:${NC}
+  ${YELLOW}set-timeout${NC} <秒> - 设置卸载超时时间 (1-60秒)
+
+${GREEN}卸载模式说明:${NC}
+  🔹 ${YELLOW}umount${NC}        - 温和终止→倒计时等待→强制杀死 (用户可跳过)
+  🔹 ${YELLOW}fast-umount${NC}   - 直接强制杀死所有进程并卸载 (最快)
+  🔹 ${YELLOW}force-cleanup${NC} - 应急清理，当其他方法都失败时使用
+
+${GREEN}环境变量:${NC}
+  ${YELLOW}UMOUNT_TIMEOUT${NC}=${UMOUNT_TIMEOUT}      - 当前超时时间(秒)
+  ${YELLOW}UMOUNT_FORCE_MODE${NC}=${UMOUNT_FORCE_MODE}  - 快速强制模式
+
+${GREEN}常用示例:${NC}
   chroot_manager_cli start
   chroot_manager_cli shell
   chroot_manager_cli exec "apt update"
+  chroot_manager_cli umount               # 智能卸载(推荐)
+  chroot_manager_cli fast-umount          # 快速卸载
+  chroot_manager_cli set-timeout 10       # 设置10秒超时
   chroot_manager_cli status
 
 ${GREEN}如果作为独立脚本运行:${NC}
   bash ~/sh/termux/chroot/cli.sh start
+  bash ~/sh/termux/chroot/cli.sh fast-umount
 EOF
             ;;
     esac
