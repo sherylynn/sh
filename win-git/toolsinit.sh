@@ -565,7 +565,7 @@ alias proxy_wsl="wsl_proxy"
 
 proxy_adb() {
   wsl_adb
-  adb forward tcp:10808 tcp:10808
+  adb forward tcp:10808 tcp:1080868
   proxy_wsl
 }
 
@@ -682,12 +682,26 @@ quick_connect() {
   scrcpy_adb 192.168.1.133
 }
 
+# 快速连接到默认设备的大屏模式
+quick_connect_big() {
+  echo "正在连接到默认设备 192.168.1.133 (大屏模式)..."
+  scrcpy_big 192.168.1.133
+}
+
+# 快速连接到默认设备的新显示模式
+quick_connect_new() {
+  echo "正在连接到默认设备 192.168.1.133 (新显示模式)..."
+  scrcpy_new 192.168.1.133
+}
+
 alias scb='scrcpy_big'
 alias sca='scrcpy_new'
 alias sco='scrcpy_origin'
 alias scn='scrcpy_new'
 alias sc='scrcpy_adb'
 alias qc='quick_connect'
+alias qcb='quick_connect_big'
+alias qca='quick_connect_new'
 scrcpy_termux_hold_video() {
   scrcpy --turn-screen-off --no-audio --video-bit-rate 1 --max-fps 1 --verbosity error
 }
