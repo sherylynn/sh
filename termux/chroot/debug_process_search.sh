@@ -29,14 +29,14 @@ if command -v fuser >/dev/null 2>&1; then
     
     # 测试 fuser -v
     echo "  🔍 测试 fuser -v (详细模式)..."
-    local start_time=$(date +%s.%N)
-    local fuser_result=$(sudo fuser -v "${CHROOT_DIR}" 2>/dev/null)
-    local end_time=$(date +%s.%N)
-    local duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
+    start_time=$(date +%s.%N)
+    fuser_result=$(sudo fuser -v "${CHROOT_DIR}" 2>/dev/null)
+    end_time=$(date +%s.%N)
+    duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
     
     echo "    ⏱️  耗时: ${duration}秒"
     if [ -n "$fuser_result" ]; then
-        local pids=$(echo "$fuser_result" | awk 'NR>1 && $2~/^[0-9]+$/ {print $2}' | sort -u)
+        pids=$(echo "$fuser_result" | awk 'NR>1 && $2~/^[0-9]+$/ {print $2}' | sort -u)
         echo "    📋 找到进程: $pids"
         echo "    📊 进程数量: $(echo "$pids" | wc -w)"
     else
@@ -71,13 +71,13 @@ if command -v lsof >/dev/null 2>&1; then
     # 测试 lsof (非递归)
     echo "  🔍 测试 lsof (非递归)..."
     start_time=$(date +%s.%N)
-    local lsof_result=$(sudo lsof "${CHROOT_DIR}" 2>/dev/null)
+    lsof_result=$(sudo lsof "${CHROOT_DIR}" 2>/dev/null)
     end_time=$(date +%s.%N)
     duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
     
     echo "    ⏱️  耗时: ${duration}秒"
     if [ -n "$lsof_result" ]; then
-        local pids=$(echo "$lsof_result" | awk 'NR>1 {print $2}' | sort -u)
+        pids=$(echo "$lsof_result" | awk 'NR>1 {print $2}' | sort -u)
         echo "    📋 找到进程: $pids"
         echo "    📊 进程数量: $(echo "$pids" | wc -w)"
     else
@@ -113,13 +113,13 @@ if [ -n "$busybox" ] && sudo $busybox lsof >/dev/null 2>&1; then
     # 测试 busybox lsof
     echo "  🔍 测试 busybox lsof..."
     start_time=$(date +%s.%N)
-    local busybox_result=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}")
+    busybox_result=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}")
     end_time=$(date +%s.%N)
     duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
     
     echo "    ⏱️  耗时: ${duration}秒"
     if [ -n "$busybox_result" ]; then
-        local lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
+        lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
         if [ "${lsof_full}" -eq 0 ]; then
             pids=$(echo "$busybox_result" | awk '{print $1}' | uniq)
         else
@@ -140,7 +140,7 @@ echo ""
 echo "🔍 测试 /proc 扫描性能:"
 echo "  🔍 扫描 /proc 目录..."
 start_time=$(date +%s.%N)
-local proc_pids=""
+proc_pids=""
 for pid in /proc/[0-9]*; do
     [ -d "$pid" ] || continue
     pid_num=${pid##*/}

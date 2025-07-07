@@ -504,6 +504,65 @@ countdown_with_interrupt() {
     return 0  # 返回0表示正常超时
 }
 
+# 优化的快速进程搜索函数 - 基于性能测试结果
+find_processes_optimized() {
+    local chroot_dir="$1"
+    local timeout_seconds="${2:-5}"
+    
+    echo "🚀 使用优化搜索策略..."
+    local start_time=$(date +%s.%N)
+    local pids=""
+    local method=""
+    
+    # 策略1: fuser 简单模式 (最快，0.84秒)
+    if command -v fuser >/dev/null 2>&1; then
+        echo "  🔍 策略1: fuser 简单模式..."
+        local fuser_result=$(timeout 3 sudo fuser "${chroot_dir}" 2>/dev/null)
+        if [ -n "$fuser_result" ]; then
+            pids=$(echo "$fuser_result" | tr ' ' '\n' | grep -E '^[0-9]+$' | sort -u)
+            method="fuser_fast"
+            echo "    ✅ fuser 找到进程: $pids"
+        fi
+    fi
+    
+    # 策略2: lsof 非递归 (中等速度，2.5秒)
+    if [ -z "$pids" ] && command -v lsof >/dev/null 2>&1; then
+        echo "  🔍 策略2: lsof 非递归模式..."
+        local lsof_result=$(timeout 3 sudo lsof "${chroot_dir}" 2>/dev/null)
+        if [ -n "$lsof_result" ]; then
+            pids=$(echo "$lsof_result" | awk 'NR>1 {print $2}' | sort -u)
+            method="lsof_fast"
+            echo "    ✅ lsof 找到进程: $pids"
+        fi
+    fi
+    
+    # 策略3: lsof 递归 (最慢，29秒，但最全面)
+    if [ -z "$pids" ] && command -v lsof >/dev/null 2>&1; then
+        echo "  🔍 策略3: lsof 递归模式 (限时10秒)..."
+        local lsof_result=$(timeout 10 sudo lsof +D "${chroot_dir}" 2>/dev/null)
+        if [ -n "$lsof_result" ]; then
+            pids=$(echo "$lsof_result" | awk 'NR>1 {print $2}' | sort -u)
+            method="lsof_recursive"
+            echo "    ✅ lsof 递归找到进程: $pids"
+        fi
+    fi
+    
+    local end_time=$(date +%s.%N)
+    local duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
+    
+    echo "📊 优化搜索结果:"
+    echo "  ⏱️  耗时: ${duration}秒"
+    echo "  🔍 方法: ${method:-无}"
+    echo "  📋 进程: ${pids:-无}"
+    
+    if [ -n "$pids" ]; then
+        echo "$pids"
+        return 0
+    else
+        return 1
+    fi
+}
+
 container_umount() {
   container_mounted || {
     echo "The container is not mounted."
@@ -519,25 +578,35 @@ container_umount() {
     return $?
   fi
   
-  echo "🔍 开始搜索占用进程 (详细调试模式)..."
+  echo "🔍 开始搜索占用进程 (优化调试模式)..."
   local search_start_time=$(date +%s.%N)
+  local search_timeout="${UMOUNT_SEARCH_TIMEOUT:-5}"  # 默认5秒超时
   
-  # 参考linuxdeploy的简洁高效释放逻辑
-  local pids=""
-  local method_used=""
+  # 使用优化的搜索策略
+  local pids=$(find_processes_optimized "${CHROOT_DIR}" "${search_timeout}")
+  local method_used="optimized"
+  
+  # 如果优化搜索失败，回退到详细搜索
+  if [ -z "$pids" ]; then
+    echo "⚠️  优化搜索未找到进程，回退到详细搜索..."
+    # 参考linuxdeploy的简洁高效释放逻辑
+    local pids=""
+    local method_used=""
   
   # 方法1: 使用fuser查找进程(优先，最可靠)
-  echo "  🔍 方法1: 尝试 fuser..."
+  echo "  🔍 方法1: 尝试 fuser (简单模式)..."
   local fuser_start=$(date +%s.%N)
   if command -v fuser >/dev/null 2>&1; then
     echo "    ✓ fuser 命令可用，开始搜索..."
-    local fuser_result=$(sudo fuser -v "${CHROOT_DIR}" 2>/dev/null)
+    # 使用简单模式，避免详细模式的权限问题，且速度更快
+    local fuser_result=$(sudo fuser "${CHROOT_DIR}" 2>/dev/null)
     local fuser_end=$(date +%s.%N)
     local fuser_duration=$(echo "$fuser_end - $fuser_start" | bc -l 2>/dev/null || echo "0")
     echo "    ⏱️  fuser 耗时: ${fuser_duration}秒"
     
     if [ -n "$fuser_result" ]; then
-      pids=$(echo "$fuser_result" | awk 'NR>1 && $2~/^[0-9]+$/ {print $2}' | sort -u)
+      # 简单模式返回空格分隔的PID列表
+      pids=$(echo "$fuser_result" | tr ' ' '\n' | grep -E '^[0-9]+$' | sort -u)
       method_used="fuser"
       echo "    ✅ fuser 找到进程: $pids"
     else
@@ -547,13 +616,13 @@ container_umount() {
     echo "    ❌ fuser 命令不可用"
   fi
   
-  # 方法2: 使用lsof作为补充
+  # 方法2: 使用lsof作为补充 (优先非递归，避免29秒的慢速)
   if [ -z "$pids" ]; then
-    echo "  🔍 方法2: 尝试 lsof (递归搜索)..."
+    echo "  🔍 方法2: 尝试 lsof (非递归模式)..."
     local lsof_start=$(date +%s.%N)
     if command -v lsof >/dev/null 2>&1; then
-      echo "    ✓ lsof 命令可用，开始递归搜索..."
-      local lsof_result=$(sudo lsof +D "${CHROOT_DIR}" 2>/dev/null)
+      echo "    ✓ lsof 命令可用，开始非递归搜索..."
+      local lsof_result=$(sudo lsof "${CHROOT_DIR}" 2>/dev/null)
       local lsof_end=$(date +%s.%N)
       local lsof_duration=$(echo "$lsof_end - $lsof_start" | bc -l 2>/dev/null || echo "0")
       echo "    ⏱️  lsof 耗时: ${lsof_duration}秒"
@@ -563,7 +632,21 @@ container_umount() {
         method_used="lsof"
         echo "    ✅ lsof 找到进程: $pids"
       else
-        echo "    ℹ️  lsof 未找到进程"
+        echo "    ℹ️  lsof 未找到进程，尝试递归模式..."
+        # 如果非递归失败，尝试递归模式（但设置超时）
+        lsof_start=$(date +%s.%N)
+        lsof_result=$(timeout 10 sudo lsof +D "${CHROOT_DIR}" 2>/dev/null)
+        lsof_end=$(date +%s.%N)
+        lsof_duration=$(echo "$lsof_end - $lsof_start" | bc -l 2>/dev/null || echo "0")
+        echo "    ⏱️  lsof 递归耗时: ${lsof_duration}秒"
+        
+        if [ -n "$lsof_result" ]; then
+          pids=$(echo "$lsof_result" | awk 'NR>1 {print $2}' | sort -u)
+          method_used="lsof_recursive"
+          echo "    ✅ lsof 递归找到进程: $pids"
+        else
+          echo "    ℹ️  lsof 递归也未找到进程"
+        fi
       fi
     else
       echo "    ❌ lsof 命令不可用"
@@ -597,14 +680,21 @@ container_umount() {
       echo "    ❌ busybox lsof 不可用"
     fi
   fi
+  fi  # 回退搜索结束
   
   # 计算总搜索时间
   local search_end_time=$(date +%s.%N)
   local total_search_duration=$(echo "$search_end_time - $search_start_time" | bc -l 2>/dev/null || echo "0")
   
+  # 检查是否超时
+  if (( $(echo "$total_search_duration > $search_timeout" | bc -l 2>/dev/null || echo "0") )); then
+    echo "⚠️  搜索超时 (${total_search_duration}秒 > ${search_timeout}秒)"
+  fi
+  
   echo ""
   echo "📊 进程搜索统计:"
   echo "  ⏱️  总搜索耗时: ${total_search_duration}秒"
+  echo "  ⏱️  超时设置: ${search_timeout}秒"
   echo "  🔍 使用的方法: ${method_used:-无}"
   echo "  📋 找到的进程: ${pids:-无}"
   

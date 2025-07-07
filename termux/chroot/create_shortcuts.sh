@@ -177,6 +177,34 @@ echo "🔍 启动进程搜索性能调试..."
 bash "$SCRIPT_DIR/debug_process_search.sh"
 EOF
 
+# 8. 创建 umount_fast.sh - 快速卸载 (使用优化搜索)
+cat > "$SHORTCUTS_DIR/umount_fast.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# 快速卸载 chroot 容器 (使用优化进程搜索)
+
+# 设置脚本路径
+SCRIPT_DIR="$HOME/sh/termux/chroot"
+
+# 检查脚本是否存在
+if [ ! -f "$SCRIPT_DIR/cli.sh" ]; then
+    echo "❌ 脚本不存在: $SCRIPT_DIR/cli.sh"
+    echo "请先运行: bash ~/sh/termux/chroot/setup_aliases.sh"
+    exit 1
+fi
+
+# 设置快速搜索超时 (3秒)
+export UMOUNT_SEARCH_TIMEOUT=3
+
+# 快速卸载
+echo "🚀 快速卸载 chroot 容器 (优化搜索)..."
+bash "$SCRIPT_DIR/cli.sh" umount
+
+# 显示状态
+echo ""
+echo "📊 容器状态:"
+bash "$SCRIPT_DIR/cli.sh" status
+EOF
+
 # 设置执行权限
 chmod +x "$SHORTCUTS_DIR"/*.sh
 
@@ -185,13 +213,14 @@ echo ""
 echo "📁 快捷方式位置: $SHORTCUTS_DIR"
 echo ""
 echo "🔧 可用的快捷方式:"
-echo "  📱 tstart.sh   - 启动所有服务"
-echo "  🛑 tstop.sh    - 停止所有服务"
-echo "  🐧 cstart.sh   - 启动 chroot 容器"
-echo "  🛑 cstop.sh    - 停止 chroot 容器"
-echo "  💻 cshell.sh   - 进入 chroot shell"
-echo "  📊 tstatus.sh  - 查看所有状态"
-echo "  🔍 debug.sh    - 进程搜索性能调试"
+echo "  📱 tstart.sh     - 启动所有服务"
+echo "  🛑 tstop.sh      - 停止所有服务"
+echo "  🐧 cstart.sh     - 启动 chroot 容器"
+echo "  🛑 cstop.sh      - 停止 chroot 容器"
+echo "  💻 cshell.sh     - 进入 chroot shell"
+echo "  📊 tstatus.sh    - 查看所有状态"
+echo "  🔍 debug.sh      - 进程搜索性能调试"
+echo "  🚀 umount_fast.sh - 快速卸载 (优化搜索)"
 echo ""
 echo "💡 使用方法:"
 echo "  1. 在 Termux 中运行: bash ~/sh/termux/chroot/create_shortcuts.sh"
