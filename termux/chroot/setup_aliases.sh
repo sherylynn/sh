@@ -27,6 +27,12 @@ setup_permissions() {
 # 配置别名
 setup_permissions
 
+# 创建快捷方式
+echo "🔧 创建 Termux 快捷方式..."
+bash "$(dirname "${BASH_SOURCE[0]}")/create_shortcuts.sh" >/dev/null 2>&1 || {
+    echo "⚠️  快捷方式创建失败，但不影响别名配置"
+}
+
 tee ${TOOLSRC} <<-'EOF'
 # === Termux 便捷别名 (通过toolsRC管理) ===
 
@@ -109,12 +115,15 @@ alias gp='git push'
 alias gl='git log --oneline'
 alias gd='git diff'
 
-echo "✅ Termux 别名配置已加载！"
-echo "📋 可用的主要命令:"
-echo "   🔧 整体服务: tstart, tstop, tstatus"
-echo "   🐧 Linux容器: cstart, cstop, cshell"  
-echo "   ⚡ 快速卸载: cfastum, cumount, cforce"
-echo "💡 运行 'alias | grep -E \"^(t|c|x11)\"' 查看所有 Termux 别名"
+# 只在 Termux 环境下显示提示
+if [ -n "$PREFIX" ] && [[ "$PREFIX" == *"termux"* ]]; then
+    echo "✅ Termux 别名配置已加载！"
+    echo "📋 可用的主要命令:"
+    echo "   🔧 整体服务: tstart, tstop, tstatus"
+    echo "   🐧 Linux容器: cstart, cstop, cshell"  
+    echo "   ⚡ 快速卸载: cfastum, cumount, cforce"
+    echo "💡 运行 'alias | grep -E \"^(t|c|x11)\"' 查看所有 Termux 别名"
+fi
 EOF
 
 echo "🎉 别名配置完成！"
