@@ -519,35 +519,98 @@ container_umount() {
     return $?
   fi
   
-  echo -n "🔍 搜索占用进程... "
+  echo "🔍 开始搜索占用进程 (详细调试模式)..."
+  local search_start_time=$(date +%s.%N)
   
   # 参考linuxdeploy的简洁高效释放逻辑
   local pids=""
+  local method_used=""
   
   # 方法1: 使用fuser查找进程(优先，最可靠)
+  echo "  🔍 方法1: 尝试 fuser..."
+  local fuser_start=$(date +%s.%N)
   if command -v fuser >/dev/null 2>&1; then
-    pids=$(sudo fuser -v "${CHROOT_DIR}" 2>/dev/null | awk 'NR>1 && $2~/^[0-9]+$/ {print $2}' | sort -u)
+    echo "    ✓ fuser 命令可用，开始搜索..."
+    local fuser_result=$(sudo fuser -v "${CHROOT_DIR}" 2>/dev/null)
+    local fuser_end=$(date +%s.%N)
+    local fuser_duration=$(echo "$fuser_end - $fuser_start" | bc -l 2>/dev/null || echo "0")
+    echo "    ⏱️  fuser 耗时: ${fuser_duration}秒"
+    
+    if [ -n "$fuser_result" ]; then
+      pids=$(echo "$fuser_result" | awk 'NR>1 && $2~/^[0-9]+$/ {print $2}' | sort -u)
+      method_used="fuser"
+      echo "    ✅ fuser 找到进程: $pids"
+    else
+      echo "    ℹ️  fuser 未找到进程"
+    fi
+  else
+    echo "    ❌ fuser 命令不可用"
   fi
   
   # 方法2: 使用lsof作为补充
-  if [ -z "$pids" ] && command -v lsof >/dev/null 2>&1; then
-    pids=$(sudo lsof +D "${CHROOT_DIR}" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u)
-  fi
-  
-  # 方法3: busybox lsof作为fallback
-  if [ -z "$pids" ] && [ -n "$busybox" ] && sudo $busybox lsof >/dev/null 2>&1; then
-    local lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
-    if [ "${lsof_full}" -eq 0 ]; then
-      pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $1}' | uniq)
+  if [ -z "$pids" ]; then
+    echo "  🔍 方法2: 尝试 lsof (递归搜索)..."
+    local lsof_start=$(date +%s.%N)
+    if command -v lsof >/dev/null 2>&1; then
+      echo "    ✓ lsof 命令可用，开始递归搜索..."
+      local lsof_result=$(sudo lsof +D "${CHROOT_DIR}" 2>/dev/null)
+      local lsof_end=$(date +%s.%N)
+      local lsof_duration=$(echo "$lsof_end - $lsof_start" | bc -l 2>/dev/null || echo "0")
+      echo "    ⏱️  lsof 耗时: ${lsof_duration}秒"
+      
+      if [ -n "$lsof_result" ]; then
+        pids=$(echo "$lsof_result" | awk 'NR>1 {print $2}' | sort -u)
+        method_used="lsof"
+        echo "    ✅ lsof 找到进程: $pids"
+      else
+        echo "    ℹ️  lsof 未找到进程"
+      fi
     else
-      pids=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}" | awk '{print $2}' | uniq)
+      echo "    ❌ lsof 命令不可用"
     fi
   fi
   
+  # 方法3: busybox lsof作为fallback
+  if [ -z "$pids" ]; then
+    echo "  🔍 方法3: 尝试 busybox lsof..."
+    local busybox_start=$(date +%s.%N)
+    if [ -n "$busybox" ] && sudo $busybox lsof >/dev/null 2>&1; then
+      echo "    ✓ busybox lsof 可用，开始搜索..."
+      local lsof_full=$(sudo $busybox lsof | awk '{print $1}' | grep -c '^lsof')
+      local busybox_result=$(sudo $busybox lsof | grep "${CHROOT_DIR%/}")
+      local busybox_end=$(date +%s.%N)
+      local busybox_duration=$(echo "$busybox_end - $busybox_start" | bc -l 2>/dev/null || echo "0")
+      echo "    ⏱️  busybox lsof 耗时: ${busybox_duration}秒"
+      
+      if [ -n "$busybox_result" ]; then
+        if [ "${lsof_full}" -eq 0 ]; then
+          pids=$(echo "$busybox_result" | awk '{print $1}' | uniq)
+        else
+          pids=$(echo "$busybox_result" | awk '{print $2}' | uniq)
+        fi
+        method_used="busybox_lsof"
+        echo "    ✅ busybox lsof 找到进程: $pids"
+      else
+        echo "    ℹ️  busybox lsof 未找到进程"
+      fi
+    else
+      echo "    ❌ busybox lsof 不可用"
+    fi
+  fi
+  
+  # 计算总搜索时间
+  local search_end_time=$(date +%s.%N)
+  local total_search_duration=$(echo "$search_end_time - $search_start_time" | bc -l 2>/dev/null || echo "0")
+  
+  echo ""
+  echo "📊 进程搜索统计:"
+  echo "  ⏱️  总搜索耗时: ${total_search_duration}秒"
+  echo "  🔍 使用的方法: ${method_used:-无}"
+  echo "  📋 找到的进程: ${pids:-无}"
+  
   # 进程终止逻辑
   if [ -n "$pids" ]; then
-    echo "找到进程: $pids"
-    
+    echo ""
     echo "🔸 第一阶段: 发送TERM信号 (温和终止)..."
     for pid in $pids; do
       if [ -e "/proc/$pid" ]; then
@@ -588,7 +651,7 @@ container_umount() {
       echo "✅ 所有进程已成功终止"
     fi
   else
-    echo "无进程占用"
+    echo "ℹ️  无进程占用"
   fi
 
   echo ""

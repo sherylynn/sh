@@ -157,6 +157,26 @@ echo "📊 Termux 完整环境状态:"
 bash "$SCRIPT_DIR/termux_all_in_one.sh" status
 EOF
 
+# 7. 创建 debug.sh - 进程搜索性能调试
+cat > "$SHORTCUTS_DIR/debug.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# 进程搜索性能调试工具
+
+# 设置脚本路径
+SCRIPT_DIR="$HOME/sh/termux/chroot"
+
+# 检查脚本是否存在
+if [ ! -f "$SCRIPT_DIR/debug_process_search.sh" ]; then
+    echo "❌ 调试脚本不存在: $SCRIPT_DIR/debug_process_search.sh"
+    echo "请先运行: bash ~/sh/termux/chroot/setup_aliases.sh"
+    exit 1
+fi
+
+# 运行调试工具
+echo "🔍 启动进程搜索性能调试..."
+bash "$SCRIPT_DIR/debug_process_search.sh"
+EOF
+
 # 设置执行权限
 chmod +x "$SHORTCUTS_DIR"/*.sh
 
@@ -171,6 +191,7 @@ echo "  🐧 cstart.sh   - 启动 chroot 容器"
 echo "  🛑 cstop.sh    - 停止 chroot 容器"
 echo "  💻 cshell.sh   - 进入 chroot shell"
 echo "  📊 tstatus.sh  - 查看所有状态"
+echo "  🔍 debug.sh    - 进程搜索性能调试"
 echo ""
 echo "💡 使用方法:"
 echo "  1. 在 Termux 中运行: bash ~/sh/termux/chroot/create_shortcuts.sh"
