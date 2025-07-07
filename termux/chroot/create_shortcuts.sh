@@ -14,7 +14,7 @@ echo "🔧 创建 Termux 快捷方式..."
 # 1. 创建 tstart.sh - 启动所有服务
 cat > "$SHORTCUTS_DIR/tstart.sh" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-# Termux 一键启动所有服务
+# Termux 一键启动所有服务 (持续运行版本)
 
 # 设置脚本路径
 SCRIPT_DIR="$HOME/sh/termux/chroot"
@@ -26,9 +26,23 @@ if [ ! -f "$SCRIPT_DIR/termux_all_in_one.sh" ]; then
     exit 1
 fi
 
-# 直接执行启动脚本 (参考 server_x11.sh 的实现)
+# 启动所有服务
 echo "🚀 启动 Termux 完整环境..."
-exec bash "$SCRIPT_DIR/termux_all_in_one.sh" start
+bash "$SCRIPT_DIR/termux_all_in_one.sh" start
+
+# 保持脚本运行 - 监控 termux-x11 进程
+echo "📱 服务已启动，正在监控 termux-x11 进程..."
+echo "💡 按 Ctrl+C 停止监控"
+
+# 持续监控 termux-x11 进程
+while true; do
+    if ! pgrep -f "termux-x11" >/dev/null; then
+        echo "⚠️  termux-x11 进程已停止，正在重启..."
+        bash "$SCRIPT_DIR/termux_all_in_one.sh" start
+        sleep 5
+    fi
+    sleep 10
+done
 EOF
 
 # 2. 创建 tstop.sh - 停止所有服务
@@ -59,7 +73,7 @@ EOF
 # 3. 创建 cstart.sh - 启动 chroot 容器
 cat > "$SHORTCUTS_DIR/cstart.sh" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-# 启动 chroot Linux 容器
+# 启动 chroot Linux 容器 (持续运行版本)
 
 # 设置脚本路径
 SCRIPT_DIR="$HOME/sh/termux/chroot"
@@ -71,9 +85,23 @@ if [ ! -f "$SCRIPT_DIR/cli.sh" ]; then
     exit 1
 fi
 
-# 直接执行启动脚本 (参考 server_x11.sh 的实现)
+# 启动 chroot 容器
 echo "🐧 启动 chroot Linux 容器..."
-exec bash "$SCRIPT_DIR/cli.sh" start
+bash "$SCRIPT_DIR/cli.sh" start
+
+# 保持脚本运行 - 监控 chroot 挂载状态
+echo "🐧 容器已启动，正在监控挂载状态..."
+echo "💡 按 Ctrl+C 停止监控"
+
+# 持续监控 chroot 挂载状态
+while true; do
+    if ! mount | grep -q "/data/local/mnt"; then
+        echo "⚠️  chroot 容器已卸载，正在重启..."
+        bash "$SCRIPT_DIR/cli.sh" start
+        sleep 5
+    fi
+    sleep 10
+done
 EOF
 
 # 4. 创建 cstop.sh - 停止 chroot 容器
@@ -175,10 +203,10 @@ echo ""
 echo "📁 快捷方式位置: $SHORTCUTS_DIR"
 echo ""
 echo "🔧 可用的快捷方式:"
-echo "  📱 tstart.sh         - 启动所有服务 (exec)"
+echo "  📱 tstart.sh         - 启动所有服务 (持续监控)"
 echo "  📱 tstart_screen.sh  - 启动所有服务 (screen)"
 echo "  🛑 tstop.sh          - 停止所有服务"
-echo "  🐧 cstart.sh         - 启动 chroot 容器 (exec)"
+echo "  🐧 cstart.sh         - 启动 chroot 容器 (持续监控)"
 echo "  🐧 cstart_screen.sh  - 启动 chroot 容器 (screen)"
 echo "  🛑 cstop.sh          - 停止 chroot 容器"
 echo "  💻 cshell.sh         - 进入 chroot shell"
@@ -250,4 +278,45 @@ EOF
 
 # 设置新脚本的执行权限
 chmod +x "$SHORTCUTS_DIR"/tstart_screen.sh
-chmod +x "$SHORTCUTS_DIR"/cstart_screen.sh 
+chmod +x "$SHORTCUTS_DIR"/cstart_screen.sh
+
+# 创建简单的持续运行版本 (解决快捷方式退出问题)
+cat > "$SHORTCUTS_DIR/tstart_simple.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# 简单持续运行版本 - 解决快捷方式退出问题
+
+SCRIPT_DIR="$HOME/sh/termux/chroot"
+
+# 启动服务
+echo "🚀 启动 Termux 环境..."
+bash "$SCRIPT_DIR/termux_all_in_one.sh" start
+
+# 保持运行 - 使用 termux-x11 作为持续进程
+echo "📱 保持运行中..."
+exec termux-x11 :1 -ac +extension DPMS
+EOF
+
+cat > "$SHORTCUTS_DIR/cstart_simple.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# 简单持续运行版本 - 解决快捷方式退出问题
+
+SCRIPT_DIR="$HOME/sh/termux/chroot"
+
+# 启动 chroot
+echo "🐧 启动 chroot 容器..."
+bash "$SCRIPT_DIR/cli.sh" start
+
+# 保持运行 - 进入 chroot shell
+echo "🐧 进入 chroot 环境..."
+exec bash "$SCRIPT_DIR/cli.sh" shell
+EOF
+
+chmod +x "$SHORTCUTS_DIR"/tstart_simple.sh
+chmod +x "$SHORTCUTS_DIR"/cstart_simple.sh
+
+echo ""
+echo "🎯 新增简单版本 (解决快捷方式退出问题):"
+echo "  📱 tstart_simple.sh   - 启动所有服务 (简单持续运行)"
+echo "  🐧 cstart_simple.sh   - 启动 chroot (简单持续运行)"
+echo ""
+echo "💡 推荐使用简单版本，它们会持续运行不会退出！" 

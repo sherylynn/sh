@@ -538,7 +538,7 @@ container_umount() {
     if [ -n "$fuser_result" ]; then
       pids=$(echo "$fuser_result" | tr ' ' '\n' | grep -E '^[0-9]+$' | sort -u)
       method_used="fuser"
-      echo "    ✅ fuser 找到进程: $pids"
+      # echo "    ✅ fuser 找到进程: $pids"  # 不再显示进程号
     else
       echo "    ℹ️  fuser 未找到进程"
     fi
@@ -560,7 +560,7 @@ container_umount() {
   echo "  ⏱️  总搜索耗时: ${total_search_duration}秒"
   echo "  ⏱️  超时设置: ${search_timeout}秒"
   echo "  🔍 使用的方法: ${method_used:-无}"
-  echo "  📋 找到的进程: ${pids:-无}"
+  # echo "  📋 找到的进程: ${pids:-无}"  # 不再显示进程号
   
   # 进程终止逻辑
   if [ -n "$pids" ]; then
@@ -950,7 +950,7 @@ force_cleanup_chroot() {
     # 使用fuser强制终止(最可靠)
     if command -v fuser >/dev/null 2>&1; then
         local fuser_pids=$(sudo fuser -k -KILL "${CHROOT_DIR}" 2>/dev/null || true)
-        [ -n "$fuser_pids" ] && log_warn "fuser终止进程: $fuser_pids"
+        # [ -n "$fuser_pids" ] && log_warn "fuser终止进程: $fuser_pids"  # 不再显示进程号
     fi
     
     # 补充lsof查找遗漏进程
@@ -959,7 +959,7 @@ force_cleanup_chroot() {
         for pid in $lsof_pids; do
             [ -e "/proc/$pid" ] && sudo kill -KILL "$pid" 2>/dev/null
         done
-        [ -n "$lsof_pids" ] && log_warn "lsof终止进程: $lsof_pids"
+        # [ -n "$lsof_pids" ] && log_warn "lsof终止进程: $lsof_pids"  # 不再显示进程号
     fi
     
     sleep 1
