@@ -26,21 +26,9 @@ if [ ! -f "$SCRIPT_DIR/termux_all_in_one.sh" ]; then
     exit 1
 fi
 
-# 启动所有服务 (使用 nohup 保持后台运行)
+# 直接执行启动脚本 (参考 server_x11.sh 的实现)
 echo "🚀 启动 Termux 完整环境..."
-nohup bash "$SCRIPT_DIR/termux_all_in_one.sh" start > /dev/null 2>&1 &
-
-# 等待服务启动
-sleep 2
-
-# 显示状态
-echo ""
-echo "📊 当前状态:"
-bash "$SCRIPT_DIR/termux_all_in_one.sh" status
-
-# 保持脚本运行一段时间，确保服务稳定
-echo "⏳ 等待服务稳定启动..."
-sleep 3
+exec bash "$SCRIPT_DIR/termux_all_in_one.sh" start
 EOF
 
 # 2. 创建 tstop.sh - 停止所有服务
@@ -83,21 +71,9 @@ if [ ! -f "$SCRIPT_DIR/cli.sh" ]; then
     exit 1
 fi
 
-# 启动 chroot 容器 (使用 nohup 保持后台运行)
+# 直接执行启动脚本 (参考 server_x11.sh 的实现)
 echo "🐧 启动 chroot Linux 容器..."
-nohup bash "$SCRIPT_DIR/cli.sh" start > /dev/null 2>&1 &
-
-# 等待容器启动
-sleep 2
-
-# 显示状态
-echo ""
-echo "📊 容器状态:"
-bash "$SCRIPT_DIR/cli.sh" status
-
-# 保持脚本运行一段时间，确保容器稳定
-echo "⏳ 等待容器稳定启动..."
-sleep 3
+exec bash "$SCRIPT_DIR/cli.sh" start
 EOF
 
 # 4. 创建 cstop.sh - 停止 chroot 容器
@@ -199,11 +175,11 @@ echo ""
 echo "📁 快捷方式位置: $SHORTCUTS_DIR"
 echo ""
 echo "🔧 可用的快捷方式:"
-echo "  📱 tstart.sh         - 启动所有服务 (nohup)"
-echo "  📱 tstart_screen.sh  - 启动所有服务 (screen, 推荐)"
+echo "  📱 tstart.sh         - 启动所有服务 (exec)"
+echo "  📱 tstart_screen.sh  - 启动所有服务 (screen)"
 echo "  🛑 tstop.sh          - 停止所有服务"
-echo "  🐧 cstart.sh         - 启动 chroot 容器 (nohup)"
-echo "  🐧 cstart_screen.sh  - 启动 chroot 容器 (screen, 推荐)"
+echo "  🐧 cstart.sh         - 启动 chroot 容器 (exec)"
+echo "  🐧 cstart_screen.sh  - 启动 chroot 容器 (screen)"
 echo "  🛑 cstop.sh          - 停止 chroot 容器"
 echo "  💻 cshell.sh         - 进入 chroot shell"
 echo "  📊 tstatus.sh        - 查看所有状态"
@@ -240,18 +216,7 @@ fi
 
 # 使用 screen 启动服务
 echo "🚀 使用 screen 启动 Termux 完整环境..."
-screen -dmS termux_services bash -c "cd $SCRIPT_DIR && bash termux_all_in_one.sh start; exec bash"
-
-# 等待服务启动
-sleep 3
-
-# 显示状态
-echo "📊 当前状态:"
-bash "$SCRIPT_DIR/termux_all_in_one.sh" status
-
-echo "✅ 服务已在 screen 会话 'termux_services' 中启动"
-echo "💡 查看会话: screen -ls"
-echo "💡 连接会话: screen -r termux_services"
+exec screen -dmS termux_services bash -c "cd $SCRIPT_DIR && bash termux_all_in_one.sh start; exec bash"
 EOF
 
 # 创建使用 screen 的 chroot 启动脚本
@@ -280,18 +245,7 @@ fi
 
 # 使用 screen 启动容器
 echo "🐧 使用 screen 启动 chroot Linux 容器..."
-screen -dmS chroot_container bash -c "cd $SCRIPT_DIR && bash cli.sh start; exec bash"
-
-# 等待容器启动
-sleep 3
-
-# 显示状态
-echo "📊 容器状态:"
-bash "$SCRIPT_DIR/cli.sh" status
-
-echo "✅ 容器已在 screen 会话 'chroot_container' 中启动"
-echo "💡 查看会话: screen -ls"
-echo "💡 连接会话: screen -r chroot_container"
+exec screen -dmS chroot_container bash -c "cd $SCRIPT_DIR && bash cli.sh start; exec bash"
 EOF
 
 # 设置新脚本的执行权限
