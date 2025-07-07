@@ -28,10 +28,9 @@ setup_permissions() {
 setup_permissions
 
 # 创建快捷方式
-echo "🔧 创建 Termux 快捷方式..."
-bash "$(dirname "${BASH_SOURCE[0]}")/create_shortcuts.sh" >/dev/null 2>&1 || {
-    echo "⚠️  快捷方式创建失败，但不影响别名配置"
-}
+# bash "$(dirname "${BASH_SOURCE[0]}")/create_shortcuts.sh" >/dev/null 2>&1 || {
+#   echo "[WARN] 快捷方式脚本生成失败，可忽略。"
+# }
 
 tee ${TOOLSRC} <<-'EOF'
 # === Termux 便捷别名 (通过toolsRC管理) ===
