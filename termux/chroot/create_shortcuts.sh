@@ -26,14 +26,21 @@ if [ ! -f "$SCRIPT_DIR/termux_all_in_one.sh" ]; then
     exit 1
 fi
 
-# 启动所有服务
+# 启动所有服务 (使用 nohup 保持后台运行)
 echo "🚀 启动 Termux 完整环境..."
-bash "$SCRIPT_DIR/termux_all_in_one.sh" start
+nohup bash "$SCRIPT_DIR/termux_all_in_one.sh" start > /dev/null 2>&1 &
+
+# 等待服务启动
+sleep 2
 
 # 显示状态
 echo ""
 echo "📊 当前状态:"
 bash "$SCRIPT_DIR/termux_all_in_one.sh" status
+
+# 保持脚本运行一段时间，确保服务稳定
+echo "⏳ 等待服务稳定启动..."
+sleep 3
 EOF
 
 # 2. 创建 tstop.sh - 停止所有服务
@@ -76,14 +83,21 @@ if [ ! -f "$SCRIPT_DIR/cli.sh" ]; then
     exit 1
 fi
 
-# 启动 chroot 容器
+# 启动 chroot 容器 (使用 nohup 保持后台运行)
 echo "🐧 启动 chroot Linux 容器..."
-bash "$SCRIPT_DIR/cli.sh" start
+nohup bash "$SCRIPT_DIR/cli.sh" start > /dev/null 2>&1 &
+
+# 等待容器启动
+sleep 2
 
 # 显示状态
 echo ""
 echo "📊 容器状态:"
 bash "$SCRIPT_DIR/cli.sh" status
+
+# 保持脚本运行一段时间，确保容器稳定
+echo "⏳ 等待容器稳定启动..."
+sleep 3
 EOF
 
 # 4. 创建 cstop.sh - 停止 chroot 容器
@@ -177,10 +191,73 @@ echo "🔍 启动进程搜索性能调试..."
 bash "$SCRIPT_DIR/debug_process_search.sh"
 EOF
 
-# 8. 创建 umount_fast.sh - 快速卸载 (使用优化搜索)
-cat > "$SHORTCUTS_DIR/umount_fast.sh" << 'EOF'
+# 设置执行权限
+chmod +x "$SHORTCUTS_DIR"/*.sh
+
+echo "✅ 快捷方式创建完成！"
+echo ""
+echo "📁 快捷方式位置: $SHORTCUTS_DIR"
+echo ""
+echo "🔧 可用的快捷方式:"
+echo "  📱 tstart.sh         - 启动所有服务 (nohup)"
+echo "  📱 tstart_screen.sh  - 启动所有服务 (screen, 推荐)"
+echo "  🛑 tstop.sh          - 停止所有服务"
+echo "  🐧 cstart.sh         - 启动 chroot 容器 (nohup)"
+echo "  🐧 cstart_screen.sh  - 启动 chroot 容器 (screen, 推荐)"
+echo "  🛑 cstop.sh          - 停止 chroot 容器"
+echo "  💻 cshell.sh         - 进入 chroot shell"
+echo "  📊 tstatus.sh        - 查看所有状态"
+echo "  🔍 debug.sh          - 进程搜索性能调试"
+echo ""
+echo "💡 使用方法:"
+echo "  1. 在 Termux 中运行: bash ~/sh/termux/chroot/create_shortcuts.sh"
+echo "  2. 在 Android 桌面创建快捷方式，指向 ~/.shortcuts/ 目录下的脚本"
+echo "  3. 或者直接在 Termux 中运行: bash ~/.shortcuts/tstart.sh"
+
+# 创建使用 screen 的启动脚本 (更可靠的方案)
+cat > "$SHORTCUTS_DIR/tstart_screen.sh" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-# 快速卸载 chroot 容器 (使用优化进程搜索)
+# 使用 screen 启动 Termux 服务 (推荐方案)
+
+# 设置脚本路径
+SCRIPT_DIR="$HOME/sh/termux/chroot"
+
+# 检查脚本是否存在
+if [ ! -f "$SCRIPT_DIR/termux_all_in_one.sh" ]; then
+    echo "❌ 脚本不存在: $SCRIPT_DIR/termux_all_in_one.sh"
+    echo "请先运行: bash ~/sh/termux/chroot/setup_aliases.sh"
+    exit 1
+fi
+
+# 检查 screen 是否可用
+if ! command -v screen >/dev/null 2>&1; then
+    echo "⚠️  screen 不可用，使用 nohup 方案..."
+    nohup bash "$SCRIPT_DIR/termux_all_in_one.sh" start > /dev/null 2>&1 &
+    sleep 3
+    bash "$SCRIPT_DIR/termux_all_in_one.sh" status
+    exit 0
+fi
+
+# 使用 screen 启动服务
+echo "🚀 使用 screen 启动 Termux 完整环境..."
+screen -dmS termux_services bash -c "cd $SCRIPT_DIR && bash termux_all_in_one.sh start; exec bash"
+
+# 等待服务启动
+sleep 3
+
+# 显示状态
+echo "📊 当前状态:"
+bash "$SCRIPT_DIR/termux_all_in_one.sh" status
+
+echo "✅ 服务已在 screen 会话 'termux_services' 中启动"
+echo "💡 查看会话: screen -ls"
+echo "💡 连接会话: screen -r termux_services"
+EOF
+
+# 创建使用 screen 的 chroot 启动脚本
+cat > "$SHORTCUTS_DIR/cstart_screen.sh" << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# 使用 screen 启动 chroot 容器 (推荐方案)
 
 # 设置脚本路径
 SCRIPT_DIR="$HOME/sh/termux/chroot"
@@ -192,37 +269,31 @@ if [ ! -f "$SCRIPT_DIR/cli.sh" ]; then
     exit 1
 fi
 
-# 设置快速搜索超时 (3秒)
-export UMOUNT_SEARCH_TIMEOUT=3
+# 检查 screen 是否可用
+if ! command -v screen >/dev/null 2>&1; then
+    echo "⚠️  screen 不可用，使用 nohup 方案..."
+    nohup bash "$SCRIPT_DIR/cli.sh" start > /dev/null 2>&1 &
+    sleep 3
+    bash "$SCRIPT_DIR/cli.sh" status
+    exit 0
+fi
 
-# 快速卸载
-echo "🚀 快速卸载 chroot 容器 (优化搜索)..."
-bash "$SCRIPT_DIR/cli.sh" umount
+# 使用 screen 启动容器
+echo "🐧 使用 screen 启动 chroot Linux 容器..."
+screen -dmS chroot_container bash -c "cd $SCRIPT_DIR && bash cli.sh start; exec bash"
+
+# 等待容器启动
+sleep 3
 
 # 显示状态
-echo ""
 echo "📊 容器状态:"
 bash "$SCRIPT_DIR/cli.sh" status
+
+echo "✅ 容器已在 screen 会话 'chroot_container' 中启动"
+echo "💡 查看会话: screen -ls"
+echo "💡 连接会话: screen -r chroot_container"
 EOF
 
-# 设置执行权限
-chmod +x "$SHORTCUTS_DIR"/*.sh
-
-echo "✅ 快捷方式创建完成！"
-echo ""
-echo "📁 快捷方式位置: $SHORTCUTS_DIR"
-echo ""
-echo "🔧 可用的快捷方式:"
-echo "  📱 tstart.sh     - 启动所有服务"
-echo "  🛑 tstop.sh      - 停止所有服务"
-echo "  🐧 cstart.sh     - 启动 chroot 容器"
-echo "  🛑 cstop.sh      - 停止 chroot 容器"
-echo "  💻 cshell.sh     - 进入 chroot shell"
-echo "  📊 tstatus.sh    - 查看所有状态"
-echo "  🔍 debug.sh      - 进程搜索性能调试"
-echo "  🚀 umount_fast.sh - 快速卸载 (优化搜索)"
-echo ""
-echo "💡 使用方法:"
-echo "  1. 在 Termux 中运行: bash ~/sh/termux/chroot/create_shortcuts.sh"
-echo "  2. 在 Android 桌面创建快捷方式，指向 ~/.shortcuts/ 目录下的脚本"
-echo "  3. 或者直接在 Termux 中运行: bash ~/.shortcuts/tstart.sh" 
+# 设置新脚本的执行权限
+chmod +x "$SHORTCUTS_DIR"/tstart_screen.sh
+chmod +x "$SHORTCUTS_DIR"/cstart_screen.sh 
