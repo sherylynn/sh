@@ -1044,7 +1044,7 @@ check_chroot_status() {
     fi
     
     # 检查D-Bus服务
-    if is_started /run/dbus/pid /run/dbus/messagebus.pid /run/messagebus.pid /var/run/dbus/pid /var/run/dbus/messagebus.pid /var/run/messagebus.pid >/dev/null 2>&1; then
+    if check_dbus_status; then
         echo -e "D-Bus服务: ${GREEN}运行中${NC}"
     else
         echo -e "D-Bus服务: ${RED}已停止${NC}"
@@ -1218,6 +1218,30 @@ ${GREEN}如果作为独立脚本运行:${NC}
 EOF
             ;;
     esac
+}
+
+# 检查D-Bus服务
+# 改进检测逻辑：既检查PID文件，也检查进程和服务状态
+check_dbus_status() {
+    # 方法1: 检查PID文件 (原有方式)
+    if is_started /run/dbus/pid /run/dbus/messagebus.pid /run/messagebus.pid /var/run/dbus/pid /var/run/dbus/messagebus.pid /var/run/messagebus.pid >/dev/null 2>&1; then
+        return 0  # 找到PID文件且进程存在
+    fi
+    
+    # 方法2: 检查dbus进程是否在chroot中运行
+    if container_mounted; then
+        local dbus_processes=$(sudo chroot "$CHROOT_DIR" pgrep -f "dbus-daemon.*--system" 2>/dev/null || true)
+        if [ -n "$dbus_processes" ]; then
+            return 0  # 找到dbus进程
+        fi
+        
+        # 方法3: 尝试连接D-Bus系统总线
+        if sudo chroot "$CHROOT_DIR" dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetId >/dev/null 2>&1; then
+            return 0  # D-Bus服务响应
+        fi
+    fi
+    
+    return 1  # 所有检查都失败
 }
 
 # 如果直接运行此脚本，则调用命令行接口
