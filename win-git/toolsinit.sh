@@ -879,17 +879,17 @@ EOF
   echo "💡 取消代理: unproxy"
 }
 
-proxy_git() {
+proxy_git_ip() {
   local IP=$1
   local PROXY_PORT=${2:-10808}
   local PROXY_TYPE=${3:-http}
   
   # 参数检查
   if [ -z "$IP" ]; then
-    echo "使用方法: proxy_git <IP地址> [端口] [协议类型]"
-    echo "例如: proxy_git 192.168.1.1"
-    echo "     proxy_git 192.168.1.1 7890"
-    echo "     proxy_git 192.168.1.1 7890 socks5"
+    echo "使用方法: proxy_git_ip <IP地址> [端口] [协议类型]"
+    echo "例如: proxy_git_ip 192.168.1.1"
+    echo "     proxy_git_ip 192.168.1.1 7890"
+    echo "     proxy_git_ip 192.168.1.1 7890 socks5"
     return 1
   fi
   
@@ -986,12 +986,12 @@ proxys() {
 }
 
 # Git 专用代理便捷函数
-proxy_git_local() {
+proxy_git() {
   # 本地代理，支持自定义端口和协议
   local normal_IP=127.0.0.1
   local port=${1:-10808}
   local protocol=${2:-http}
-  proxy_git $normal_IP $port $protocol
+  proxy_git_ip $normal_IP $port $protocol
 }
 
 proxy_git_usb() {
@@ -999,7 +999,7 @@ proxy_git_usb() {
   local normal_IP=192.168.1.1
   local port=${1:-10808}
   local protocol=${2:-http}
-  proxy_git $normal_IP $port $protocol
+  proxy_git_ip $normal_IP $port $protocol
 }
 
 proxy_git_wsl() {
@@ -1008,7 +1008,7 @@ proxy_git_wsl() {
   local port=${1:-10808}
   local protocol=${2:-http}
   if [ -n "$normal_IP" ]; then
-    proxy_git $normal_IP $port $protocol
+    proxy_git_ip $normal_IP $port $protocol
   else
     echo "❌ 无法获取 WSL IP 地址"
     return 1
@@ -1030,8 +1030,8 @@ proxy_git_status() {
 }
 
 # 添加便捷别名
-alias pgit='proxy_git'           # 设置 Git 代理
-alias pgitl='proxy_git_local'    # 本地代理
+alias pgit='proxy_git'           # 设置本地 Git 代理
+alias pgitip='proxy_git_ip'      # 根据 IP 设置 Git 代理
 alias pgitu='proxy_git_usb'      # USB 代理  
 alias pgitw='proxy_git_wsl'      # WSL 代理
 alias pgits='proxy_git_status'   # 查看状态
