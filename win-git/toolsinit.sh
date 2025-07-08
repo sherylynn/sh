@@ -844,10 +844,19 @@ ssh_hotspot() {
 
 proxy_ip() {
   local IP=$1
-  local PROXY_PORT=10808
-  local PROXY_TYPE=http
+  local PROXY_PORT=${2:-10808}
+  local PROXY_TYPE=${3:-http}
   local TOOLSRC_NAME=proxyrc
   local TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+  
+  # 参数检查
+  if [ -z "$IP" ]; then
+    echo "使用方法: proxy_ip <IP地址> [端口] [协议类型]"
+    echo "例如: proxy_ip 192.168.1.1"
+    echo "     proxy_ip 192.168.1.1 7890"
+    echo "     proxy_ip 192.168.1.1 7890 socks5"
+    return 1
+  fi
 
   cat >${TOOLSRC} <<EOF
 export http_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
@@ -859,6 +868,41 @@ EOF
 
   git config --global http.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
   git config --global https.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
+  
+  echo "✅ 系统和 Git 代理已设置:"
+  echo "   HTTP:  ${PROXY_TYPE}://$IP:${PROXY_PORT}"
+  echo "   HTTPS: ${PROXY_TYPE}://$IP:${PROXY_PORT}"
+  echo ""
+  echo "💡 系统环境变量: http_proxy, https_proxy"
+  echo "💡 Git 全局配置: http.proxy, https.proxy"
+  echo "💡 查看状态: proxys 或 pgits"
+  echo "💡 取消代理: unproxy"
+}
+
+proxy_git() {
+  local IP=$1
+  local PROXY_PORT=${2:-10808}
+  local PROXY_TYPE=${3:-http}
+  
+  # 参数检查
+  if [ -z "$IP" ]; then
+    echo "使用方法: proxy_git <IP地址> [端口] [协议类型]"
+    echo "例如: proxy_git 192.168.1.1"
+    echo "     proxy_git 192.168.1.1 7890"
+    echo "     proxy_git 192.168.1.1 7890 socks5"
+    return 1
+  fi
+  
+  # 设置 Git 代理
+  git config --global http.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
+  git config --global https.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
+  
+  echo "✅ Git 代理已设置:"
+  echo "   HTTP:  ${PROXY_TYPE}://$IP:${PROXY_PORT}"
+  echo "   HTTPS: ${PROXY_TYPE}://$IP:${PROXY_PORT}"
+  echo ""
+  echo "💡 查看当前配置: git config --global --get-regexp 'http.*proxy'"
+  echo "💡 取消代理设置: unproxy_git"
 }
 
 unproxy() {
@@ -871,29 +915,128 @@ unproxy() {
   unset http_proxy
   unset https_proxy
 
-  git config --global --unset http.proxy
-  git config --global --unset https.proxy
+  git config --global --unset http.proxy 2>/dev/null || true
+  git config --global --unset https.proxy 2>/dev/null || true
+  
+  echo "✅ 系统和 Git 代理已清除"
+  echo "💡 系统环境变量: http_proxy, https_proxy 已取消设置"
+  echo "💡 Git 全局配置: http.proxy, https.proxy 已清除"
+  echo "💡 验证清除结果: proxys 或 pgits"
+}
+
+unproxy_git() {
+  # 只取消 Git 代理设置，不影响系统环境变量
+  git config --global --unset http.proxy 2>/dev/null || true
+  git config --global --unset https.proxy 2>/dev/null || true
+  
+  echo "✅ Git 代理已清除"
+  echo "💡 验证清除结果: git config --global --get-regexp 'http.*proxy'"
 }
 
 proxy() {
+  # 本地代理，支持自定义端口和协议
   local normal_IP=127.0.0.1
-  proxy_ip $normal_IP
+  local port=${1:-10808}
+  local protocol=${2:-http}
+  proxy_ip $normal_IP $port $protocol
 }
 
 proxyu() {
-  #proxy usbhost
+  # USB 共享网络代理，支持自定义端口和协议
   local normal_IP=192.168.1.1
-  proxy_ip $normal_IP
+  local port=${1:-10808}
+  local protocol=${2:-http}
+  proxy_ip $normal_IP $port $protocol
 }
 
 proxyw() {
+  # WSL 代理，支持自定义端口和协议
   local normal_IP=$(wsl_ip)
-  proxy_ip $normal_IP
+  local port=${1:-10808}
+  local protocol=${2:-http}
+  if [ -n "$normal_IP" ]; then
+    proxy_ip $normal_IP $port $protocol
+  else
+    echo "❌ 无法获取 WSL IP 地址"
+    return 1
+  fi
 }
 
 proxys() {
-  echo $http_proxy
+  # 显示完整的代理状态
+  echo "🔍 当前系统代理状态:"
+  if [ -n "$http_proxy" ] || [ -n "$https_proxy" ]; then
+    [ -n "$http_proxy" ] && echo "   HTTP:  $http_proxy"
+    [ -n "$https_proxy" ] && echo "   HTTPS: $https_proxy"
+  else
+    echo "   系统环境变量未设置代理"
+  fi
+  
+  echo ""
+  echo "🔍 当前 Git 代理状态:"
+  local http_proxy_config=$(git config --global --get http.proxy 2>/dev/null)
+  local https_proxy_config=$(git config --global --get https.proxy 2>/dev/null)
+  
+  if [ -n "$http_proxy_config" ] || [ -n "$https_proxy_config" ]; then
+    [ -n "$http_proxy_config" ] && echo "   HTTP:  $http_proxy_config"
+    [ -n "$https_proxy_config" ] && echo "   HTTPS: $https_proxy_config"
+  else
+    echo "   Git 全局配置未设置代理"
+  fi
 }
+
+# Git 专用代理便捷函数
+proxy_git_local() {
+  # 本地代理，支持自定义端口和协议
+  local normal_IP=127.0.0.1
+  local port=${1:-10808}
+  local protocol=${2:-http}
+  proxy_git $normal_IP $port $protocol
+}
+
+proxy_git_usb() {
+  # USB 共享网络代理，支持自定义端口和协议
+  local normal_IP=192.168.1.1
+  local port=${1:-10808}
+  local protocol=${2:-http}
+  proxy_git $normal_IP $port $protocol
+}
+
+proxy_git_wsl() {
+  # WSL 代理，支持自定义端口和协议
+  local normal_IP=$(wsl_ip)
+  local port=${1:-10808}
+  local protocol=${2:-http}
+  if [ -n "$normal_IP" ]; then
+    proxy_git $normal_IP $port $protocol
+  else
+    echo "❌ 无法获取 WSL IP 地址"
+    return 1
+  fi
+}
+
+proxy_git_status() {
+  # 显示当前 Git 代理状态
+  echo "🔍 当前 Git 代理配置:"
+  local http_proxy_config=$(git config --global --get http.proxy 2>/dev/null)
+  local https_proxy_config=$(git config --global --get https.proxy 2>/dev/null)
+  
+  if [ -n "$http_proxy_config" ] || [ -n "$https_proxy_config" ]; then
+    [ -n "$http_proxy_config" ] && echo "   HTTP:  $http_proxy_config"
+    [ -n "$https_proxy_config" ] && echo "   HTTPS: $https_proxy_config"
+  else
+    echo "   未设置代理"
+  fi
+}
+
+# 添加便捷别名
+alias pgit='proxy_git'           # 设置 Git 代理
+alias pgitl='proxy_git_local'    # 本地代理
+alias pgitu='proxy_git_usb'      # USB 代理  
+alias pgitw='proxy_git_wsl'      # WSL 代理
+alias pgits='proxy_git_status'   # 查看状态
+alias upgit='unproxy_git'        # 取消代理
+
 node_split() {
   node -e "console.log('$1'.split('$2')[$3])"
 }
