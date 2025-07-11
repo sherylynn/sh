@@ -88,22 +88,22 @@ arch() {
 
 toolsRC() {
   local toolsrc_name="$1"
-  
+
   # 参数检查
   if [ -z "$toolsrc_name" ]; then
     echo "Error: toolsRC requires a toolsrc name parameter" >&2
     return 1
   fi
-  
+
   # 变量安全检查
   if [ -z "$BASH_DIR" ] || [ -z "$ALLTOOLSRC_FILE" ]; then
     echo "Error: BASH_DIR or ALLTOOLSRC_FILE not set" >&2
     return 1
   fi
-  
+
   local toolsrc="$BASH_DIR/${toolsrc_name}"
   local source_line="test -f ${toolsrc} && . ${toolsrc}"
-  
+
   #--------------new .toolsrc-----------------------
   # 确保目录存在
   if [ ! -d "$BASH_DIR" ]; then
@@ -112,20 +112,20 @@ toolsRC() {
       return 1
     fi
   fi
-  
+
   # 确保主配置文件存在
   if ! touch "$ALLTOOLSRC_FILE"; then
     echo "Error: Failed to create/touch $ALLTOOLSRC_FILE" >&2
     return 1
   fi
-  
+
   # 检查是否已存在完全相同的行
   if grep -Fq "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
     # 已存在完全相同的行，直接返回
     echo "$toolsrc"
     return 0
   fi
-  
+
   # 删除旧的配置行 (如果存在)
   if grep -q "\\b${toolsrc_name}\\b" "$ALLTOOLSRC_FILE" 2>/dev/null; then
     # 使用更精确的正则表达式，只删除包含确切 toolsrc_name 的行
@@ -140,13 +140,13 @@ toolsRC() {
       fi
     fi
   fi
-  
+
   # 添加新的配置行
-  if ! echo "$source_line" >> "$ALLTOOLSRC_FILE"; then
+  if ! echo "$source_line" >>"$ALLTOOLSRC_FILE"; then
     echo "Error: Failed to add entry to $ALLTOOLSRC_FILE" >&2
     return 1
   fi
-  
+
   echo "$toolsrc"
 }
 
@@ -155,13 +155,13 @@ update_config() {
   local config_name="$2"
   local config_value="$3"
   local local_sudo="$4"
-  
+
   # 参数检查
   if [ -z "$config_path" ] || [ -z "$config_name" ]; then
     echo "Error: update_config requires config_path and config_name parameters" >&2
     return 1
   fi
-  
+
   #--------------new config----------------------
   # 确保配置文件存在
   if [ ! -f "$config_path" ]; then
@@ -170,14 +170,14 @@ update_config() {
       return 1
     fi
   fi
-  
+
   # 检查配置是否已存在
   local config_line="${config_name} ${config_value}"
   if grep -Fq "$config_line" "$config_path" 2>/dev/null; then
     # 完全相同的配置已存在，直接返回
     return 0
   fi
-  
+
   # 删除旧的配置行 (如果存在)
   if grep -q "^${config_name}\\s" "$config_path" 2>/dev/null; then
     if [[ $(platform) == macos ]]; then
@@ -191,12 +191,11 @@ update_config() {
       fi
     fi
   fi
-  
+
   # 添加新的配置行
-  if ! $local_sudo tee -a "$config_path" <<EOF
+  if ! $local_sudo tee -a "$config_path" <<EOF; then
 ${config_name} ${config_value}
 EOF
-  then
     echo "Error: Failed to add config to $config_path" >&2
     return 1
   fi
@@ -561,19 +560,19 @@ wsl_adb() {
 switch_to_google_ime() {
   local target_device=$1
   echo "正在切换到谷歌输入法..."
-  
+
   if [[ $target_device != "" ]]; then
     # 如果指定了设备，使用指定设备
-    adb -s "$target_device" shell ime set com.google.android.inputmethod.latin/.LatinIME 2>/dev/null || \
-    adb -s "$target_device" shell ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME 2>/dev/null || \
-    echo "警告：无法切换到谷歌输入法，请确保已安装谷歌输入法"
+    adb -s "$target_device" shell ime set com.google.android.inputmethod.latin/.LatinIME 2>/dev/null ||
+      adb -s "$target_device" shell ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME 2>/dev/null ||
+      echo "警告：无法切换到谷歌输入法，请确保已安装谷歌输入法"
   else
     # 没有指定设备，使用默认连接
-    adb shell ime set com.google.android.inputmethod.latin/.LatinIME 2>/dev/null || \
-    adb shell ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME 2>/dev/null || \
-    echo "警告：无法切换到谷歌输入法，请确保已安装谷歌输入法"
+    adb shell ime set com.google.android.inputmethod.latin/.LatinIME 2>/dev/null ||
+      adb shell ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME 2>/dev/null ||
+      echo "警告：无法切换到谷歌输入法，请确保已安装谷歌输入法"
   fi
-  
+
   echo "输入法切换完成"
 }
 
@@ -581,19 +580,19 @@ switch_to_google_ime() {
 switch_to_xunfei_ime() {
   local target_device=$1
   echo "正在切换回讯飞输入法..."
-  
+
   if [[ $target_device != "" ]]; then
     # 如果指定了设备，使用指定设备
-    adb -s "$target_device" shell ime set com.iflytek.inputmethod/.FlyIME 2>/dev/null || \
-    adb -s "$target_device" shell ime set com.iflytek.inputmethod/com.iflytek.inputmethod.FlyIME 2>/dev/null || \
-    echo "警告：无法切换到讯飞输入法，请确保已安装讯飞输入法"
+    adb -s "$target_device" shell ime set com.iflytek.inputmethod/.FlyIME 2>/dev/null ||
+      adb -s "$target_device" shell ime set com.iflytek.inputmethod/com.iflytek.inputmethod.FlyIME 2>/dev/null ||
+      echo "警告：无法切换到讯飞输入法，请确保已安装讯飞输入法"
   else
     # 没有指定设备，使用默认连接
-    adb shell ime set com.iflytek.inputmethod/.FlyIME 2>/dev/null || \
-    adb shell ime set com.iflytek.inputmethod/com.iflytek.inputmethod.FlyIME 2>/dev/null || \
-    echo "警告：无法切换到讯飞输入法，请确保已安装讯飞输入法"
+    adb shell ime set com.iflytek.inputmethod/.FlyIME 2>/dev/null ||
+      adb shell ime set com.iflytek.inputmethod/com.iflytek.inputmethod.FlyIME 2>/dev/null ||
+      echo "警告：无法切换到讯飞输入法，请确保已安装讯飞输入法"
   fi
-  
+
   echo "讯飞输入法切换完成"
 }
 
@@ -707,7 +706,7 @@ scrcpy_new() {
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
     #scrcpy --new-display=1080x1920 --start-app=com.microsoft.launcher --tcpip=$local_ip:5555 --stay-awake --keyboard=uhid #--display-id=0
-    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    scrcpy --stay-awake --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display --no-vd-destroy-content --screen-off-timeout=3000
     # scrcpy 结束后切换回讯飞输入法
     switch_to_xunfei_ime
   else
@@ -848,7 +847,7 @@ proxy_ip() {
   local PROXY_TYPE=${3:-http}
   local TOOLSRC_NAME=proxyrc
   local TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
-  
+
   # 参数检查
   if [ -z "$IP" ]; then
     echo "使用方法: proxy_ip <IP地址> [端口] [协议类型]"
@@ -868,7 +867,7 @@ EOF
 
   git config --global http.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
   git config --global https.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
-  
+
   echo "✅ 系统和 Git 代理已设置:"
   echo "   HTTP:  ${PROXY_TYPE}://$IP:${PROXY_PORT}"
   echo "   HTTPS: ${PROXY_TYPE}://$IP:${PROXY_PORT}"
@@ -883,7 +882,7 @@ proxy_git_ip() {
   local IP=$1
   local PROXY_PORT=${2:-10808}
   local PROXY_TYPE=${3:-http}
-  
+
   # 参数检查
   if [ -z "$IP" ]; then
     echo "使用方法: proxy_git_ip <IP地址> [端口] [协议类型]"
@@ -892,11 +891,11 @@ proxy_git_ip() {
     echo "     proxy_git_ip 192.168.1.1 7890 socks5"
     return 1
   fi
-  
+
   # 设置 Git 代理
   git config --global http.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
   git config --global https.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
-  
+
   echo "✅ Git 代理已设置:"
   echo "   HTTP:  ${PROXY_TYPE}://$IP:${PROXY_PORT}"
   echo "   HTTPS: ${PROXY_TYPE}://$IP:${PROXY_PORT}"
@@ -909,7 +908,7 @@ unproxy() {
   local TOOLSRC_NAME=proxyrc
   local TOOLSRC=$BASH_DIR/${TOOLSRC_NAME}
   if [ -f "$TOOLSRC" ]; then
-    echo -n > "$TOOLSRC"
+    echo -n >"$TOOLSRC"
   fi
 
   unset http_proxy
@@ -917,7 +916,7 @@ unproxy() {
 
   git config --global --unset http.proxy 2>/dev/null || true
   git config --global --unset https.proxy 2>/dev/null || true
-  
+
   echo "✅ 系统和 Git 代理已清除"
   echo "💡 系统环境变量: http_proxy, https_proxy 已取消设置"
   echo "💡 Git 全局配置: http.proxy, https.proxy 已清除"
@@ -928,7 +927,7 @@ unproxy_git() {
   # 只取消 Git 代理设置，不影响系统环境变量
   git config --global --unset http.proxy 2>/dev/null || true
   git config --global --unset https.proxy 2>/dev/null || true
-  
+
   echo "✅ Git 代理已清除"
   echo "💡 验证清除结果: git config --global --get-regexp 'http.*proxy'"
 }
@@ -971,12 +970,12 @@ proxys() {
   else
     echo "   系统环境变量未设置代理"
   fi
-  
+
   echo ""
   echo "🔍 当前 Git 代理状态:"
   local http_proxy_config=$(git config --global --get http.proxy 2>/dev/null)
   local https_proxy_config=$(git config --global --get https.proxy 2>/dev/null)
-  
+
   if [ -n "$http_proxy_config" ] || [ -n "$https_proxy_config" ]; then
     [ -n "$http_proxy_config" ] && echo "   HTTP:  $http_proxy_config"
     [ -n "$https_proxy_config" ] && echo "   HTTPS: $https_proxy_config"
@@ -1020,7 +1019,7 @@ proxy_git_status() {
   echo "🔍 当前 Git 代理配置:"
   local http_proxy_config=$(git config --global --get http.proxy 2>/dev/null)
   local https_proxy_config=$(git config --global --get https.proxy 2>/dev/null)
-  
+
   if [ -n "$http_proxy_config" ] || [ -n "$https_proxy_config" ]; then
     [ -n "$http_proxy_config" ] && echo "   HTTP:  $http_proxy_config"
     [ -n "$https_proxy_config" ] && echo "   HTTPS: $https_proxy_config"
@@ -1030,12 +1029,12 @@ proxy_git_status() {
 }
 
 # 添加便捷别名
-alias pgit='proxy_git'           # 设置本地 Git 代理
-alias pgitip='proxy_git_ip'      # 根据 IP 设置 Git 代理
-alias pgitu='proxy_git_usb'      # USB 代理  
-alias pgitw='proxy_git_wsl'      # WSL 代理
-alias pgits='proxy_git_status'   # 查看状态
-alias upgit='unproxy_git'        # 取消代理
+alias pgit='proxy_git'         # 设置本地 Git 代理
+alias pgitip='proxy_git_ip'    # 根据 IP 设置 Git 代理
+alias pgitu='proxy_git_usb'    # USB 代理
+alias pgitw='proxy_git_wsl'    # WSL 代理
+alias pgits='proxy_git_status' # 查看状态
+alias upgit='unproxy_git'      # 取消代理
 
 node_split() {
   node -e "console.log('$1'.split('$2')[$3])"
