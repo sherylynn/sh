@@ -1,95 +1,84 @@
-#!/bin/bash
-. $(dirname "$0")/toolsinit.sh
-TOOLSRC_NAME=golangrc
-TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
-SOFT_HOME=$(install_path)/goroot
-GO_ROOT=$SOFT_HOME/go
-##GO_PROXY=https://mirrors.aliyun.com/goproxy
-GO_PROXY=https://goproxy.cn
-GO_PATH=$(install_path)/gopath
-GO_PATH_BIN=${GO_PATH}/bin
-GO_ROOT_BIN=$GO_ROOT/bin
-GO_VERSION=1.23.4
-#GO_VERSION=1.19
-SOFT_ARCH=amd64
-#SOFT_ARCH=arm64
-#SOFT_ARCH=armv6l
-#arm64
+#!/usr/bin/env zsh
 
-# uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-case $(platform) in
-  win) PLATFORM=windows ;;
-  linux) PLATFORM=linux ;;
-  wslinux) PLATFORM=linux ;;
-  macos) PLATFORM=darwin ;;
+# 确保 toolsinit.sh 已加载
+source "$(dirname "$0")/toolsinit.sh"
+
+# --- 配置 ---
+# 您可以在这里更改希望安装的 Go 版本
+GO_VERSION="1.21.0"
+# 国内用户可以考虑使用: https://golang.google.cn/dl/
+GO_DOWNLOAD_HOST="https://go.dev/dl"
+
+# --- 脚本主体 ---
+
+echo "准备安装 Go v${GO_VERSION}..."
+
+# 1. 自动检测平台和架构
+PLATFORM=$(platform) # win, linux, macos
+ARCH=$(arch)         # amd64, aarch64, armhf, etc.
+
+# 适配 Go 的架构命名
+case "$ARCH" in
+  armhf) GO_ARCH="armv6l" ;;
+  aarch64) GO_ARCH="arm64" ;;
+  *) GO_ARCH=$ARCH ;;
 esac
 
-case $(arch) in
-  amd64) SOFT_ARCH=amd64 ;;
-  386) SOFT_ARCH=386 ;;
-  armhf) SOFT_ARCH=armv6l ;;
-  aarch64) SOFT_ARCH=arm64 ;;
+# 适配 Go 的平台命名
+case "$PLATFORM" in
+  win) GO_PLATFORM="windows" ;;
+  wslinux) GO_PLATFORM="linux" ;;
+  *) GO_PLATFORM=$PLATFORM ;;
 esac
 
-while getopts 'v:a:sc' OPT; do
-  case $OPT in
-    v)
-      GO_VERSION="$OPTARG"
-      ;;
-    a)
-      SOFT_ARCH="$OPTARG"
-      ;;
-    s)
-      Server="y"
-      ;;
-    c)
-      Client="y"
-      ;;
-    ?)
-      echo "Usage: $(basename $0) [options] filename"
-      ;;
-  esac
-done
+echo "平台: $GO_PLATFORM, 架构: $GO_ARCH"
 
-SOFT_FILE_NAME=go${GO_VERSION}.${PLATFORM}-${SOFT_ARCH}
-SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
-# init pwd
-cd $HOME
-
-shift $(($OPTIND - 1))
-if [[ $(platform) == *mingw* ]]; then
-  pacman -Syu mingw64/mingw-w64-x86_64-go
-  echo 'export GOPATH='${GO_PATH} >${TOOLSRC}
-  echo 'export PATH=$PATH:'${GO_PATH_BIN} >>${TOOLSRC}
+# 2. 构造文件名和下载链接
+if [[ "$GO_PLATFORM" == "windows" ]]; then
+  PACK_EXT="zip"
 else
-  SOFT_URL=https://dl.google.com/go/${SOFT_FILE_PACK}
-  if [ "$(go version)" != "go version go${GO_VERSION} ${PLATFORM}/${SOFT_ARCH}" ]; then
-    $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-    $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
-
-    rm -rf ${SOFT_HOME} &&
-      mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME}
-  fi
-  #--------------new .toolsrc-----------------------
-  export GOPATH=${GO_PATH}
-  export GOROOT=${GO_ROOT}
-  export PATH=$PATH:${GO_ROOT_BIN}
-  export PATH=$PATH:${GO_PATH_BIN}
-
-  echo 'export GOPATH='${GO_PATH} >${TOOLSRC}
-  echo 'export GOROOT='${GO_ROOT} >>${TOOLSRC}
-  echo 'export GO111MODULE=on' >>${TOOLSRC}
-  echo 'export GOPROXY='${GO_PROXY} >>${TOOLSRC}
-  echo 'export PATH=$PATH:'${GO_ROOT_BIN} >>${TOOLSRC}
-  echo 'export PATH=$PATH:'${GO_PATH_BIN} >>${TOOLSRC}
+  PACK_EXT="tar.gz"
 fi
-#  ----windows bat----
-if [[ $WIN_PATH ]]; then
-  if [[ $PLATFORM == windows ]]; then
-    setx GOROOT $(cygpath -w ${GO_ROOT})
-    setx GOPATH $(cygpath -w ${GO_PATH})
-    windowsENV="$(echo -e ${PATH//:/;\\n}';' | sort | uniq | cygpath -w -f - | tr -d '\n')"
-    echo $windowsENV
-    setx Path "$windowsENV"
-  fi
-fi
+
+SOFT_FILE_NAME="go${GO_VERSION}.${GO_PLATFORM}-${GO_ARCH}"
+SOFT_FILE_PACK="${SOFT_FILE_NAME}.${PACK_EXT}"
+SOFT_URL="${GO_DOWNLOAD_HOST}/${SOFT_FILE_PACK}"
+
+# 3. 下载和解压
+cache_downloader "$SOFT_FILE_PACK" "$SOFT_URL"
+# Go 的压缩包解压后文件夹名是 go
+cache_unpacker "$SOFT_FILE_PACK" "go"
+
+# 4. 安装到工具目录
+INSTALL_DIR=$(install_path)
+GO_ROOT_DIR="$INSTALL_DIR/goroot"
+echo "正在安装到 $GO_ROOT_DIR..."
+rm -rf "$GO_ROOT_DIR"
+mv "$(cache_folder)/go" "$GO_ROOT_DIR"
+
+# 5. 配置环境变量 (使用标准 toolsRC 机制)
+echo "正在配置环境变量..."
+TOOLSRC_FILE=$(toolsRC "golangrc")
+GO_PATH_DIR="$INSTALL_DIR/gopath"
+mkdir -p "$GO_PATH_DIR/bin"
+
+# 国内用户推荐的 GOPROXY
+GO_PROXY="https://goproxy.cn,direct"
+
+cat > "$TOOLSRC_FILE" <<EOF
+# Go environment variables
+# This file is managed by toolsRC. Do not edit manually.
+
+export GOROOT=\$HOME/tools/goroot
+export GOPATH=\$HOME/tools/gopath
+export GO111MODULE=on
+export GOPROXY=${GO_PROXY}
+
+export PATH=\$GOROOT/bin:\$GOPATH/bin:\$PATH
+EOF
+
+echo ""
+echo "✅ Go v${GO_VERSION} 安装并配置完成！"
+echo "请重启您的终端或运行 'source ~/.zshrc' 来使配置生效。"
+echo "您可以通过运行 'go version' 来验证安装。"
+

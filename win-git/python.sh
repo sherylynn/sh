@@ -1,140 +1,94 @@
-#!/bin/bash
-# source
-#------------------init function----------------
-. $(dirname "$0")/toolsinit.sh
-#------------------win function-----------------
-echo $(dirname "$0")/winPath.sh
-. $(dirname "$0")/winPath.sh
-#-----------------------------------------------
-INSTALL_PATH=$HOME/tools
+#!/usr/bin/env zsh
 
-TOOLSRC_NAME=pythonrc
-TOOLSRC=$(toolsRC $TOOLSRC_NAME)
-PLATFORM=$(platform)
-PIP_USERBASE=$INSTALL_PATH/python-pip
+# 确保 toolsinit.sh 已加载
+# 在单文件执行的场景下，这行代码能确保脚本正常工作
+source "$(dirname "$0")/toolsinit.sh"
 
-#PIP3_PATH=$(python3 -m site --user-base)"/bin"
-#export PATH=$PATH:$PIP3_PATH
-#echo "export PATH=\$PATH:"${PIP3_PATH} >> ~/.bashrc
+# --- 配置 ---
+# 您可以在这里更改希望安装的 Python 版本
+PYTHON_VERSION="3.11.5"
+PYTHON_BUILD_VERSION="20230826" # python-build-standalone 的发布日期
 
-PYTHON_HOME=$INSTALL_PATH/python
-#PYTHON_VERSION=3.6.8
-PYTHON_VERSION=3.7.1
-PYTHON_SHOTVERSION=${PYTHON_VERSION//./}
-PYTHON_PREFIX=${PYTHON_SHOTVERSION:0:2}
-PYTHON_LIB=$PYTHON_HOME/Lib
-PYTHON_ZIP=$PYTHON_HOME/python${PYTHON_PREFIX}.zip
-PYTHON_PACKAGES=$PYTHON_LIB/site-packages
-PYTHON_SCRIPTS=$PYTHON_HOME/Scripts
-PYTHON_ARCH=amd64
-GET_PIP=get-pip.py
-GET_PIP_PATH=$PYTHON_HOME/$GET_PIP
-PIP_BIN_PATH=$PIP_USERBASE/Python$PYTHON_PREFIX/Scripts
-PIP_PACKAGES=$PIP_USERBASE/Python$PYTHON_PREFIX/site-packages
-OS=windows
-PYTHON_FILE_NAME=python-${PYTHON_VERSION}-embed-${PYTHON_ARCH}
-PYTHON_FILE_PACK=${PYTHON_FILE_NAME}.zip
-PYLINT_ON=1
-PYTHON_SOURCE_NAME=Python-${PYTHON_VERSION}
-PYTHON_SOURCE_FILE=${PYTHON_SOURCE_NAME}.tar.xz
-cd ~
-#--------------------------------------
-#安装 python
-#--------------------------------------
-if [[ $PLATFORM == 'win' ]];then
-  if [ "$(python --version)" != "Python ${PYTHON_VERSION}" ]; then
-    if [ ! -d "${INSTALL_PATH}" ]; then
-      mkdir $INSTALL_PATH
+# --- 脚本主体 ---
+
+echo "准备安装 Python v${PYTHON_VERSION}..."
+
+# 1. 自动检测平台和架构
+PLATFORM_RAW=$(platform) # win, linux, macos
+ARCH_RAW=$(arch)         # amd64, aarch64
+
+# 2. 根据平台和架构构造下载文件名和 URL
+# 参考: https://github.com/indygreg/python-build-standalone/releases
+case "$PLATFORM_RAW" in
+  win)
+    PY_PLATFORM="pc-windows-msvc-shared"
+    PY_ARCH="x86_64"
+    ;;
+  linux)
+    PY_PLATFORM="unknown-linux-gnu"
+    PY_ARCH="x86_64"
+    ;;
+  macos)
+    PY_PLATFORM="apple-darwin"
+    if [[ "$ARCH_RAW" == "aarch64" ]]; then
+      PY_ARCH="aarch64"
+    else
+      PY_ARCH="x86_64"
     fi
+    ;;
+  *)
+    echo "❌ 不支持的平台: $PLATFORM_RAW"
+    exit 1
+    ;;
+esac
 
-    if [ ! -f "${PYTHON_FILE_PACK}" ]; then
-      #淘宝源没法用curl下载
-      #curl -o ${PYTHON_FILE_PACK} https://npm.taobao.org/mirrors/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
-      curl -o ${PYTHON_FILE_PACK} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_FILE_PACK}
-    fi
-    
-    if [ ! -d "${PYTHON_FILE_NAME}" ]; then
-      #指定解压到python_file_name 文件夹
-      unzip -q ${PYTHON_FILE_PACK} -d ${PYTHON_FILE_NAME}
-    fi
-    rm -rf ${PYTHON_HOME} && \
-    mv ${PYTHON_FILE_NAME} ${PYTHON_HOME} && \
-    rm -rf ${PYTHON_FILE_PACK}
-  fi
-  #--------------安装 python Lib-----pylint 会用到-------------
-  if [ ! -d "${PYTHON_LIB}" ]; then
-    #下载源文件，会用到里面的lib
-    if [ ! -f "${PYTHON_SOURCE_FILE}" ]; then
-      curl -o ${PYTHON_SOURCE_FILE} https://www.python.org/ftp/python/${PYTHON_VERSION}/${PYTHON_SOURCE_FILE}
-    fi
-    if [ ! -d "${PYTHON_SOURCE_NAME}" ]; then
-      tar -xf ${PYTHON_SOURCE_FILE}
-    fi
+PYTHON_FULL_VERSION="cpython-${PYTHON_VERSION}+${PYTHON_BUILD_VERSION}"
+PYTHON_DIR_NAME="${PYTHON_FULL_VERSION}-${PY_ARCH}-${PY_PLATFORM}-install_only"
+PYTHON_FILE_PACK="${PYTHON_DIR_NAME}.tar.gz"
+PYTHON_URL="https://github.com/indygreg/python-build-standalone/releases/download/${PYTHON_BUILD_VERSION}/${PYTHON_FILE_PACK}"
 
-    mv ${PYTHON_SOURCE_NAME}/Lib ${PYTHON_LIB} && \
-    rm -rf ${PYTHON_SOURCE_NAME} ${PYTHON_SOURCE_FILE}
-  fi
-  #--------------new .toolsrc-----------------------
-  cd ${PYTHON_HOME}
-  mv python*._pth python._pth.save
-  #-----------pip install path-----------------------------------
-  if [ ! -d "${PIP_USERBASE}" ]; then
-    mkdir ${PIP_USERBASE}
-  fi
-  #---------------------------------------------  需要有路径不然没user-site
-  export PATH=$PATH:${PYTHON_HOME}
-  export PATH=$PATH:${PYTHON_SCRIPTS}
-  export PATH=$PATH:${PIP_BIN_PATH}
-  export PYTHONPATH=${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}
-  export PYTHONUSERBASE=$(winDoublePath $PIP_USERBASE)
-  #------------------------------------
-  echo $(winDoublePath $PIP_USERBASE)
-  python -m site
-  python -m site --user-site
-  #--------------------------------
-  echo 'export PATH=$PATH:'${PYTHON_HOME}>$TOOLSRC
-  echo 'export PATH=$PATH:'${PYTHON_SCRIPTS}>>$TOOLSRC
-  echo 'export PATH=$PATH:'${PIP_BIN_PATH}>>$TOOLSRC
-  echo 'export PYTHONPATH='${PYTHON_HOME}:${PYTHON_LIB}:${PYTHON_PACKAGES}:${PYTHON_ZIP}:${PIP_BIN_PATH}>>$TOOLSRC
-  echo 'export PYTHONUSERBASE='$(winDoublePath ${PIP_USERBASE})>>$TOOLSRC
+echo "平台: $PLATFORM_RAW, 架构: $PY_ARCH"
+echo "下载文件: $PYTHON_FILE_PACK"
 
-  #-------get pip-------------------------------------------
-  if [ ! -f "${GET_PIP_PATH}" ]; then
-    curl -o ${GET_PIP} https://bootstrap.pypa.io/get-pip.py
-  fi
-  echo Install pip
-  if [[ "$(pip --version)" != *from* ]]; then
-    python ${GET_PIP} --user
-  fi
+# 3. 下载和解压
+cache_downloader "$PYTHON_FILE_PACK" "$PYTHON_URL"
+cache_unpacker "$PYTHON_FILE_PACK" "$PYTHON_DIR_NAME"
+
+# 4. 安装到工具目录
+INSTALL_DIR=$(install_path)
+PYTHON_INSTALL_PATH="$INSTALL_DIR/python"
+echo "正在安装到 $PYTHON_INSTALL_PATH..."
+rm -rf "$PYTHON_INSTALL_PATH"
+# 解压出来的目录是 python
+mv "$(cache_folder)/${PYTHON_DIR_NAME}/python" "$PYTHON_INSTALL_PATH"
+
+# 5. 配置环境变量 (使用标准 toolsRC 机制)
+echo "正在配置环境变量..."
+TOOLSRC_FILE=$(toolsRC "pythonrc")
+
+PIP_USERBASE="$INSTALL_DIR/python-pip"
+mkdir -p "$PIP_USERBASE"
+
+# 使用 cat 和 HEREDOC 写入配置
+cat > "$TOOLSRC_FILE" <<EOF
+# Python environment variables
+# This file is managed by toolsRC. Do not edit manually.
+
+export PYTHON_HOME=\$HOME/tools/python
+export PYTHONUSERBASE=\$HOME/tools/python-pip
+
+# 根据平台设置不同的 PATH
+if [[ "\$(platform)" == "win" ]]; then
+  # Windows: python.exe 在根目录, Scripts 在 Scripts 目录
+  export PATH="\$PYTHON_HOME:\$PYTHON_HOME/Scripts:\$PYTHONUSERBASE/Scripts:\$PATH"
 else
-  sudo apt install python3 python3-pip -y
-  if [ ! -d "${PIP_USERBASE}" ]; then
-    mkdir ${PIP_USERBASE}
-  fi
-  PIP_BIN_PATH=$PIP_USERBASE/bin
-  export PATH=$PATH:${PIP_BIN_PATH}
-  export PYTHONPATH=${PIP_BIN_PATH}
-  export PYTHONUSERBASE=$PIP_USERBASE
-
-  echo 'export PATH=$PATH:'${PIP_BIN_PATH}>$TOOLSRC
-  echo 'export PYTHONPATH='${PIP_BIN_PATH}>>$TOOLSRC
-  echo 'export PYTHONUSERBASE='${PIP_USERBASE}>>$TOOLSRC
-
+  # Linux/macOS: python 在 bin 目录
+  export PATH="\$PYTHON_HOME/bin:\$PYTHONUSERBASE/bin:\$PATH"
 fi
-#  ----windows bat----
-if [[ $WIN_PATH ]]; then
-  setx PYTHONHOME $(winPath ${PYTHON_HOME})
-  setx PYTHONPATH $(winPath ${PYTHONPATH})
-  setx PYTHONUSERBASE $(winPath ${PIP_USERBASE})
-  setx PYTHON_BIN $(winPath ${PYTHON_HOME})";"$(winPath ${PYTHON_SCRIPTS})";"$(winPath ${PIP_BIN_PATH}/../Scripts)
+EOF
 
-  # 替换掉linux path中:为;因为最后一个$PATH中的值是没有:分隔符的，这里补充一个; 用sort排序 uniq 去重 cypath换win字符 tr去换行
-  # 有换行时path全部不识别，只有powershell能识别，神奇
-  winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
-  #cygpath 是 msys带的处理路径的工具
-  echo $winENV
-  powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::User)"
-  setx test_env "$winENV"
-  #powershell -C "[environment]::SetEnvironmentvariable('path', \"$winENV\", [System.EnvironmentVariableTarget]::Machine)"
-  #这样设置后的环境变量莫名其妙不能用 ,可能由于回车没去掉
-fi
+echo ""
+echo "✅ Python v${PYTHON_VERSION} 安装并配置完成！"
+echo "请重启您的终端或运行 'source ~/.zshrc' 来使配置生效。"
+echo "您可以通过运行 'python --version' 或 'pip --version' 来验证安装。"
+
