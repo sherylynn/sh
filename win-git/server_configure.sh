@@ -81,6 +81,7 @@ zsh ~/sh/debian/wps.sh
 #zsh ~/sh/debian/todesk.sh
 #todesk无法联网
 zsh ~/sh/debian/wechat.sh
+zsh ~/sh/win-git/qq.sh
 #zsh ~/sh/debian/spark-store.sh
 zsh ~/sh/debian/vlc.sh
 zsh ~/sh/win-git/scrcpy.sh
