@@ -5,7 +5,7 @@ source "$(dirname "$0")/toolsinit.sh"
 
 # --- 配置 ---
 # 您可以在这里更改希望安装的 Go 版本
-GO_VERSION="1.21.0"
+GO_VERSION="1.24.5"
 # 国内用户可以考虑使用: https://golang.google.cn/dl/
 GO_DOWNLOAD_HOST="https://go.dev/dl"
 
