@@ -18,6 +18,14 @@ export CLASSPATH=.:$LIBS_HOME/jre/lib/tools.jar:$LIBS_HOME/jre/lib/dt.jar:$LIBS_
 export JAVA_HOME=$LIBS_HOME/jbr
 export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1
 
+# Set Java 17 path for macOS with homebrew
+if [[ $(platform) == *macos* ]]; then
+    BREW_JAVA17_HOME="/opt/homebrew/opt/openjdk@17"
+    if [[ -d "$BREW_JAVA17_HOME" ]]; then
+        export JAVA_HOME=$BREW_JAVA17_HOME
+    fi
+fi
+
 # --- SDK Installation (from termux/sdk.sh) ---
 SDK_VERSION=android-sdk
 SOFT_FILE_PACK_SDK=${SDK_VERSION}-aarch64.zip
@@ -49,7 +57,12 @@ if [[ $(platform) == *linux* ]] && [[ $(arch) == aarch64 ]]; then
     mv $(cache_folder)/${NDK_VERSION_FULL} ${SDK_HOME}/ndk
 fi
 
-tee $TOOLSRC <<EOF
+if [[ $(platform) == *macos* ]]; then
+  tee $TOOLSRC <<EOF
+export JAVA_HOME=$JAVA_HOME
+EOF
+else
+  tee $TOOLSRC <<EOF
 export ANDROID_STUDIO_HOME=$LIBS_HOME
 export SDK_HOME=$SOFT_HOME
 export ANDROID_HOME=$SOFT_HOME
@@ -63,4 +76,5 @@ export JAVA_HOME=$LIBS_HOME/jbr
 export GRADLE_HOME=$LIBS_HOME/gradle/gradle-4.10.1
 export PATH=\$PATH:$GRADLE_HOME/bin:$ANDROID_STUDIO_HOME/jre/jre/bin:$ANDROID_STUDIO_HOME/jre/bin:$ANDROID_STUDIO_HOME/bin:$SDK_HOME/emulator:$SDK_HOME/platform-tools:$ANDROID_STUDIO_HOME/jbr/bin:$SDK_HOME/cmdline-tools/latest/bin:$SDK_HOME/ndk
 EOF
+fi
 sudo apt-get install qemu-kvm libvirt-clients libvirt-daemon-system virtinst bridge-utils -y
