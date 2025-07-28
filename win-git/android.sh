@@ -60,6 +60,7 @@ fi
 if [[ $(platform) == *macos* ]]; then
   tee $TOOLSRC <<EOF
 export JAVA_HOME=$JAVA_HOME
+export ANDROID_HOME=$SOFT_HOME
 EOF
 else
   tee $TOOLSRC <<EOF

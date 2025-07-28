@@ -4,7 +4,14 @@ NAME=brew
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 #echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' > ${TOOLSRC}
-cat << "EOF" > ${TOOLSRC}
+
+#关闭spotlight索引
+sudo mdutil -a -i off
+
+#打开索引
+sudo mdutil -a -i on
+
+cat <<"EOF" >${TOOLSRC}
 export HOMEBREW_INSTALL_FROM_API=1
 export HOMEBREW_API_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles/api"
 export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
