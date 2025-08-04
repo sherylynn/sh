@@ -5,7 +5,7 @@ source "$(dirname "$0")/toolsinit.sh"
 
 # --- 配置 ---
 # 您可以在这里更改希望安装的 AutoHotkey 版本
-AHK_VERSION="2.0.19"
+AHK_VERSION="1.1.36.02"
 
 # --- 脚本主体 ---
 
@@ -25,18 +25,16 @@ else
     DOWNLOAD_ONLY=false
 fi
 
-# AutoHotkey v2 统一安装程序，不需要区分架构
-AHK_ARCH="setup"
-
+# AutoHotkey v1 安装程序命名格式
 if [[ "$PLATFORM" == "win" ]]; then
-    echo "平台: Windows, 使用统一安装程序"
+    echo "平台: Windows, 使用 v1 安装程序"
 else
-    echo "平台: $PLATFORM (下载模式), 使用统一安装程序"
+    echo "平台: $PLATFORM (下载模式), 使用 v1 安装程序"
 fi
 
 # 2. 构造文件名和下载链接
-# AutoHotkey v2 安装程序命名格式
-AHK_FILE_NAME="AutoHotkey_${AHK_VERSION}_${AHK_ARCH}.exe"
+# AutoHotkey v1 安装程序命名格式
+AHK_FILE_NAME="AutoHotkey_${AHK_VERSION}_setup.exe"
 AHK_URL="https://github.com/AutoHotkey/AutoHotkey/releases/download/v${AHK_VERSION}/${AHK_FILE_NAME}"
 
 echo "下载文件: $AHK_FILE_NAME"
@@ -81,6 +79,8 @@ EOF
     echo "  - 运行脚本: AutoHotkey.exe script.ahk"
     echo "  - 编译脚本: Ahk2Exe.exe /in script.ahk"
     echo "  - 帮助信息: AutoHotkey.exe /?"
+echo ""
+echo "注意: 这是 AutoHotkey v1 版本，语法与 v2 不同"
 else
     echo ""
     echo "✅ AutoHotkey v${AHK_VERSION} 安装程序下载完成！"
