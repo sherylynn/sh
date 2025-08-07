@@ -74,7 +74,7 @@ EOF
   # 安装必要的包
   pkg update -y
   pkg install git cmake ccache openjdk-17 wget unzip -y
-  pkg install gradle -y
+  pkg install gradle aapt2 -y
 
   echo "正在创建示例项目结构..."
 
