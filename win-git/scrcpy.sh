@@ -7,7 +7,7 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 #SOFT_VERSION=v2.7
-SOFT_VERSION=v3.1
+SOFT_VERSION=v3.3.1
 #SOFT_VERSION=v3.0
 #SOFT_VERSION=v3.0.2
 #都很卡，离谱了
@@ -103,7 +103,7 @@ if [[ $(platform) == *linux* ]]; then
     echo 'export PATH=$PATH:'${SOFT_ROOT} >${TOOLSRC}
   else
     #deb apt# for Debian/Ubuntu
-    sudo apt install -y ffmpeg libsdl2-2.0-0 adb wget       gcc git pkg-config meson ninja-build ccache libsdl2-dev       libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev       libswresample-dev libusb-1.0-0 libusb-1.0-0-dev
+    sudo apt install -y ffmpeg libsdl2-2.0-0 adb wget gcc git pkg-config meson ninja-build ccache libsdl2-dev libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev libswresample-dev libusb-1.0-0 libusb-1.0-0-dev
     cd $(install_path)
     git clone https://github.com/${AUTHOR}/${NAME} $SOFT_HOME
     cd $SOFT_HOME
