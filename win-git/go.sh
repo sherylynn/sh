@@ -54,7 +54,7 @@ INSTALL_DIR=$(install_path)
 GO_ROOT_DIR="$INSTALL_DIR/goroot"
 echo "正在安装到 $GO_ROOT_DIR..."
 rm -rf "$GO_ROOT_DIR"
-mv "$(cache_folder)/go" "$GO_ROOT_DIR"
+mv "$(cache_folder)/go/go" "$GO_ROOT_DIR"
 
 # 5. 配置环境变量 (使用标准 toolsRC 机制)
 echo "正在配置环境变量..."
