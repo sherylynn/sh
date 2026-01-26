@@ -27,7 +27,12 @@ echo $(whoami)
 # login need systemd user $(whoami)
 
 #virgl
-if pgrep -f "virgl_test" >/dev/null; then
+
+MESA_FREE_SO=/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so
+if [ ! -f "$MESA_FREE_SO" ]; then
+  export MESA_LOADER_DRIVER_OVERRIDE=kgsl
+  export TU_DEBUG=noconform
+elif pgrep -f "virgl_test" >/dev/null; then
   #export DISPLAY=:0
   export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"

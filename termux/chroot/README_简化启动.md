@@ -1,5 +1,9 @@
 # Termux 启动流程简化方案
 
+#其实原来的novnc因为已经写入了系统自带的服务，所以环境变量直接从init.rc中加载了，
+#而init.rc 调用的是winget下的server_noVNC.sh ，里面其实通过监测进程来启动包括novnc的环境变量了
+#要使用freedreno需要修改优化server_noVNC.sh
+
 ## 💡 简化前后对比
 
 ### 🔴 **原来的复杂流程:**
