@@ -3,11 +3,6 @@
 TOOLSRC_NAME=mesarc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 
-echo 'export MESA_LOADER_DRIVER_OVERRIDE=zink' >${TOOLSRC}
-#echo 'export GALLIUM_DRIVER=zink'>>${TOOLSRC}
-echo 'export TU_DEBUG=noconform' >>${TOOLSRC}
-echo 'export XDG_RUNTIME_DIR=/tmp' >>${TOOLSRC}
-
 case $(arch) in
   amd64) SOFT_ARCH=x64 ;;
   386) SOFT_ARCH=x86 ;;
@@ -37,6 +32,10 @@ case $(arch) in
       exit 0 # Exit successfully after handling the special case
     else
       # Default aarch64 behavior (non-Oryon)
+      echo 'export MESA_LOADER_DRIVER_OVERRIDE=zink' >${TOOLSRC}
+      #echo 'export GALLIUM_DRIVER=zink'>>${TOOLSRC}
+      echo 'export TU_DEBUG=noconform' >>${TOOLSRC}
+      echo 'export XDG_RUNTIME_DIR=/tmp' >>${TOOLSRC}
       mesa_url="https://raw.githubusercontent.com/sherylynn/fonts/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
       mesa_name="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
       $(cache_downloader $mesa_name $mesa_url)
