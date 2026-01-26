@@ -15,10 +15,8 @@ case $(arch) in
       #NAME1="vulkan-freedreno-1-26.1.0-1-aarch64.pkg.tar.xz"
       URL1="https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-26.1.0-devel-20260125/mesa-for-android-container_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
       NAME1="mesa-for-android-container_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
-      #URL2="https://github.com/lfdevs/mesa-for-android-container/releases/download/turnip-26.1.0-devel-20260125/turnip_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
-      URL2="https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-26.1.0-devel-20260125/mesa-for-android-container_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
-      #NAME2="turnip_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
-      NAME2="mesa-for-android-container_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
+      URL2="https://github.com/lfdevs/mesa-for-android-container/releases/download/turnip-26.1.0-devel-20260125/turnip_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
+      NAME2="turnip_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
 
       # Download and install first file
       $(cache_downloader "$NAME1" "$URL1")
