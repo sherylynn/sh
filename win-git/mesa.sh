@@ -58,7 +58,7 @@ case $(arch) in
 
       # 使用sed替换library_path的值
       # 这里使用'|'作为sed的分隔符，以避免与路径中的'/'冲突
-      sed -i "s|"library_path": ".*"|"library_path": "${NEW_LIB_PATH}"|" "${JSON_FILE}"
+      sed -i 's|\("library_path": "\)[^"]*"|\1'${NEW_LIB_PATH}'"|' "${JSON_FILE}"
 
       echo "成功更新JSON文件中的library_path:"
       echo "${JSON_FILE}"
