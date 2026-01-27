@@ -43,7 +43,9 @@ if lscpu | grep -q "Oryon"; then
   export MESA_LOADER_DRIVER_OVERRIDE=kgsl
   export TU_DEBUG=noconform
   #关闭xfce4的特效合成器，因为和freedreno驱动不兼容
-  export XFWM4_COMPOSITOR=0
+  #export XFWM4_COMPOSITOR=0 这个命令是错的
+  #~/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml 需要进这里，修改找到包含 use_compositing 的行。
+  #将其值从 true 改为 false 
   #export VK_ICD_FILENAMES=/root/tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
 elif pgrep -f "virgl_test" >/dev/null; then
   #默认就用自带的virgl_test吧避免xfce4启动不了
