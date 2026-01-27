@@ -40,6 +40,7 @@ case $(arch) in
       echo "Installing $NAME1..."
       echo "Installing $NAME2..."
       #如果安装在文件夹的话
+      #经过测试，安装在文件夹是不行的
       if [ "${INSTALL_TO_FOLDER}"]; then
         #先重新安装正版驱动
         filelist1=$(
@@ -81,7 +82,7 @@ case $(arch) in
 
       sudo ldconfig
       exit 0 # Exit successfully after handling the special case
-    else
+    elif lscpu | grep -q "骁龙865可以用"; then
       # Default aarch64 behavior (non-Oryon)
       echo 'export MESA_LOADER_DRIVER_OVERRIDE=zink' >${TOOLSRC}
       #echo 'export GALLIUM_DRIVER=zink'>>${TOOLSRC}

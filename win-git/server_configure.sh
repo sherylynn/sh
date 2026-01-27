@@ -65,6 +65,7 @@ zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
 #换一种新式vnc来玩玩
 if [[ $SOFT_VNC == *tigervnc* ]]; then
+  zsh ~/sh/win-git/mesa.sh
   zsh ~/sh/win-git/init_d_noVNC.sh
   zsh ~/sh/win-git/noVNC.sh
 else

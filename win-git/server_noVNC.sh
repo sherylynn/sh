@@ -30,10 +30,11 @@ echo $(whoami)
 
 #MESA_FREE_SO=/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so
 #安装在自己的位置
-MESA_FREE_SO=../../tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
+#MESA_FREE_SO=../../tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
 #还没想好到底用什么方式
 #这个需要关掉noVNC的特效的
-if [ -f "$MESA_FREE_SO" ]; then
+#if [ -f "$MESA_FREE_SO" ]; then
+if lscpu | grep -q "Oryon"; then
   echo '启动mesa的noVNC'
   export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"
@@ -41,6 +42,8 @@ if [ -f "$MESA_FREE_SO" ]; then
   export XMODIFIERS="@im=fcitx"
   export MESA_LOADER_DRIVER_OVERRIDE=kgsl
   export TU_DEBUG=noconform
+  #关闭xfce4的特效合成器，因为和freedreno驱动不兼容
+  export XFWM4_COMPOSITOR=0
   #export VK_ICD_FILENAMES=/root/tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
 elif pgrep -f "virgl_test" >/dev/null; then
   #默认就用自带的virgl_test吧避免xfce4启动不了
