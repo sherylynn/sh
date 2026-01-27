@@ -28,7 +28,10 @@ echo $(whoami)
 
 #virgl
 
-MESA_FREE_SO=/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so
+#MESA_FREE_SO=/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so
+#安装在自己的位置
+MESA_FREE_SO=../../tools/mesa/1
+#还没想好到底用什么方式
 if [ -f "$MESA_FREE_SO" ]; then
   echo '启动mesa的noVNC'
   export PULSE_SERVER=127.0.0.1

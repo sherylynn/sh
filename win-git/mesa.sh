@@ -1,7 +1,16 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
-TOOLSRC_NAME=mesarc
+NAME=mesa
+TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+
+AUTHOR=lfdevs
+NAME=mesa-for-android-container
+SOFT_HOME=$(install_path)/${NAME}
+SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+echo "soft version is $SOFT_VERSION"
+
+mkdir -p $SOFT_HOME
 
 case $(arch) in
   amd64) SOFT_ARCH=x64 ;;
@@ -23,18 +32,36 @@ case $(arch) in
       NAME2="turnip_26.0.0-devel-20260116_debian_trixie_arm64.tar.gz"
 
       # Download and install first file
+      # 下载驱动安装到我自己的目录
       $(cache_downloader "$NAME1" "$URL1")
       echo "Installing $NAME1..."
       #sudo tar -xvf "$(cache_folder)/$NAME1" -C /
-      sudo tar -zxvf "$(cache_folder)/$NAME1" -C /
+      sudo tar -zxvf "$(cache_folder)/$NAME1" -C $SOFT_HOME
 
       # Download and install second file
       $(cache_downloader "$NAME2" "$URL2")
       echo "Installing $NAME2..."
-      sudo tar -zxvf "$(cache_folder)/$NAME2" -C /
+      #sudo tar -zxvf "$(cache_folder)/$NAME2" -C /
+      sudo tar -zxvf "$(cache_folder)/$NAME2" -C $SOFT_HOME
 
       echo "Oryon-specific drivers installed."
 
+      # 定义目标JSON文件和新的so库路径
+      JSON_FILE="${SOFT_HOME}/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json"
+      NEW_LIB_PATH="${SOFT_HOME}/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so"
+
+      # 检查JSON文件是否存在
+      if [ ! -f "${JSON_FILE}" ]; then
+        echo "错误: JSON文件未找到于 ${JSON_FILE}"
+        exit 1
+      fi
+
+      # 使用sed替换library_path的值
+      # 这里使用'|'作为sed的分隔符，以避免与路径中的'/'冲突
+      sed -i "s|"library_path": ".*"|"library_path": "${NEW_LIB_PATH}"|" "${JSON_FILE}"
+
+      echo "成功更新JSON文件中的library_path:"
+      echo "${JSON_FILE}"
       sudo ldconfig
       exit 0 # Exit successfully after handling the special case
     else
