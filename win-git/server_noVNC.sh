@@ -45,7 +45,27 @@ if lscpu | grep -q "Oryon"; then
   #关闭xfce4的特效合成器，因为和freedreno驱动不兼容
   #export XFWM4_COMPOSITOR=0 这个命令是错的
   #~/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml 需要进这里，修改找到包含 use_compositing 的行。
-  #将其值从 true 改为 false 
+  #将其值从 true 改为 false
+
+  # 脚本作用：在 XFCE 窗口管理器 (xfwm4) 的配置文件中禁用窗口合成特效。
+  # 它通过将 use_compositing 的值从 "true" 修改为 "false" 来实现。
+
+  # 配置文件路径
+  CONFIG_FILE="../../.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml"
+
+  # 检查文件是否存在，并且只在存在时才执行操作
+  if [ -f "$CONFIG_FILE" ]; then
+    # 使用 sed 命令进行原地替换。
+    # 该命令会查找包含 '<property name="use_compositing"' 的行，
+    # 然后将该行中的 value="true" 替换为 value="false"。
+    sed -i '/<property name="use_compositing"/s/value="true"/value="false"/' "$CONFIG_FILE"
+
+    echo "操作完成。use_compositing 的值已被设置为 false。"
+    echo "您可能需要重启 XFCE 会话或窗口管理器以使更改生效。"
+  else
+    # 如果文件不存在，则打印提示信息并正常退出。
+    echo "配置文件 $CONFIG_FILE 未找到，不执行任何操作。"
+  fi
   #export VK_ICD_FILENAMES=/root/tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
 elif pgrep -f "virgl_test" >/dev/null; then
   #默认就用自带的virgl_test吧避免xfce4启动不了
