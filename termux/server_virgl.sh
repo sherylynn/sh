@@ -39,7 +39,12 @@ sudo killall -9 virgl_test_server_android
 #如果按这样倒是也能跑
 #TERMUX_X11_DEBUG=1 termux-x11 :1 -ac -xstartup "virgl_test_server_android"
 #其实只是运行virgl的话。压根不需要跑termux-x11
-virgl_test_server_android
+
+if lscpu | grep -q "Oryon"; then
+  echo "至尊版cpu不需要virgl_test_server_android"
+else
+  virgl_test_server_android
+fi
 
 #sleep 3
 #echo 2
