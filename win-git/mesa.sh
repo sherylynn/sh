@@ -34,34 +34,51 @@ case $(arch) in
       # Download and install first file
       # 下载驱动安装到我自己的目录
       $(cache_downloader "$NAME1" "$URL1")
-      echo "Installing $NAME1..."
-      #sudo tar -xvf "$(cache_folder)/$NAME1" -C /
-      sudo tar -zxvf "$(cache_folder)/$NAME1" -C $SOFT_HOME
 
       # Download and install second file
       $(cache_downloader "$NAME2" "$URL2")
+      echo "Installing $NAME1..."
       echo "Installing $NAME2..."
-      #sudo tar -zxvf "$(cache_folder)/$NAME2" -C /
-      sudo tar -zxvf "$(cache_folder)/$NAME2" -C $SOFT_HOME
+      #如果安装在文件夹的话
+      if [ "${INSTALL_TO_FOLDER}"]; then
+        #先重新安装正版驱动
+        filelist1=$(
+          tar tf $NAME1 | grep -v '/$' | tr '\n' ' '
+          echo
+        )
+        echo $filelist1
+        filelist2=$(
+          tar tf $NAME2 | grep -v '/$' | tr '\n' ' '
+          echo
+        )
+        cd /
+        rm -rf $filelist1 $filelist2
+        sudo apt install --reinstall libegl-mesa0 libgbm1 libgl1-mesa-dri libglx-mesa0 mesa-libgallium mesa-vulkan-drivers -y
+        #解压驱动
+        sudo tar -zxvf "$(cache_folder)/$NAME1" -C $SOFT_HOME
+        sudo tar -zxvf "$(cache_folder)/$NAME2" -C $SOFT_HOME
+        # 定义目标JSON文件和新的so库路径
+        JSON_FILE="${SOFT_HOME}/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json"
+        NEW_LIB_PATH="${SOFT_HOME}/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so"
 
+        # 检查JSON文件是否存在
+        if [ ! -f "${JSON_FILE}" ]; then
+          echo "错误: JSON文件未找到于 ${JSON_FILE}"
+          exit 1
+        fi
+
+        # 使用sed替换library_path的值
+        # 这里使用'|'作为sed的分隔符，以避免与路径中的'/'冲突
+        sed -i 's|\("library_path": "\)[^"]*"|\1'${NEW_LIB_PATH}'"|' "${JSON_FILE}"
+
+        echo "成功更新JSON文件中的library_path:"
+        echo "${JSON_FILE}"
+      else
+        sudo tar -xvf "$(cache_folder)/$NAME1" -C /
+        sudo tar -zxvf "$(cache_folder)/$NAME2" -C /
+      fi
       echo "Oryon-specific drivers installed."
 
-      # 定义目标JSON文件和新的so库路径
-      JSON_FILE="${SOFT_HOME}/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json"
-      NEW_LIB_PATH="${SOFT_HOME}/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so"
-
-      # 检查JSON文件是否存在
-      if [ ! -f "${JSON_FILE}" ]; then
-        echo "错误: JSON文件未找到于 ${JSON_FILE}"
-        exit 1
-      fi
-
-      # 使用sed替换library_path的值
-      # 这里使用'|'作为sed的分隔符，以避免与路径中的'/'冲突
-      sed -i 's|\("library_path": "\)[^"]*"|\1'${NEW_LIB_PATH}'"|' "${JSON_FILE}"
-
-      echo "成功更新JSON文件中的library_path:"
-      echo "${JSON_FILE}"
       sudo ldconfig
       exit 0 # Exit successfully after handling the special case
     else
