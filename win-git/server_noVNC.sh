@@ -30,7 +30,7 @@ echo $(whoami)
 
 #MESA_FREE_SO=/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so
 #安装在自己的位置
-MESA_FREE_SO=../../tools/mesa/1
+MESA_FREE_SO=../../tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
 #还没想好到底用什么方式
 if [ -f "$MESA_FREE_SO" ]; then
   echo '启动mesa的noVNC'
@@ -40,6 +40,7 @@ if [ -f "$MESA_FREE_SO" ]; then
   export XMODIFIERS="@im=fcitx"
   export MESA_LOADER_DRIVER_OVERRIDE=kgsl
   export TU_DEBUG=noconform
+  export VK_ICD_FILENAMES=/root/tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
 elif pgrep -f "virgl_test" >/dev/null; then
   #export DISPLAY=:0
   echo '启动virgl的noVNC'
