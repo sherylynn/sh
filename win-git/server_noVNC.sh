@@ -27,11 +27,6 @@ echo $(whoami)
 # login need systemd user $(whoami)
 
 #virgl
-
-#MESA_FREE_SO=/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so
-#安装在自己的位置
-#MESA_FREE_SO=../../tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
-#还没想好到底用什么方式
 #这个需要关掉noVNC的特效的
 #if [ -f "$MESA_FREE_SO" ]; then
 if lscpu | grep -q "Oryon"; then
@@ -66,7 +61,6 @@ if lscpu | grep -q "Oryon"; then
     # 如果文件不存在，则打印提示信息并正常退出。
     echo "配置文件 $CONFIG_FILE 未找到，不执行任何操作。"
   fi
-  #export VK_ICD_FILENAMES=/root/tools/mesa-for-android-container/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json
 elif pgrep -f "virgl_test" >/dev/null; then
   #默认就用自带的virgl_test吧避免xfce4启动不了
   #if pgrep -f "virgl_test" >/dev/null; then

@@ -20,16 +20,19 @@ case $(arch) in
     if lscpu | grep -q "Oryon"; then
       echo "Oryon CPU detected. Installing specific Mesa drivers..."
       # Define files for Oryon
-      #URL1="https://github.com/lfdevs/mesa-for-android-container/releases/download/turnip-26.1.0-devel-20260125/vulkan-freedreno-1-26.1.0-1-aarch64.pkg.tar.xz"
-      #NAME1="vulkan-freedreno-1-26.1.0-1-aarch64.pkg.tar.xz"
-      #URL1="https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-26.1.0-devel-20260125/mesa-for-android-container_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
-      URL1="https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-26.0.0-devel-20260116/mesa-for-android-container_26.0.0-devel-20260116_debian_trixie_arm64.tar.gz"
-      NAME1="mesa-for-android-container_26.0.0-devel-20260116_debian_trixie_arm64.tar.gz"
-      #NAME1="mesa-for-android-container_26.0.0-devel-20260116_debian_trixie_arm64.tar.gz"
-      #URL2="https://github.com/lfdevs/mesa-for-android-container/releases/download/turnip-26.1.0-devel-20260125/turnip_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
-      URL2="https://github.com/lfdevs/mesa-for-android-container/releases/download/turnip-26.0.0-devel-20260116/turnip_26.0.0-devel-20260116_debian_trixie_arm64.tar.gz"
-      #NAME2="turnip_26.1.0-devel-20260125_debian_trixie_arm64.tar.gz"
-      NAME2="turnip_26.0.0-devel-20260116_debian_trixie_arm64.tar.gz"
+      if [[ $SOFT_VERSION == "turnip-"* ]]; then
+        VERSION_PART="${SOFT_VERSION#turnip-}"
+        MESA_TAG="mesa-${VERSION_PART}"
+        TURNIP_TAG="${SOFT_VERSION}"
+
+        URL1="https://github.com/${AUTHOR}/${NAME}/releases/download/${MESA_TAG}/mesa-for-android-container_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+        NAME1="mesa-for-android-container_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+        URL2="https://github.com/${AUTHOR}/${NAME}/releases/download/${TURNIP_TAG}/turnip_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+        NAME2="turnip_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+      else
+        echo "Could not parse version from $SOFT_VERSION. Exiting."
+        exit 1
+      fi
 
       # Download and install first file
       # 下载驱动安装到我自己的目录
@@ -39,8 +42,7 @@ case $(arch) in
       $(cache_downloader "$NAME2" "$URL2")
       echo "Installing $NAME1..."
       echo "Installing $NAME2..."
-      #如果安装在文件夹的话
-      #经过测试，安装在文件夹是不行的
+      #如果删除驱动重新安装
       if [ "${INSTALL_TO_FOLDER}"]; then
         #先重新安装正版驱动
         filelist1=$(
@@ -55,25 +57,6 @@ case $(arch) in
         cd /
         rm -rf $filelist1 $filelist2
         sudo apt install --reinstall libegl-mesa0 libgbm1 libgl1-mesa-dri libglx-mesa0 mesa-libgallium mesa-vulkan-drivers -y
-        #解压驱动
-        sudo tar -zxvf "$(cache_folder)/$NAME1" -C $SOFT_HOME
-        sudo tar -zxvf "$(cache_folder)/$NAME2" -C $SOFT_HOME
-        # 定义目标JSON文件和新的so库路径
-        JSON_FILE="${SOFT_HOME}/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json"
-        NEW_LIB_PATH="${SOFT_HOME}/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so"
-
-        # 检查JSON文件是否存在
-        if [ ! -f "${JSON_FILE}" ]; then
-          echo "错误: JSON文件未找到于 ${JSON_FILE}"
-          exit 1
-        fi
-
-        # 使用sed替换library_path的值
-        # 这里使用'|'作为sed的分隔符，以避免与路径中的'/'冲突
-        sed -i 's|\("library_path": "\)[^"]*"|\1'${NEW_LIB_PATH}'"|' "${JSON_FILE}"
-
-        echo "成功更新JSON文件中的library_path:"
-        echo "${JSON_FILE}"
       else
         sudo tar -xvf "$(cache_folder)/$NAME1" -C /
         sudo tar -zxvf "$(cache_folder)/$NAME2" -C /
