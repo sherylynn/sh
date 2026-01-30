@@ -48,7 +48,14 @@ start_base_services() {
     log "启动基础服务..."
     
     # 启动必要的sv服务
-    local services=("virgl" "pulseaudio" "x11")
+    local services=()
+    if lscpu | grep -q "Oryon"; then
+      log "Oryon CPU detected, skipping virgl service startup."
+      services=("pulseaudio" "x11")
+    else
+      services=("virgl" "pulseaudio" "x11")
+    fi
+
     for service in "${services[@]}"; do
         if [ -d "$PREFIX/var/service/$service" ]; then
             log "启动服务: $service"
@@ -107,7 +114,14 @@ stop_all() {
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
     
     # 停止sv服务
-    local services=("virgl" "pulseaudio" "x11")
+    local services=()
+    if lscpu | grep -q "Oryon"; then
+      log "Oryon CPU detected, skipping virgl service shutdown."
+      services=("pulseaudio" "x11")
+    else
+      services=("virgl" "pulseaudio" "x11")
+    fi
+
     for service in "${services[@]}"; do
         if [ -d "$PREFIX/var/service/$service" ]; then
             sv down "$service" 2>/dev/null || true
