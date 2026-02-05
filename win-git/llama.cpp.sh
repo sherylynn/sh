@@ -1,11 +1,12 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
-AUTHOR=ggerganov
+AUTHOR=megemini
 NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION="b4667" #编译不了，linux下认不出cpu
+#SOFT_VERSION="b4667" #编译不了，linux下认不出cpu
+SOFT_VERSION="paddleocr-vl" #适配了OCR的版本
 #连接失败
 #SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
@@ -27,18 +28,24 @@ esac
 
 SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
+GGUF_GIT_URL=https://www.modelscope.cn/megemini/PaddleOCR-VL-1.5-GGUF.git
+GGUF_HOME=/root/PaddleOCR-VL-1.5-GGUF
+
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  sudo apt install libcurl4-openssl-dev ccache clang libomp-dev -y
+  sudo apt install libcurl4-openssl-dev ccache clang libomp-dev git-lfs -y
   #GGML_NATIVE 需要指定clang，发现还是不好用，手动去指定了
   #openmp需要libomp-dev
+  #gguf 需要git-lfs
 
+  git clone ${GGUF_GIT_URL} ${GGUF_HOME}
+  cd $GGUF_HOME
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
+  cd ${SOFT_HOME}
   git pull
   #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
   #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
   #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
-  cd ${SOFT_HOME}
   git checkout $SOFT_VERSION
   #带着下载curl一起编译
   # 带着repack功能 看起来运行的时候有 AARCH64_REPACK = 1应该就是正常的 #4248
@@ -77,6 +84,7 @@ fi
 SOFT_ROOT=$(install_path)/${NAME}/build/bin
 tee ${TOOLSRC} <<-EOF
 export PATH=$SOFT_ROOT:'$PATH'
-alias ll-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
-alias ll-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "你是一个淫荡的女人" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
+#alias ll-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
+#alias ll-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "说一个小故事" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
+alias ll-ocr="llama-cli -m $GGUF_HOME/PaddleOCR-VL-1.5-GGUF.gguf -mm $GGUF_HOME/PaddleOCR-VL-1.5-GGUF-mmproj.gguf --image /root/download/1.png -p 'Spotting:' --temp 0 -n 1024 --jinja"
 EOF
