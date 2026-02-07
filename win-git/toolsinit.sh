@@ -766,14 +766,20 @@ scrcpy_audio() {
 }
 
 scrcpy_big() {
-  local_ip=$1
+  local local_ip=$1
+  local resolution=$2
+  local res_arg="--new-display=2560x1600/480"
+  if [[ -n "$resolution" ]]; then
+    res_arg="--new-display=${resolution}"
+  fi
+
   if [[ $local_ip != "" ]]; then
     # 连接设备
     adb connect $local_ip:5555
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
-    #scrcpy --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
-    scrcpy --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --no-vd-destroy-content #--window-borderless --fullscreen
+    #scrcpy --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2560x1600/480 --no-vd-destroy-content #--window-borderless --fullscreen
+    scrcpy --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --tcpip=$local_ip:5555 ${res_arg} --no-vd-destroy-content #--window-borderless --fullscreen
     # scrcpy 结束后切换回讯飞输入法
     switch_to_xunfei_ime
     #scrcpy --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --tcpip=$local_ip:5555 --new-display=2376x1080/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
@@ -782,7 +788,7 @@ scrcpy_big() {
     # 在启动 scrcpy 前切换到谷歌输入法
     switch_to_google_ime
     #scrcpy --keyboard=uhid --video-codec=h265 --max-size=1920 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
-    scrcpy --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio --new-display=2560x1600/480 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
+    scrcpy --keyboard=uhid --video-codec=h265 --max-size=2560 --max-fps=60 --no-audio ${res_arg} --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
     # scrcpy 结束后切换回讯飞输入法
     switch_to_xunfei_ime
     #scrcpy --keyboard=uhid --max-size=2560 --video-codec=h265 --max-fps=60 --no-audio --new-display=3168x1440/640 --start-app=com.microsoft.launcher --no-vd-destroy-content --screen-off-timeout=3000
@@ -796,8 +802,9 @@ quick_connect() {
 
 # 快速连接到默认设备的大屏模式
 quick_connect_big() {
+  local resolution=$1
   echo "正在连接到默认设备 192.168.1.133 (大屏模式)..."
-  scrcpy_big 192.168.1.133
+  scrcpy_big 192.168.1.133 "$resolution"
 }
 
 # 快速连接到默认设备的新显示模式
