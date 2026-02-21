@@ -24,22 +24,26 @@ case $(arch) in
         VERSION_PART="${SOFT_VERSION#turnip-}"
         MESA_TAG="mesa-${VERSION_PART}"
         TURNIP_TAG="${SOFT_VERSION}"
-
-        URL1="https://github.com/${AUTHOR}/${NAME}/releases/download/${MESA_TAG}/mesa-for-android-container_${VERSION_PART}_debian_trixie_arm64.tar.gz"
-        NAME1="mesa-for-android-container_${VERSION_PART}_debian_trixie_arm64.tar.gz"
-        URL2="https://github.com/${AUTHOR}/${NAME}/releases/download/${TURNIP_TAG}/turnip_${VERSION_PART}_debian_trixie_arm64.tar.gz"
-        NAME2="turnip_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+      elif [[ $SOFT_VERSION == "mesa-"* ]]; then
+        VERSION_PART="${SOFT_VERSION#mesa-}"
+        MESA_TAG="${SOFT_VERSION}"
+        TURNIP_TAG="turnip-${VERSION_PART}"
       else
         echo "Could not parse version from $SOFT_VERSION. Exiting."
         exit 1
       fi
 
+      URL1="https://github.com/${AUTHOR}/${NAME}/releases/download/${MESA_TAG}/mesa-for-android-container_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+      NAME1="mesa-for-android-container_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+      URL2="https://github.com/${AUTHOR}/${NAME}/releases/download/${TURNIP_TAG}/turnip_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+      NAME2="turnip_${VERSION_PART}_debian_trixie_arm64.tar.gz"
+
       # Download and install first file
       # 下载驱动安装到我自己的目录
-      $(cache_downloader "$NAME1" "$URL1")
+      cache_downloader "$NAME1" "$URL1"
 
       # Download and install second file
-      $(cache_downloader "$NAME2" "$URL2")
+      cache_downloader "$NAME2" "$URL2"
       echo "Installing $NAME1..."
       echo "Installing $NAME2..."
       #如果删除驱动重新安装
