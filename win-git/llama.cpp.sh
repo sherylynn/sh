@@ -129,12 +129,8 @@ elif [[ $(platform) == *win* ]]; then
   cmake --build build --config Release
 fi
 
-# 根据不同平台设置正确的二进制文件路径
-if [[ $(platform) == *mac* ]]; then
-  SOFT_ROOT="$(install_path)/${NAME}/build"
-else
-  SOFT_ROOT="$(install_path)/${NAME}/build/bin"
-fi
+# 设置统一的二进制文件路径
+SOFT_ROOT="$(install_path)/${NAME}/build/bin"
 
 tee ${TOOLSRC} <<-EOF
 export PATH=$SOFT_ROOT:'$PATH'
