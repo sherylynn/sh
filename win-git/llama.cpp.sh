@@ -32,7 +32,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  sudo apt install libcurl4-openssl-dev ccache clang libomp-dev git-lfs -y
+  sudo apt install libcurl4-openssl-dev ccache clang libomp-dev git-lfs libopenblas-dev -y
   #GGML_NATIVE 需要指定clang，发现还是不好用，手动去指定了
   #openmp需要libomp-dev
   #gguf 需要git-lfs
@@ -49,10 +49,19 @@ if [[ $(platform) == *linux* ]]; then
   #带着下载curl一起编译
   # 带着repack功能 看起来运行的时候有 AARCH64_REPACK = 1应该就是正常的 #4248
   cmake \
+    -D BUILD_SHARED_LIBS=ON \
+    -D GGML_ACCELERATE=OFF \
+    -D GGML_ALL_WARNINGS=OFF \
+    -D GGML_BLAS=ON \
+    -D GGML_BLAS_VENDOR=OpenBLAS \
+    -D GGML_CCACHE=OFF \
+    -D GGML_LTO=ON \
     -D GGML_NATIVE=OFF -D GGML_CPU_ARM_ARCH=armv8.7-a+dotprod+i8mm+nosve \
     -D CMAKE_C_COMPILER="/usr/bin/gcc" \
     -D CMAKE_CXX_COMPILER="/usr/bin/g++" \
     -D GGML_RUNTIME_REPACK=ON \
+    -D LLAMA_ALL_WARNINGS=OFF \
+    -D LLAMA_OPENSSL=ON \
     -B build
   #-D GGML_CPU_AARCH64=ON \
   #-D GGML_NATIVE=ON \
@@ -79,8 +88,20 @@ elif [[ $(platform) == *mac* ]]; then
   
   # 配置并编译
   cmake \
+    -D BUILD_SHARED_LIBS=ON \
+    -D GGML_ACCELERATE=ON \
+    -D GGML_ALL_WARNINGS=OFF \
+    -D GGML_BLAS=ON \
+    -D GGML_BLAS_VENDOR=Apple \
+    -D GGML_CCACHE=OFF \
+    -D GGML_LTO=ON \
+    -D GGML_METAL=ON \
+    -D GGML_METAL_EMBED_LIBRARY=ON \
     -D GGML_NATIVE=ON \
     -D GGML_RUNTIME_REPACK=ON \
+    -D LLAMA_ALL_WARNINGS=OFF \
+    -D LLAMA_OPENSSL=ON \
+    -D LLAMA_METAL_MACOSX_VERSION_MIN=$(sw_vers -productVersion) \
     -B build
   cmake --build build --config Release -j $(sysctl -n hw.ncpu)
 elif [[ $(platform) == *win* ]]; then
@@ -93,11 +114,27 @@ elif [[ $(platform) == *win* ]]; then
     mingw-w64-ucrt-x86_64-gcc \
     mingw-w64-ucrt-x86_64-cmake \
     mingw-w64-ucrt-x86_64-shaderc
-  cmake -B build
+  cmake \
+    -D BUILD_SHARED_LIBS=ON \
+    -D GGML_ACCELERATE=OFF \
+    -D GGML_ALL_WARNINGS=OFF \
+    -D GGML_BLAS=OFF \
+    -D GGML_CCACHE=OFF \
+    -D GGML_LTO=ON \
+    -D GGML_NATIVE=ON \
+    -D GGML_RUNTIME_REPACK=ON \
+    -D LLAMA_ALL_WARNINGS=OFF \
+    -D LLAMA_OPENSSL=ON \
+    -B build
   cmake --build build --config Release
 fi
 
-SOFT_ROOT="$(install_path)/${NAME}/build/bin"
+# 根据不同平台设置正确的二进制文件路径
+if [[ $(platform) == *mac* ]]; then
+  SOFT_ROOT="$(install_path)/${NAME}/build"
+else
+  SOFT_ROOT="$(install_path)/${NAME}/build/bin"
+fi
 
 tee ${TOOLSRC} <<-EOF
 export PATH=$SOFT_ROOT:'$PATH'
