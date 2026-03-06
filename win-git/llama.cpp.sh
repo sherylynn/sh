@@ -96,12 +96,9 @@ elif [[ $(platform) == *win* ]]; then
   cmake -B build
   cmake --build build --config Release
 fi
-# 根据不同平台设置正确的二进制文件路径
-if [[ $(platform) == *mac* ]]; then
-  SOFT_ROOT="$(install_path)/${NAME}/build"
-else
-  SOFT_ROOT="$(install_path)/${NAME}/build/bin"
-fi
+
+SOFT_ROOT="$(install_path)/${NAME}/build/bin"
+
 tee ${TOOLSRC} <<-EOF
 export PATH=$SOFT_ROOT:'$PATH'
 #alias ll-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
