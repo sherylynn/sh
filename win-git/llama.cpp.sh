@@ -1,14 +1,13 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
-AUTHOR=megemini
+#AUTHOR=megemini
+AUTHOR=ggml-org
 NAME=llama.cpp
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-#SOFT_VERSION="b4667" #编译不了，linux下认不出cpu
-SOFT_VERSION="paddleocr-vl" #适配了OCR的版本
-#连接失败
-#SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
+#SOFT_VERSION="paddleocr-vl" #适配了OCR的版本
+SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
 echo "soft version is $SOFT_VERSION"
 
 case $(platform) in
@@ -28,8 +27,8 @@ esac
 
 SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 
-GGUF_GIT_URL=https://www.modelscope.cn/megemini/PaddleOCR-VL-1.5-GGUF.git
-GGUF_HOME=/root/PaddleOCR-VL-1.5-GGUF
+#GGUF_GIT_URL=https://www.modelscope.cn/megemini/PaddleOCR-VL-1.5-GGUF.git
+#GGUF_HOME=/root/PaddleOCR-VL-1.5-GGUF
 
 if [[ $(platform) == *linux* ]]; then
   #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
@@ -38,8 +37,8 @@ if [[ $(platform) == *linux* ]]; then
   #openmp需要libomp-dev
   #gguf 需要git-lfs
 
-  git clone ${GGUF_GIT_URL} ${GGUF_HOME}
-  cd $GGUF_HOME
+  #git clone ${GGUF_GIT_URL} ${GGUF_HOME}
+  #cd $GGUF_HOME
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   cd ${SOFT_HOME}
   git pull
@@ -68,6 +67,22 @@ if [[ $(platform) == *linux* ]]; then
   #sh ~/sh/termux/termux_service_${NAME}.sh
   #sv-enable ${NAME}
 #  ./systemd_novnc.sh
+elif [[ $(platform) == *mac* ]]; then
+  # 安装必要的依赖
+  brew install cmake git-lfs
+  
+  # 克隆或更新代码库
+  git clone ${SOFT_GIT_URL} ${SOFT_HOME}
+  cd ${SOFT_HOME}
+  git pull
+  git checkout $SOFT_VERSION
+  
+  # 配置并编译
+  cmake \
+    -D GGML_NATIVE=ON \
+    -D GGML_RUNTIME_REPACK=ON \
+    -B build
+  cmake --build build --config Release -j $(sysctl -n hw.ncpu)
 elif [[ $(platform) == *win* ]]; then
   git clone ${SOFT_GIT_URL} ${SOFT_HOME}
   cd ${SOFT_HOME}
@@ -81,7 +96,12 @@ elif [[ $(platform) == *win* ]]; then
   cmake -B build
   cmake --build build --config Release
 fi
-SOFT_ROOT=$(install_path)/${NAME}/build/bin
+# 根据不同平台设置正确的二进制文件路径
+if [[ $(platform) == *mac* ]]; then
+  SOFT_ROOT="$(install_path)/${NAME}/build"
+else
+  SOFT_ROOT="$(install_path)/${NAME}/build/bin"
+fi
 tee ${TOOLSRC} <<-EOF
 export PATH=$SOFT_ROOT:'$PATH'
 #alias ll-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
