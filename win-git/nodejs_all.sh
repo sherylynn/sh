@@ -6,7 +6,7 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/node
 NODE_GLOBAL=$(install_path)/node-global
 NODE_CACHE=$(install_path)/node-cache
-PNPM_HOME=$(install_path)/pnpm
+# PNPM_HOME=$(install_path)/pnpm
 #SOFT_VERSION=16.15.1
 SOFT_VERSION=22.22.1
 cd ~
@@ -30,7 +30,8 @@ SOFT_FILE_NAME=node-v${SOFT_VERSION}-${PLATFORM}-${SOFT_ARCH}
 SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
 
 #SOFT_URL=http://cdn.npmmirror.com/dist/node/v${SOFT_VERSION}/${SOFT_FILE_PACK}
-SOFT_URL=https://mirrors.tuna.tsinghua.edu.cn/nodejs-release/v${SOFT_VERSION}/${SOFT_FILE_PACK}
+#SOFT_URL=https://mirrors.tuna.tsinghua.edu.cn/nodejs-release/v${SOFT_VERSION}/${SOFT_FILE_PACK}
+SOFT_URL=https://nodejs.org/dist/v${SOFT_VERSION}/${SOFT_FILE_PACK}
 #--------------------------------------
 #安装 nodejs
 #--------------------------------------
@@ -56,29 +57,29 @@ NODE_ROOT=${SOFT_HOME}/${SOFT_FILE_NAME}
 if [[ ${PLATFORM} == win ]]; then
   echo 'export PATH=$PATH:'${NODE_ROOT} >${TOOLSRC}
   echo 'export PATH=$PATH:'${NODE_GLOBAL} >>${TOOLSRC}
-  echo 'export PATH=$PATH:'${PNPM_HOME} >>${TOOLSRC}
+  # echo 'export PATH=$PATH:'${PNPM_HOME} >>${TOOLSRC}
   export PATH=$PATH:$NODE_ROOT
   export PATH=$PATH:$NODE_GLOBAL
-  export PATH=$PATH:$PNPM_HOME
+  # export PATH=$PATH:$PNPM_HOME
   export NODE_SKIP_PLATFORM_CHECK=1
 else
   echo 'export PATH=$PATH:'${NODE_ROOT}'/bin' >${TOOLSRC}
   echo 'export PATH=$PATH:'${NODE_GLOBAL}'/bin' >>${TOOLSRC}
-  echo 'export PATH=$PATH:'${PNPM_HOME}'/bin' >>${TOOLSRC}
+  # echo 'export PATH=$PATH:'${PNPM_HOME}'/bin' >>${TOOLSRC}
   export PATH=$PATH:${NODE_ROOT}/bin
   export PATH=$PATH:${NODE_GLOBAL}/bin
-  export PATH=$PATH:${PNPM_HOME}/bin
+  # export PATH=$PATH:${PNPM_HOME}/bin
 fi
 echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >>${TOOLSRC}
 echo 'NPM_CONFIG_CACHE='$NODE_CACHE >>${TOOLSRC}
 echo 'YARN_CACHE_FOLDER='$(install_path)'/yarn-cache' >>${TOOLSRC}
-echo 'PNPM_HOME='$PNPM_HOME >>${TOOLSRC}
+# echo 'PNPM_HOME='$PNPM_HOME >>${TOOLSRC}
 echo 'export NODE_SKIP_PLATFORM_CHECK=1' >>${TOOLSRC}
 #-----env--------------------------------------------------
 export NPM_CONFIG_PREFIX=$NODE_GLOBAL
 export NPM_CONFIG_CACHE=$NODE_CACHE
 export YARN_CACHE_FOLDER=$(install_path)/yarn-cache
-export PNPM_HOME=$PNPM_HOME
+# export PNPM_HOME=$PNPM_HOME
 export ELECTRON_MIRROR=http://npmmirror.com/mirrors/electron/
 export SQLITE3_BINARY_SITE=http://npmmirror.com/mirrors/sqlite3
 export PHANTOMJS_CDNURL=http://npmmirror.com/mirrors/phantomjs
@@ -107,7 +108,7 @@ echo "con.nvim:registry=https://registry.npmmirror.com" >>~/.npmrc
 #arm
 cnpm i yarn webpack http-server babel-cli pm2 typescript ts-node tslint eslint --location=global
 # 安装 pnpm
-npm install -g pnpm --registry=https://registry.npmmirror.com
+# npm install -g pnpm --registry=https://registry.npmmirror.com
 yarn config set cache-folder "$(install_path)/yarn-cache"
 #-----------------------
 #if [[ $WIN_PATH ]]; then
