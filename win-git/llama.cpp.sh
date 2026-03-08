@@ -133,7 +133,7 @@ fi
 SOFT_ROOT="$(install_path)/${NAME}/build/bin"
 
 tee ${TOOLSRC} <<-EOF
-export PATH=$SOFT_ROOT:'$PATH'
+export PATH=$SOFT_ROOT:\$PATH
 #alias ll-sex='llama-server -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --host 0.0.0.0 --port 8888 -ngl 0 -t 2'
 #alias ll-story='llama-cli -m /sdcard/Download/MN-Halide-12b-v1.0.Q4_0.gguf --chat-template deepseek3 -p "说一个小故事" -no-cnv -t 2 --temp 0.6 --repeat-penalty 1.1 --cpu-range 4-5 --cpu-strict 1' 
 alias ll-ocr="llama-cli -m $GGUF_HOME/PaddleOCR-VL-1.5-GGUF.gguf -mm $GGUF_HOME/PaddleOCR-VL-1.5-GGUF-mmproj.gguf --image /root/download/1.png -p 'Spotting:' --temp 0 -n 1024 --jinja"

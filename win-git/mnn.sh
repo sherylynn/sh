@@ -122,7 +122,7 @@ fi
 SOFT_ROOT="$(install_path)/${NAME}/build"
 
 tee ${TOOLSRC} <<-EOF
-export PATH=$SOFT_ROOT:'$PATH'
+export PATH=$SOFT_ROOT:\$PATH
 # MNN 相关别名
 alias mnn-benchmark="$SOFT_ROOT/MNNBenchmark"
 alias mnn-convert="$SOFT_ROOT/MNNConvert"
