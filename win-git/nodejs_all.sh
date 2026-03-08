@@ -6,8 +6,9 @@ TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/node
 NODE_GLOBAL=$(install_path)/node-global
 NODE_CACHE=$(install_path)/node-cache
+PNPM_HOME=$(install_path)/pnpm
 #SOFT_VERSION=16.15.1
-SOFT_VERSION=22.11.0
+SOFT_VERSION=22.22.1
 cd ~
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 PLATFORM=$(platform)
@@ -34,8 +35,8 @@ SOFT_URL=https://mirrors.tuna.tsinghua.edu.cn/nodejs-release/v${SOFT_VERSION}/${
 #安装 nodejs
 #--------------------------------------
 if [[ "$(node --version)" != *${SOFT_VERSION}* ]]; then
-  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+  cache_downloader $SOFT_FILE_PACK $SOFT_URL
+  cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME
 
   rm -rf $SOFT_HOME &&
     mv $(cache_folder)/${SOFT_FILE_NAME} $SOFT_HOME
@@ -55,23 +56,29 @@ NODE_ROOT=${SOFT_HOME}/${SOFT_FILE_NAME}
 if [[ ${PLATFORM} == win ]]; then
   echo 'export PATH=$PATH:'${NODE_ROOT} >${TOOLSRC}
   echo 'export PATH=$PATH:'${NODE_GLOBAL} >>${TOOLSRC}
+  echo 'export PATH=$PATH:'${PNPM_HOME} >>${TOOLSRC}
   export PATH=$PATH:$NODE_ROOT
   export PATH=$PATH:$NODE_GLOBAL
+  export PATH=$PATH:$PNPM_HOME
   export NODE_SKIP_PLATFORM_CHECK=1
 else
   echo 'export PATH=$PATH:'${NODE_ROOT}'/bin' >${TOOLSRC}
   echo 'export PATH=$PATH:'${NODE_GLOBAL}'/bin' >>${TOOLSRC}
+  echo 'export PATH=$PATH:'${PNPM_HOME}'/bin' >>${TOOLSRC}
   export PATH=$PATH:${NODE_ROOT}/bin
   export PATH=$PATH:${NODE_GLOBAL}/bin
+  export PATH=$PATH:${PNPM_HOME}/bin
 fi
 echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >>${TOOLSRC}
 echo 'NPM_CONFIG_CACHE='$NODE_CACHE >>${TOOLSRC}
 echo 'YARN_CACHE_FOLDER='$(install_path)'/yarn-cache' >>${TOOLSRC}
+echo 'PNPM_HOME='$PNPM_HOME >>${TOOLSRC}
 echo 'export NODE_SKIP_PLATFORM_CHECK=1' >>${TOOLSRC}
 #-----env--------------------------------------------------
 export NPM_CONFIG_PREFIX=$NODE_GLOBAL
 export NPM_CONFIG_CACHE=$NODE_CACHE
 export YARN_CACHE_FOLDER=$(install_path)/yarn-cache
+export PNPM_HOME=$PNPM_HOME
 export ELECTRON_MIRROR=http://npmmirror.com/mirrors/electron/
 export SQLITE3_BINARY_SITE=http://npmmirror.com/mirrors/sqlite3
 export PHANTOMJS_CDNURL=http://npmmirror.com/mirrors/phantomjs
@@ -99,6 +106,8 @@ echo "con.nvim:registry=https://registry.npmmirror.com" >>~/.npmrc
 #npm i -g react-native-cli rnpm pm2 pouchdb-server npm webpack yrm http-server j json dva-cli babel-cli code-push express-cli flow-bin vue-cli rundev eslint tslint ts-node typescript cordova
 #arm
 cnpm i yarn webpack http-server babel-cli pm2 typescript ts-node tslint eslint --location=global
+# 安装 pnpm
+npm install -g pnpm --registry=https://registry.npmmirror.com
 yarn config set cache-folder "$(install_path)/yarn-cache"
 #-----------------------
 #if [[ $WIN_PATH ]]; then
