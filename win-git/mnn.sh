@@ -52,8 +52,13 @@ if [[ $(platform) == *linux* ]]; then
     -D CMAKE_BUILD_TYPE=Release \
     -D MNN_BUILD_TEST=ON \
     -D MNN_BUILD_BENCHMARK=ON \
-    -D MNN_OPENCL=OFF \
+    -D MNN_BUILD_SHARED_LIBS=OFF \
+    -D MNN_LOW_MEMORY=true \
+    -D MNN_CPU_WEIGHT_DEQUANT_GEMM=true \
+    -D MNN_BUILD_LLM=true \
+    -D MNN_SUPPORT_TRANSFORMER_FUSE=true \
     -D MNN_OPENGL=OFF \
+    -D MNN_OPENCL=OFF \
     ..
   cmake --build . --config Release -j $(nproc)
 
@@ -83,7 +88,13 @@ elif [[ $(platform) == *mac* ]]; then
     -D CMAKE_BUILD_TYPE=Release \
     -D MNN_BUILD_TEST=ON \
     -D MNN_BUILD_BENCHMARK=ON \
+    -D MNN_BUILD_SHARED_LIBS=OFF \
     -D MNN_BUILD_CONVERTER=ON \
+    -D MNN_LOW_MEMORY=true \
+    -D MNN_CPU_WEIGHT_DEQUANT_GEMM=true \
+    -D MNN_BUILD_LLM=true \
+    -D MNN_SUPPORT_TRANSFORMER_FUSE=true \
+    -D MNN_METAL=ON \
     -D MNN_OPENCL=OFF \
     -D MNN_OPENGL=OFF \
     ..
