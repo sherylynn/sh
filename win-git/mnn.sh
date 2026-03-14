@@ -28,7 +28,7 @@ SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
 if [[ $(platform) == *linux* ]]; then
   # 安装必要的依赖
   sudo apt install git cmake build-essential libprotobuf-dev protobuf-compiler -y
-  
+
   # 克隆或更新代码库
   if [[ ! -d ${SOFT_HOME} ]]; then
     echo "目录 ${SOFT_HOME} 不存在，克隆代码库..."
@@ -40,26 +40,27 @@ if [[ $(platform) == *linux* ]]; then
   fi
   cd ${SOFT_HOME}
   git checkout $SOFT_VERSION
-  
+
   # 生成 schema
   ./schema/generate.sh
-  
+
   # 配置并编译
+  # arm 下先把opencl opengl关掉
   mkdir -p build
   cd build
   cmake \
     -D CMAKE_BUILD_TYPE=Release \
     -D MNN_BUILD_TEST=ON \
     -D MNN_BUILD_BENCHMARK=ON \
-    -D MNN_OPENCL=ON \
-    -D MNN_OPENGL=ON \
+    -D MNN_OPENCL=OFF \
+    -D MNN_OPENGL=OFF \
     ..
   cmake --build . --config Release -j $(nproc)
 
 elif [[ $(platform) == *mac* ]]; then
   # 安装必要的依赖
   brew install git cmake protobuf
-  
+
   # 克隆或更新代码库
   if [[ ! -d ${SOFT_HOME} ]]; then
     echo "目录 ${SOFT_HOME} 不存在，克隆代码库..."
@@ -71,10 +72,10 @@ elif [[ $(platform) == *mac* ]]; then
   fi
   cd ${SOFT_HOME}
   git checkout $SOFT_VERSION
-  
+
   # 生成 schema
   ./schema/generate.sh
-  
+
   # 配置并编译
   mkdir -p build
   cd build
@@ -91,7 +92,7 @@ elif [[ $(platform) == *mac* ]]; then
 elif [[ $(platform) == *win* ]]; then
   # 安装必要的依赖
   pacman -S git cmake mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-protobuf
-  
+
   # 克隆或更新代码库
   if [[ ! -d ${SOFT_HOME} ]]; then
     echo "目录 ${SOFT_HOME} 不存在，克隆代码库..."
@@ -103,10 +104,10 @@ elif [[ $(platform) == *win* ]]; then
   fi
   cd ${SOFT_HOME}
   git checkout $SOFT_VERSION
-  
+
   # 生成 schema
   ./schema/generate.sh
-  
+
   # 配置并编译
   mkdir -p build
   cd build
