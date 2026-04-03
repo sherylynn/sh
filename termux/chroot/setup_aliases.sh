@@ -41,6 +41,8 @@ alias tstop='bash ~/sh/termux/chroot/termux_all_in_one.sh stop'
 alias trestart='bash ~/sh/termux/chroot/termux_all_in_one.sh restart'
 alias tstatus='bash ~/sh/termux/chroot/termux_all_in_one.sh status'
 alias tenter='bash ~/sh/termux/chroot/termux_all_in_one.sh enter'
+alias tinit='bash ~/sh/termux/chroot/termux_all_in_one.sh init'
+EOF
 
 # Chroot Linux 管理 (使用合并后的cli.sh)
 alias cstart='bash ~/sh/termux/chroot/cli.sh start'
@@ -136,6 +138,7 @@ echo "✨ 主要命令:"
 echo "   tstart   - 启动所有服务"
 echo "   tstop    - 停止所有服务"
 echo "   tstatus  - 查看状态"
+echo "   tinit    - 安装 Proot Linux 环境"
 echo "   cshell   - 进入 Linux 环境"
 echo ""
 echo "⚡ 快速卸载命令:"

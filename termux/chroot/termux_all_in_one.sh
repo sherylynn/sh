@@ -173,16 +173,26 @@ exec_in_chroot() {
 # 安装debian环境
 install_debian() {
     log "开始安装Debian环境..."
-    
+
     if [ -e "$DEBIAN_DIR/bin/dpkg" ]; then
         log "Debian环境已存在"
         return 0
     fi
-    
+
     # 运行安装脚本
     bash "$SCRIPT_DIR/chroot/installer_ruri.sh"
-    
+
     log "Debian环境安装完成"
+}
+
+# 安装proot环境
+install_proot() {
+    log "开始安装Proot Linux环境..."
+
+    # 运行安装脚本
+    bash "$SCRIPT_DIR/chroot/installer_proot.sh"
+
+    log "Proot Linux环境安装完成"
 }
 
 # 显示使用帮助
@@ -201,15 +211,17 @@ Termux 一键启动脚本 - 整体服务编排器
   enter         进入chroot Linux环境
   exec <命令>   在chroot中执行命令
   install       安装Debian环境
-  
+  init          安装Proot Linux环境
+
 示例:
   $0 start                    # 启动完整环境
   $0 enter                    # 进入Linux环境
   $0 exec "apt update"        # 在Linux中执行命令
   $0 status                   # 查看完整状态
+  $0 init                     # 安装Proot环境
 
 快捷别名:
-  tstart, tstop, trestart, tstatus, tenter
+  tstart, tstop, trestart, tstatus, tenter, tinit
 
 专用chroot管理 (更多功能):
   bash ~/sh/termux/chroot/cli.sh [start|stop|shell|exec|force-cleanup]
@@ -255,6 +267,10 @@ main() {
         "install")
             check_requirements
             install_debian
+            ;;
+        "init")
+            check_requirements
+            install_proot
             ;;
         "help"|"-h"|"--help")
             show_usage

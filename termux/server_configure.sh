@@ -27,6 +27,7 @@ zsh ~/sh/win-git/rurima.sh
 zsh ~/sh/termux/termux_service_x11.sh
 zsh ~/sh/termux/termux_service_virgl.sh
 zsh ~/sh/termux/termux_service_pulseaudio.sh
+zsh ~/sh/termux/chroot/setup_aliases.sh
 unproxy
 emacs
 zsh ~/sh/termux/clean.sh
