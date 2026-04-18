@@ -29,7 +29,16 @@ echo $(whoami)
 #virgl
 #这个需要关掉noVNC的特效的
 #if [ -f "$MESA_FREE_SO" ]; then
-if lscpu | grep -q "Oryon"; then
+#检测是否强制使用虚拟显卡
+if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+  echo "检测到强制使用虚拟显卡文件，使用virgl服务"
+  export PULSE_SERVER=127.0.0.1
+  export GTK_IM_MODULE="fcitx"
+  export QT_IM_MODULE="fcitx"
+  export XMODIFIERS="@im=fcitx"
+  export GALLIUM_DRIVER=virpipe
+  export MESA_GL_VERSION_OVERRIDE=4.0
+elif lscpu | grep -q "Oryon"; then
   echo '启动mesa的noVNC'
   export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"

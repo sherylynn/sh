@@ -17,7 +17,11 @@ case $(arch) in
   386) SOFT_ARCH=x86 ;;
   armhf) SOFT_ARCH=armv7l ;;
   aarch64)
-    if lscpu | grep -q "Oryon"; then
+    #检测是否强制使用虚拟显卡
+    if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+      echo "检测到强制使用虚拟显卡文件，跳过Oryon驱动安装"
+      exit 0
+    elif lscpu | grep -q "Oryon"; then
       echo "Oryon CPU detected. Installing specific Mesa drivers..."
       # Define files for Oryon
       if [[ $SOFT_VERSION == "turnip-"* ]]; then

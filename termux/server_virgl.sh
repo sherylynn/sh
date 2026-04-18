@@ -40,7 +40,10 @@ sudo killall -9 virgl_test_server_android
 #TERMUX_X11_DEBUG=1 termux-x11 :1 -ac -xstartup "virgl_test_server_android"
 #其实只是运行virgl的话。压根不需要跑termux-x11
 
-if lscpu | grep -q "Oryon"; then
+if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+  echo "检测到强制使用虚拟显卡文件，启动virgl_test_server_android"
+  virgl_test_server_android
+elif lscpu | grep -q "Oryon"; then
   echo "至尊版cpu不需要virgl_test_server_android"
 else
   virgl_test_server_android

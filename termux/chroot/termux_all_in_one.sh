@@ -49,7 +49,10 @@ start_base_services() {
     
     # 启动必要的sv服务
     local services=()
-    if lscpu | grep -q "Oryon"; then
+    if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+      log "检测到强制使用虚拟显卡文件，启动virgl服务"
+      services=("virgl" "pulseaudio" "x11")
+    elif lscpu | grep -q "Oryon"; then
       log "Oryon CPU detected, skipping virgl service startup."
       services=("pulseaudio" "x11")
     else
@@ -115,7 +118,10 @@ stop_all() {
     
     # 停止sv服务
     local services=()
-    if lscpu | grep -q "Oryon"; then
+    if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+      log "检测到强制使用虚拟显卡文件，停止virgl服务"
+      services=("virgl" "pulseaudio" "x11")
+    elif lscpu | grep -q "Oryon"; then
       log "Oryon CPU detected, skipping virgl service shutdown."
       services=("pulseaudio" "x11")
     else

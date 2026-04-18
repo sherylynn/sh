@@ -1,6 +1,21 @@
 # script name
 SCRIPT_NAME=virgl
-if lscpu | grep -q "Oryon"; then
+#检测是否强制使用虚拟显卡
+if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+  echo "检测到强制使用虚拟显卡文件，创建virgl服务"
+  # Setup services
+  mkdir -p $PREFIX/var/service
+  cd $PREFIX/var/service
+  mkdir -p ${SCRIPT_NAME}/log
+  echo '#!/bin/sh' >${SCRIPT_NAME}/run
+  echo 'exec $PREFIX/../home/sh/termux/server_'${SCRIPT_NAME}'.sh' >>${SCRIPT_NAME}/run
+  chmod +x ${SCRIPT_NAME}/run
+  touch ${SCRIPT_NAME}/down
+  ln -sf $PREFIX/share/termux-services/svlogger ${SCRIPT_NAME}/log/run
+  # Setup shortcuts
+  mkdir -p ~/.shortcuts
+  echo 'exec $PREFIX/../home/sh/termux/server_'${SCRIPT_NAME}'.sh' >~/.shortcuts/${SCRIPT_NAME}.sh
+elif lscpu | grep -q "Oryon"; then
   echo "Oryon Use freedreno"
   # Remove virgl service if it exists
   if [ -d "$PREFIX/var/service/${SCRIPT_NAME}" ]; then
