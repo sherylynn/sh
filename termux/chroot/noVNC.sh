@@ -20,7 +20,21 @@ pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth
 pacmd load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1
 
 # Start virgl server
-virgl_test_server_android &
+if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+  echo "检测到强制使用虚拟显卡文件，启动virgl_test_server_android"
+  virgl_test_server_android &
+elif lscpu | grep -q "Oryon"; then
+  echo "Oryon CPU detected, skipping virgl_test_server_android"
+else
+  virgl_test_server_android &
+fi
+
+# Determine driver environment variables
+if [ -f "/sdcard/Download/使用虚拟显卡.txt" ] || ! lscpu | grep -q "Oryon"; then
+  DRIVER_ENV='export GALLIUM_DRIVER=virpipe && export MESA_GL_VERSION_OVERRIDE=4.0 &&'
+else
+  DRIVER_ENV='export MESA_LOADER_DRIVER_OVERRIDE=kgsl && export TU_DEBUG=noconform &&'
+fi
 
 if [ -f ~/tools/rurima/rurima ]; then
 
@@ -33,14 +47,13 @@ if [ -f ~/tools/rurima/rurima ]; then
   #挂载
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
-  #sudo rurima ruri -S -m /data/data/com.termux/files/usr/tmp /tmp -m /sdcard /sdcard -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+
   sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
-export GALLIUM_DRIVER=virpipe && \
-export MESA_GL_VERSION_OVERRIDE=4.0 && \
+'"$DRIVER_ENV"' \
 cd ~ && \
 chmod 1777 /dev/shm && \
 sh ~/sh/win-git/server_noVNC.sh'
@@ -64,8 +77,7 @@ export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
 #fcitx5 && \
-export GALLIUM_DRIVER=virpipe && \
-export MESA_GL_VERSION_OVERRIDE=4.0 && \
+'"$DRIVER_ENV"' \
 cd ~ && \
 sh ~/sh/win-git/server_noVNC.sh'
 #dbus-launch --exit-with-session zsh ~/sh/win-git/server_noVNC.sh'

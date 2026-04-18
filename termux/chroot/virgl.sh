@@ -21,7 +21,14 @@ pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth
 pacmd load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1
 
 # Start virgl server
-virgl_test_server_android &
+if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+  echo "检测到强制使用虚拟显卡文件，启动virgl_test_server_android"
+  virgl_test_server_android &
+elif lscpu | grep -q "Oryon"; then
+  echo "Oryon CPU detected, skipping virgl_test_server_android"
+else
+  virgl_test_server_android &
+fi
 
 #export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 #export GTK_IM_MODULE="fcitx" && \
