@@ -1,6 +1,15 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 . $(dirname "$0")/cli.sh
+
+# 用户支持：bash code-server.sh [用户名]
+CHROOT_USER="${1:-${CHROOT_USER:-root}}"
+if [ "$CHROOT_USER" = "root" ]; then
+  CHROOT_HOME="/root"
+else
+  CHROOT_HOME="/home/$CHROOT_USER"
+fi
+
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
@@ -21,7 +30,7 @@ if [ -f ~/tools/rurima/rurima ]; then
 
   #sudo rm -rf $DEBIAN_DIR/run/dbus/pid
   #sudo rurima ruri -S -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -p $DEBIAN_DIR /bin/su - root -c 'dbus-daemon --system --fork' &
-  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export PULSE_SERVER=127.0.0.1 && \
+  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - $CHROOT_USER -c 'export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
@@ -48,7 +57,7 @@ elif [ -n "$busybox" ]; then
   #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 
   start_dbus
-  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export PULSE_SERVER=127.0.0.1 && \
+  sudo $busybox chroot $CHROOT_DIR /bin/su - $CHROOT_USER -c 'export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \

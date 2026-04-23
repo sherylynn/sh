@@ -2,6 +2,15 @@
 
 . $(dirname "$0")/cli.sh
 #. ./cli.sh
+
+# 用户支持：bash x11.sh [用户名]
+CHROOT_USER="${1:-${CHROOT_USER:-root}}"
+if [ "$CHROOT_USER" = "root" ]; then
+  CHROOT_HOME="/root"
+else
+  CHROOT_HOME="/home/$CHROOT_USER"
+fi
+
 # Kill all old prcoesses
 #sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 . $(dirname "$0")/unchroot.sh
@@ -49,7 +58,7 @@ if [ -f ~/tools/rurima/rurima ]; then
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
 
-  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - $CHROOT_USER -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
     export GTK_IM_MODULE="fcitx" &&
     export QT_IM_MODULE="fcitx" &&
     export XMODIFIERS="@im=fcitx" &&
@@ -70,7 +79,7 @@ elif [ -n "$busybox" ]; then
   test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
 
   unset LD_PRELOAD LD_DEBUG
-  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 &&
+  sudo $busybox chroot $CHROOT_DIR /bin/su - $CHROOT_USER -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 &&
     export GTK_IM_MODULE="fcitx" &&
     export QT_IM_MODULE="fcitx" &&
     export XMODIFIERS="@im=fcitx" &&

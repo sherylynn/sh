@@ -26,6 +26,14 @@ INIT_LEVEL=3
 [ -n "${INIT_USER}" ] || INIT_USER="root"
 [ -n "${INIT_ASYNC}" ] || INIT_ASYNC="true"
 
+# 多用户支持：CHROOT_USER 可通过环境变量传入，默认 root
+CHROOT_USER="${CHROOT_USER:-root}"
+
+# 根据 CHROOT_USER 动态设置 INIT_USER
+if [ "$CHROOT_USER" != "root" ]; then
+  INIT_USER="$CHROOT_USER"
+fi
+
 # sysv初始化系统配置
 # INIT_LEVEL: 默认运行级别 (3=多用户文本模式)
 # INIT_USER: 执行初始化脚本的用户 (root)
@@ -1087,8 +1095,8 @@ enter_chroot_shell() {
     return 1
   fi
 
-  log_info "进入chroot Linux环境..."
-  chroot_exec -u root
+  log_info "进入chroot Linux环境 (用户: $CHROOT_USER)..."
+  chroot_exec -u $CHROOT_USER
 }
 
 # 在chroot中执行命令
@@ -1106,8 +1114,8 @@ exec_chroot_command() {
     return 1
   fi
 
-  log_info "在chroot中执行: $command"
-  chroot_exec -u root bash -c "$command"
+  log_info "在chroot中执行: $command (用户: $CHROOT_USER)"
+  chroot_exec -u $CHROOT_USER bash -c "$command"
 }
 
 # 重启chroot容器
