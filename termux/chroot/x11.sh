@@ -49,14 +49,27 @@ fi
 if [ -f ~/tools/rurima/rurima ]; then
 
   sudo mount -o remount,dev,suid /data
-  #sudo mount -o remount,suid /data
-  #挂载sdcard隐私文件
   sdcard_link
-  #解除挂载
   sudo rurima ruri -U $DEBIAN_DIR
-  #挂载
-  #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
+
+  # 自动检查并创建用户（rurima 路径）
+  if [ "$CHROOT_USER" = "lynn" ]; then
+    if ! sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR id "$CHROOT_USER" >/dev/null 2>&1; then
+      echo "[+] 用户 $CHROOT_USER 不存在，正在自动创建..."
+      sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c '
+        user="'"$CHROOT_USER"'"
+        uid=1000; while id -u $uid >/dev/null 2>&1; do uid=$((uid+1)); done
+        useradd -m -u $uid -s /bin/bash "$user" 2>/dev/null || true
+        usermod -aG sudo,video,audio,aid_inet "$user" 2>/dev/null || true
+        mkdir -p /etc/sudoers.d
+        echo "$user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$user
+        chmod 440 /etc/sudoers.d/$user
+        echo "$user:123456" | chpasswd
+      '
+      echo "[✓] 用户 $CHROOT_USER 创建成功 (密码: 123456)"
+    fi
+  fi
 
   sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - $CHROOT_USER -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
     export GTK_IM_MODULE="fcitx" &&
@@ -69,14 +82,16 @@ if [ -f ~/tools/rurima/rurima ]; then
 elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
-  #before_mount_fun
+
+  # 自动检查并创建用户
+  ensure_chroot_user "$CHROOT_USER" || exit 1
 
   termux_data_path=/data/data/com.termux/files/home
   termux_gitcredentials=$termux_data_path/.git-credentials
   termux_gitconfig=$termux_data_path/.gitconfig
 
-  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
-  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
+  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR$CHROOT_HOME/
+  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR$CHROOT_HOME/
 
   unset LD_PRELOAD LD_DEBUG
   sudo $busybox chroot $CHROOT_DIR /bin/su - $CHROOT_USER -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 &&

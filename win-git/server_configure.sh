@@ -46,7 +46,7 @@ if [ -d "/sdcard" ]; then
   #复用输入法词库
   sudo rm -rf ~/rime
   test -d $sdcard_rime && sudo ln -s $sdcard_rime ~/rime
-  sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ /root/Documents/百度云盘
+  sudo ln -s /sdcard/Download/BaiduNetdisk/_pcs_.workspace/ $HOME/Documents/百度云盘
 fi
 
 sudo apt install zsh -y
@@ -56,6 +56,7 @@ sudo apt install xfce4-terminal -y
 sudo apt install telegram-desktop -y
 sudo apt install ncdu htop android-platform-tools-base -y
 sudo chsh -s /bin/zsh
+chsh -s /bin/zsh
 . $(dirname "$0")/../win-git/toolsinit.sh
 source ~/sh/win-git/toolsinit.sh
 proxy

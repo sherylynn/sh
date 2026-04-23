@@ -27,12 +27,66 @@ INIT_LEVEL=3
 [ -n "${INIT_ASYNC}" ] || INIT_ASYNC="true"
 
 # 多用户支持：CHROOT_USER 可通过环境变量传入，默认 root
+# 仅影响 tenter/exec，不影响 init 服务
 CHROOT_USER="${CHROOT_USER:-root}"
 
-# 根据 CHROOT_USER 动态设置 INIT_USER
-if [ "$CHROOT_USER" != "root" ]; then
-  INIT_USER="$CHROOT_USER"
-fi
+# INIT_USER 始终为 root（系统服务需要 root 权限）
+INIT_USER="root"
+
+# 确保 chroot 内用户存在，不存在则自动创建
+# 用法：ensure_chroot_user [用户名]
+# 仅支持自动创建 lynn 用户，其他非 root 用户会拒绝
+ensure_chroot_user() {
+  local user="${1:-$CHROOT_USER}"
+  [ "$user" = "root" ] && return 0  # root 总是存在
+
+  # 只允许自动创建 lynn
+  if [ "$user" != "lynn" ]; then
+    log_error "仅支持自动创建用户 lynn，不支持: $user"
+    return 1
+  fi
+
+  # 先确保容器已挂载
+  container_mounted || return 1
+
+  # 检查用户是否存在
+  if sudo $busybox chroot $CHROOT_DIR id "$user" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  log_warn "用户 $user 不存在，正在自动创建..."
+
+  # 自动创建用户
+  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c '
+    user="lynn"
+    uid=1000
+    # 如果 uid=1000 被占用就递增
+    while id -u $uid >/dev/null 2>&1; do
+      uid=$((uid + 1))
+    done
+    useradd -m -u $uid -s /bin/bash "$user" 2>/dev/null || true
+    usermod -aG sudo,video,audio,aid_inet "$user" 2>/dev/null || true
+    mkdir -p /etc/sudoers.d
+    echo "$user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$user
+    chmod 440 /etc/sudoers.d/$user
+    echo "$user:123456" | chpasswd
+    echo "[ok] user $user created uid=$uid"
+  ' 2>&1 | while read -r line; do
+    case "$line" in
+      *"[ok]"*) log_info "${line#*\[ok\] }" ;;
+      *) ;;
+    esac
+  done
+
+  # 验证
+  if sudo $busybox chroot $CHROOT_DIR id "$user" >/dev/null 2>&1; then
+    log_info "用户 lynn 创建成功 (默认密码: 123456)"
+    return 0
+  else
+    log_error "用户 lynn 创建失败"
+    return 1
+  fi
+}
 
 # sysv初始化系统配置
 # INIT_LEVEL: 默认运行级别 (3=多用户文本模式)
@@ -1095,6 +1149,9 @@ enter_chroot_shell() {
     return 1
   fi
 
+  # 自动检查并创建用户
+  ensure_chroot_user "$CHROOT_USER" || return 1
+
   log_info "进入chroot Linux环境 (用户: $CHROOT_USER)..."
   chroot_exec -u $CHROOT_USER
 }
@@ -1113,6 +1170,9 @@ exec_chroot_command() {
     log_error "容器未运行，请先启动容器"
     return 1
   fi
+
+  # 自动检查并创建用户
+  ensure_chroot_user "$CHROOT_USER" || return 1
 
   log_info "在chroot中执行: $command (用户: $CHROOT_USER)"
   chroot_exec -u $CHROOT_USER bash -c "$command"
