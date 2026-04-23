@@ -59,16 +59,3 @@ sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp 
 sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'test -f ~/tools/rc/allToolsrc && source  ~/tools/rc/allToolsrc ;\
 zsh /root/sh/win-git/server_configure.sh'
 #sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
-
-# 创建 lynn 用户 (uid=1000)
-echo "[+] Creating user lynn..."
-sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c '
-  useradd -m -u 1000 -s /bin/bash lynn 2>/dev/null || true
-  usermod -aG sudo,video,audio,aid_inet lynn 2>/dev/null || true
-  mkdir -p /etc/sudoers.d
-  echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
-  chmod 440 /etc/sudoers.d/lynn
-  echo "lynn:123456" | chpasswd
-  echo "用户lynn创建完成 (密码: 123456)"
-'
-echo "[✓] User lynn created (default password: 123456)"

@@ -207,7 +207,7 @@ show_usage() {
 Termux 一键启动脚本 - 整体服务编排器
 
 使用方法:
-  $0 [-u|--user 用户名] [命令]
+  $0 [命令]
 
 可用命令:
   start         启动所有服务 (X11 + chroot Linux + sysv初始化系统)
@@ -219,14 +219,9 @@ Termux 一键启动脚本 - 整体服务编排器
   install       安装Debian环境
   init          安装Proot Linux环境
 
-选项:
-  -u, --user    指定chroot用户 (默认: root，可选: lynn)
-
 示例:
-  $0 start                    # 以root启动完整环境
-  $0 -u lynn start            # 以lynn用户启动
-  $0 -u lynn enter            # 以lynn用户进入Linux环境
-  $0 enter                    # 以root进入Linux环境
+  $0 start                    # 启动完整环境
+  $0 enter                    # 进入Linux环境
   $0 exec "apt update"        # 在Linux中执行命令
   $0 status                   # 查看完整状态
   $0 init                     # 安装Proot环境
@@ -246,25 +241,7 @@ EOF
 
 # 主函数
 main() {
-    # 解析 --user/-u 参数
-    export CHROOT_USER="${CHROOT_USER:-root}"
-    local command=""
-    
-    while [[ $# -gt 0 ]]; do
-      case "$1" in
-        -u|--user)
-          CHROOT_USER="$2"
-          export CHROOT_USER
-          shift 2
-          ;;
-        *)
-          command="$1"
-          shift
-          ;;
-      esac
-    done
-    
-    command="${command:-start}"
+    local command="${1:-start}"
     
     case "$command" in
         "start")

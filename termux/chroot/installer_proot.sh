@@ -101,23 +101,6 @@ configure_debian_chroot() {
   #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
   sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
 
-  # 创建 lynn 用户 (uid=1000)
-  progress "Creating user lynn..."
-  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c '
-    useradd -m -u 1000 -s /bin/bash lynn 2>/dev/null || true
-    usermod -aG sudo,video,audio,aid_inet lynn 2>/dev/null || true
-    mkdir -p /etc/sudoers.d
-    echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
-    chmod 440 /etc/sudoers.d/lynn
-    echo "lynn:123456" | chpasswd
-    echo "用户lynn创建完成 (密码: 123456)"
-  '
-  if [ $? -eq 0 ]; then
-    success "User lynn created (default password: 123456)"
-  else
-    echo "[!] Warning: Failed to create user lynn, continuing..."
-  fi
-
 }
 
 # Main function

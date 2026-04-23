@@ -42,13 +42,6 @@ alias trestart='bash ~/sh/termux/chroot/termux_all_in_one.sh restart'
 alias tstatus='bash ~/sh/termux/chroot/termux_all_in_one.sh status'
 alias tenter='bash ~/sh/termux/chroot/termux_all_in_one.sh enter'
 alias tinit='bash ~/sh/termux/chroot/termux_all_in_one.sh init'
-
-# 多用户支持 - lynn 用户
-alias tstart-lynn='bash ~/sh/termux/chroot/termux_all_in_one.sh -u lynn start'
-alias tenter-lynn='bash ~/sh/termux/chroot/termux_all_in_one.sh -u lynn enter'
-alias tinit-lynn='bash ~/sh/termux/chroot/termux_all_in_one.sh -u lynn init'
-alias login-lynn='bash ~/sh/termux/chroot/login.sh lynn'
-alias login-root='bash ~/sh/termux/chroot/login.sh root'
 EOF
 
 # Chroot Linux 管理 (使用合并后的cli.sh)

@@ -1,10 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 . $(dirname "$0")/cli.sh
-
-# 支持指定用户：bash noVNC.sh [用户名]
-CHROOT_USER="${1:-${CHROOT_USER:-root}}"
-
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
 
@@ -64,27 +60,19 @@ sh ~/sh/win-git/server_noVNC.sh'
 elif [ -n "$busybox" ]; then
   # Execute chroot script
   container_mounted || container_mount
-
-  # 自动检查并创建用户
-  ensure_chroot_user "$CHROOT_USER" || exit 1
-
-  if [ "$CHROOT_USER" = "root" ]; then
-    CHROOT_HOME="/root"
-  else
-    CHROOT_HOME="/home/$CHROOT_USER"
-  fi
+  #before_mount_fun
 
   termux_data_path=/data/data/com.termux/files/home
   termux_gitcredentials=$termux_data_path/.git-credentials
   termux_gitconfig=$termux_data_path/.gitconfig
 
-  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR$CHROOT_HOME/
-  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR$CHROOT_HOME/
+  test -f $termux_gitconfig && sudo cp $termux_gitconfig $CHROOT_DIR/root/
+  test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
 
   unset LD_PRELOAD LD_DEBUG
   start_dbus
   #start_vnc
-  sudo $busybox chroot $CHROOT_DIR /bin/su - $CHROOT_USER -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \

@@ -26,71 +26,6 @@ INIT_LEVEL=3
 [ -n "${INIT_USER}" ] || INIT_USER="root"
 [ -n "${INIT_ASYNC}" ] || INIT_ASYNC="true"
 
-# 多用户支持：CHROOT_USER 可通过环境变量传入，默认 root
-# 仅影响 tenter/exec，不影响 init 服务
-CHROOT_USER="${CHROOT_USER:-root}"
-
-# INIT_USER 始终为 root（系统服务需要 root 权限）
-INIT_USER="root"
-
-# 确保 chroot 内用户存在，不存在则自动创建
-# 用法：ensure_chroot_user [用户名]
-# 仅支持自动创建 lynn 用户
-ensure_chroot_user() {
-  local user="${1:-$CHROOT_USER}"
-  [ "$user" = "root" ] && return 0
-
-  if [ "$user" != "lynn" ]; then
-    log_error "仅支持自动创建用户 lynn，不支持: $user"
-    return 1
-  fi
-
-  container_mounted || return 1
-
-  # 检查用户是否存在
-  if sudo $busybox chroot $CHROOT_DIR grep -q '^lynn:' /etc/passwd 2>/dev/null; then
-    # 用户存在，检查 sudo 是否正常
-    if sudo $busybox chroot $CHROOT_DIR /bin/su - lynn -c 'sudo -n true' 2>/dev/null; then
-      return 0
-    fi
-    # sudo 不正常，修复
-    log_warn "用户 lynn 存在但 sudo 异常，正在修复..."
-    sudo $busybox chroot $CHROOT_DIR /bin/su - root -c '
-      usermod -aG sudo lynn
-      mkdir -p /etc/sudoers.d
-      echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
-      chmod 440 /etc/sudoers.d/lynn
-      grep -q "^#includedir /etc/sudoers.d" /etc/sudoers || echo "#includedir /etc/sudoers.d" >> /etc/sudoers
-      grep -q "^%sudo" /etc/sudoers || echo "%sudo ALL=(ALL:ALL) ALL" >> /etc/sudoers
-    '
-    log_info "sudo 已修复"
-    return 0
-  fi
-
-  log_warn "用户 lynn 不存在，正在自动创建..."
-
-  # 创建用户（不删除已有数据）
-  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c '
-    useradd -m -u 1000 -s /bin/bash lynn
-    usermod -aG sudo,video,audio,aid_inet lynn
-    mkdir -p /etc/sudoers.d
-    echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
-    chmod 440 /etc/sudoers.d/lynn
-    grep -q "^#includedir /etc/sudoers.d" /etc/sudoers || echo "#includedir /etc/sudoers.d" >> /etc/sudoers
-    grep -q "^%sudo" /etc/sudoers || echo "%sudo ALL=(ALL:ALL) ALL" >> /etc/sudoers
-    echo "lynn:123456" | chpasswd
-  '
-
-  # 验证
-  if sudo $busybox chroot $CHROOT_DIR grep -q '^lynn:' /etc/passwd 2>/dev/null; then
-    log_info "用户 lynn 创建成功 (uid=1000, 密码: 123456)"
-    return 0
-  else
-    log_error "用户 lynn 创建失败"
-    return 1
-  fi
-}
-
 # sysv初始化系统配置
 # INIT_LEVEL: 默认运行级别 (3=多用户文本模式)
 # INIT_USER: 执行初始化脚本的用户 (root)
@@ -1152,11 +1087,8 @@ enter_chroot_shell() {
     return 1
   fi
 
-  # 自动检查并创建用户
-  ensure_chroot_user "$CHROOT_USER" || return 1
-
-  log_info "进入chroot Linux环境 (用户: $CHROOT_USER)..."
-  chroot_exec -u $CHROOT_USER
+  log_info "进入chroot Linux环境..."
+  chroot_exec -u root
 }
 
 # 在chroot中执行命令
@@ -1174,11 +1106,8 @@ exec_chroot_command() {
     return 1
   fi
 
-  # 自动检查并创建用户
-  ensure_chroot_user "$CHROOT_USER" || return 1
-
-  log_info "在chroot中执行: $command (用户: $CHROOT_USER)"
-  chroot_exec -u $CHROOT_USER bash -c "$command"
+  log_info "在chroot中执行: $command"
+  chroot_exec -u root bash -c "$command"
 }
 
 # 重启chroot容器
