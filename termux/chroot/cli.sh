@@ -35,52 +35,38 @@ INIT_USER="root"
 
 # 确保 chroot 内用户存在，不存在则自动创建
 # 用法：ensure_chroot_user [用户名]
-# 仅支持自动创建 lynn 用户，其他非 root 用户会拒绝
+# 仅支持自动创建 lynn 用户
 ensure_chroot_user() {
   local user="${1:-$CHROOT_USER}"
-  [ "$user" = "root" ] && return 0  # root 总是存在
+  [ "$user" = "root" ] && return 0
 
-  # 只允许自动创建 lynn
   if [ "$user" != "lynn" ]; then
     log_error "仅支持自动创建用户 lynn，不支持: $user"
     return 1
   fi
 
-  # 先确保容器已挂载
   container_mounted || return 1
 
-  # 检查用户是否存在
-  if sudo $busybox chroot $CHROOT_DIR id "$user" >/dev/null 2>&1; then
+  # 检查用户是否存在（用 grep 检查 /etc/passwd，更可靠）
+  if sudo $busybox chroot $CHROOT_DIR grep -q '^lynn:' /etc/passwd 2>/dev/null; then
     return 0
   fi
 
-  log_warn "用户 $user 不存在，正在自动创建..."
+  log_warn "用户 lynn 不存在，正在自动创建..."
 
-  # 自动创建用户
+  # 创建用户（固定 uid=1000）
   sudo $busybox chroot $CHROOT_DIR /bin/su - root -c '
-    user="lynn"
-    uid=1000
-    # 如果 uid=1000 被占用就递增
-    while id -u $uid >/dev/null 2>&1; do
-      uid=$((uid + 1))
-    done
-    useradd -m -u $uid -s /bin/bash "$user" 2>/dev/null || true
-    usermod -aG sudo,video,audio,aid_inet "$user" 2>/dev/null || true
+    useradd -m -u 1000 -s /bin/bash lynn
+    usermod -aG sudo,video,audio,aid_inet lynn
     mkdir -p /etc/sudoers.d
-    echo "$user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$user
-    chmod 440 /etc/sudoers.d/$user
-    echo "$user:123456" | chpasswd
-    echo "[ok] user $user created uid=$uid"
-  ' 2>&1 | while read -r line; do
-    case "$line" in
-      *"[ok]"*) log_info "${line#*\[ok\] }" ;;
-      *) ;;
-    esac
-  done
+    echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
+    chmod 440 /etc/sudoers.d/lynn
+    echo "lynn:123456" | chpasswd
+  '
 
   # 验证
-  if sudo $busybox chroot $CHROOT_DIR id "$user" >/dev/null 2>&1; then
-    log_info "用户 lynn 创建成功 (默认密码: 123456)"
+  if sudo $busybox chroot $CHROOT_DIR grep -q '^lynn:' /etc/passwd 2>/dev/null; then
+    log_info "用户 lynn 创建成功 (uid=1000, 密码: 123456)"
     return 0
   else
     log_error "用户 lynn 创建失败"

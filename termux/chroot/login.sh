@@ -34,19 +34,21 @@ if [ -f ~/tools/rurima/rurima ]; then
 
   # 自动检查并创建用户（rurima 路径）
   if [ "$LOGIN_USER" = "lynn" ]; then
-    if ! sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR id "$LOGIN_USER" >/dev/null 2>&1; then
+    if ! sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR grep -q "^lynn:" /etc/passwd 2>/dev/null; then
       echo "[+] 用户 $LOGIN_USER 不存在，正在自动创建..."
       sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c '
         user="'"$LOGIN_USER"'"
-        uid=1000; while id -u $uid >/dev/null 2>&1; do uid=$((uid+1)); done
-        useradd -m -u $uid -s /bin/bash "$user" 2>/dev/null || true
-        usermod -aG sudo,video,audio,aid_inet "$user" 2>/dev/null || true
-        mkdir -p /etc/sudoers.d
-        echo "$user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$user
-        chmod 440 /etc/sudoers.d/$user
-        echo "$user:123456" | chpasswd
+        # 检查用户是否已存在
+        if ! grep -q "^lynn:" /etc/passwd 2>/dev/null; then
+          useradd -m -u 1000 -s /bin/bash lynn
+          usermod -aG sudo,video,audio,aid_inet lynn
+          mkdir -p /etc/sudoers.d
+          echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
+          chmod 440 /etc/sudoers.d/lynn
+          echo "lynn:123456" | chpasswd
+        fi
       '
-      echo "[✓] 用户 $LOGIN_USER 创建成功 (密码: 123456)"
+      echo "[✓] 用户 lynn 已就绪 (uid=1000)"
     fi
   fi
 
