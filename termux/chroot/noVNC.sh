@@ -2,13 +2,8 @@
 
 . $(dirname "$0")/cli.sh
 
-# 用户支持：bash noVNC.sh [用户名]
+# 支持指定用户：bash noVNC.sh [用户名]
 CHROOT_USER="${1:-${CHROOT_USER:-root}}"
-if [ "$CHROOT_USER" = "root" ]; then
-  CHROOT_HOME="/root"
-else
-  CHROOT_HOME="/home/$CHROOT_USER"
-fi
 
 # Kill all old prcoesses
 sudo killall -9 termux-x11 Xwayland pulseaudio virgl_test_server_android termux-wake-lock
@@ -48,35 +43,16 @@ fi
 if [ -f ~/tools/rurima/rurima ]; then
 
   sudo mount -o remount,dev,suid /data
+  #sudo mount -o remount,suid /data
+  #挂载sdcard隐私文件
   sdcard_link
+  #解除挂载
   sudo rurima ruri -U $DEBIAN_DIR
+  #挂载
+  #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
 
-  # 自动检查并创建用户（rurima 路径）
-  if [ "$CHROOT_USER" = "lynn" ]; then
-    if ! sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR grep -q "^lynn:" /etc/passwd 2>/dev/null; then
-      echo "[+] 用户 $CHROOT_USER 不存在，正在自动创建..."
-      sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c '
-        user="'"$CHROOT_USER"'"
-        # 清理残留并创建用户
-        if id lynn >/dev/null 2>&1; then
-          userdel -r lynn 2>/dev/null || true
-        fi
-        rm -rf /home/lynn
-        useradd -m -u 1000 -s /bin/bash lynn
-        usermod -aG sudo,video,audio,aid_inet lynn
-        mkdir -p /etc/sudoers.d
-        echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
-        chmod 440 /etc/sudoers.d/lynn
-        grep -q "^#includedir /etc/sudoers.d" /etc/sudoers 2>/dev/null || echo "#includedir /etc/sudoers.d" >> /etc/sudoers
-        grep -q "^%sudo" /etc/sudoers 2>/dev/null || echo "%sudo ALL=(ALL:ALL) ALL" >> /etc/sudoers
-        echo "lynn:123456" | chpasswd
-      '
-      echo "[✓] 用户 lynn 已就绪 (uid=1000)"
-    fi
-  fi
-
-  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - $CHROOT_USER -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
 export GTK_IM_MODULE="fcitx" && \
 export QT_IM_MODULE="fcitx" && \
 export XMODIFIERS="@im=fcitx" && \
@@ -91,6 +67,12 @@ elif [ -n "$busybox" ]; then
 
   # 自动检查并创建用户
   ensure_chroot_user "$CHROOT_USER" || exit 1
+
+  if [ "$CHROOT_USER" = "root" ]; then
+    CHROOT_HOME="/root"
+  else
+    CHROOT_HOME="/home/$CHROOT_USER"
+  fi
 
   termux_data_path=/data/data/com.termux/files/home
   termux_gitcredentials=$termux_data_path/.git-credentials
