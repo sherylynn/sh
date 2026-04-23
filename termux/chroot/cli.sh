@@ -47,7 +47,7 @@ ensure_chroot_user() {
 
   container_mounted || return 1
 
-  # 检查用户是否存在且 sudo 正常
+  # 检查用户是否存在
   if sudo $busybox chroot $CHROOT_DIR grep -q '^lynn:' /etc/passwd 2>/dev/null; then
     # 用户存在，检查 sudo 是否正常
     if sudo $busybox chroot $CHROOT_DIR /bin/su - lynn -c 'sudo -n true' 2>/dev/null; then
@@ -60,8 +60,8 @@ ensure_chroot_user() {
       mkdir -p /etc/sudoers.d
       echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
       chmod 440 /etc/sudoers.d/lynn
-      # 确保 sudoers.d 目录被 include
       grep -q "^#includedir /etc/sudoers.d" /etc/sudoers || echo "#includedir /etc/sudoers.d" >> /etc/sudoers
+      grep -q "^%sudo" /etc/sudoers || echo "%sudo ALL=(ALL:ALL) ALL" >> /etc/sudoers
     '
     log_info "sudo 已修复"
     return 0
@@ -69,35 +69,15 @@ ensure_chroot_user() {
 
   log_warn "用户 lynn 不存在，正在自动创建..."
 
-  # 清理可能的残留（之前多次创建失败可能留下脏数据）
+  # 创建用户（不删除已有数据）
   sudo $busybox chroot $CHROOT_DIR /bin/su - root -c '
-    # 如果有残留的 lynn 用户，先删除
-    if id lynn >/dev/null 2>&1; then
-      userdel -r lynn 2>/dev/null || true
-    fi
-    # 删除可能存在的旧主目录
-    rm -rf /home/lynn
-
-    # 创建用户
     useradd -m -u 1000 -s /bin/bash lynn
     usermod -aG sudo,video,audio,aid_inet lynn
-
-    # 配置 sudoers
     mkdir -p /etc/sudoers.d
     echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
     chmod 440 /etc/sudoers.d/lynn
-
-    # 确保 sudoers.d 被 include
-    if ! grep -q "^#includedir /etc/sudoers.d" /etc/sudoers 2>/dev/null; then
-      echo "#includedir /etc/sudoers.d" >> /etc/sudoers
-    fi
-
-    # 确保 %sudo 组有权限
-    if ! grep -q "^%sudo" /etc/sudoers 2>/dev/null; then
-      echo "%sudo ALL=(ALL:ALL) ALL" >> /etc/sudoers
-    fi
-
-    # 设置密码
+    grep -q "^#includedir /etc/sudoers.d" /etc/sudoers || echo "#includedir /etc/sudoers.d" >> /etc/sudoers
+    grep -q "^%sudo" /etc/sudoers || echo "%sudo ALL=(ALL:ALL) ALL" >> /etc/sudoers
     echo "lynn:123456" | chpasswd
   '
 
