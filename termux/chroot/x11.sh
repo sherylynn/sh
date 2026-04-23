@@ -59,15 +59,19 @@ if [ -f ~/tools/rurima/rurima ]; then
       echo "[+] 用户 $CHROOT_USER 不存在，正在自动创建..."
       sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c '
         user="'"$CHROOT_USER"'"
-        # 检查用户是否已存在
-        if ! grep -q "^lynn:" /etc/passwd 2>/dev/null; then
-          useradd -m -u 1000 -s /bin/bash lynn
-          usermod -aG sudo,video,audio,aid_inet lynn
-          mkdir -p /etc/sudoers.d
-          echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
-          chmod 440 /etc/sudoers.d/lynn
-          echo "lynn:123456" | chpasswd
+        # 清理残留并创建用户
+        if id lynn >/dev/null 2>&1; then
+          userdel -r lynn 2>/dev/null || true
         fi
+        rm -rf /home/lynn
+        useradd -m -u 1000 -s /bin/bash lynn
+        usermod -aG sudo,video,audio,aid_inet lynn
+        mkdir -p /etc/sudoers.d
+        echo "lynn ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/lynn
+        chmod 440 /etc/sudoers.d/lynn
+        grep -q "^#includedir /etc/sudoers.d" /etc/sudoers 2>/dev/null || echo "#includedir /etc/sudoers.d" >> /etc/sudoers
+        grep -q "^%sudo" /etc/sudoers 2>/dev/null || echo "%sudo ALL=(ALL:ALL) ALL" >> /etc/sudoers
+        echo "lynn:123456" | chpasswd
       '
       echo "[✓] 用户 lynn 已就绪 (uid=1000)"
     fi
