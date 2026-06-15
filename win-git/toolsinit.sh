@@ -472,7 +472,7 @@ zcode() {
 }
 alias chromium="chromium --no-sandbox"
 mkdir -p ~/tools/trae-cn-data
-alias trae-cn="trae-cn --no-sandbox --user-data-dir ~/tools/trae-cn-data"
+alias trae-cn="/usr/share/trae-cn/bin/trae-cn --no-sandbox --user-data-dir ~/tools/trae-cn-data"
 
 zreload() {
   source $ZSH_HOME/win-git/toolsinit.sh
