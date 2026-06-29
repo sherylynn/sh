@@ -76,7 +76,8 @@ elif [[ $(platform) == *mac* ]]; then
     git pull
   fi
   cd ${SOFT_HOME}
-  git checkout $SOFT_VERSION
+  #用我自己的版本编译
+  #git checkout $SOFT_VERSION
 
   # 生成 schema
   ./schema/generate.sh
@@ -86,8 +87,6 @@ elif [[ $(platform) == *mac* ]]; then
   cd build
   cmake \
     -D CMAKE_BUILD_TYPE=Release \
-    -D MNN_BUILD_TEST=ON \
-    -D MNN_BUILD_BENCHMARK=ON \
     -D MNN_BUILD_SHARED_LIBS=OFF \
     -D MNN_BUILD_CONVERTER=ON \
     -D MNN_LOW_MEMORY=true \
