@@ -84,7 +84,7 @@ start_x11() {
     
     # 启动X11服务器
     export XDG_RUNTIME_DIR="${TMPDIR}"
-    termux-x11 :1 -ac +extension DPMS &
+    termux-x11 :1 -ac +extension DPMS -dpi 100 &
     
     sleep 2
     log "X11服务启动完成"
