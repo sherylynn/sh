@@ -6,7 +6,7 @@
 #   - 提供多种「缩放实现（方法）」，哪个在你的环境能用，你自己挑。
 #   - xrandr 整体缩放：让 xrandr 接管整屏（统一、GPU 加速、VNC 同步可见）。
 #   - DPI + 环境变量：不依赖 xrandr，纯文本/工具包缩放（到处能用）。
-#   - 整数 GDK_SCALE：2x 真整数，最清晰。
+#   - XFCE 全局整数缩放(Gdk/WindowScalingFactor)：屏幕分辨率保持原生(1:1)，UI 按整数倍绘制，真·视网膜最清晰，推荐。
 #   - termux-x11 原生分辨率：直接改 X 服务器分辨率（最稳，但需重启 X 会话）。
 #   - 精细调整：逐项设字体/面板/图标/光标（老方法保留）。
 #   - 切换方法时会先「复位」其它机制，避免叠加导致双重缩放。
@@ -67,13 +67,23 @@ reset_scaling() {
         xrandr --output "$XRANDR_OUTPUT" --scale 1x1 2>/dev/null || true
     fi
     xfconf-query -c xsettings -p /Xft/DPI -s "$BASE_DPI" 2>/dev/null || true
+    xfconf-query -c xsettings -p /Gdk/WindowScalingFactor -s 1 2>/dev/null || true
     if [ -f ~/.xsessionrc ]; then
         sed -i '/# Display scaling/d; /^export GDK_SCALE=/d; /^export GDK_DPI_SCALE=/d; /^export QT_SCALE_FACTOR=/d; /^export QT_AUTO_SCREEN_SCALE_FACTOR=/d; /^export QT_FONT_DPI=/d; /^export QT_ENABLE_HIGHDPI_SCALING=/d' ~/.xsessionrc
     fi
 }
 
+# ---------- 确保 xfsettingsd 运行（把 xfconf 广播成 XSETTINGS，GTK/Qt 才真正读到） ----------
+ensure_xfsettingsd() {
+    if ! pgrep -x xfsettingsd >/dev/null 2>&1; then
+        echo -e "${YELLOW}xfsettingsd 未运行，正在启动...${NC}"
+        xfsettingsd >/dev/null 2>&1 &
+        sleep 1
+    fi
+}
+
 # ---------- 写入环境变量块 ----------
-# $1 = 模式: neutral | dpi | gdk
+# $1 = 模式: neutral | dpi | gdk | qt_only
 write_env() {
     local mode=$1 scale=${2:-1}
     if [ -f ~/.xsessionrc ]; then
@@ -111,6 +121,15 @@ export QT_SCALE_FACTOR=${scale}
 export QT_AUTO_SCREEN_SCALE_FACTOR=0
 EOF
             ;;
+        qt_only)
+            # GTK 已由 Gdk/WindowScalingFactor 处理，这里只给 Qt 新进程设缩放，避免重复
+            cat >> ~/.xsessionrc << EOF
+# Display scaling (qt only; GTK handled by Gdk/WindowScalingFactor) ${scale}x
+export QT_SCALE_FACTOR=${scale}
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+export QT_ENABLE_HIGHDPI_SCALING=0
+EOF
+            ;;
     esac
 }
 
@@ -137,13 +156,15 @@ show_menu() {
     echo -e "当前分辨率: ${GREEN}${CURRENT_RES:-未知}${NC}   原生: ${GREEN}${NATIVE_W}x${NATIVE_H}${NC}"
     echo -e "xrandr 输出: ${GREEN}${XRANDR_OUTPUT:-无}${NC}   xrandr可用: ${GREEN}$( [ "$XRANDR_OK" -eq 1 ] && echo 是 || echo 否 )${NC}"
     echo -e "当前 Xft DPI: ${GREEN}$(xfconf-query -c xsettings -p /Xft/DPI 2>/dev/null || echo 未知)${NC}"
+    echo -e "当前 WindowScalingFactor: ${GREEN}$(xfconf-query -c xsettings -p /Gdk/WindowScalingFactor 2>/dev/null || echo 1)${NC}"
+    echo -e "${RED}★ termux-x11 的 displayScale 务必保持 100/native（缩小帧缓冲会上采样变糊）${NC}"
     echo ""
     echo -e "${YELLOW}请选择缩放【方法】（每种都是不同实现，挑能用的）:${NC}"
     echo ""
     echo -e "  ${GREEN}1)${NC} xrandr 整体缩放   ${BLUE}(让 xrandr 接管整屏，最统一，GPU加速)${NC}"
     echo -e "  ${GREEN}2)${NC} DPI + 环境变量    ${BLUE}(不依赖 xrandr，纯文本/工具包缩放)${NC}"
-    echo -e "  ${GREEN}3)${NC} 整数 GDK_SCALE    ${BLUE}(仅2x，真整数最清晰)${NC}"
-    echo -e "  ${GREEN}4)${NC} termux-x11 原生分辨率 ${BLUE}(直接改 X 服务器分辨率，最稳)${NC}"
+    echo -e "  ${GREEN}3)${NC} XFCE 全局整数缩放 ${BLUE}(Gdk/WindowScalingFactor，真·视网膜清晰，推荐)${NC}"
+    echo -e "  ${GREEN}4)${NC} termux-x11 降低分辨率 ${BLUE}(改小帧缓冲→UI变大但上采样变糊，非视网膜)${NC}"
     echo -e "  ${GREEN}5)${NC} 精细调整         ${BLUE}(逐项设字体/面板/图标/光标)${NC}"
     echo ""
     echo -e "  ${YELLOW}d)${NC} 诊断当前屏幕 & 推荐倍数"
@@ -191,18 +212,36 @@ apply_dpi_mode() {
     echo -e "${YELLOW}      Qt 程序按 ${scale}x 缩放。若某些程序偏小，可试方法 1/3/4。${NC}"
 }
 
-# ---------- 方法 3：整数 GDK_SCALE ----------
+# ---------- 方法 3：XFCE 全局整数缩放（真·视网膜，最清晰，推荐） ----------
+# 原理：屏幕物理分辨率保持原生（termux displayScale 必须=100/native，帧缓冲与物理屏 1:1 不缩放），
+#       再让 XFCE 把 UI 按整数倍绘制 → 1584x720 逻辑桌面以 3168x1440 原生渲染，
+#       每个逻辑像素 = 4 物理像素，且帧缓冲与物理屏 1:1 → 清晰不糊。
+# 关键：用 xfce 原生键 /Gdk/WindowScalingFactor（经 xfsettingsd 广播，已运行的 GTK3 程序也生效），
+#       绝对不要再用 GDK_SCALE 环境变量（会与 WindowScalingFactor 重复放大，字体翻倍）。
 apply_gdk_int() {
     local scale=$1
     local gdk=$(python3 -c "print(int(round(${scale})))")
     if [ "$gdk" -lt 1 ]; then gdk=1; fi
+    if [ "$gdk" -eq 1 ]; then
+        echo -e "${YELLOW}整数缩放不支持 1.25/1.5 这类分数；已按 1 处理（即不缩放）。${NC}"
+        echo -e "${YELLOW}要清晰视网膜请用 2（或 3）。${NC}"
+    fi
     reset_scaling
-    local dpi=$(python3 -c "print(int(${BASE_DPI} * ${gdk}))")
-    xfconf-query -c xsettings -p /Xft/DPI -s "$dpi" 2>/dev/null || true
-    write_env gdk "$gdk"
+    ensure_xfsettingsd
+    # XFCE 全局整数缩放：GTK3 程序 + xfce4 面板 + thunar 全部套用，已运行的程序也经 xfsettingsd 生效
+    xfconf-query -c xsettings -p /Gdk/WindowScalingFactor -s "$gdk"
+    # 保持干净基准 DPI：WindowScalingFactor 已负责缩放字体，不要再放大 Xft/DPI（否则字体翻倍变糊/过大）
+    xfconf-query -c xsettings -p /Xft/DPI -s "$BASE_DPI"
+    # Qt 程序：用环境变量（仅影响之后启动的 Qt 程序）；GTK 已由 WindowScalingFactor 处理，故不设 GDK_SCALE
+    write_env qt_only "$gdk"
+    # 让面板立即套用
+    xfce4-panel -r 2>/dev/null &
     echo ""
-    echo -e "${GREEN}✓ 整数缩放 ${gdk}x 已应用（GDK_SCALE=${gdk}）${NC}"
-    echo -e "${YELLOW}提示: 真整数缩放，最清晰；若选了非整数会被取整（如 1.5→2）。${NC}"
+    echo -e "${GREEN}✓ XFCE 全局整数缩放 ${gdk}x 已应用${NC}"
+    echo -e "${YELLOW}  - Gdk/WindowScalingFactor=${gdk}（GTK3 全局，已运行程序经 xfsettingsd 广播生效）${NC}"
+    echo -e "${YELLOW}  - 逻辑桌面缩小为 ${gdk}x，每个逻辑像素由 ${gdk}x${gdk}=$((gdk*gdk)) 个物理像素绘制 → 清晰${NC}"
+    echo -e "${YELLOW}  - Qt 程序设 QT_SCALE_FACTOR=${gdk}（仅影响之后启动的 Qt 程序，已运行的需重启）${NC}"
+    echo -e "${RED}  - 务必确认 termux-x11 的 displayScale 为 100/native；若被改成 >100 会被拉伸变糊！${NC}"
 }
 
 # ---------- 方法 4：termux-x11 原生分辨率 ----------
@@ -216,6 +255,7 @@ apply_termux_res() {
     local th=$(python3 -c "print(int(${NATIVE_H} / ${scale}))")
     echo ""
     echo -e "${YELLOW}此操作会把 termux-x11 分辨率改为 ${tw}x${th}（≈${scale}x 放大）。${NC}"
+    echo -e "${RED}注意: 这把帧缓冲改小、由手机上采样放大 → 与「视网膜清晰」相反，会糊。视网膜请改用方法 3。${NC}"
     echo -e "${RED}警告: 修改后通常需要重启 termux-x11 的 X 会话才能生效，当前桌面会结束。${NC}"
     read -p "确认继续? [y/N]: " confirm
     if [[ ! "$confirm" =~ ^[yY]$ ]]; then
