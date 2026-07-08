@@ -471,8 +471,15 @@ zcode() {
   code ./
 }
 alias chromium="chromium --no-sandbox"
-mkdir -p ~/tools/trae-cn-data
-alias trae-cn="/usr/share/trae-cn/bin/trae-cn --no-sandbox --user-data-dir ~/tools/trae-cn-data"
+
+# 仅在没有 MSYS/MINGW 的环境（例如 Linux 桌面）启用 trae-cn / chromium 相关设置，
+# 避免 msys2/mingw64 下无条件执行 mkdir 导致 "command not found: mkdir"
+if [[ "$(uname)" != *MSYS* && "$(uname)" != *MINGW* ]]; then
+  if [[ -x /usr/share/trae-cn/bin/trae-cn ]]; then
+    mkdir -p ~/tools/trae-cn-data
+    alias trae-cn="/usr/share/trae-cn/bin/trae-cn --no-sandbox --user-data-dir ~/tools/trae-cn-data"
+  fi
+fi
 
 zreload() {
   source $ZSH_HOME/win-git/toolsinit.sh
