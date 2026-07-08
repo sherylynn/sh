@@ -100,12 +100,13 @@ export QT_AUTO_SCREEN_SCALE_FACTOR=0
 EOF
             ;;
         dpi)
-            # Xft.dpi 已单独放大；GTK 不再叠加 GDK_DPI_SCALE，Qt 用 QT_SCALE_FACTOR
-            # 并设 QT_FONT_DPI=96 抵消 Xft.dpi 对 Qt 文字的二次放大
+            # 使用 GDK_DPI_SCALE 实现 GTK 分数缩放, QT_SCALE_FACTOR 用于 Qt
+            # Xft.dpi 也已设置, 用于其他传统程序
+            # 设置 QT_FONT_DPI=96 来避免 Qt 程序内的字体被重复缩放
             cat >> ~/.xsessionrc << EOF
 # Display scaling (dpi) ${scale}x
 export GDK_SCALE=1
-export GDK_DPI_SCALE=1
+export GDK_DPI_SCALE=${scale}
 export QT_SCALE_FACTOR=${scale}
 export QT_AUTO_SCREEN_SCALE_FACTOR=0
 export QT_FONT_DPI=96
@@ -199,17 +200,20 @@ apply_xrandr_scale() {
     echo -e "${YELLOW}提示: 缩放档若不能整除当前分辨率会轻微发糊（用 d 诊断看清晰档）。${NC}"
 }
 
-# ---------- 方法 2：DPI + 环境变量 ----------
+# ---------- 方法 2：DPI + 环境变量 (分数缩放) ----------
 apply_dpi_mode() {
     local scale=$1
     reset_scaling
     local dpi=$(python3 -c "print(int(${BASE_DPI} * ${scale}))")
+    # 为字体和旧版应用设置 Xft.DPI
     xfconf-query -c xsettings -p /Xft/DPI -s "$dpi" 2>/dev/null || true
+    # 为 GTK 和 Qt 程序设置环境变量以实现分数缩放
     write_env dpi "$scale"
     echo ""
-    echo -e "${GREEN}✓ DPI 缩放 ${scale}x 已应用（Xft.dpi=${dpi}）${NC}"
-    echo -e "${YELLOW}注意: GTK3 不支持分数 GDK_SCALE，UI 控件仍为 1x（文字大、控件略紧）；${NC}"
-    echo -e "${YELLOW}      Qt 程序按 ${scale}x 缩放。若某些程序偏小，可试方法 1/3/4。${NC}"
+    echo -e "${GREEN}✓ DPI 分数缩放 ${scale}x 已应用（Xft.dpi=${dpi}）${NC}"
+    echo -e "${YELLOW}  - 通过 GDK_DPI_SCALE 为 GTK 程序启用分数缩放。${NC}"
+    echo -e "${YELLOW}  - 通过 QT_SCALE_FACTOR 为 Qt 程序启用分数缩放。${NC}"
+    echo -e "${YELLOW}  - 注意：新设置需要重新登录或打开新终端才能对程序完全生效。${NC}"
 }
 
 # ---------- 方法 3：XFCE 全局整数缩放（真·视网膜，最清晰，推荐） ----------
