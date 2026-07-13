@@ -41,6 +41,7 @@ elif [[ "$ZSH_PLUG" == zplug ]]; then
   ZPLUGRC=$(toolsRC $ZPLUGRC_NAME)
   echo export ZPLUG_HOME=$ZPLUG_HOME >$ZPLUGRC
   echo source $ZPLUG_HOME/init.zsh >>$ZPLUGRC
+  compaudit | xargs chmod g-w,o-w
 fi
 # load myzshrc
 TOOLSRC_NAME=myzshrc
