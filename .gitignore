@@ -5,3 +5,5 @@ exist
 not
 \#*
 tmp/
+
+*.mimo/
