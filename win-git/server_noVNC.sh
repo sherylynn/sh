@@ -160,7 +160,7 @@ if pgrep -f "com.termux.x11" >/dev/null; then
     exit 1
   fi
 
-elif [ -e "$DroidSpaces_path" ]l; then
+elif [ -e "$DroidSpaces_path" ]; then
   DISPLAY_PORT=5
   export DISPLAY=:${DISPLAY_PORT}
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
