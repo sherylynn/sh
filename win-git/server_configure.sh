@@ -64,9 +64,14 @@ zsh ~/sh/lynn.sh work
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
 #换一种新式vnc来玩玩
+DroidSpaces_path="/run/droidspaces/container.config"
 if [[ $SOFT_VNC == *tigervnc* ]]; then
   zsh ~/sh/win-git/mesa.sh
-  zsh ~/sh/win-git/init_d_noVNC.sh
+  if [ -e "$DroidSpaces_path" ]; then
+    zsh ~/sh/win-git/systemd_noVNC.sh
+  else
+    zsh ~/sh/win-git/init_d_noVNC.sh
+  fi
   zsh ~/sh/win-git/noVNC.sh
 else
   zsh ~/sh/win-git/kasmVNC.sh

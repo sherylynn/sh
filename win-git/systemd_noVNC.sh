@@ -35,4 +35,3 @@ sudo systemctl daemon-reload
 sudo systemctl enable ${SCRIPT_NAME}.service
 sudo systemctl restart ${SCRIPT_NAME}.service
 sudo systemctl status ${SCRIPT_NAME}.service
-./init_d_${SCRIPT_NAME}.sh
