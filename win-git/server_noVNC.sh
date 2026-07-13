@@ -163,10 +163,11 @@ if pgrep -f "com.termux.x11" >/dev/null; then
 elif [ -e "$DroidSpaces_path" ]; then
   DISPLAY_PORT=5
   export DISPLAY=:${DISPLAY_PORT}
+
+  #droidspaces中不需要手动启动xfce4以及加载环境变量
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
   #source  ~/tools/rc/allToolsrc
-  zsh ~/tools/rc/allToolsrc
-  #droidspaces中不需要手动启动xfce4
+  #zsh ~/tools/rc/allToolsrc
   #dbus-launch --exit-with-session startxfce4 &
   # 配置项
   VNC_PASSWD_FILE="$HOME/.vnc/passwd"
