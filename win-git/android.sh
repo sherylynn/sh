@@ -31,6 +31,7 @@ IDEA_URL="https://download.jetbrains.com/idea/ideaIC-${IDEA_VERSION}-aarch64.tar
 # SDK / NDK 版本 (HomuHomu833 社区构建)
 SDK_BUILD_TOOLS_35_URL="https://github.com/HomuHomu833/android-sdk-custom/releases/download/35.0.2/android-sdk-aarch64-linux-musl.tar.xz"
 SDK_BUILD_TOOLS_36_URL="https://github.com/HomuHomu833/android-sdk-custom/releases/download/36.0.2/android-sdk-aarch64-linux-musl.tar.xz"
+SDK_BUILD_TOOLS_37_URL="https://github.com/HomuHomu833/android-sdk-custom/releases/download/37.0.0/android-sdk-aarch64-linux-musl.tar.xz"
 NDK_URL="https://github.com/HomuHomu833/android-ndk-custom/releases/download/r30/android-ndk-r30-beta1-aarch64-linux-musl.tar.xz"
 NDK_DIRNAME="30.0.12642318"  # r30-beta1 对应的 NDK 版本号
 
@@ -149,8 +150,8 @@ patch_studio_config() {
 # Step 5: 下载安装 ARM64 SDK 工具 (build-tools + platform-tools)
 # ============================================================
 install_sdk_tools() {
-  if [[ -f "${SOFT_HOME}/build-tools/36.0.2/aapt2" ]]; then
-    echo "[SKIP] SDK build-tools 36.0.2 已安装"
+  if [[ -f "${SOFT_HOME}/build-tools/37.0.0/aapt2" ]]; then
+    echo "[SKIP] SDK build-tools 37.0.0 已安装"
     return 0
   fi
 
@@ -182,6 +183,19 @@ install_sdk_tools() {
   cp -rn "$TMP_SDK36"/* "${SOFT_HOME}/" 2>/dev/null || true
   cp -a "$TMP_SDK36"/* "${SOFT_HOME}/" 2>/dev/null || true
   rm -rf "$TMP_SDK36"
+
+  echo "[5/7] 下载 Android SDK build-tools 37.0.0 (aarch64) ..."
+  local SDK37_TAR="android-sdk-37-aarch64.tar.xz"
+  download_large "$SDK37_TAR" "$SDK_BUILD_TOOLS_37_URL"
+
+  echo "[5/7] 安装 SDK build-tools 37.0.0 ..."
+  local TMP_SDK37=$(cache_folder)/sdk37_tmp
+  rm -rf "$TMP_SDK37"
+  mkdir -p "$TMP_SDK37"
+  tar -xf "$(cache_folder)/${SDK37_TAR}" -C "$TMP_SDK37" --strip-components=1
+  cp -rn "$TMP_SDK37"/* "${SOFT_HOME}/" 2>/dev/null || true
+  cp -a "$TMP_SDK37"/* "${SOFT_HOME}/" 2>/dev/null || true
+  rm -rf "$TMP_SDK37"
 
   echo "[5/7] SDK 工具安装完成"
 }
@@ -225,7 +239,7 @@ setup_gradle_properties() {
   echo "[7/7] 配置 gradle.properties ..."
 
   local GRADLE_PROPS="${HOME}/.gradle/gradle.properties"
-  local AAPT2_LINE="android.aapt2FromMavenOverride=${SOFT_HOME}/build-tools/36.0.2/aapt2"
+  local AAPT2_LINE="android.aapt2FromMavenOverride=${SOFT_HOME}/build-tools/37.0.0/aapt2"
 
   mkdir -p "$(dirname $GRADLE_PROPS)"
 
@@ -280,7 +294,7 @@ if [[ $(platform) == *linux* ]] && [[ $(arch) == aarch64 ]]; then
   echo ""
   echo "验证 ARM64 二进制:"
   echo "  file ${SOFT_HOME}/platform-tools/adb"
-  echo "  file ${SOFT_HOME}/build-tools/36.0.2/aapt2"
+  echo "  file ${SOFT_HOME}/build-tools/37.0.0/aapt2"
   echo ""
 
   # --- QEMU KVM (用于模拟器, 可选) ---
