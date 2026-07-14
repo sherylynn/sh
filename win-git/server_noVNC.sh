@@ -167,8 +167,8 @@ elif [ -e "$DroidSpaces_path" ]; then
   #droidspaces中不需要手动启动xfce4以及加载环境变量
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
   #source  ~/tools/rc/allToolsrc
-  #zsh ~/tools/rc/allToolsrc
-  #dbus-launch --exit-with-session startxfce4 &
+  zsh ~/tools/rc/allToolsrc
+  pgrep -xf "startxfce4" >/dev/null || dbus-launch --exit-with-session startxfce4 &
   # 配置项
   VNC_PASSWD_FILE="$HOME/.vnc/passwd"
   VNC_PORT=5900

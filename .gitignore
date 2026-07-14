@@ -7,3 +7,4 @@ not
 tmp/
 
 *.mimo/
+*.cron-lock
