@@ -32,7 +32,6 @@ echo $(whoami)
 #检测是否强制使用虚拟显卡
 if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
   echo "检测到强制使用虚拟显卡文件，使用virgl服务"
-  export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"
   export QT_IM_MODULE="fcitx"
   export XMODIFIERS="@im=fcitx"
@@ -40,7 +39,6 @@ if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
   export MESA_GL_VERSION_OVERRIDE=4.0
 elif lscpu | grep -q "Oryon"; then
   echo '启动mesa的noVNC'
-  export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"
   export QT_IM_MODULE="fcitx"
   export XMODIFIERS="@im=fcitx"
@@ -75,7 +73,6 @@ elif pgrep -f "virgl_test" >/dev/null; then
   #if pgrep -f "virgl_test" >/dev/null; then
   #export DISPLAY=:0
   echo '启动virgl的noVNC'
-  export PULSE_SERVER=127.0.0.1
   export GTK_IM_MODULE="fcitx"
   export QT_IM_MODULE="fcitx"
   export XMODIFIERS="@im=fcitx"
@@ -95,6 +92,7 @@ DroidSpaces_path="/run/droidspaces/container.config"
 if pgrep -f "com.termux.x11" >/dev/null; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
+  export PULSE_SERVER=127.0.0.1
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
   #source  ~/tools/rc/allToolsrc
   zsh ~/tools/rc/allToolsrc
@@ -164,6 +162,12 @@ elif [ -e "$DroidSpaces_path" ]; then
   DISPLAY_PORT=5
   export DISPLAY=:${DISPLAY_PORT}
 
+  # 参照 xfce-start: 读取 container.config，若宿主启用 pulseaudio 则通过 unix socket 连接
+  if grep -q 'enable_pulseaudio=1' "$DroidSpaces_path" 2>/dev/null; then
+    : "${PULSE_SERVER:=unix:/tmp/.pulse-socket}"
+    export PULSE_SERVER
+  fi
+
   #droidspaces中不需要手动启动xfce4以及加载环境变量
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
   #source  ~/tools/rc/allToolsrc
@@ -230,6 +234,7 @@ elif [ -e "$DroidSpaces_path" ]; then
     exit 1
   fi
 else
+  export PULSE_SERVER=127.0.0.1
   vncserver -kill :${DISPLAY_PORT}
   rm -rf /tmp/.X*
   rm -rf /tmp/.x*
