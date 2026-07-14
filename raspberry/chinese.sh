@@ -29,21 +29,24 @@ export LC_TELEPHONE="zh_CN.UTF-8"
 export LC_MEASUREMENT="zh_CN.UTF-8"
 export LC_IDENTIFICATION="zh_CN.UTF-8"
 export LC_ALL=
-export GTK_IM_MODULE=fcitx
-export QT_IM_MODULE=fcitx
-export XMODIFIERS=@im=fcitx
-export SDL_IM_MODULE=fcitx
-export GLFW_IM_MODULE=ibus
+export GTK_IM_MODULE=fcitx5
+export QT_IM_MODULE=fcitx5
+export XMODIFIERS=@im=fcitx5
+export SDL_IM_MODULE=fcitx5
+export GLFW_IM_MODULE=fcitx
 EOF
 
-fcitx5_path=$(
-  cd "$(dirname "$0")"
-  pwd
-)/../linuxdeploy/fcitx.sh
-tee ~/.config/autostart/fcitx5.desktop <<EOF
- [Desktop Entry]
+mkdir -p ~/.config/autostart
+tee ~/.config/autostart/fcitx5.desktop <<'EOF'
+[Desktop Entry]
+Name=Fcitx5
+GenericName=Input Method
+Comment=Start Input Method
+Exec=fcitx5 -d
+Icon=fcitx
+Terminal=false
 Type=Application
-Name=FCITX5 Input Method
-Exec=$fcitx5_path
-Comment=Auto-start fcitx5 in chroot
+Categories=System;Utility;
+StartupNotify=false
+NoDisplay=true
 EOF
