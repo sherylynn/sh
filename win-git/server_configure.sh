@@ -50,9 +50,6 @@ if [ -d "/sdcard" ]; then
 fi
 
 sudo apt install zsh -y
-sudo apt install dbus-x11 xfce4 openssh-server -y
-#换一种vnc
-sudo apt install xfce4-terminal -y
 sudo apt install telegram-desktop -y
 sudo apt install ncdu htop android-platform-tools-base -y
 sudo chsh -s /bin/zsh
@@ -63,18 +60,22 @@ zsh ~/sh/raspberry/chinese.sh
 zsh ~/sh/lynn.sh work
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
-#换一种新式vnc来玩玩
-DroidSpaces_path="/run/droidspaces/container.config"
-if [[ $SOFT_VNC == *tigervnc* ]]; then
-  zsh ~/sh/win-git/mesa.sh
-  if [ -e "$DroidSpaces_path" ]; then
-    zsh ~/sh/win-git/systemd_noVNC.sh
+#如果没有安装kwin-wayland，则安装xfce+vnc环境
+if ! dpkg -s kwin-wayland &>/dev/null; then
+  DroidSpaces_path="/run/droidspaces/container.config"
+  sudo apt install dbus-x11 xfce4 openssh-server -y
+  sudo apt install xfce4-terminal -y
+  if [[ $SOFT_VNC == *tigervnc* ]]; then
+    zsh ~/sh/win-git/mesa.sh
+    if [ -e "$DroidSpaces_path" ]; then
+      zsh ~/sh/win-git/systemd_noVNC.sh
+    else
+      zsh ~/sh/win-git/init_d_noVNC.sh
+    fi
+    zsh ~/sh/win-git/noVNC.sh
   else
-    zsh ~/sh/win-git/init_d_noVNC.sh
+    zsh ~/sh/win-git/kasmVNC.sh
   fi
-  zsh ~/sh/win-git/noVNC.sh
-else
-  zsh ~/sh/win-git/kasmVNC.sh
 fi
 zsh ~/sh/win-git/koreader.sh
 zsh ~/sh/debian/firefox.sh
