@@ -32,8 +32,8 @@ IDEA_URL="https://download.jetbrains.com/idea/ideaIC-${IDEA_VERSION}-aarch64.tar
 SDK_BUILD_TOOLS_35_URL="https://github.com/HomuHomu833/android-sdk-custom/releases/download/35.0.2/android-sdk-aarch64-linux-musl.tar.xz"
 SDK_BUILD_TOOLS_36_URL="https://github.com/HomuHomu833/android-sdk-custom/releases/download/36.0.2/android-sdk-aarch64-linux-musl.tar.xz"
 SDK_BUILD_TOOLS_37_URL="https://github.com/HomuHomu833/android-sdk-custom/releases/download/37.0.0/android-sdk-aarch64-linux-musl.tar.xz"
-NDK_URL="https://github.com/HomuHomu833/android-ndk-custom/releases/download/r30/android-ndk-r30-beta1-aarch64-linux-musl.tar.xz"
-NDK_DIRNAME="30.0.12642318"  # r30-beta1 对应的 NDK 版本号
+NDK_URL="https://github.com/HomuHomu833/android-ndk-custom/releases/download/r29/android-ndk-r29-aarch64-linux-musl.tar.xz"
+NDK_DIRNAME=""  # 安装时从 source.properties 的 Pkg.Revision 自动检测
 
 # ============================================================
 # Step 1: 下载并安装 Android Studio (排除 x86_64 原生组件)
@@ -204,32 +204,48 @@ install_sdk_tools() {
 # Step 6: 下载安装 ARM64 NDK
 # ============================================================
 install_ndk() {
-  if [[ -d "${SOFT_HOME}/ndk/${NDK_DIRNAME}" ]]; then
-    echo "[SKIP] NDK ${NDK_DIRNAME} 已安装"
-    return 0
-  fi
+  # 清理之前残留的不完整 NDK 目录（30.0.* / 29.0.* 等，无 source.properties 的空壳）
+  for d in "${SOFT_HOME}"/ndk/*/; do
+    [[ -f "${d}source.properties" ]] && continue
+    echo "[WARN] 清理不完整的 NDK 目录: $d"
+    rm -rf "$d"
+  done
 
-  echo "[6/7] 下载 Android NDK (aarch64, ~170MB) ..."
-  local NDK_TAR="android-ndk-aarch64.tar.xz"
+  echo "[6/7] 下载 Android NDK r29 (aarch64, ~192MB) ..."
+  local NDK_TAR="android-ndk-r29-aarch64.tar.xz"
   download_large "$NDK_TAR" "$NDK_URL"
 
-  echo "[6/7] 安装 NDK ..."
+  echo "[6/7] 解压 NDK ..."
   mkdir -p "${SOFT_HOME}/ndk"
   local TMP_NDK=$(cache_folder)/ndk_tmp
   rm -rf "$TMP_NDK"
   mkdir -p "$TMP_NDK"
   tar -xf "$(cache_folder)/${NDK_TAR}" -C "$TMP_NDK" --strip-components=1
-  # NDK 解压出来的目录名类似 android-ndk-r30-beta1，重命名为版本号
-  local NDK_SRC_DIR=$(ls -d "$TMP_NDK"/*/ 2>/dev/null | head -1)
-  if [[ -n "$NDK_SRC_DIR" ]]; then
-    mv "$NDK_SRC_DIR" "${SOFT_HOME}/ndk/${NDK_DIRNAME}"
-  else
-    # 如果没有子目录，直接当根目录用
-    mv "$TMP_NDK" "${SOFT_HOME}/ndk/${NDK_DIRNAME}"
-  fi
-  rm -rf "$TMP_NDK"
 
+  # 从 source.properties 自动检测版本号（Pkg.Revision=29.0.xxxxxxxx）
+  local SRC_PROPS="$TMP_NDK/source.properties"
+  if [[ ! -f "$SRC_PROPS" ]]; then
+    echo "[ERROR] 解压后未找到 source.properties，安装中止"
+    rm -rf "$TMP_NDK"
+    return 1
+  fi
+  local REV=$(grep '^Pkg.Revision' "$SRC_PROPS" | cut -d= -f2 | xargs)
+  # 取 BaseRevision（去掉 -betaN / -rcN 后缀），作为 AGP ndkVersion 匹配值
+  NDK_DIRNAME="${REV%%-*}"
+  echo "[6/7] 检测到 NDK 版本: ${REV} -> 目录名 ${NDK_DIRNAME}"
+
+  # 若已存在同名完整目录则跳过
+  if [[ -f "${SOFT_HOME}/ndk/${NDK_DIRNAME}/source.properties" ]]; then
+    echo "[SKIP] NDK ${NDK_DIRNAME} 已安装"
+    rm -rf "$TMP_NDK"
+    return 0
+  fi
+
+  mv "$TMP_NDK" "${SOFT_HOME}/ndk/${NDK_DIRNAME}"
   echo "[6/7] NDK 安装完成: ${SOFT_HOME}/ndk/${NDK_DIRNAME}"
+  echo ""
+  echo "  >>> 请将 xime/app/build.gradle.kts 的 ndkVersion 改为 \"${NDK_DIRNAME}\""
+  echo ""
 }
 
 # ============================================================
