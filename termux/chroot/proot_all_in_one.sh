@@ -27,6 +27,30 @@ error() {
     exit 1
 }
 
+# 清理临时文件 (proot 版本, 无需 sudo)
+# 与 cli.sh 中 clean_tmp 对应, 但去掉 sudo, 并增加 proot rootfs 清理
+clean_tmp() {
+    # Termux 端临时文件
+    rm -rf "$PREFIX/tmp/rime"* 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/tigervnc"* 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/ssh-"* 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/pulse-"* 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/dbus-"* 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/vscode-"* 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/Rtmp"* 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/.X0-lock" 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/.X10-lock" 2>/dev/null || true
+
+    # Proot rootfs 内的临时文件 (proot-distro rootfs 归 termux 用户所有, 可直接清理)
+    if [ -n "$PROOT_ROOTFS" ] && [ -d "$PROOT_ROOTFS/tmp" ]; then
+        rm -rf "$PROOT_ROOTFS/tmp/rime"* 2>/dev/null || true
+        rm -rf "$PROOT_ROOTFS/tmp/tigervnc"* 2>/dev/null || true
+        rm -rf "$PROOT_ROOTFS/tmp/ssh-"* 2>/dev/null || true
+        rm -rf "$PROOT_ROOTFS/tmp/pulse-"* 2>/dev/null || true
+        rm -rf "$PROOT_ROOTFS/tmp/dbus-"* 2>/dev/null || true
+    fi
+}
+
 # 检查必要的权限和环境 (proot 版本无需 root)
 check_requirements() {
     log "检查运行环境..."
@@ -73,12 +97,13 @@ start_base_services() {
 }
 
 # 启动X11服务 (与 chroot 版本一致, X11 在 termux 端)
+# proot 模式无需 root, X11 进程由 termux 用户启动, 可直接 kill
 start_x11() {
     log "启动X11服务..."
 
-    # 清理旧的进程
-    sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
-    sudo pkill -f com.termux.x11 2>/dev/null || true
+    # 清理旧的进程 (proot 无需 sudo)
+    killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+    pkill -f com.termux.x11 2>/dev/null || true
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
     # 清理临时文件
@@ -115,9 +140,9 @@ stop_all() {
     # 停止 proot 容器服务 (调用 proot_cli.sh)
     stop_all_services 2>/dev/null || true
 
-    # 停止X11
-    sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
-    sudo pkill -f com.termux.x11 2>/dev/null || true
+    # 停止X11 (proot 无需 sudo)
+    killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+    pkill -f com.termux.x11 2>/dev/null || true
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
     # 停止sv服务
