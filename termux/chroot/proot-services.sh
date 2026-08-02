@@ -33,9 +33,14 @@ start_sshd() {
   fi
   # 生成 host key (首次启动)
   ssh-keygen -A 2>/dev/null || true
+  # sshd 要求 privilege separation 目录 (否则报 "Missing privilege separation directory: /run/sshd")
+  mkdir -p /run/sshd
   # 启动 sshd
-  /usr/sbin/sshd
-  log "sshd 已启动 (pid=$(cat /run/sshd.pid 2>/dev/null || pgrep -x sshd | head -1))"
+  if /usr/sbin/sshd 2>/tmp/sshd.err; then
+    log "sshd 已启动 (pid=$(cat /run/sshd.pid 2>/dev/null || pgrep -x sshd | head -1))"
+  else
+    log "sshd 启动失败: $(cat /tmp/sshd.err 2>/dev/null)"
+  fi
 }
 
 stop_sshd() {
@@ -56,8 +61,12 @@ start_dbus() {
     chmod 644 /etc/machine-id
   fi
   mkdir -p /run/dbus /var/run/dbus
-  dbus-daemon --system --fork
-  log "dbus 已启动"
+  if dbus-daemon --system --fork 2>/tmp/dbus.err; then
+    log "dbus 已启动"
+  else
+    log "dbus 启动失败: $(cat /tmp/dbus.err 2>/dev/null)"
+    log "提示: 确认已安装 dbus 包 (apt install dbus)"
+  fi
 }
 
 stop_dbus() {
@@ -102,11 +111,16 @@ start_novnc() {
     return 0
   fi
   local novnc_script=""
-  for p in /usr/local/noVNC/utils/novnc_proxy /opt/noVNC/utils/novnc_proxy; do
+  # noVNC.sh 把 noVNC git clone 到 $(install_path)/noVNC, 即 ~/tools/noVNC
+  for p in "$HOME/tools/noVNC/utils/novnc_proxy" /usr/local/noVNC/utils/novnc_proxy /opt/noVNC/utils/novnc_proxy; do
     [ -x "$p" ] && novnc_script="$p" && break
   done
+  # 也尝试从 PATH 查找 (noVNC.sh 会把 noVNC 目录加入 PATH)
   if [ -z "$novnc_script" ]; then
-    log "novnc 未安装, 跳过"
+    novnc_script=$(command -v novnc_proxy 2>/dev/null)
+  fi
+  if [ -z "$novnc_script" ]; then
+    log "novnc 未安装, 跳过 (查找: ~/tools/noVNC, /usr/local/noVNC, PATH)"
     return 0
   fi
   nohup "$novnc_script" --vnc 127.0.0.1:5901 --listen 10086 >/tmp/novnc.log 2>&1 &

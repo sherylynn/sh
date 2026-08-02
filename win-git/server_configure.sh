@@ -4,10 +4,18 @@ SCRIPT_NAME="configure"
 SOFT_VNC=tigervnc
 
 # 容器类型检测: 在 proot-distro 环境下, 外部 (proot_cli.sh) 会设置 PROOT_CONTAINER=1
-# 或通过检测是否存在 /.dockerenv 及是否挂载了 proot 的 /proc/self/status 来辅助
+# 交互式运行 (pshell 后手动执行本脚本) 时靠 TracerPid / proot 环境变量检测
 if [ -n "$PROOT_CONTAINER" ]; then
   CONTAINER_TYPE="proot"
-elif [ -f /.dockerenv ] || grep -q "proot" /proc/self/status 2>/dev/null; then
+elif [ -f /.dockerenv ]; then
+  CONTAINER_TYPE="proot"
+  export PROOT_CONTAINER=1
+elif grep -q "TracerPid:[[:space:]]*[1-9]" /proc/self/status 2>/dev/null; then
+  # proot 通过 ptrace 拦截 syscall, TracerPid 非 0
+  CONTAINER_TYPE="proot"
+  export PROOT_CONTAINER=1
+elif [ -n "$PROOT_TMP_DIR" ] || [ -n "$PROOT_L2S_DIR" ]; then
+  # proot 环境变量
   CONTAINER_TYPE="proot"
   export PROOT_CONTAINER=1
 else

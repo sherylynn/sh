@@ -64,7 +64,7 @@ PROOT_SERVICES=(
 # PATH 显式重置为容器标准路径: proot-distro 默认会把 termux 的
 #   /data/data/com.termux/files/usr/bin 挂进容器, 导致 python/node 等误用
 #   termux 版本 (server_configure.sh 里 apt install 的程序会被屏蔽)
-PROOT_ENV="DISPLAY=:1 PULSE_SERVER=127.0.0.1 GDK_DPI_SCALING=1 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+PROOT_ENV="DISPLAY=:1 PULSE_SERVER=127.0.0.1 GDK_DPI_SCALING=1 PROOT_CONTAINER=1 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # proot-distro login 通用参数 (所有 login 调用共用, 保证行为一致)
 # --isolated:       不挂载 termux 的 /data/data/com.termux (含 termux 的 python/node 等),
