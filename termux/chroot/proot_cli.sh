@@ -15,14 +15,14 @@ PROOT_CMD="proot-distro"
 
 # 检测 distro 的实际安装路径 (兼容 proot-distro 新旧版本)
 # 旧版本: installed-rootfs/<distro>
-# 新版本: containers/<distro>
+# 新版本(5.1): containers/<distro>/rootfs  (rootfs 在子目录, 旁边有 manifest.json)
 # 用法: detect_proot_rootfs [distro_name]
 # 返回: 找到则输出路径并返回 0; 未找到返回旧版默认路径并返回 1
 detect_proot_rootfs() {
   local distro="${1:-$DISTRO_NAME}"
   local candidates=(
     "$PREFIX/var/lib/proot-distro/installed-rootfs/$distro"
-    "$PREFIX/var/lib/proot-distro/containers/$distro"
+    "$PREFIX/var/lib/proot-distro/containers/$distro/rootfs"
   )
   for path in "${candidates[@]}"; do
     if [ -d "$path" ] && {
@@ -112,15 +112,13 @@ check_distro_installed() {
   check_proot_installed || return 1
 
   # 候选: 新旧路径 × 主/旧版 distro 名
-  local distro_names=("$DISTRO_NAME" "$DISTRO_OLD_NAME")
-  local path_suffixes=("installed-rootfs" "containers")
-  local distro_paths=()
-  local d s
-  for d in "${distro_names[@]}"; do
-    for s in "${path_suffixes[@]}"; do
-      distro_paths+=("$PREFIX/var/lib/proot-distro/$s/$d")
-    done
-  done
+  # 旧版(4.x): installed-rootfs/<distro>; 新版(5.1): containers/<distro>/rootfs
+  local distro_paths=(
+    "$PREFIX/var/lib/proot-distro/installed-rootfs/${DISTRO_NAME}"
+    "$PREFIX/var/lib/proot-distro/containers/${DISTRO_NAME}/rootfs"
+    "$PREFIX/var/lib/proot-distro/installed-rootfs/${DISTRO_OLD_NAME}"
+    "$PREFIX/var/lib/proot-distro/containers/${DISTRO_OLD_NAME}/rootfs"
+  )
 
   local debug_info=""
   for distro_path in "${distro_paths[@]}"; do
