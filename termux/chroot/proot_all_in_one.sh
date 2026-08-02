@@ -106,8 +106,11 @@ start_x11() {
     log "启动X11服务..."
 
     # 1. 清理旧进程 (proot 无需 sudo)
+    #    双重杀: pkill 直接杀进程 + am force-stop 通过 Android 系统停止
+    #    pkill 在无 root 下可能杀不死 APP (不同 uid), am force-stop 补充
     killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
     pkill -f com.termux.x11 2>/dev/null || true
+    am force-stop com.termux.x11 2>/dev/null || true
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
     # 2. 清理临时文件
@@ -117,16 +120,19 @@ start_x11() {
     pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1 2>/dev/null || true
 
     # 4. 启动 X server (输出重定向到日志, 避免阻塞前台)
-    #    termux-x11 会自动启动 Termux:X11 Activity, 不需要手动 am start
-    #    (参考 termux-x11 官方 README: termux-x11 :1 & 即可)
-    #    手动 am start 会导致 Activity 双重启动冲突 → APP 反复闪退
+    #    注意: termux-x11 不会自动启动 Termux:X11 APP, 需要后面手动 am start
+    #    (test_xfce4.sh 验证: termux-x11 :1 & 不会自动打开 APP)
     export XDG_RUNTIME_DIR="${TMPDIR}"
     termux-x11 :1 -ac +extension DPMS -dpi 100 >"$PROOT_RUN_DIR/x11.log" 2>&1 &
 
-    # 5. 等待 X server 稳定 (termux-x11 会在此期间自动启动 Activity)
+    # 5. 等待 X server 稳定 (不等待会导致 APP 连接失败)
     sleep 3
 
-    # 6. 重新获取 wake-lock (开头 killall 杀了旧的, 不重新获取会导致
+    # 6. 启动 Termux:X11 APP (termux-x11 不会自动启动 APP, 必须手动 am start)
+    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
+    sleep 1
+
+    # 7. 重新获取 wake-lock (开头 killall 杀了旧的, 不重新获取会导致
     #    Android phantom process killer 偶发杀 termux-x11/xfce4 → 闪退)
     termux-wake-lock 2>/dev/null || true
 
@@ -154,8 +160,10 @@ stop_all() {
     stop_init 2>/dev/null || true
 
     # 停止X11 (proot 无需 sudo)
+    #    双重杀: pkill + am force-stop 确保彻底停止
     killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
     pkill -f com.termux.x11 2>/dev/null || true
+    am force-stop com.termux.x11 2>/dev/null || true
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
     # 停止sv服务
