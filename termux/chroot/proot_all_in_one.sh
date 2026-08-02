@@ -39,7 +39,9 @@ clean_tmp() {
     rm -rf "$PREFIX/tmp/vscode-"* 2>/dev/null || true
     rm -rf "$PREFIX/tmp/Rtmp"* 2>/dev/null || true
     rm -rf "$PREFIX/tmp/.X0-lock" 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/.X1-lock" 2>/dev/null || true
     rm -rf "$PREFIX/tmp/.X10-lock" 2>/dev/null || true
+    rm -rf "$PREFIX/tmp/.X11-unix" 2>/dev/null || true
 
     # Proot rootfs 内的临时文件 (proot-distro rootfs 归 termux 用户所有, 可直接清理)
     if [ -n "$PROOT_ROOTFS" ] && [ -d "$PROOT_ROOTFS/tmp" ]; then
@@ -114,17 +116,19 @@ start_x11() {
     # 3. 启动 PulseAudio 并加载 tcp 模块 (让容器内能访问音频, 对齐开源项目)
     pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1 2>/dev/null || true
 
-    # 4. 先启动 X server (输出重定向到日志, 避免阻塞前台)
-    #    DISPLAY=:1 与 server_noVNC.sh 检测 com.termux.x11 时的 DISPLAY_PORT=1 对齐
+    # 4. 启动 X server (输出重定向到日志, 避免阻塞前台)
+    #    termux-x11 会自动启动 Termux:X11 Activity, 不需要手动 am start
+    #    (参考 termux-x11 官方 README: termux-x11 :1 & 即可)
+    #    手动 am start 会导致 Activity 双重启动冲突 → APP 反复闪退
     export XDG_RUNTIME_DIR="${TMPDIR}"
     termux-x11 :1 -ac +extension DPMS -dpi 100 >"$PROOT_RUN_DIR/x11.log" 2>&1 &
 
-    # 5. 等待 X server 稳定 (关键! 不等会导致 APP 连接失败)
+    # 5. 等待 X server 稳定 (termux-x11 会在此期间自动启动 Activity)
     sleep 3
 
-    # 6. 再启动 Termux:X11 APP (此时 X server 已就绪, APP 一次连上, 不会来回切换)
-    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
-    sleep 1
+    # 6. 重新获取 wake-lock (开头 killall 杀了旧的, 不重新获取会导致
+    #    Android phantom process killer 偶发杀 termux-x11/xfce4 → 闪退)
+    termux-wake-lock 2>/dev/null || true
 
     log "X11服务启动完成"
 }
