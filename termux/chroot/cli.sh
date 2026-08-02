@@ -8,9 +8,24 @@ PREFIX=/data/data/com.termux/files/usr
 
 #Path of DEBIAN rootfs
 #DEBIAN_DIR="/data/data/com.termux/files/home/Desktop/chrootdebian"
-#proot 地址
-DEBIAN_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian"
-DEBIAN_OLD_DIR="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian-oldstable"
+#proot 地址 (兼容 proot-distro v4.x installed-rootfs 和 v5.1 containers/<d>/rootfs)
+#用法: detect_distro_rootfs <distro>  返回找到的 rootfs 路径, 未找到返回旧版默认路径
+detect_distro_rootfs() {
+  local distro="$1"
+  for path in \
+    "$PREFIX/var/lib/proot-distro/installed-rootfs/$distro" \
+    "$PREFIX/var/lib/proot-distro/containers/$distro/rootfs"; do
+    if [ -d "$path" ] && {
+      [ -f "$path/bin/dpkg" ] || [ -f "$path/usr/bin/dpkg" ] || [ -f "$path/etc/debian_version" ]
+    }; then
+      echo "$path"; return 0
+    fi
+  done
+  echo "$PREFIX/var/lib/proot-distro/installed-rootfs/$distro"
+  return 1
+}
+DEBIAN_DIR="$(detect_distro_rootfs debian)"
+DEBIAN_OLD_DIR="$(detect_distro_rootfs debian-oldstable)"
 #Path of chroot mount dir
 CHROOT_DIR="/data/local/mnt"
 TERMUX_DIR="/data/data/com.termux/files"
@@ -134,7 +149,10 @@ check_debian_installed() {
   local debian_paths=(
     "$DEBIAN_DIR"
     "$DEBIAN_OLD_DIR"
-    "/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/debian"
+    "$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    "$PREFIX/var/lib/proot-distro/installed-rootfs/debian-oldstable"
+    "$PREFIX/var/lib/proot-distro/containers/debian/rootfs"
+    "$PREFIX/var/lib/proot-distro/containers/debian-oldstable/rootfs"
   )
 
   local debug_info=""

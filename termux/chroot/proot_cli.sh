@@ -1,10 +1,16 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Proot-Distro Linux 容器管理脚本 (对应 cli.sh 的 proot 版本)
-# 区别说明:
-#   - proot-distro 不需要 root 权限 (基于 syscall 拦截)
-#   - proot-distro 不需要手动 mount/umount (自动绑定 /dev /proc /sys /sdcard)
-#   - proot-distro 每个 login 是独立会话, 无法依赖 sysv init 持久化服务
-#   - 服务通过后台启动 `proot-distro login <distro> -- <cmd> &` 实现
+#
+# 架构: 对齐 chroot 版 cli.sh 的 sysv init 机制
+#   - start_init: 遍历 /etc/rc${INIT_LEVEL}.d/S* 执行 start (与 cli.sh 一致)
+#   - stop_init:  遍历 /etc/rc6.d/K* 执行 stop + 杀常驻 login 进程
+#   - 服务清单由容器内 init.d/rc.d 决定 (init_d_noVNC.sh + apt 包 postinst 生成),
+#     不再硬编码 PROOT_SERVICES, 不依赖 proot-services.sh 中间层
+#
+# proot 与 chroot 的差异:
+#   - proot 不需要 root/mount (自动绑定 /dev /proc /sys)
+#   - proot 每次 login 是独立会话, login 退出会杀掉它 trace 的子进程,
+#     因此 start_init 用一个常驻 login 进程遍历启动服务后 hold 住会话, 让 daemon 常驻
 
 PREFIX=/data/data/com.termux/files/usr
 
@@ -32,7 +38,6 @@ detect_proot_rootfs() {
       return 0
     fi
   done
-  # 未找到已安装的, 返回旧版本默认路径 (保持向后兼容, 不影响后续安装)
   echo "$PREFIX/var/lib/proot-distro/installed-rootfs/$distro"
   return 1
 }
@@ -40,27 +45,14 @@ detect_proot_rootfs() {
 # proot-distro rootfs 安装位置 (加载时自动检测, 兼容新旧路径)
 PROOT_ROOTFS="$(detect_proot_rootfs)"
 
-# 容器内部服务启动脚本 (由 server_configure.sh 安装)
-CONTAINER_SERVICES_SCRIPT="/usr/local/bin/proot-services.sh"
-
 # Termux 端 PID/日志目录
 PROOT_RUN_DIR="${TMPDIR:-$PREFIX/tmp}/proot-${DISTRO_NAME}"
 mkdir -p "$PROOT_RUN_DIR" 2>/dev/null
 
-# 需要管理的关键服务 (服务名:进程关键字:启动命令)
-# 启动命令为空表示使用 CONTAINER_SERVICES_SCRIPT 启动
-# vnc: 用 x11vnc 连接 termux-x11 已有的 :1, 不用 vncserver (后者会新建 :1 与 termux-x11 冲突)
-#   链路: termux-x11(:1) -> x11vnc(5901) -> noVNC(10086) -> 浏览器
-#   如需密码: 把 -nopw 换成 -rfbauth ~/.vnc/passwd (x11vnc 兼容 vncpasswd 格式)
-PROOT_SERVICES=(
-  "sshd:sshd:/usr/sbin/sshd"
-  "dbus:dbus-daemon:/usr/bin/dbus-daemon --system --fork"
-  "vnc:x11vnc:/usr/bin/x11vnc -display :1 -forever -shared -rfbport 5901 -nopw"
-  "novnc:novnc_proxy:/usr/local/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5901 --listen 10086"
-)
+# init 级别 (对齐 cli.sh: 3=多用户文本模式)
+INIT_LEVEL="${INIT_LEVEL:-3}"
 
-# 网络命名空间不需要,proot 共享 host 网络
-# DISPLAY 由 termux-x11 提供, 但 proot 容器内部需要 export DISPLAY=:1
+# 容器内环境变量 (对齐 cli.sh chroot_exec 的 PATH 重置)
 # PATH 显式重置为容器标准路径: proot-distro 默认会把 termux 的
 #   /data/data/com.termux/files/usr/bin 挂进容器, 导致 python/node 等误用
 #   termux 版本 (server_configure.sh 里 apt install 的程序会被屏蔽)
@@ -78,24 +70,14 @@ PROOT_LOGIN_OPTS="--isolated --bind /sdcard --shared-tmp --redirect-ports"
 
 # 用户配置
 INIT_USER="${INIT_USER:-root}"
+# 是否异步启动服务 (对齐 cli.sh INIT_ASYNC: true=并行, false=串行)
+[ -n "${INIT_ASYNC}" ] || INIT_ASYNC="true"
 
 # 日志函数
-log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-}
+log()       { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"; }
+error()     { log "ERROR: $1" >&2; exit 1; }
 
-error() {
-  log "ERROR: $1" >&2
-  exit 1
-}
-
-# 颜色输出
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
@@ -115,7 +97,6 @@ check_distro_installed() {
   check_proot_installed || return 1
 
   # 候选: 新旧路径 × 主/旧版 distro 名
-  # 旧版(4.x): installed-rootfs/<distro>; 新版(5.1): containers/<distro>/rootfs
   local distro_paths=(
     "$PREFIX/var/lib/proot-distro/installed-rootfs/${DISTRO_NAME}"
     "$PREFIX/var/lib/proot-distro/containers/${DISTRO_NAME}/rootfs"
@@ -130,11 +111,9 @@ check_distro_installed() {
       debug_info="${debug_info}  目录存在: ✓\n"
       local found=false
       if [ -f "$distro_path/bin/dpkg" ] || [ -f "$distro_path/usr/bin/dpkg" ]; then
-        debug_info="${debug_info}  dpkg: ✓\n"
-        found=true
+        debug_info="${debug_info}  dpkg: ✓\n"; found=true
       elif [ -f "$distro_path/etc/debian_version" ]; then
-        debug_info="${debug_info}  /etc/debian_version: ✓\n"
-        found=true
+        debug_info="${debug_info}  /etc/debian_version: ✓\n"; found=true
       fi
       if [ "$found" = true ]; then
         PROOT_ROOTFS="$distro_path"
@@ -158,9 +137,9 @@ proot_exec() {
     user="$2"
     shift 2
   fi
-  # 使用 proot-distro login 执行命令
   # 通用参数由 $PROOT_LOGIN_OPTS 统一控制 (--isolated --bind /sdcard --shared-tmp --redirect-ports)
-  $PROOT_CMD login "$DISTRO_NAME" --user "$user" $PROOT_LOGIN_OPTS -- env $PROOT_ENV "$@"
+  $PROOT_CMD login "$DISTRO_NAME" --user "$user" $PROOT_LOGIN_OPTS \
+    -- env $PROOT_ENV "$@"
 }
 
 # 在容器内执行 shell 脚本 (bash -c)
@@ -173,189 +152,125 @@ proot_exec_bash() {
   proot_exec -u "$user" /bin/bash -c "$*"
 }
 
-# 启动单个服务 (后台)
-# 用法: start_service <name> <pattern> <command>
-start_service() {
-  local name="$1"
-  local pattern="$2"
-  local cmd="$3"
-  local pidfile="$PROOT_RUN_DIR/${name}.pid"
-  local logfile="$PROOT_RUN_DIR/${name}.log"
+# === sysv init 服务管理 (对齐 cli.sh start_init / stop_init) ===
 
-  # 检查是否已运行
-  if [ -f "$pidfile" ]; then
-    local old_pid=$(cat "$pidfile" 2>/dev/null)
-    if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-      # 进一步检查进程是否匹配
-      if pgrep -f "$pattern" >/dev/null 2>&1; then
-        log_info "$name 已在运行 (pid=$old_pid)"
-        return 0
-      fi
-    fi
-    rm -f "$pidfile"
+# 列出 rc${INIT_LEVEL}.d/S* 服务 (宿主端路径检查, 不进容器)
+list_init_services() {
+  local level="${1:-$INIT_LEVEL}"
+  local prefix="${2:-S}"
+  local rc_dir="${PROOT_ROOTFS}/etc/rc${level}.d"
+  [ -d "$rc_dir" ] || return 1
+  ls "$rc_dir/" 2>/dev/null | grep "^${prefix}" | sort
+}
+
+# 启动 init 服务: 遍历 /etc/rc${INIT_LEVEL}.d/S* 执行 start (对齐 cli.sh start_init)
+# proot 特性: 用一个常驻 login 进程托管所有服务
+#   proot login 退出会杀掉它 trace 的子进程 (sshd/dbus daemon 也会被回收),
+#   因此遍历启动后用 while sleep hold 住会话, 让 daemon 常驻
+start_init() {
+  check_distro_installed || return 1
+
+  local rc_dir="${PROOT_ROOTFS}/etc/rc${INIT_LEVEL}.d"
+  if [ ! -d "$rc_dir" ]; then
+    log_warn "未找到 rc${INIT_LEVEL}.d ($rc_dir)"
+    log_warn "提示: 在容器内运行 ~/sh/win-git/server_configure.sh"
+    log_warn "      (它通过 init_d_noVNC.sh + apt 包 postinst 生成 rc.d 链接)"
+    return 1
   fi
 
-  log_debug "启动服务: $name ($cmd)"
-  # 使用 nohup + & 在后台运行 proot-distro login
+  local services=$(list_init_services "$INIT_LEVEL" "S")
+  if [ -z "$services" ]; then
+    log_warn "rc${INIT_LEVEL}.d 无 S* 服务脚本, 无需启动"
+    return 1
+  fi
+
+  local pidfile="$PROOT_RUN_DIR/init.pid"
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null; then
+    log_info "init 服务已在运行 (pid=$(cat "$pidfile"))"
+    return 0
+  fi
+
+  log_info "启动 init 服务 (级别 $INIT_LEVEL): $(echo $services | tr '\n' ' ')"
+
+  # 单个常驻 login: 容器内遍历 rc3.d/S* start, 然后 hold 住会话保活
+  # 异步 (&): 对齐 cli.sh INIT_ASYNC, 每个服务 start 不阻塞后续
+  # PROOT_INIT_SESSION=1: 标记本 login 为 init 会话, stop_init 据此精确清理 (不误杀用户 shell)
+  local async_op='"$item" start &'
+  [ "$INIT_ASYNC" = "true" ] || async_op='"$item" start'
+
   nohup $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" $PROOT_LOGIN_OPTS \
-    -- env $PROOT_ENV /bin/bash -c "$cmd" >"$logfile" 2>&1 &
+    -- env $PROOT_ENV PROOT_INIT_SESSION=1 /bin/sh -c '
+      for item in /etc/rc'"$INIT_LEVEL"'.d/S*; do
+        [ -x "$item" ] || continue
+        '"$async_op"'
+      done
+      while :; do sleep 3600; done
+    ' >"$PROOT_RUN_DIR/init.log" 2>&1 &
   local pid=$!
   echo "$pid" >"$pidfile"
 
-  # 等待启动
-  sleep 1
+  sleep 2
   if kill -0 "$pid" 2>/dev/null; then
-    log_info "$name 启动成功 (pid=$pid)"
-    return 0
+    log_info "init 服务已启动 (pid=$pid, 日志: $PROOT_RUN_DIR/init.log)"
   else
-    log_warn "$name 启动失败, 查看日志: $logfile"
-    return 1
+    log_warn "init 服务启动失败, 查看日志: $PROOT_RUN_DIR/init.log"
+    tail -20 "$PROOT_RUN_DIR/init.log" 2>/dev/null
   fi
+  return 0
 }
 
-# 停止单个服务
-stop_service() {
-  local name="$1"
-  local pattern="$2"
-  local pidfile="$PROOT_RUN_DIR/${name}.pid"
+# 停止 init 服务: 杀常驻 login 进程 + 遍历 rc6.d/K* stop (对齐 cli.sh stop_init)
+stop_init() {
+  local pidfile="$PROOT_RUN_DIR/init.pid"
+  local stopped=false
 
-  local stopped_any=false
+  # 1. 调用容器内 rc6.d/K* stop (对齐 cli.sh stop_init, 关机级别)
+  if check_distro_installed 2>/dev/null; then
+    local rc6_dir="${PROOT_ROOTFS}/etc/rc6.d"
+    if [ -d "$rc6_dir" ]; then
+      local kill_services=$(ls "$rc6_dir/" 2>/dev/null | grep '^K' | sort)
+      if [ -n "$kill_services" ]; then
+        log_debug "执行 rc6.d/K* stop..."
+        local item
+        for item in $kill_services; do
+          proot_exec "/etc/rc6.d/$item" stop 2>/dev/null || true
+        done
+      fi
+    fi
+  fi
 
-  # 1. 通过 pidfile 停止
+  # 2. 杀常驻 login 进程 (proot 退出会连带杀掉它 trace 的 daemon)
   if [ -f "$pidfile" ]; then
     local pid=$(cat "$pidfile" 2>/dev/null)
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-      log_debug "停止 $name (pid=$pid)"
+      log_debug "停止 init 进程 (pid=$pid)"
       kill -TERM "$pid" 2>/dev/null || true
       sleep 1
       kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
-      stopped_any=true
+      stopped=true
     fi
     rm -f "$pidfile"
   fi
 
-  # 2. 通过 pattern 匹配残留进程
-  local pids=$(pgrep -f "$pattern" 2>/dev/null || true)
-  if [ -n "$pids" ]; then
-    log_debug "清理 $name 残留进程: $pids"
-    for pid in $pids; do
-      kill -KILL "$pid" 2>/dev/null || true
-    done
-    stopped_any=true
-  fi
+  # 3. 清理带 PROOT_INIT_SESSION 标记的残留 login (精确匹配, 不误杀用户交互 shell)
+  pkill -KILL -f "PROOT_INIT_SESSION" 2>/dev/null && stopped=true
 
-  if [ "$stopped_any" = true ]; then
-    log_info "$name 已停止"
-  else
-    log_info "$name 未运行"
-  fi
+  [ "$stopped" = true ] && log_info "init 服务已停止" || log_info "init 服务未运行"
   return 0
 }
 
-# 检查服务状态
-check_service_status() {
-  local name="$1"
-  local pattern="$2"
-  local pidfile="$PROOT_RUN_DIR/${name}.pid"
-
-  if [ -f "$pidfile" ]; then
-    local pid=$(cat "$pidfile" 2>/dev/null)
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-      echo -e "  ${GREEN}●${NC} $name (pid=$pid)"
-      return 0
-    fi
-  fi
-
-  if pgrep -f "$pattern" >/dev/null 2>&1; then
-    local pid=$(pgrep -f "$pattern" | head -1)
-    echo -e "  ${YELLOW}●${NC} $name (运行中, pidfile 缺失, pid=$pid)"
-    return 0
-  fi
-
-  echo -e "  ${RED}○${NC} $name (已停止)"
-  return 1
-}
-
-# 启动所有服务 (使用容器内服务脚本)
-start_all_services() {
-  log_info "启动 Proot ${DISTRO_NAME} 容器服务..."
-
-  if ! check_distro_installed; then
-    return 1
-  fi
-
-  # 方式 1: 优先使用容器内的统一服务脚本 (推荐)
-  if proot_exec test -x "$CONTAINER_SERVICES_SCRIPT" 2>/dev/null; then
-    log_debug "使用容器内服务脚本: $CONTAINER_SERVICES_SCRIPT"
-    nohup $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" $PROOT_LOGIN_OPTS \
-      -- env $PROOT_ENV "$CONTAINER_SERVICES_SCRIPT" start \
-      >"$PROOT_RUN_DIR/services.log" 2>&1 &
-    local pid=$!
-    echo "$pid" >"$PROOT_RUN_DIR/services.pid"
-    sleep 2
-    log_info "服务脚本已启动 (pid=$pid)"
-    return 0
-  fi
-
-  # 方式 2: 逐个启动服务 (后备方案)
-  log_warn "容器内未找到 $CONTAINER_SERVICES_SCRIPT, 使用逐个启动方式"
-  local svc name pattern cmd
-  for svc in "${PROOT_SERVICES[@]}"; do
-    IFS=':' read -r name pattern cmd <<<"$svc"
-    [ -n "$cmd" ] || continue
-    start_service "$name" "$pattern" "$cmd" || log_warn "$name 启动失败"
-  done
-
-  return 0
-}
-
-# 停止所有服务
-stop_all_services() {
-  log_info "停止 Proot ${DISTRO_NAME} 容器服务..."
-
-  # 1. 调用容器内服务脚本的 stop
-  if proot_exec test -x "$CONTAINER_SERVICES_SCRIPT" 2>/dev/null; then
-    log_debug "调用容器内服务脚本 stop"
-    proot_exec "$CONTAINER_SERVICES_SCRIPT" stop 2>/dev/null || true
-  fi
-
-  # 2. 逐个停止服务 (清理残留)
-  local svc name pattern cmd
-  for svc in "${PROOT_SERVICES[@]}"; do
-    IFS=':' read -r name pattern cmd <<<"$svc"
-    stop_service "$name" "$pattern" || true
-  done
-
-  # 3. 终止 services.pid 主进程
-  if [ -f "$PROOT_RUN_DIR/services.pid" ]; then
-    local pid=$(cat "$PROOT_RUN_DIR/services.pid" 2>/dev/null)
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-      kill -KILL "$pid" 2>/dev/null || true
-    fi
-    rm -f "$PROOT_RUN_DIR/services.pid"
-  fi
-
-  log_info "所有服务已停止"
-  return 0
-}
-
-# 检查容器是否在运行 (任一服务运行即认为运行)
+# 检查容器是否在运行 (init.pid 存活)
 container_running() {
-  local svc name pattern
-  for svc in "${PROOT_SERVICES[@]}"; do
-    IFS=':' read -r name pattern _ <<<"$svc"
-    if pgrep -f "$pattern" >/dev/null 2>&1; then
-      return 0
-    fi
-  done
-  return 1
+  local pidfile="$PROOT_RUN_DIR/init.pid"
+  [ -f "$pidfile" ] || return 1
+  local pid=$(cat "$pidfile" 2>/dev/null)
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
-# 检查容器状态 (详细)
+# 容器状态 (对齐 cli.sh 的初始化系统状态展示)
 check_container_status() {
   echo -e "${BLUE}=== Proot ${DISTRO_NAME} 容器状态 ===${NC}"
 
-  # 检查 distro 安装
   if check_distro_installed 2>/dev/null; then
     echo -e "Distro 安装: ${GREEN}已安装${NC} ($PROOT_ROOTFS)"
   else
@@ -363,31 +278,42 @@ check_container_status() {
     return
   fi
 
-  # 列出 proot-distro 已知 distro
-  if $PROOT_CMD list 2>/dev/null | grep -q "^\* ${DISTRO_NAME}"; then
-    echo -e "Distro 注册: ${GREEN}已注册${NC}"
-  fi
-
-  # 检查服务运行状态
+  # init 进程状态
   echo ""
-  echo -e "${BLUE}服务状态:${NC}"
-  local any_running=false
-  local svc name pattern
-  for svc in "${PROOT_SERVICES[@]}"; do
-    IFS=':' read -r name pattern _ <<<"$svc"
-    if check_service_status "$name" "$pattern"; then
-      any_running=true
-    fi
-  done
-
-  echo ""
-  if [ "$any_running" = true ]; then
-    echo -e "容器状态: ${GREEN}运行中${NC}"
+  echo -e "${BLUE}init 进程:${NC}"
+  local pidfile="$PROOT_RUN_DIR/init.pid"
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null; then
+    echo -e "  ${GREEN}●${NC} init (pid=$(cat "$pidfile"))"
   else
-    echo -e "容器状态: ${RED}已停止${NC}"
+    echo -e "  ${RED}○${NC} init (已停止)"
   fi
 
-  # 显示运行目录
+  # rc${INIT_LEVEL}.d 服务清单 (与 cli.sh 的初始化系统展示一致)
+  echo ""
+  echo -e "${BLUE}初始化系统 (级别 ${INIT_LEVEL}):${NC}"
+  local rc_dir="${PROOT_ROOTFS}/etc/rc${INIT_LEVEL}.d"
+  if [ -d "$rc_dir" ]; then
+    local services=$(list_init_services "$INIT_LEVEL" "S")
+    if [ -n "$services" ]; then
+      local count=$(echo "$services" | wc -l)
+      echo -e "  ${GREEN}级别${INIT_LEVEL} (${count}个服务)${NC}"
+      local item
+      for item in $services; do
+        local service_name="${item/S[0-9][0-9]/}"
+        echo -e "    ${item} -> ${service_name}"
+      done
+    else
+      echo -e "  ${YELLOW}级别${INIT_LEVEL} (无服务)${NC}"
+    fi
+  else
+    echo -e "  ${RED}级别${INIT_LEVEL} (目录不存在)${NC}"
+  fi
+
+  echo ""
+  container_running \
+    && echo -e "容器状态: ${GREEN}运行中${NC}" \
+    || echo -e "容器状态: ${RED}已停止${NC}"
+
   echo ""
   echo -e "${BLUE}运行时文件:${NC} $PROOT_RUN_DIR"
   if [ -d "$PROOT_RUN_DIR" ]; then
@@ -397,9 +323,7 @@ check_container_status() {
 
 # 进入容器 shell
 enter_container_shell() {
-  if ! check_distro_installed; then
-    return 1
-  fi
+  check_distro_installed || return 1
   log_info "进入 Proot ${DISTRO_NAME} 环境..."
   $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" $PROOT_LOGIN_OPTS
 }
@@ -412,9 +336,7 @@ exec_container_command() {
     echo "  使用: exec_container_command <命令>"
     return 1
   fi
-  if ! check_distro_installed; then
-    return 1
-  fi
+  check_distro_installed || return 1
   log_info "在 Proot 容器中执行: $command"
   proot_exec /bin/bash -c "$command"
 }
@@ -423,15 +345,10 @@ exec_container_command() {
 force_cleanup() {
   log_warn "强制清理所有 Proot ${DISTRO_NAME} 进程..."
 
-  # 杀掉所有 proot-distro login 进程
+  # 杀掉 init 会话进程 (带标记)
+  pkill -KILL -f "PROOT_INIT_SESSION" 2>/dev/null || true
+  # 杀掉所有 proot-distro login 进程 (应急, 会影响交互 shell)
   pkill -KILL -f "proot-distro login ${DISTRO_NAME}" 2>/dev/null || true
-
-  # 杀掉所有服务进程
-  local svc name pattern
-  for svc in "${PROOT_SERVICES[@]}"; do
-    IFS=':' read -r name pattern _ <<<"$svc"
-    pkill -KILL -f "$pattern" 2>/dev/null || true
-  done
 
   # 清理 pid 文件
   rm -rf "$PROOT_RUN_DIR"/*.pid 2>/dev/null
@@ -448,19 +365,19 @@ install_distro() {
 # 重启容器
 restart_container() {
   log_info "重启 Proot 容器..."
-  stop_all_services
+  stop_init
   sleep 2
-  start_all_services
+  start_init
 }
 
 # 命令行接口
 proot_manager_cli() {
   case "${1:-help}" in
     start | s)
-      start_all_services
+      start_init
       ;;
     stop | st)
-      stop_all_services
+      stop_init
       ;;
     restart | r)
       restart_container
@@ -492,62 +409,70 @@ proot_manager_cli() {
       fi
       ;;
     svc)
-      # 单个服务管理: proot_cli.sh svc <start|stop|status> <name>
+      # 单服务管理: proot_cli.sh svc <start|stop|status|restart> <服务名>
+      # 直接调用容器内 /etc/init.d/<服务名> (对齐 sysv init, 与 chroot 一致)
       local action="${2:-status}"
       local svc_name="${3:-}"
       if [ -z "$svc_name" ]; then
-        echo "用法: $0 svc <start|stop|status> <sshd|dbus|vnc|novnc>"
+        echo "用法: $0 svc <start|stop|status|restart> <服务名>"
+        echo "  服务名对应 /etc/init.d/<服务名> (如 noVNC, ssh, dbus)"
         return 1
       fi
-      local svc name pattern cmd
-      for svc in "${PROOT_SERVICES[@]}"; do
-        IFS=':' read -r name pattern cmd <<<"$svc"
-        if [ "$name" = "$svc_name" ]; then
-          case "$action" in
-            start) start_service "$name" "$pattern" "$cmd" ;;
-            stop)  stop_service "$name" "$pattern" ;;
-            status) check_service_status "$name" "$pattern" ;;
-            *) echo "未知动作: $action" ;;
-          esac
-          return $?
-        fi
-      done
-      log_error "未找到服务: $svc_name"
-      return 1
+      check_distro_installed || return 1
+      if ! proot_exec test -x "/etc/init.d/$svc_name" 2>/dev/null; then
+        log_error "未找到服务: $svc_name (/etc/init.d/$svc_name)"
+        return 1
+      fi
+      proot_exec "/etc/init.d/$svc_name" "$action"
+      ;;
+    log)
+      # 查看 init 服务日志
+      local logfile="$PROOT_RUN_DIR/init.log"
+      if [ -f "$logfile" ]; then
+        tail -50 "$logfile"
+      else
+        log_warn "无日志: $logfile"
+      fi
       ;;
     help | h | *)
       cat <<EOF
-${BLUE}Proot-Distro ${DISTRO_NAME} 容器管理${NC}
+${BLUE}Proot-Distro ${DISTRO_NAME} 容器管理${NC} (对齐 chroot cli.sh 架构)
 
 ${GREEN}基础操作:${NC}
-  ${YELLOW}start${NC}         启动容器服务 (sshd/dbus/vnc/novnc)
-  ${YELLOW}stop${NC}          停止容器服务
+  ${YELLOW}start${NC}         启动 init 服务 (遍历 /etc/rc${INIT_LEVEL}.d/S*)
+  ${YELLOW}stop${NC}          停止 init 服务 (rc6.d/K* + 杀常驻进程)
   ${YELLOW}restart${NC}       重启容器
-  ${YELLOW}status${NC}        查看容器状态
+  ${YELLOW}status${NC}        查看容器状态 + rc${INIT_LEVEL}.d 服务清单
+  ${YELLOW}log${NC}           查看 init 服务日志
 
 ${GREEN}交互操作:${NC}
   ${YELLOW}shell${NC}/${YELLOW}enter${NC}    进入容器 shell
   ${YELLOW}exec${NC} <cmd>    在容器中执行命令
 
 ${GREEN}服务管理:${NC}
-  ${YELLOW}svc${NC} <action> <name>  单服务管理 (start|stop|status)
-                  可用服务: sshd, dbus, vnc, novnc
+  ${YELLOW}svc${NC} <action> <name>  单服务管理 (直接调用 /etc/init.d/<name>)
+                  action: start|stop|status|restart
+                  name:    noVNC, ssh, dbus ... (由容器 init.d 决定)
 
 ${GREEN}安装/清理:${NC}
   ${YELLOW}install${NC}      安装 ${DISTRO_NAME} distro
   ${YELLOW}force-cleanup${NC} 强制清理所有 proot 进程
 
 ${GREEN}常用示例:${NC}
-  bash ~/sh/termux/chroot/proot_cli.sh start
-  bash ~/sh/termux/chroot/proot_cli.sh shell
-  bash ~/sh/termux/chroot/proot_cli.sh exec "apt update"
-  bash ~/sh/termux/chroot/proot_cli.sh svc start sshd
-  bash ~/sh/termux/chroot/proot_cli.sh status
+  proot_cli.sh start
+  proot_cli.sh shell
+  proot_cli.sh exec "apt update"
+  proot_cli.sh svc start noVNC
+  proot_cli.sh status
+
+${GREEN}架构说明:${NC}
+  服务清单由容器内 /etc/rc${INIT_LEVEL}.d/S* 决定
+  (init_d_noVNC.sh + apt 包 postinst 生成, 与 chroot 版 cli.sh 共用同一套 init.d 配置)
+  不再硬编码服务列表, 不依赖 proot-services.sh 中间层
 
 ${GREEN}环境变量:${NC}
-  ${YELLOW}DISTRO_NAME${NC}=${DISTRO_NAME}    - 目标 distro 名
-  ${YELLOW}INIT_USER${NC}=${INIT_USER}        - 登录用户
-  ${YELLOW}PROOT_ENV${NC}=${PROOT_ENV}        - 容器内环境变量
+  ${YELLOW}DISTRO_NAME${NC}=${DISTRO_NAME}   ${YELLOW}INIT_LEVEL${NC}=${INIT_LEVEL}
+  ${YELLOW}INIT_USER${NC}=${INIT_USER}      ${YELLOW}INIT_ASYNC${NC}=${INIT_ASYNC}
 EOF
       ;;
   esac

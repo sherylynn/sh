@@ -14,7 +14,6 @@ setup_permissions() {
         "$script_dir/mount_config_manager.sh"
         "$script_dir/proot_all_in_one.sh"
         "$script_dir/proot_cli.sh"
-        "$script_dir/proot-services.sh"
     )
 
     echo "设置脚本执行权限..."

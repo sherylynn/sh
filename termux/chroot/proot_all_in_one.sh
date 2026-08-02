@@ -96,27 +96,36 @@ start_base_services() {
     done
 }
 
-# 启动X11服务 (与 chroot 版本一致, X11 在 termux 端)
+# 启动X11服务 (对齐 LinuxDroidMaster/Termux-Desktops 开源项目)
+# 关键: 先起 termux-x11 (X server), 等 stable 后再启动 Termux:X11 APP
+#       顺序反了会导致 APP 找不到 X server 反复重连, 表现为 termux/termux:x11 来回切换
 # proot 模式无需 root, X11 进程由 termux 用户启动, 可直接 kill
 start_x11() {
     log "启动X11服务..."
 
-    # 清理旧的进程 (proot 无需 sudo)
+    # 1. 清理旧进程 (proot 无需 sudo)
     killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
     pkill -f com.termux.x11 2>/dev/null || true
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
-    # 清理临时文件
+    # 2. 清理临时文件
     clean_tmp
 
-    # 启动X11应用
-    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity 2>/dev/null || true
+    # 3. 启动 PulseAudio 并加载 tcp 模块 (让容器内能访问音频, 对齐开源项目)
+    pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1 2>/dev/null || true
 
-    # 启动X11服务器
+    # 4. 先启动 X server (输出重定向到日志, 避免阻塞前台)
+    #    DISPLAY=:1 与 server_noVNC.sh 检测 com.termux.x11 时的 DISPLAY_PORT=1 对齐
     export XDG_RUNTIME_DIR="${TMPDIR}"
-    termux-x11 :1 -ac +extension DPMS -dpi 100 &
+    termux-x11 :1 -ac +extension DPMS -dpi 100 >"$PROOT_RUN_DIR/x11.log" 2>&1 &
 
-    sleep 2
+    # 5. 等待 X server 稳定 (关键! 不等会导致 APP 连接失败)
+    sleep 3
+
+    # 6. 再启动 Termux:X11 APP (此时 X server 已就绪, APP 一次连上, 不会来回切换)
+    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
+    sleep 1
+
     log "X11服务启动完成"
 }
 
@@ -124,7 +133,7 @@ start_x11() {
 start_proot() {
     log "启动 Proot Linux 容器..."
 
-    if ! start_all_services; then
+    if ! start_init; then
         error "无法启动 Proot 容器"
     fi
 
@@ -138,7 +147,7 @@ stop_all() {
     log "停止所有服务..."
 
     # 停止 proot 容器服务 (调用 proot_cli.sh)
-    stop_all_services 2>/dev/null || true
+    stop_init 2>/dev/null || true
 
     # 停止X11 (proot 无需 sudo)
     killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
@@ -271,8 +280,8 @@ Termux 一键启动脚本 - Proot-Distro 整体服务编排器
 与 chroot 版本的区别:
   - 无需 root 权限 (proot 基于用户态 syscall 拦截)
   - 无需手动 mount/umount 文件系统
-  - 服务通过后台 proot-distro login 启动
-  - 不依赖 sysv init 系统 (服务脚本由 proot_cli.sh 调用)
+  - 对齐 chroot 版 cli.sh 的 sysv init: 遍历 /etc/rc3.d/S* 启动服务
+  - proot login 是独立会话, 用常驻进程托管 daemon (login 退出会回收子进程)
 EOF
 }
 

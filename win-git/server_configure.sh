@@ -2,26 +2,6 @@
 SCRIPT_NAME="configure"
 #SOFT_VNC=kasmvnc
 SOFT_VNC=tigervnc
-
-# 容器类型检测: 在 proot-distro 环境下, 外部 (proot_cli.sh) 会设置 PROOT_CONTAINER=1
-# 交互式运行 (pshell 后手动执行本脚本) 时靠 TracerPid / proot 环境变量检测
-if [ -n "$PROOT_CONTAINER" ]; then
-  CONTAINER_TYPE="proot"
-elif [ -f /.dockerenv ]; then
-  CONTAINER_TYPE="proot"
-  export PROOT_CONTAINER=1
-elif grep -q "TracerPid:[[:space:]]*[1-9]" /proc/self/status 2>/dev/null; then
-  # proot 通过 ptrace 拦截 syscall, TracerPid 非 0
-  CONTAINER_TYPE="proot"
-  export PROOT_CONTAINER=1
-elif [ -n "$PROOT_TMP_DIR" ] || [ -n "$PROOT_L2S_DIR" ]; then
-  # proot 环境变量
-  CONTAINER_TYPE="proot"
-  export PROOT_CONTAINER=1
-else
-  CONTAINER_TYPE="chroot"
-fi
-echo "检测到容器类型: $CONTAINER_TYPE"
 realpath() {
   local x=$1
   echo $(
@@ -90,41 +70,7 @@ if ! dpkg -s kwin-wayland &>/dev/null; then
     if [ -e "$DroidSpaces_path" ]; then
       zsh ~/sh/win-git/systemd_noVNC.sh
     else
-      # proot 容器下, sysv init (/etc/rc3.d) 不会被执行
-      # 因此仍生成 init.d 文件 (留作兼容), 但额外安装 proot-services.sh 作为主启动入口
       zsh ~/sh/win-git/init_d_noVNC.sh
-      if [ "$CONTAINER_TYPE" = "proot" ]; then
-        # 安装 proot 服务启动脚本 (由外部 proot_cli.sh 调用)
-        if [ -f ~/sh/termux/chroot/proot-services.sh ]; then
-          sudo install -m 755 ~/sh/termux/chroot/proot-services.sh /usr/local/bin/proot-services.sh
-          echo "[proot] 已安装 /usr/local/bin/proot-services.sh (由 proot_cli.sh 调用启动所有服务)"
-        else
-          # 备用: 若宿主没有提供, 生成最小化版本
-          cat <<'PROOT_EOF' | sudo tee /usr/local/bin/proot-services.sh >/dev/null
-#!/bin/bash
-export DISPLAY="${DISPLAY:-:1}"
-export PULSE_SERVER="${PULSE_SERVER:-127.0.0.1}"
-mkdir -p /run/dbus
-case "${1:-start}" in
-  start)
-    ssh-keygen -A 2>/dev/null; /usr/sbin/sshd 2>/dev/null
-    [ -s /etc/machine-id ] || dbus-uuidgen >/etc/machine-id 2>/dev/null
-    dbus-daemon --system --fork 2>/dev/null
-    command -v x11vnc >/dev/null 2>&1 && nohup x11vnc -display :1 -forever -shared -rfbport 5901 -nopw >/dev/null 2>&1 &
-    ;;
-  stop)
-    pkill -x sshd 2>/dev/null; pkill -x dbus-daemon 2>/dev/null
-    pkill -x x11vnc 2>/dev/null
-    ;;
-  status)
-    for n in sshd dbus-daemon x11vnc novnc_proxy; do pgrep -x $n >/dev/null 2>&1 && echo "  ● $n" || echo "  ○ $n"; done
-    ;;
-esac
-PROOT_EOF
-          sudo chmod 755 /usr/local/bin/proot-services.sh
-          echo "[proot] 已生成最小化 /usr/local/bin/proot-services.sh"
-        fi
-      fi
     fi
     zsh ~/sh/win-git/noVNC.sh
   else
@@ -145,21 +91,9 @@ zsh ~/sh/debian/wechat.sh
 zsh ~/sh/win-git/qq.sh
 #zsh ~/sh/debian/spark-store.sh
 zsh ~/sh/debian/vlc.sh
-# scrcpy 依赖 Android USB 调试层 /dev 以及 adb 直接访问 Android 系统
-# chroot 下可用, proot 下经常出问题且没必要(通常 termux 端已提供 scrcpy)
-if [ "$CONTAINER_TYPE" != "proot" ]; then
-  zsh ~/sh/win-git/scrcpy.sh
-else
-  echo "[proot] 跳过 scrcpy 安装 (Android 调试通常直接在 Termux 端使用更稳定)"
-fi
+zsh ~/sh/win-git/scrcpy.sh
 zsh ~/sh/myemacs.sh
 zsh ~/sh/debian/emacs.sh
 #zsh ~/sh/win-git/emacs.sh
 zsh ~/sh/debian/R.sh
-# proot 容器中常通过非交互式方式调用 (installer_proot.sh 中)
-# 避免脚本阻塞, 仅在交互式终端时启动 emacs -nw
-if [ -t 1 ] && [ "$CONTAINER_TYPE" != "proot" ]; then
-  emacs -nw
-elif [ -t 1 ]; then
-  echo "[proot] 跳过自动启动 emacs -nw, 请按需手动执行 emacs"
-fi
+emacs -nw
