@@ -88,8 +88,11 @@ cd ../../
 DroidSpaces_path="/run/droidspaces/container.config"
 
 
-#当chroot的时候能访问到宿主机的com.termux.x11
-if pgrep -f "com.termux.x11" >/dev/null; then
+# 检测 termux-x11 是否在运行
+# chroot: pgrep 可见宿主机进程 (com.termux.x11)
+# proot --isolated: pgrep 看不到 termux 进程, 改用 X socket 文件检测
+#   termux-x11 :1 创建 $TMPDIR/.X11-unix/X1, --shared-tmp 让容器内 /tmp/.X11-unix/X1 可达
+if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
   export PULSE_SERVER=127.0.0.1
