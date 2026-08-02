@@ -80,14 +80,16 @@ start_base_services() {
     log "启动基础服务..."
 
     local services=()
+    # x11 不在此启动: runit 管的 server_x11.sh 与 start_x11 函数会互相 killall 打架
+    # X11 由 start_x11 统一管理 (对齐 test_xfce4.sh: termux-x11 :1 + am start APP)
     if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
       log "检测到强制使用虚拟显卡文件，启动virgl服务"
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     elif lscpu | grep -q "Oryon"; then
       log "Oryon CPU detected, skipping virgl service startup."
-      services=("pulseaudio" "x11")
+      services=("pulseaudio")
     else
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     fi
 
     for service in "${services[@]}"; do
@@ -104,6 +106,10 @@ start_base_services() {
 # proot 模式无需 root, X11 进程由 termux 用户启动, 可直接 kill
 start_x11() {
     log "启动X11服务..."
+
+    # 0. 停掉 runit 对 x11 的监控 (server_x11.sh 有自动重启机制,
+    #    否则下面 killall 后 runit 会立刻重启 server_x11.sh, 与本函数抢 termux-x11)
+    sv down x11 2>/dev/null || true
 
     # 1. 清理旧进程 (proot 无需 sudo)
     #    双重杀: pkill 直接杀进程 + am force-stop 通过 Android 系统停止
@@ -147,9 +153,21 @@ start_proot() {
         error "无法启动 Proot 容器"
     fi
 
+    # 后置检查: rc3.d/S01noVNC 会拉起 server_noVNC.sh (xfce4+x11vnc+novnc_proxy)
+    # server_noVNC.sh 需要 ~/.vnc/passwd, async 后台模式下 read 失败会让桌面链路起不来
+    if ! proot_exec test -f "$HOME/.vnc/passwd" 2>/dev/null; then
+        log "⚠️  容器内 ~/.vnc/passwd 不存在, noVNC 桌面链路 (xfce4+x11vnc+novnc) 可能无法启动"
+        log "   创建密码: pexec 'x11vnc -storepasswd <密码> ~/.vnc/passwd'"
+        log "   然后重启: pstop && pstart"
+    else
+        log "桌面链路已就绪:"
+        log "  - Termux:X11 APP 显示 xfce4 桌面"
+        log "  - VNC 客户端连 <设备IP>:5900"
+        log "  - noVNC 浏览器访问 http://<设备IP>:10086"
+    fi
+
     log "Proot Linux 容器启动完成"
-    log "可以使用以下命令进入 Linux 环境:"
-    log "  penter 或 pshell"
+    log "进入终端: pshell 或 penter"
 }
 
 # 停止所有服务
@@ -159,6 +177,10 @@ stop_all() {
     # 停止 proot 容器服务 (调用 proot_cli.sh)
     stop_init 2>/dev/null || true
 
+    # 先停 runit 的 x11 监控 (必须早于 killall: 否则 killall 杀掉 termux-x11 后,
+    # runit 检测到服务挂了会自动重启 server_x11.sh, 导致杀不干净 → APP 闪退/来回切换)
+    sv down x11 2>/dev/null || true
+
     # 停止X11 (proot 无需 sudo)
     #    双重杀: pkill + am force-stop 确保彻底停止
     killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
@@ -166,16 +188,16 @@ stop_all() {
     am force-stop com.termux.x11 2>/dev/null || true
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
-    # 停止sv服务
+    # 停止sv服务 (x11 已单独在上面的 sv down x11 处理)
     local services=()
     if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
       log "检测到强制使用虚拟显卡文件，停止virgl服务"
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     elif lscpu | grep -q "Oryon"; then
       log "Oryon CPU detected, skipping virgl service shutdown."
-      services=("pulseaudio" "x11")
+      services=("pulseaudio")
     else
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     fi
 
     for service in "${services[@]}"; do
