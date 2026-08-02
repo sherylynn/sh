@@ -65,30 +65,34 @@ stop_dbus() {
   log "dbus 已停止"
 }
 
-# VNC 服务器 (tigervnc)
+# VNC 服务器 (x11vnc: 把 termux-x11 的 :1 转成 VNC, 供 noVNC 远程访问)
+# 链路: termux-x11(:1) -> x11vnc(5901) -> noVNC(10086) -> 浏览器
+# 注意: 用 x11vnc 连接已有 :1, 不用 vncserver (后者会新建 :1 与 termux-x11 冲突)
+#   如需密码: 把 -nopw 换成 -rfbauth ~/.vnc/passwd (x11vnc 兼容 vncpasswd 格式)
 start_vnc() {
-  if pgrep -x Xvnc >/dev/null 2>&1; then
-    log "vnc 已在运行"
+  if pgrep -x x11vnc >/dev/null 2>&1; then
+    log "x11vnc 已在运行"
     return 0
   fi
-  if ! command -v vncserver >/dev/null 2>&1; then
-    log "vnc 未安装, 跳过"
+  if ! command -v x11vnc >/dev/null 2>&1; then
+    log "x11vnc 未安装, 跳过"
     return 0
   fi
-  # 首次需要 vncpasswd
-  if [ ! -f ~/.vnc/passwd ]; then
-    mkdir -p ~/.vnc
-    # 设置默认密码 (可后续修改), 这里跳过让用户手动设置
-    log "首次运行 VNC, 请稍后手动执行: vncpasswd"
-    return 0
+  # 等待 termux-x11 的 :1 就绪 (最多 ~10s), 共享 tmp 后 socket 在 /tmp/.X11-unix/X1
+  for i in $(seq 1 20); do
+    [ -S /tmp/.X11-unix/X1 ] && break
+    sleep 0.5
+  done
+  if [ ! -S /tmp/.X11-unix/X1 ]; then
+    log "警告: :1 的 X server 未就绪, x11vnc 可能启动失败"
   fi
-  vncserver :1 -geometry 1920x1080 -depth 24 2>&1 | tail -5
-  log "vnc 已启动 (:1)"
+  nohup x11vnc -display :1 -forever -shared -rfbport 5901 -nopw >/tmp/x11vnc.log 2>&1 &
+  log "x11vnc 已启动 (VNC :5901, 连接 termux-x11 :1)"
 }
 
 stop_vnc() {
-  vncserver -kill :1 2>/dev/null || pkill -x Xvnc 2>/dev/null || true
-  log "vnc 已停止"
+  pkill -x x11vnc 2>/dev/null || true
+  log "x11vnc 已停止"
 }
 
 # noVNC web 客户端
@@ -141,7 +145,11 @@ case "${1:-start}" in
     ;;
   status)
     for svc in "${ALL_SERVICES[@]}"; do
-      if pgrep -x "$svc" >/dev/null 2>&1 || pgrep -f "$svc" >/dev/null 2>&1; then
+      # 服务名与实际进程名映射 (vnc->x11vnc, novnc->novnc_proxy)
+      local pat="$svc"
+      [ "$svc" = "vnc" ] && pat="x11vnc"
+      [ "$svc" = "novnc" ] && pat="novnc_proxy"
+      if pgrep -x "$pat" >/dev/null 2>&1 || pgrep -f "$pat" >/dev/null 2>&1; then
         echo "  ● $svc (运行中)"
       else
         echo "  ○ $svc (已停止)"

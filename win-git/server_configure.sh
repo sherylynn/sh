@@ -102,14 +102,14 @@ case "${1:-start}" in
     ssh-keygen -A 2>/dev/null; /usr/sbin/sshd 2>/dev/null
     [ -s /etc/machine-id ] || dbus-uuidgen >/etc/machine-id 2>/dev/null
     dbus-daemon --system --fork 2>/dev/null
-    [ -f ~/.vnc/passwd ] && command -v vncserver >/dev/null 2>&1 && vncserver :1 -geometry 1920x1080 -depth 24 2>&1 | tail -3
+    command -v x11vnc >/dev/null 2>&1 && nohup x11vnc -display :1 -forever -shared -rfbport 5901 -nopw >/dev/null 2>&1 &
     ;;
   stop)
     pkill -x sshd 2>/dev/null; pkill -x dbus-daemon 2>/dev/null
-    command -v vncserver >/dev/null 2>&1 && vncserver -kill :1 2>/dev/null
+    pkill -x x11vnc 2>/dev/null
     ;;
   status)
-    for n in sshd dbus-daemon Xvnc; do pgrep -x $n >/dev/null 2>&1 && echo "  ● $n" || echo "  ○ $n"; done
+    for n in sshd dbus-daemon x11vnc novnc_proxy; do pgrep -x $n >/dev/null 2>&1 && echo "  ● $n" || echo "  ○ $n"; done
     ;;
 esac
 PROOT_EOF

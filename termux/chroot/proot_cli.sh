@@ -12,8 +12,33 @@ PREFIX=/data/data/com.termux/files/usr
 DISTRO_NAME="${DISTRO_NAME:-debian}"
 DISTRO_OLD_NAME="${DISTRO_OLD_NAME:-debian-oldstable}"
 PROOT_CMD="proot-distro"
-# proot-distro 默认 rootfs 安装位置
-PROOT_ROOTFS="$PREFIX/var/lib/proot-distro/installed-rootfs/${DISTRO_NAME}"
+
+# 检测 distro 的实际安装路径 (兼容 proot-distro 新旧版本)
+# 旧版本: installed-rootfs/<distro>
+# 新版本: containers/<distro>
+# 用法: detect_proot_rootfs [distro_name]
+# 返回: 找到则输出路径并返回 0; 未找到返回旧版默认路径并返回 1
+detect_proot_rootfs() {
+  local distro="${1:-$DISTRO_NAME}"
+  local candidates=(
+    "$PREFIX/var/lib/proot-distro/installed-rootfs/$distro"
+    "$PREFIX/var/lib/proot-distro/containers/$distro"
+  )
+  for path in "${candidates[@]}"; do
+    if [ -d "$path" ] && {
+      [ -f "$path/bin/dpkg" ] || [ -f "$path/usr/bin/dpkg" ] || [ -f "$path/etc/debian_version" ]
+    }; then
+      echo "$path"
+      return 0
+    fi
+  done
+  # 未找到已安装的, 返回旧版本默认路径 (保持向后兼容, 不影响后续安装)
+  echo "$PREFIX/var/lib/proot-distro/installed-rootfs/$distro"
+  return 1
+}
+
+# proot-distro rootfs 安装位置 (加载时自动检测, 兼容新旧路径)
+PROOT_ROOTFS="$(detect_proot_rootfs)"
 
 # 容器内部服务启动脚本 (由 server_configure.sh 安装)
 CONTAINER_SERVICES_SCRIPT="/usr/local/bin/proot-services.sh"
@@ -24,17 +49,29 @@ mkdir -p "$PROOT_RUN_DIR" 2>/dev/null
 
 # 需要管理的关键服务 (服务名:进程关键字:启动命令)
 # 启动命令为空表示使用 CONTAINER_SERVICES_SCRIPT 启动
+# vnc: 用 x11vnc 连接 termux-x11 已有的 :1, 不用 vncserver (后者会新建 :1 与 termux-x11 冲突)
+#   链路: termux-x11(:1) -> x11vnc(5901) -> noVNC(10086) -> 浏览器
+#   如需密码: 把 -nopw 换成 -rfbauth ~/.vnc/passwd (x11vnc 兼容 vncpasswd 格式)
 PROOT_SERVICES=(
   "sshd:sshd:/usr/sbin/sshd"
   "dbus:dbus-daemon:/usr/bin/dbus-daemon --system --fork"
-  "vnc:Xvnc:/usr/bin/vncserver :1"
+  "vnc:x11vnc:/usr/bin/x11vnc -display :1 -forever -shared -rfbport 5901 -nopw"
   "novnc:novnc_proxy:/usr/local/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5901 --listen 10086"
 )
 
 # 网络命名空间不需要,proot 共享 host 网络
 # DISPLAY 由 termux-x11 提供, 但 proot 容器内部需要 export DISPLAY=:1
-PROOT_ENV="DISPLAY=:1 PULSE_SERVER=127.0.0.1 GDK_DPI_SCALING=1"
-PROOT_BINDS="--bind /dev --bind /proc --bind /sys --bind /dev/urandom --bind /sdcard"
+# PATH 显式重置为容器标准路径: proot-distro 默认会把 termux 的
+#   /data/data/com.termux/files/usr/bin 挂进容器, 导致 python/node 等误用
+#   termux 版本 (server_configure.sh 里 apt install 的程序会被屏蔽)
+PROOT_ENV="DISPLAY=:1 PULSE_SERVER=127.0.0.1 GDK_DPI_SCALING=1 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# proot-distro login 通用参数 (所有 login 调用共用, 保证行为一致)
+# --shared-tmp:     共享 /tmp —— dbus socket / vnc 锁文件 / X11 socket 都在 /tmp,
+#                   不共享则容器内服务与 termux 端 termux-x11 无法互通
+# --redirect-ports: 低端口重定向 —— proot 无法绑定 <1024 端口, sshd(22)->2022
+# 说明: /dev /proc /sys /sdcard 由 proot-distro 默认挂载, 无需重复 --bind
+PROOT_LOGIN_OPTS="--shared-tmp --redirect-ports"
 
 # 用户配置
 INIT_USER="${INIT_USER:-root}"
@@ -74,11 +111,16 @@ check_proot_installed() {
 check_distro_installed() {
   check_proot_installed || return 1
 
-  # 多个候选位置
-  local distro_paths=(
-    "$PROOT_ROOTFS"
-    "$PREFIX/var/lib/proot-distro/installed-rootfs/${DISTRO_OLD_NAME}"
-  )
+  # 候选: 新旧路径 × 主/旧版 distro 名
+  local distro_names=("$DISTRO_NAME" "$DISTRO_OLD_NAME")
+  local path_suffixes=("installed-rootfs" "containers")
+  local distro_paths=()
+  local d s
+  for d in "${distro_names[@]}"; do
+    for s in "${path_suffixes[@]}"; do
+      distro_paths+=("$PREFIX/var/lib/proot-distro/$s/$d")
+    done
+  done
 
   local debug_info=""
   for distro_path in "${distro_paths[@]}"; do
@@ -95,7 +137,7 @@ check_distro_installed() {
       fi
       if [ "$found" = true ]; then
         PROOT_ROOTFS="$distro_path"
-        echo -e "找到 ${DISTRO_NAME} 安装: $PROOT_ROOTFS\n$debug_info" >&2
+        echo -e "找到安装: $PROOT_ROOTFS\n$debug_info" >&2
         return 0
       fi
     else
@@ -116,8 +158,8 @@ proot_exec() {
     shift 2
   fi
   # 使用 proot-distro login 执行命令
-  # 注意: --termux-home 不使用, --shared-tmp 自动启用
-  $PROOT_CMD login "$DISTRO_NAME" --user "$user" -- env $PROOT_ENV "$@"
+  # 通用参数由 $PROOT_LOGIN_OPTS 统一控制 (--shared-tmp --redirect-ports)
+  $PROOT_CMD login "$DISTRO_NAME" --user "$user" $PROOT_LOGIN_OPTS -- env $PROOT_ENV "$@"
 }
 
 # 在容器内执行 shell 脚本 (bash -c)
@@ -154,7 +196,7 @@ start_service() {
 
   log_debug "启动服务: $name ($cmd)"
   # 使用 nohup + & 在后台运行 proot-distro login
-  nohup $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" \
+  nohup $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" $PROOT_LOGIN_OPTS \
     -- env $PROOT_ENV /bin/bash -c "$cmd" >"$logfile" 2>&1 &
   local pid=$!
   echo "$pid" >"$pidfile"
@@ -196,7 +238,7 @@ stop_service() {
   if [ -n "$pids" ]; then
     log_debug "清理 $name 残留进程: $pids"
     for pid in $pids; do
-      sudo kill -KILL "$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+      kill -KILL "$pid" 2>/dev/null || true
     done
     stopped_any=true
   fi
@@ -244,7 +286,7 @@ start_all_services() {
   # 方式 1: 优先使用容器内的统一服务脚本 (推荐)
   if proot_exec test -x "$CONTAINER_SERVICES_SCRIPT" 2>/dev/null; then
     log_debug "使用容器内服务脚本: $CONTAINER_SERVICES_SCRIPT"
-    nohup $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" \
+    nohup $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" $PROOT_LOGIN_OPTS \
       -- env $PROOT_ENV "$CONTAINER_SERVICES_SCRIPT" start \
       >"$PROOT_RUN_DIR/services.log" 2>&1 &
     local pid=$!
@@ -358,7 +400,7 @@ enter_container_shell() {
     return 1
   fi
   log_info "进入 Proot ${DISTRO_NAME} 环境..."
-  $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER"
+  $PROOT_CMD login "$DISTRO_NAME" --user "$INIT_USER" $PROOT_LOGIN_OPTS
 }
 
 # 在容器中执行命令
