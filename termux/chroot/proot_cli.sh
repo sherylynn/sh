@@ -67,11 +67,14 @@ PROOT_SERVICES=(
 PROOT_ENV="DISPLAY=:1 PULSE_SERVER=127.0.0.1 GDK_DPI_SCALING=1 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # proot-distro login 通用参数 (所有 login 调用共用, 保证行为一致)
+# --isolated:       不挂载 termux 的 /data/data/com.termux (含 termux 的 python/node 等),
+#                   从源头消除 PATH 污染 —— 否则交互式 shell 里 which python 指向 termux 版本
+# --bind /sdcard:   --isolated 会去掉默认 /sdcard 挂载, 这里显式恢复 (server_configure.sh 依赖)
 # --shared-tmp:     共享 /tmp —— dbus socket / vnc 锁文件 / X11 socket 都在 /tmp,
 #                   不共享则容器内服务与 termux 端 termux-x11 无法互通
 # --redirect-ports: 低端口重定向 —— proot 无法绑定 <1024 端口, sshd(22)->2022
-# 说明: /dev /proc /sys /sdcard 由 proot-distro 默认挂载, 无需重复 --bind
-PROOT_LOGIN_OPTS="--shared-tmp --redirect-ports"
+# 说明: /dev /proc /sys 由 proot-distro 默认挂载 (即使 --isolated 也保留)
+PROOT_LOGIN_OPTS="--isolated --bind /sdcard --shared-tmp --redirect-ports"
 
 # 用户配置
 INIT_USER="${INIT_USER:-root}"
@@ -156,7 +159,7 @@ proot_exec() {
     shift 2
   fi
   # 使用 proot-distro login 执行命令
-  # 通用参数由 $PROOT_LOGIN_OPTS 统一控制 (--shared-tmp --redirect-ports)
+  # 通用参数由 $PROOT_LOGIN_OPTS 统一控制 (--isolated --bind /sdcard --shared-tmp --redirect-ports)
   $PROOT_CMD login "$DISTRO_NAME" --user "$user" $PROOT_LOGIN_OPTS -- env $PROOT_ENV "$@"
 }
 
