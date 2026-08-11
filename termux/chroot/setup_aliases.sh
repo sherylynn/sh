@@ -34,11 +34,16 @@ has_root() {
     if [ "$(id -u)" -eq 0 ]; then
         return 0
     fi
-    # 方式二: sudo/tsh 可以获取 root (KernelSU/Magisk)
-    if command -v sudo >/dev/null 2>&1 && sudo true 2>/dev/null; then
+    # Termux 的 sudo/tsu 不一定支持 GNU sudo 的 -n 选项，
+    # 直接校验提权后的 uid，避免把可用的 root 误判为 proot。
+    if command -v sudo >/dev/null 2>&1 && [ "$(sudo id -u 2>/dev/null)" = "0" ]; then
         return 0
     fi
-    if command -v tsu >/dev/null 2>&1 && tsu true 2>/dev/null; then
+    if command -v tsu >/dev/null 2>&1 && [ "$(tsu -c 'id -u' 2>/dev/null)" = "0" ]; then
+        return 0
+    fi
+    # Magisk/KernelSU 设备可能只有 su，没有安装 tsu/sudo。
+    if command -v su >/dev/null 2>&1 && [ "$(su -c 'id -u' 2>/dev/null)" = "0" ]; then
         return 0
     fi
     return 1
@@ -84,10 +89,12 @@ _termux_pick_backend() {
         chroot) echo "chroot"; return ;;
         proot)  echo "proot";  return ;;
     esac
-    # 自动检测
+    # 自动检测。Termux 的 sudo 通常由 tsu 提供，不支持 GNU sudo -n；
+    # 使用 sudo -n 会在已有 root 的设备上误判为 proot。
     if [ "$(id -u)" -eq 0 ]; then echo "chroot"; return; fi
-    if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then echo "chroot"; return; fi
-    if command -v tsu  >/dev/null 2>&1 && tsu -c true 2>/dev/null;   then echo "chroot"; return; fi
+    if command -v sudo >/dev/null 2>&1 && [ "$(sudo id -u 2>/dev/null)" = "0" ]; then echo "chroot"; return; fi
+    if command -v tsu  >/dev/null 2>&1 && [ "$(tsu -c 'id -u' 2>/dev/null)" = "0" ]; then echo "chroot"; return; fi
+    if command -v su   >/dev/null 2>&1 && [ "$(su -c 'id -u' 2>/dev/null)" = "0" ]; then echo "chroot"; return; fi
     echo "proot"
 }
 
@@ -119,6 +126,7 @@ alias tenter='_termux_run_allinone enter'
 alias tinit='_termux_run_allinone init'
 # 统一安装入口: 有 root 用 chroot 版(ruri), 无 root 用 proot-distro 版
 alias tinstall='_termux_run_allinone install'
+alias tbackend='_termux_pick_backend'
 
 # 专用容器管理 (shell / exec / restart 等)
 alias cstart='_termux_run_cli start'
