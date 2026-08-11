@@ -50,6 +50,19 @@ if [ -d "/sdcard" ]; then
 fi
 
 sudo apt install zsh -y
+#修复 zsh compinit: insecure directories 问题
+#通过 zsh 的 compaudit 动态获取实际不安全目录,而非预设
+CURRENT_USER=$(whoami)
+INSECURE_DIRS=$(zsh -c 'autoload -Uz compaudit && compaudit' 2>/dev/null)
+if [ -n "$INSECURE_DIRS" ]; then
+  if [ "$CURRENT_USER" = "root" ]; then
+    echo "$INSECURE_DIRS" | xargs chown -R $CURRENT_USER:$CURRENT_USER
+  else
+    echo "$INSECURE_DIRS" | xargs sudo chown -R $CURRENT_USER:$CURRENT_USER
+  fi
+fi
+#清除旧的 compinit 缓存,避免使用旧的不安全记录
+rm -f ~/.zcompdump* 2>/dev/null
 sudo apt install telegram-desktop -y
 sudo apt install ncdu htop android-platform-tools-base -y
 sudo chsh -s /bin/zsh
