@@ -8,10 +8,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# 加载工具函数
-. "$PROJECT_ROOT/win-git/toolsinit.sh"
-. "$SCRIPT_DIR/cli.sh"
-
 # 日志函数
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -22,31 +18,39 @@ error() {
     exit 1
 }
 
-# 检查 root 可用性，不依赖可能阻塞的 sudo 提示
-has_root() {
-    if [ "$(id -u)" -eq 0 ]; then
-        return 0
-    fi
-    if command -v sudo >/dev/null 2>&1 && [ "$(sudo id -u 2>/dev/null)" = "0" ]; then
-        return 0
-    fi
-    if command -v tsu >/dev/null 2>&1 && [ "$(tsu -c 'id -u' 2>/dev/null)" = "0" ]; then
-        return 0
-    fi
-    if command -v su >/dev/null 2>&1 && [ "$(su -c 'id -u' 2>/dev/null)" = "0" ]; then
-        return 0
-    fi
-    return 1
-}
+# ERR trap: set -e 静默退出时打印失败位置, 便于定位
+trap 'log "ERR: 命令失败 行号=$LINENO 命令=\$BASH_COMMAND" >&2' ERR
+
+# 加载工具函数
+log "加载 toolsinit.sh..."
+. "$PROJECT_ROOT/win-git/toolsinit.sh"
+log "加载 cli.sh..."
+. "$SCRIPT_DIR/cli.sh"
+log "cli.sh 加载完成, DEBIAN_DIR=$DEBIAN_DIR"
 
 # 检查必要的权限和环境
 check_requirements() {
     log "检查运行环境..."
-    
-    # 检查root权限
-    if ! has_root; then
-        error "需要root权限，请确保已获取root权限"
+
+    # 检查root权限 (依次尝试 sudo / tsu / su, 打印命中方式)
+    local root_method=""
+    if [ "$(id -u 2>/dev/null)" = "0" ]; then
+        root_method="uid0"
+    elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        root_method="sudo-nopass"
+    elif command -v tsu >/dev/null 2>&1 && tsu -c true 2>/dev/null; then
+        root_method="tsu"
     fi
+    if [ -z "$root_method" ]; then
+        # 最后兜底: 交互式 sudo (原行为, 可能阻塞等密码)
+        if sudo true 2>/dev/null; then
+            root_method="sudo-interactive"
+        fi
+    fi
+    if [ -z "$root_method" ]; then
+        error "需要root权限，请确保已获取root权限 (尝试过 uid0/sudo-n/tsu/sudo)"
+    fi
+    log "root 权限检测通过 (方式: $root_method)"
     
     # 检查必要的包
     local required_packages=("termux-x11-nightly" "tsu" "pulseaudio" "virglrenderer-android")
@@ -110,12 +114,14 @@ start_x11() {
 # 启动chroot linux (调用cli.sh中的函数)
 start_chroot() {
     log "启动chroot Linux环境..."
-    
+    log "容器 rootfs 路径: $DEBIAN_DIR"
+    log "挂载点路径: $CHROOT_DIR"
+
     # 直接调用cli.sh中的完整实现
     if ! start_chroot_container; then
         error "无法启动chroot环境"
     fi
-    
+
     log "Chroot Linux环境启动完成 (包括初始化系统服务)"
     log "可以使用以下命令进入Linux环境:"
     log "  tenter 或 cshell"

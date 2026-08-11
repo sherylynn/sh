@@ -1,8 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 #kernelsu busybox
-test -f /data/adb/ksu/bin/busybox && busybox=/data/adb/ksu/bin/busybox
+sudo test -f /data/adb/ksu/bin/busybox && busybox=/data/adb/ksu/bin/busybox
 #apatch busybox
-test -f /data/adb/ap/bin/busybox && busybox=/data/adb/ap/bin/busybox
+sudo test -f /data/adb/ap/bin/busybox && busybox=/data/adb/ap/bin/busybox
 #for run in native emacs
 PREFIX=/data/data/com.termux/files/usr
 
@@ -29,6 +29,10 @@ DEBIAN_OLD_DIR="$(detect_distro_rootfs debian-oldstable)"
 #Path of chroot mount dir
 CHROOT_DIR="/data/local/mnt"
 TERMUX_DIR="/data/data/com.termux/files"
+# 启动诊断: 打印解析到的 rootfs 路径 (stderr, 不污染命令替换)
+echo "[cli.sh] DEBIAN_DIR=$DEBIAN_DIR" >&2
+echo "[cli.sh] DEBIAN_OLD_DIR=$DEBIAN_OLD_DIR" >&2
+echo "[cli.sh] CHROOT_DIR=$CHROOT_DIR" >&2
 
 SDCARD_DIR="/sdcard"
 
@@ -154,6 +158,13 @@ check_debian_installed() {
     "$PREFIX/var/lib/proot-distro/containers/debian/rootfs"
     "$PREFIX/var/lib/proot-distro/containers/debian-oldstable/rootfs"
   )
+
+  echo -e "[check_debian_installed] 候选路径数: ${#debian_paths[@]}" >&2
+  local _i=0
+  for p in "${debian_paths[@]}"; do
+    _i=$((_i+1))
+    echo -e "[check_debian_installed]  [$_i] $p (存在: $(sudo test -d "$p" 2>/dev/null && echo yes || echo no))" >&2
+  done
 
   local debug_info=""
 
@@ -887,6 +898,8 @@ log_debug() {
 # 高级chroot容器管理 - 启动
 start_chroot_container() {
   log_info "启动chroot Linux容器..."
+  log_info "rootfs 路径: $DEBIAN_DIR"
+  log_info "挂载点路径: $CHROOT_DIR"
 
   # 检查是否已经挂载
   if container_mounted; then
