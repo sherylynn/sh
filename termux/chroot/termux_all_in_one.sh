@@ -24,8 +24,12 @@ trap 'log "ERR: 命令失败 行号=$LINENO 命令=\$BASH_COMMAND" >&2' ERR
 # 加载工具函数
 log "加载 toolsinit.sh..."
 . "$PROJECT_ROOT/win-git/toolsinit.sh"
+# cli.sh 含预期的非零返回 (sudo test -f ... && ..., detect_distro_rootfs return 1)
+# 临时关闭 set -e 避免 source 时误退出
 log "加载 cli.sh..."
+set +e
 . "$SCRIPT_DIR/cli.sh"
+set -e
 log "cli.sh 加载完成, DEBIAN_DIR=$DEBIAN_DIR"
 
 # 检查必要的权限和环境
