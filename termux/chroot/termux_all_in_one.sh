@@ -22,12 +22,29 @@ error() {
     exit 1
 }
 
+# 检查 root 可用性，不依赖可能阻塞的 sudo 提示
+has_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        return 0
+    fi
+    if command -v sudo >/dev/null 2>&1 && [ "$(sudo id -u 2>/dev/null)" = "0" ]; then
+        return 0
+    fi
+    if command -v tsu >/dev/null 2>&1 && [ "$(tsu -c 'id -u' 2>/dev/null)" = "0" ]; then
+        return 0
+    fi
+    if command -v su >/dev/null 2>&1 && [ "$(su -c 'id -u' 2>/dev/null)" = "0" ]; then
+        return 0
+    fi
+    return 1
+}
+
 # 检查必要的权限和环境
 check_requirements() {
     log "检查运行环境..."
     
     # 检查root权限
-    if ! sudo true 2>/dev/null; then
+    if ! has_root; then
         error "需要root权限，请确保已获取root权限"
     fi
     
