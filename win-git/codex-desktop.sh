@@ -17,6 +17,7 @@ TOOLS_HOME=$(install_path)
 readonly DEFAULT_DIR="${CODEX_INSTALL_DIR:-${TOOLS_HOME}/codex-desktop-linux}"
 readonly CODEX_DATA_DIR="${CODEX_DATA_DIR:-${TOOLS_HOME}/codex-desktop-data}"
 readonly DOWNLOAD_DMG_DIR="/sdcard/Download"
+readonly LOCAL_PATCH_DIR="${SCRIPT_DIR}/codex-desktop-patches"
 export ELECTRON_MIRROR="${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/electron/}"
 
 repo_dir="$DEFAULT_DIR"
@@ -83,6 +84,15 @@ ensure_managed_rust() {
   [[ -r "$rust_rc" ]] || die "Rust 安装完成，但找不到环境配置：$rust_rc"
   source "$rust_rc"
   cargo --version >/dev/null 2>&1 || die "Rust 安装后 cargo 仍不可用"
+}
+
+install_local_patches() {
+  local source_patch="$LOCAL_PATCH_DIR/stdin-efault/patch.js"
+  local target_patch="$repo_dir/scripts/patches/core/all-linux/extracted-app/stdin-efault/patch.js"
+  [[ -f "$source_patch" ]] || return 0
+  mkdir -p "$(dirname "$target_patch")"
+  cp "$source_patch" "$target_patch"
+  info "已注入 Linux ARM stdin EFAULT 修复补丁"
 }
 
 info() { printf '\n==> %s\n' "$*"; }
@@ -204,6 +214,7 @@ if ((dry_run == 1)); then
 fi
 
 ensure_managed_rust
+install_local_patches
 info "开始构建并安装（官方流程可能会请求 sudo）"
 cd "$repo_dir"
 make "${make_args[@]}"
