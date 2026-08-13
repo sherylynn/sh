@@ -25,6 +25,9 @@ dmg_path="${CODEX_DMG_PATH:-}"
 dry_run=0
 no_updater=0
 update_only=0
+uninstall=0
+purge_data=0
+assume_yes=0
 usage() {
   cat <<"EOF"
 用法：codex-desktop.sh [选项]
@@ -37,6 +40,9 @@ usage() {
   --dmg FILE         使用指定 DMG（默认扫描 /sdcard/Download/*.dmg）
   --no-updater       不安装后台自动更新器
   --update           只更新已有源码，不重新克隆
+  --uninstall        卸载 deb 包并删除源码、构建缓存和安装残留
+  --purge-data       配合 --uninstall 删除运行配置和登录数据
+  --yes              卸载时不询问确认
   --dry-run          只显示将执行的命令，不进行安装
   -h, --help         显示帮助
 
@@ -44,6 +50,8 @@ usage() {
   ./codex-desktop.sh
   ./codex-desktop.sh --dmg /sdcard/Download/ChatGPT.dmg
   ./codex-desktop.sh --no-updater
+  ./codex-desktop.sh --uninstall
+  ./codex-desktop.sh --uninstall --purge-data --yes
   ./codex-desktop.sh --dir "$HOME/Applications/codex-desktop-linux"
 EOF
 }
@@ -96,6 +104,77 @@ install_local_patches() {
 }
 
 info() { printf '\n==> %s\n' "$*"; }
+remove_codex_config_lines() {
+  [[ -f "$TOOLSRC" ]] || return 0
+  sed -i \
+    -e '/^export CODEX_DESKTOP_DATA_DIR=/d' \
+    -e '/^alias codex-desktop-root=/d' \
+    -e '/^alias codex-desktop-local=/d' \
+    "$TOOLSRC"
+}
+
+stop_codex_processes() {
+  local pid
+  while read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill "$pid" 2>/dev/null || true
+  done < <(pgrep -f '/opt/codex-desktop|codex-desktop-linux/codex-app' 2>/dev/null || true)
+}
+
+uninstall_codex_desktop() {
+  local -a targets=(
+    "$repo_dir"
+    "${XDG_CACHE_HOME:-$HOME/.cache}/codex-desktop"
+    "$CODEX_DATA_DIR"
+    "${XDG_CONFIG_HOME:-$HOME/.config}/codex-desktop"
+  )
+  local target answer
+
+  if ((assume_yes == 0)); then
+    printf '将卸载 codex-desktop deb 包，并删除以下源码/构建目录：\n'
+    printf '  - %s\n' "${targets[0]}" "${targets[1]}"
+    if ((purge_data == 1)); then
+      printf '同时删除以下运行配置和登录数据：\n'
+      printf '  - %s\n' "${targets[2]}" "${targets[3]}"
+    else
+      printf '运行配置和登录数据将保留；如需删除请加 --purge-data。\n'
+    fi
+    read -r -p '确认继续卸载？[y/N] ' answer
+    [[ "$answer" =~ ^[Yy]$ ]] || { info '已取消卸载'; return 0; }
+  fi
+
+  info '停止 Codex Desktop 相关进程'
+  stop_codex_processes
+
+  if dpkg-query -W -f='${Status}' codex-desktop 2>/dev/null | grep -Fq 'install ok installed'; then
+    info '卸载 codex-desktop deb 包'
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get purge -y codex-desktop
+    else
+      dpkg --purge codex-desktop
+    fi
+  else
+    info '未检测到已安装的 codex-desktop deb 包'
+  fi
+
+  for target in "${targets[@]:0:2}"; do
+    if [[ -n "$target" && "$target" != "/" && -e "$target" ]]; then
+      info "删除：$target"
+      rm -rf -- "$target"
+    fi
+  done
+
+  if ((purge_data == 1)); then
+    for target in "${targets[@]:2:2}"; do
+      if [[ -n "$target" && "$target" != "/" && -e "$target" ]]; then
+        info "删除运行数据：$target"
+        rm -rf -- "$target"
+      fi
+    done
+  fi
+  remove_codex_config_lines
+  info '卸载完成；共享 Rust、Node、系统依赖和 /sdcard/Download 文件均已保留'
+}
 find_downloaded_dmg() (
   local candidate newest=""
   local -a candidates
@@ -143,11 +222,23 @@ while (($#)); do
       ;;
     --no-updater) no_updater=1; shift ;;
     --update) update_only=1; shift ;;
+    --uninstall) uninstall=1; shift ;;
+    --purge-data) purge_data=1; shift ;;
+    --yes) assume_yes=1; shift ;;
     --dry-run) dry_run=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "未知选项：$1（使用 --help 查看帮助）" ;;
   esac
 done
+
+if ((uninstall == 1)); then
+  ((dry_run == 0)) || { printf '预览：卸载 codex-desktop deb 包、源码目录和构建缓存'; ((purge_data == 1)) && printf '，并删除运行数据'; printf '\n'; exit 0; }
+  uninstall_codex_desktop
+  exit 0
+fi
+
+((purge_data == 0)) || die '--purge-data 只能与 --uninstall 一起使用'
+((assume_yes == 0)) || die '--yes 只能与 --uninstall 一起使用'
 
 command -v git >/dev/null || die "缺少 git，请先安装 git。"
 if [[ -z "$dmg_path" ]]; then
