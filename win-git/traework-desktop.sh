@@ -736,12 +736,13 @@ configure_root_runtime() {
   local line
   local config_lines=(
     "export TRAEWORK_DATA_DIR=$DATA_DIR"
+    "alias traework=\"$APP_DIR/start.sh\""
     "alias trae-desktop-local=\"$APP_DIR/start.sh --user-data-dir $DATA_DIR\""
   )
   for line in "${config_lines[@]}"; do
     grep -Fqx "$line" "$TOOLSRC" 2>/dev/null || printf "%s\n" "$line" >>"$TOOLSRC"
   done
-  info "已写入用户配置：$TOOLSRC"
+  info "已写入用户配置：$TOOLSRC（终端直接运行 traework 启动）"
 }
 
 # ---------- 卸载 ----------
@@ -778,7 +779,7 @@ uninstall_traework() {
     done
   fi
   if [[ -f "$TOOLSRC" ]]; then
-    sed -i -e '/^export TRAEWORK_DATA_DIR=/d' -e '/^alias trae-desktop-local=/d' "$TOOLSRC"
+    sed -i -e '/^export TRAEWORK_DATA_DIR=/d' -e '/^alias traework=/d' -e '/^alias trae-desktop-local=/d' "$TOOLSRC"
   fi
   rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/$APP_ID.desktop"
   info '卸载完成；/sdcard/Download 下的 DMG/Electron/供体包均已保留'
