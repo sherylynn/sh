@@ -25,12 +25,13 @@ set -Eeuo pipefail
 #
 # 管线：解包 DMG → 探测 Electron 版本 → 准备 Linux 运行时（deb 供体整包 / stock zip）
 #       → 拼装 resources/app → 平台补丁 → 供体覆盖层（或重编+stub 回退）
-#       → [可选 --nsbox] 替换 trae-sandbox → start.sh 启动器
+#       → [默认 --nsbox] 替换 trae-sandbox → start.sh 启动器
 #
-# 用法示例：
-#   ./traework-desktop.sh                                            # 扫描 /sdcard/Download 自动发现 DMG
+# 用法示例（无参运行默认等价：--donor /sdcard/Download/TraeCode_CN-linux-arm64.deb --nsbox）：
+#   ./traework-desktop.sh                                            # 默认供体 + 默认 nsbox（推荐）
 #   ./traework-desktop.sh --dmg /sdcard/Download/TraeWork_CN-darwin-arm64.dmg
-#   ./traework-desktop.sh --donor /sdcard/Download/Trae_CN-linux-arm64.deb    # 供体模式（推荐）
+#   ./traework-desktop.sh --donor /sdcard/Download/TraeCode_CN-linux-arm64.deb    # 显式指定供体
+#   ./traework-desktop.sh --no-nsbox                                 # 关闭默认开启的 nsbox 沙箱替换
 #   ./traework-desktop.sh --no-native                                # 跳过原生模块（仅验证主进程）
 #   ./traework-desktop.sh --dry-run
 #   ./traework-desktop.sh --uninstall [--purge-data --yes]
@@ -76,7 +77,11 @@ DONOR_ROOT=""
 dmg_path="${TRAEWORK_DMG_PATH:-}"
 electron_zip_source="${TRAEWORK_ELECTRON_ZIP_SOURCE:-}"
 donor_source="${TRAEWORK_DONOR_SOURCE:-}"
-nsbox_source="${TRAEWORK_NSBOX_DIR:-}"
+# 开箱即用默认：供体固定 TraeCode deb、nsbox 自动探测（可用 --no-nsbox 关闭）
+readonly DEFAULT_DONOR="/sdcard/Download/TraeCode_CN-linux-arm64.deb"
+nsbox_source="${TRAEWORK_NSBOX_DIR:-auto}"
+nsbox_explicit=0
+[[ -z "${TRAEWORK_NSBOX_DIR:-}" ]] || nsbox_explicit=1
 dry_run=0
 no_native=0
 no_stub=0
@@ -91,16 +96,18 @@ usage() {
 把 TraeWork_CN-darwin-arm64.dmg（VSCode 1.107.1 fork + Electron 39.2.7 定制分支）
 移植为可在本机 Linux arm64 运行的自包含应用目录。
 
-选项：
+选项（无参运行默认等价 --donor /sdcard/Download/TraeCode_CN-linux-arm64.deb --nsbox）：
   --dir DIR          安装目录（默认：$TOOLS_HOME/traework-desktop）
   --dmg FILE         指定 DMG（默认扫描 /sdcard/Download/TraeWork*.dmg）
   --electron-zip F   指定 electron-v*-linux-arm64.zip（默认自动扫描/下载）
   --donor FILE       Trae CN linux-arm64 官方包（deb/tar.gz，推荐）：整套运行时 +
-                     纯 JS 闭源模块 + 预编译 .node + modules/*.so + rg/fd 供体回填
+                     纯 JS 闭源模块 + 预编译 .node + modules/*.so + rg/fd 供体回填；
+                     缺省取 /sdcard/Download/TraeCode_CN-linux-arm64.deb
   --nsbox [DIR]      用 nsbox 替换 modules/sandbox/trae-sandbox（chroot 环境必需：
                      官方沙箱依赖 bwrap/user-namespace 无法在 chroot 运行）。
                      DIR 为 new-trae-sandbox 模块目录（含 nsbox.go / nsbox），
-                     缺省自动探测 ~/new-trae-sandbox
+                     缺省自动探测 ~/new-trae-sandbox（默认已开启）
+  --no-nsbox         关闭默认开启的 nsbox 沙箱替换，保留官方 trae-sandbox
   --no-native        跳过原生模块重编（快速验证主进程是否可启动）
   --no-stub          不为闭源 darwin 模块生成 stub（默认生成）
   --uninstall        删除安装目录、构建缓存；--purge-data 一并删运行数据
@@ -606,11 +613,12 @@ handle_closed_modules_fallback() {
   fi
 }
 
-# ---------- 阶段 6.5：nsbox 沙箱替换（chroot 环境必需） ----------
+# ---------- 阶段 6.5：nsbox 沙箱替换（chroot 环境必需，默认开启） ----------
 # 官方 modules/sandbox/trae-sandbox 基于 bwrap/user-namespace，在 chroot（无
 # CAP_SYS_ADMIN / 无 unprivileged userns）中无法运行；nsbox（~/new-trae-sandbox）
 # 提供 trae-sandbox 兼容 CLI（exec --storage-path/--config-name/--shell-path/
 # --command-line）的无沙箱直通实现，替换后终端/命令执行功能恢复。
+# 默认自动探测：找不到时警告跳过（保留官方沙箱）；显式 --nsbox 找不到则报错。
 resolve_nsbox_dir() {
   local candidate
   if [[ "$nsbox_source" != "auto" ]]; then
@@ -629,8 +637,20 @@ resolve_nsbox_dir() {
 apply_nsbox_replacement() {
   local sandbox_dir="$APP_DIR/resources/app/modules/sandbox"
   local nsbox_dir src bin
-  [[ -d "$sandbox_dir" ]] || die "--nsbox：未找到 $sandbox_dir（modules/sandbox 应由 DMG/供体提供）"
-  nsbox_dir=$(resolve_nsbox_dir) || die "--nsbox：找不到 new-trae-sandbox 目录，请用 --nsbox DIR 指定"
+  if [[ ! -d "$sandbox_dir" ]]; then
+    if ((nsbox_explicit == 1)); then
+      die "--nsbox：未找到 $sandbox_dir（modules/sandbox 应由 DMG/供体提供）"
+    fi
+    warn "未找到 $sandbox_dir，跳过默认沙箱替换"
+    return 0
+  fi
+  if ! nsbox_dir=$(resolve_nsbox_dir); then
+    if ((nsbox_explicit == 1)); then
+      die "--nsbox：找不到 new-trae-sandbox 目录，请用 --nsbox DIR 指定"
+    fi
+    warn "默认开启的 nsbox 未找到 new-trae-sandbox（~/new-trae-sandbox），保留官方沙箱；chroot 环境请放置该目录或显式 --nsbox DIR"
+    return 0
+  fi
   [[ -d "$nsbox_dir" ]] || die "--nsbox：目录不存在：$nsbox_dir"
   src="$nsbox_dir/nsbox.go"
   bin="$nsbox_dir/nsbox"
@@ -794,8 +814,10 @@ while (($#)); do
     --donor) (($# >= 2)) || die "--donor 需要一个文件路径"; donor_source=$2; shift 2 ;;
     --nsbox)
       nsbox_source="auto"
+      nsbox_explicit=1
       if [[ $# -ge 2 && "${2:-}" != -* ]]; then nsbox_source=$2; shift; fi
       shift ;;
+    --no-nsbox) nsbox_source=""; shift ;;
     --no-native) no_native=1; shift ;;
     --no-stub) no_stub=1; shift ;;
     --uninstall) uninstall=1; shift ;;
@@ -844,9 +866,16 @@ dmg_path=$(realpath "$dmg_path")
 info "使用 DMG：$dmg_path"
 
 if [[ -z "$donor_source" ]]; then
-  donor_source=$(find_downloaded_file "Trae_CN-linux-arm64.*")
-  if [[ -z "$donor_source" ]]; then
-    donor_source=$(find_downloaded_file "*linux-arm64.deb")
+  if [[ -f "$DEFAULT_DONOR" ]]; then
+    donor_source="$DEFAULT_DONOR"
+  else
+    donor_source=$(find_downloaded_file "TraeCode_CN-linux-arm64.*")
+    if [[ -z "$donor_source" ]]; then
+      donor_source=$(find_downloaded_file "Trae_CN-linux-arm64.*")
+    fi
+    if [[ -z "$donor_source" ]]; then
+      donor_source=$(find_downloaded_file "*linux-arm64.deb")
+    fi
   fi
 fi
 if [[ -n "$donor_source" ]]; then
@@ -872,8 +901,8 @@ if ((dry_run == 1)); then
     native_plan="npm 重编 ${#REBUILD_MODULES[@]} 个模块 + prebuild + stub 降级"
   fi
   if ((no_native == 1)); then native_plan="跳过（--no-native，仅主进程冒烟）"; fi
-  nsbox_plan="保留官方 trae-sandbox"
-  if [[ -n "$nsbox_source" ]]; then nsbox_plan="nsbox 替换 modules/sandbox/trae-sandbox（chroot 直通）"; fi
+  nsbox_plan="保留官方 trae-sandbox（--no-nsbox）"
+  if [[ -n "$nsbox_source" ]]; then nsbox_plan="nsbox 替换 modules/sandbox/trae-sandbox（chroot 直通，默认开启）"; fi
   cat <<EOF
 预览（--dry-run）：
   1. 解包 DMG            $dmg_path
