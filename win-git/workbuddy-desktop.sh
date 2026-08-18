@@ -482,6 +482,30 @@ exec "$APP_DIR/electron" --no-sandbox "${EXTRA_FLAGS[@]}" "$@"
 LAUNCHER
   chmod +x "$APP_DIR/start.sh"
 
+  # 默认生成 electron-flags.conf（仅当不存在时，避免覆盖用户自定义）。
+  # 关闭硬件 GPU 加速、改用软件渲染，规避 nouveau / 闭源驱动异常导致的画面变形、撕裂、黑屏。
+  local flags_file="$APP_DIR/electron-flags.conf"
+  if [[ ! -e "$flags_file" ]]; then
+    cat >"$flags_file" <<'FLAGS'
+# WorkBuddy Linux 移植启动参数（由 workbuddy-desktop.sh 生成）
+# 每行一个 electron flag；以 # 开头为注释。start.sh 会读取本文件并附加到启动命令。
+# 修改后无需重跑移植脚本，直接重启 start.sh 即可生效。
+
+# —— 关闭硬件 GPU 加速，改用软件渲染（llvmpipe / SwiftShader）——
+# 适用：画面变形 / 撕裂 / 黑屏 / 崩溃，或 nouveau、闭源驱动异常。
+--disable-gpu
+--disable-gpu-compositing
+--disable-accelerated-2d-canvas
+--disable-gpu-rasterization
+--enable-software-rasterizer
+
+# —— 若关闭 GPU 后仍异常（多为 Wayland 缩放 / 混成问题）——
+# 取消下一行注释，强制走 X11 而非 Wayland：
+# --ozone-platform=x11
+FLAGS
+    info "已生成默认 $flags_file（已关闭 GPU 硬件加速）"
+  fi
+
   local desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
   mkdir -p "$desktop_dir"
   cat >"$desktop_dir/$APP_ID.desktop" <<EOF
