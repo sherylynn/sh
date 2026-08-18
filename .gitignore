@@ -5,6 +5,7 @@ exist
 not
 \#*
 tmp/
+.workbuddy/
 
 *.mimo/
 *.cron-lock

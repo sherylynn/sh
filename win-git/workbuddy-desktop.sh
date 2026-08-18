@@ -431,6 +431,20 @@ set -Eeuo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ID="workbuddy"
+
+# [移植修复] 让内置资源解析器(resolveWorkbuddySidecarBundledAsset)能在扁平布局下找到
+# cli/product.json 等关键配置。否则 configureElectronApp() 会抛
+# "Failed to locate cli/product.json"，被外层 catch 误报为
+# "安装文件损坏 / 请从 copilot.tencent.com/work/ 下载官方版"。
+export WORKBUDDY_APP_PATH="$APP_DIR/resources/app"
+export WORKBUDDY_RESOURCES_PATH="$APP_DIR/resources"
+# 镜像 electron-builder 原生 Resources/app.asar.unpacked 结构（扁平化后该层被合并进
+# resources/app，但解析器仍按 app.asar.unpacked 拼路径），用软链补回。
+mkdir -p "$APP_DIR/resources"
+if [ ! -e "$APP_DIR/resources/app.asar.unpacked" ]; then
+  ln -sfn "$APP_DIR/resources/app" "$APP_DIR/resources/app.asar.unpacked"
+fi
+
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/$APP_ID"
 export CHROME_DESKTOP="${CHROME_DESKTOP:-${APP_ID}.desktop}"
 
