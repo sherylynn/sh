@@ -1,33 +1,31 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# One-command installer for the pre-migration (DMG pipeline) codex-desktop-linux.
-# 上游 2026-08 完成官方 Linux deb 包迁移后移除了 DMG 输入（DMG=/CODEX_DMG_* 已不支持），
-# 本脚本固定克隆迁移前基线提交（仍含 scripts/lib/dmg.sh 与 DMG= 变量、Electron zip 流程）。
-# 为防官方仓库清理历史提交，固定走 sherylynn 的 fork（完整历史镜像）；
-# 新版官方 deb 路线请用 codex-desktop_new.sh（克隆为 codex-desktop-linux-new）。
+# One-command installer for the current (official-deb pipeline) codex-desktop-linux.
+# 上游 2026-08 完成官方 Linux deb 包迁移：唯一上游来源是 OpenAI 签名的 stable deb
+# （amd64/arm64），DMG=/CODEX_DMG_* 输入已移除；resources/app.asar 与官方包逐字节一致。
+# 本脚本跟踪上游 main（不固定提交），克隆为 codex-desktop-linux-new，与旧版
+# codex-desktop.sh（fork 固定提交 4da3436f 的 DMG 管线）互不干扰，可并存对比。
 # The actual build/install logic remains in the upstream repository's Makefile.
 
-readonly REPO_URL="${CODEX_REPO_URL:-https://github.com/sherylynn/codex-desktop-linux.git}"
-# 迁移前基线：4da3436f（2026-08-12，最后一个含 DMG 管线的 main 提交）
-readonly PINNED_COMMIT="${CODEX_PINNED_COMMIT:-4da3436f2822855c91046ebcf9ef2c1d2c1cb154}"
+readonly REPO_URL="${CODEX_NEW_REPO_URL:-https://github.com/ilysenko/codex-desktop-linux.git}"
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 readonly TOOLSINIT="${TOOLSINIT:-${SCRIPT_DIR}/toolsinit.sh}"
 [[ -r "$TOOLSINIT" ]] || { echo "错误：找不到 toolsinit.sh：$TOOLSINIT" >&2; exit 1; }
 PREFIX="${PREFIX:-}"
 TMPDIR="${TMPDIR:-}"
 . "$TOOLSINIT"
-TOOLSRC_NAME=codex-desktoprc
+TOOLSRC_NAME=codex-desktop-newrc
 TOOLSRC=$(toolsRC "$TOOLSRC_NAME")
 TOOLS_HOME=$(install_path)
-readonly DEFAULT_DIR="${CODEX_INSTALL_DIR:-${TOOLS_HOME}/codex-desktop-linux}"
+readonly DEFAULT_DIR="${CODEX_NEW_INSTALL_DIR:-${TOOLS_HOME}/codex-desktop-linux-new}"
 readonly CODEX_DATA_DIR="${CODEX_DATA_DIR:-${TOOLS_HOME}/codex-desktop-data}"
-readonly DOWNLOAD_DMG_DIR="/sdcard/Download"
-readonly LOCAL_PATCH_DIR="${SCRIPT_DIR}/codex-desktop-patches"
+readonly DOWNLOAD_DEB_DIR="/sdcard/Download"
 export ELECTRON_MIRROR="${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/electron/}"
 
 repo_dir="$DEFAULT_DIR"
-dmg_path="${CODEX_DMG_PATH:-}"
+deb_path="${CODEX_UPSTREAM_DEB:-}"
+setup_features=0
 dry_run=0
 no_updater=0
 update_only=0
@@ -36,43 +34,47 @@ purge_data=0
 assume_yes=0
 usage() {
   cat <<"EOF"
-用法：codex-desktop.sh [选项]
+用法：codex-desktop_new.sh [选项]
 
-基于 codex-desktop-linux 迁移前基线（fork 固定提交，DMG 管线）的安装器。
-首次运行会克隆固定提交源码、安装构建依赖、构建并安装 ChatGPT Desktop for Linux。
-再次运行会复用源码目录并重新固定到基线提交，复用 DMG 缓存执行更新安装。
-新版官方 deb 路线请使用 codex-desktop_new.sh。
+基于 codex-desktop-linux 最新 main（官方 OpenAI 签名 deb 路线）的安装器。
+源码克隆到 $HOME/tools/codex-desktop-linux-new，与旧版（DMG 管线）目录互不影响。
+默认从 OpenAI 签名 stable 索引自动解析 amd64/arm64 官方包；也可用 --deb 指定
+本地已下载的官方 chatgpt_<version>_<arch>.deb。
 
 选项：
-  --dir DIR          源码目录（默认：$HOME/tools/codex-desktop-linux）
-  --dmg FILE         使用指定 DMG（默认扫描 /sdcard/Download/*.dmg）
-  --no-updater       不安装后台自动更新器
+  --dir DIR          源码目录（默认：$HOME/tools/codex-desktop-linux-new）
+  --deb FILE         使用指定官方 deb（默认扫描 /sdcard/Download/chatgpt*.deb，
+                     找不到则由官方脚本从签名 stable 索引自动下载）
+  --setup            安装前先运行 make setup-native 交互选择可选 Linux 特性
+  --no-updater       不构建/安装后台自动更新器
   --update           只更新已有源码，不重新克隆
-  --uninstall        卸载 deb 包并删除源码、构建缓存和安装残留
+  --uninstall        卸载 codex-desktop deb 包并删除源码、构建缓存和安装残留
   --purge-data       配合 --uninstall 删除运行配置和登录数据
   --yes              卸载时不询问确认
   --dry-run          只显示将执行的命令，不进行安装
   -h, --help         显示帮助
 
 示例：
-  ./codex-desktop.sh
-  ./codex-desktop.sh --dmg /sdcard/Download/ChatGPT.dmg
-  ./codex-desktop.sh --no-updater
-  ./codex-desktop.sh --uninstall
-  ./codex-desktop.sh --uninstall --purge-data --yes
-  ./codex-desktop.sh --dir "$HOME/Applications/codex-desktop-linux"
+  ./codex-desktop_new.sh
+  ./codex-desktop_new.sh --deb /sdcard/Download/chatgpt_1.2.3_arm64.deb
+  ./codex-desktop_new.sh --setup
+  ./codex-desktop_new.sh --uninstall
+
+环境变量：
+  CODEX_NEW_REPO_URL / CODEX_NEW_INSTALL_DIR / CODEX_UPSTREAM_DEB
 EOF
 }
 
 die() { printf '错误：%s\n' "$*" >&2; exit 1; }
+info() { printf '\n==> %s\n' "$*"; }
 configure_root_runtime() {
   mkdir -p "$CODEX_DATA_DIR"
   local local_launcher="$repo_dir/codex-app/start.sh"
   local installed_launcher="$(command -v codex-desktop 2>/dev/null || true)"
   local config_lines=(
     "export CODEX_DESKTOP_DATA_DIR=$CODEX_DATA_DIR"
-    "alias codex-desktop-root=\"${installed_launcher:-codex-desktop} --no-sandbox --user-data-dir $CODEX_DATA_DIR\""
-    "alias codex-desktop-local=\"$local_launcher --no-sandbox --user-data-dir $CODEX_DATA_DIR\""
+    "alias codex-desktop-new-root=\"${installed_launcher:-codex-desktop} --no-sandbox --user-data-dir $CODEX_DATA_DIR\""
+    "alias codex-desktop-new-local=\"$local_launcher --no-sandbox --user-data-dir $CODEX_DATA_DIR\""
   )
   for line in "${config_lines[@]}"; do
     grep -Fqx "$line" "$TOOLSRC" 2>/dev/null || printf "%s\n" "$line" >> "$TOOLSRC"
@@ -102,22 +104,12 @@ ensure_managed_rust() {
   cargo --version >/dev/null 2>&1 || die "Rust 安装后 cargo 仍不可用"
 }
 
-install_local_patches() {
-  local source_patch="$LOCAL_PATCH_DIR/stdin-efault/patch.js"
-  local target_patch="$repo_dir/scripts/patches/core/all-linux/extracted-app/stdin-efault/patch.js"
-  [[ -f "$source_patch" ]] || return 0
-  mkdir -p "$(dirname "$target_patch")"
-  cp "$source_patch" "$target_patch"
-  info "已注入 Linux ARM stdin EFAULT 修复补丁"
-}
-
-info() { printf '\n==> %s\n' "$*"; }
 remove_codex_config_lines() {
   [[ -f "$TOOLSRC" ]] || return 0
   sed -i \
     -e '/^export CODEX_DESKTOP_DATA_DIR=/d' \
-    -e '/^alias codex-desktop-root=/d' \
-    -e '/^alias codex-desktop-local=/d' \
+    -e '/^alias codex-desktop-new-root=/d' \
+    -e '/^alias codex-desktop-new-local=/d' \
     "$TOOLSRC"
 }
 
@@ -126,7 +118,7 @@ stop_codex_processes() {
   while read -r pid; do
     [[ -n "$pid" ]] || continue
     kill "$pid" 2>/dev/null || true
-  done < <(pgrep -f '/opt/codex-desktop|codex-desktop-linux/codex-app' 2>/dev/null || true)
+  done < <(pgrep -f '/opt/codex-desktop|codex-desktop-linux-new/codex-app' 2>/dev/null || true)
 }
 
 uninstall_codex_desktop() {
@@ -183,11 +175,11 @@ uninstall_codex_desktop() {
   remove_codex_config_lines
   info '卸载完成；共享 Rust、Node、系统依赖和 /sdcard/Download 文件均已保留'
 }
-find_downloaded_dmg() (
+find_downloaded_deb() (
   local candidate newest=""
   local -a candidates
   shopt -s nullglob nocaseglob
-  candidates=("$DOWNLOAD_DMG_DIR"/*.dmg)
+  candidates=("$DOWNLOAD_DEB_DIR"/chatgpt*.deb "$DOWNLOAD_DEB_DIR"/*chatgpt*.deb)
   for candidate in "${candidates[@]}"; do
     if [[ -z "$newest" || "$candidate" -nt "$newest" ]]; then
       newest="$candidate"
@@ -195,26 +187,6 @@ find_downloaded_dmg() (
   done
   printf "%s" "$newest"
 )
-find_downloaded_electron_zip() (
-  local candidate newest="" electron_arch
-  local -a candidates
-  case "$(uname -m)" in
-    x86_64) electron_arch=x64 ;;
-    aarch64|arm64) electron_arch=arm64 ;;
-    armv7l) electron_arch=armv7l ;;
-    *) return 0 ;;
-  esac
-  shopt -s nullglob
-  candidates=("$DOWNLOAD_DMG_DIR"/electron-v*-linux-"$electron_arch".zip)
-  for candidate in "${candidates[@]}"; do
-    if [[ -z "$newest" || "$candidate" -nt "$newest" ]]; then
-      newest="$candidate"
-    fi
-  done
-  printf "%s" "$newest"
-)
-
-
 
 while (($#)); do
   case "$1" in
@@ -223,11 +195,12 @@ while (($#)); do
       repo_dir=$2
       shift 2
       ;;
-    --dmg)
-      (($# >= 2)) || die "--dmg 需要一个文件路径"
-      dmg_path=$2
+    --deb)
+      (($# >= 2)) || die "--deb 需要一个文件路径"
+      deb_path=$2
       shift 2
       ;;
+    --setup) setup_features=1; shift ;;
     --no-updater) no_updater=1; shift ;;
     --update) update_only=1; shift ;;
     --uninstall) uninstall=1; shift ;;
@@ -249,26 +222,15 @@ fi
 ((assume_yes == 0)) || die '--yes 只能与 --uninstall 一起使用'
 
 command -v git >/dev/null || die "缺少 git，请先安装 git。"
-if [[ -z "$dmg_path" ]]; then
-  dmg_path=$(find_downloaded_dmg)
+if [[ -z "$deb_path" ]]; then
+  deb_path=$(find_downloaded_deb)
 fi
-if [[ -n "$dmg_path" ]]; then
-  [[ -f "$dmg_path" ]] || die "找不到 DMG：$dmg_path"
-  dmg_path=$(realpath "$dmg_path")
-  info "使用本地 DMG：$dmg_path"
+if [[ -n "$deb_path" ]]; then
+  [[ -f "$deb_path" ]] || die "找不到官方 deb：$deb_path"
+  deb_path=$(realpath "$deb_path")
+  info "使用本地官方 deb：$deb_path"
 else
-  info "下载目录未发现 DMG，将由官方脚本下载"
-fi
-
-if [[ -z "${CODEX_ELECTRON_ZIP_SOURCE:-}" ]]; then
-  CODEX_ELECTRON_ZIP_SOURCE=$(find_downloaded_electron_zip)
-  export CODEX_ELECTRON_ZIP_SOURCE
-fi
-if [[ -n "${CODEX_ELECTRON_ZIP_SOURCE:-}" ]]; then
-  [[ -f "$CODEX_ELECTRON_ZIP_SOURCE" ]] || die "找不到 Electron ZIP：$CODEX_ELECTRON_ZIP_SOURCE"
-  CODEX_ELECTRON_ZIP_SOURCE=$(realpath "$CODEX_ELECTRON_ZIP_SOURCE")
-  export CODEX_ELECTRON_ZIP_SOURCE
-  info "使用本地 Electron：$CODEX_ELECTRON_ZIP_SOURCE"
+  info "下载目录未发现官方 deb，将由官方脚本从签名 stable 索引自动解析下载"
 fi
 
 command -v make >/dev/null || die "缺少 make，请先安装 make。"
@@ -281,31 +243,28 @@ else
   info "检测到 Linux（$(uname -m)）"
 fi
 
-checkout_pinned() {
-  git -C "$repo_dir" fetch --depth=1 origin "$PINNED_COMMIT" \
-    || die "无法从 $REPO_URL 拉取提交 $PINNED_COMMIT（可用 CODEX_REPO_URL / CODEX_PINNED_COMMIT 覆盖）"
-  git -C "$repo_dir" checkout --detach --quiet "$PINNED_COMMIT"
-  info "已固定在迁移前基线提交 ${PINNED_COMMIT:0:8}（DMG 管线）"
-}
-
 if [[ -e "$repo_dir/.git" ]]; then
   info "复用源码目录：$repo_dir"
   if ((dry_run == 0)); then
-    checkout_pinned
+    git -C "$repo_dir" fetch --depth=1 origin main
+    git -C "$repo_dir" reset --hard origin/main
   fi
 else
   ((update_only == 0)) || die "找不到源码目录：$repo_dir；首次运行请去掉 --update。"
-  info "浅克隆源码到：$repo_dir（fork 镜像：$REPO_URL）"
+  info "浅克隆最新源码到：$repo_dir"
   if ((dry_run == 0)); then
     mkdir -p "$(dirname "$repo_dir")"
     git clone --depth=1 "$REPO_URL" "$repo_dir"
-    checkout_pinned
   fi
 fi
 
-make_args=(bootstrap-native)
-if [[ -n "$dmg_path" ]]; then
-  make_args+=("DMG=$dmg_path")
+if [[ -n "$deb_path" ]]; then
+  # 本地官方包：跳过签名索引发现，仍校验包名/架构/control/载荷完整性
+  make_target="install-native"
+  make_vars=("UPSTREAM_DEB=$deb_path")
+else
+  make_target="bootstrap-native"
+  make_vars=()
 fi
 if ((no_updater == 1)); then
   export PACKAGE_WITH_UPDATER=0
@@ -313,18 +272,22 @@ if ((no_updater == 1)); then
 fi
 
 if ((dry_run == 1)); then
-  printf '预览：%q && cd %q && make' "$SCRIPT_DIR/rustup.sh" "$repo_dir"
-  printf ' %q' "${make_args[@]}"
+  printf '预览：克隆/更新 %q 后：cd %q && make' "$REPO_URL" "$repo_dir"
+  ((setup_features == 1)) && printf ' setup-native &&'
+  printf ' %q' "$make_target"
+  ((${#make_vars[@]})) && printf ' %q' "${make_vars[@]}"
   printf '\n'
   exit 0
 fi
 
 ensure_managed_rust
-install_local_patches
 info "开始构建并安装（官方流程可能会请求 sudo）"
 cd "$repo_dir"
-make "${make_args[@]}"
+if ((setup_features == 1)); then
+  make setup-native
+fi
+make "$make_target" "${make_vars[@]}"
 
 configure_root_runtime
-info "安装完成。可从应用菜单启动 ChatGPT Desktop，或运行："
+info "安装完成。可从应用菜单启动 ChatGPT Community，或运行："
 printf '  %q/codex-app/start.sh\n' "$repo_dir"
