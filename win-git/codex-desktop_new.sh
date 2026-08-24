@@ -39,13 +39,14 @@ usage() {
 基于 codex-desktop-linux 最新 main（官方 OpenAI 签名 deb 路线）的安装器。
 源码克隆到 $HOME/tools/codex-desktop-linux-new，与旧版（DMG 管线）目录互不影响。
 默认从 OpenAI 签名 stable 索引自动解析 amd64/arm64 官方包；也可用 --deb 指定
-本地已下载的官方 chatgpt_<version>_<arch>.deb。
+本地已下载的官方 chatgpt_<version>_<arch>.deb。默认且强制启用实验性 Linux Remote，
+构建后会校验功能列表、补丁报告和运行时标记，缺一则安装失败。
 
 选项：
   --dir DIR          源码目录（默认：$HOME/tools/codex-desktop-linux-new）
   --deb FILE         使用指定官方 deb（默认扫描 /sdcard/Download/chatgpt*.deb，
                      找不到则由官方脚本从签名 stable 索引自动下载）
-  --setup            安装前先运行 make setup-native 交互选择可选 Linux 特性
+  --setup            安装前先交互选择其他 Linux 特性（Remote 仍会保持启用）
   --no-updater       不构建/安装后台自动更新器
   --update           只更新已有源码，不重新克隆
   --uninstall        卸载 codex-desktop deb 包并删除源码、构建缓存和安装残留
@@ -68,18 +69,22 @@ EOF
 die() { printf '错误：%s\n' "$*" >&2; exit 1; }
 info() { printf '\n==> %s\n' "$*"; }
 configure_root_runtime() {
-  mkdir -p "$CODEX_DATA_DIR"
+  local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/codex-desktop"
+  local flags_file="$config_dir/electron-flags.conf"
   local local_launcher="$repo_dir/codex-app/start.sh"
   local installed_launcher="$(command -v codex-desktop 2>/dev/null || true)"
+  mkdir -p "$config_dir"
+  touch "$flags_file"
+  grep -Fqx -- "--no-sandbox" "$flags_file" 2>/dev/null || printf "%s\n" "--no-sandbox" >> "$flags_file"
+  chmod 600 "$flags_file"
   local config_lines=(
-    "export CODEX_DESKTOP_DATA_DIR=$CODEX_DATA_DIR"
-    "alias codex-desktop-new-root=\"${installed_launcher:-codex-desktop} --no-sandbox --user-data-dir $CODEX_DATA_DIR\""
-    "alias codex-desktop-new-local=\"$local_launcher --no-sandbox --user-data-dir $CODEX_DATA_DIR\""
+    "alias codex-desktop-new-root=\"${installed_launcher:-codex-desktop}\""
+    "alias codex-desktop-new-local=\"$local_launcher\""
   )
   for line in "${config_lines[@]}"; do
     grep -Fqx "$line" "$TOOLSRC" 2>/dev/null || printf "%s\n" "$line" >> "$TOOLSRC"
   done
-  info "已写入 root 用户配置：$TOOLSRC"
+  info "已写入 root 用户配置：$TOOLSRC；运行数据复用官方 ~/.config/Codex"
 }
 ensure_managed_rust() {
   local rust_rc="$TOOLS_HOME/rc/rustrc"
@@ -102,6 +107,66 @@ ensure_managed_rust() {
   [[ -r "$rust_rc" ]] || die "Rust 安装完成，但找不到环境配置：$rust_rc"
   source "$rust_rc"
   cargo --version >/dev/null 2>&1 || die "Rust 安装后 cargo 仍不可用"
+}
+
+ensure_debian_node_package() {
+  command -v dpkg-query >/dev/null 2>&1 || return 0
+  dpkg-query -W -f="${Status}" nodejs 2>/dev/null | grep -Fq "install ok installed" && return 0
+  info "安装社区 deb 所需的 Debian nodejs 包（win-git 管理的 Node 仍可优先使用）"
+  apt-get install -y nodejs
+}
+
+ensure_remote_feature_config() {
+  local feature_id="remote-mobile-control"
+  local feature_dir="$repo_dir/linux-features/$feature_id"
+  local config_file="$repo_dir/linux-features/features.json"
+  local enabled
+
+  [[ -f "$feature_dir/feature.json" ]] || die "当前上游源码不包含 $feature_id，拒绝构建不支持 Remote 的版本"
+  node - "$config_file" "$feature_id" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+const [configPath, featureId] = process.argv.slice(2);
+let config = {};
+if (fs.existsSync(configPath)) {
+  config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+}
+if (!config || typeof config !== "object" || Array.isArray(config)) {
+  throw new Error(`Linux feature config must be a JSON object: ${configPath}`);
+}
+const enabled = Array.isArray(config.enabled) ? config.enabled : [];
+config.enabled = [...new Set([...enabled, featureId])];
+fs.mkdirSync(path.dirname(configPath), { recursive: true });
+fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+NODE
+  enabled=$(CODEX_LINUX_FEATURES_CONFIG="$config_file" node "$repo_dir/scripts/lib/linux-features.js" --enabled)
+  grep -Fxq "$feature_id" <<<"$enabled" || die "Remote 特性配置校验失败：$config_file"
+  info "已确保本次及后续自动更新启用 Linux Remote：$feature_id"
+}
+
+verify_remote_build() {
+  local app_dir="$repo_dir/codex-app"
+  local build_info="$app_dir/.codex-linux/build-info.json"
+  local patch_report="$app_dir/.codex-linux/patch-report.json"
+  local marker="$app_dir/.codex-linux/remote-mobile-control-enabled"
+
+  [[ -f "$build_info" ]] || die "找不到构建信息，无法确认 Remote 已编译：$build_info"
+  [[ -f "$patch_report" ]] || die "找不到补丁报告，无法确认 Remote 已应用：$patch_report"
+  [[ -f "$marker" ]] || die "Remote 运行时标记缺失：$marker"
+  node - "$build_info" "$patch_report" <<'NODE'
+const fs = require("node:fs");
+const [buildInfoPath, patchReportPath] = process.argv.slice(2);
+const buildInfo = JSON.parse(fs.readFileSync(buildInfoPath, "utf8"));
+const patchReport = JSON.parse(fs.readFileSync(patchReportPath, "utf8"));
+const featureId = "remote-mobile-control";
+if (!buildInfo.linuxFeatures?.enabled?.includes(featureId)) {
+  throw new Error(`${featureId} missing from ${buildInfoPath}`);
+}
+if (!patchReport.enabledFeatures?.includes(featureId)) {
+  throw new Error(`${featureId} missing from ${patchReportPath}`);
+}
+NODE
+  info "Remote 构建验收通过：配置、补丁及运行时标记均已写入"
 }
 
 remove_codex_config_lines() {
@@ -261,7 +326,7 @@ fi
 if [[ -n "$deb_path" ]]; then
   # 本地官方包：跳过签名索引发现，仍校验包名/架构/control/载荷完整性
   make_target="install-native"
-  make_vars=("UPSTREAM_DEB=$deb_path")
+  make_vars=("UPSTREAM_ARG=\"$deb_path\"")
 else
   make_target="bootstrap-native"
   make_vars=()
@@ -275,18 +340,22 @@ if ((dry_run == 1)); then
   printf '预览：克隆/更新 %q 后：cd %q && make' "$REPO_URL" "$repo_dir"
   ((setup_features == 1)) && printf ' setup-native &&'
   printf ' %q' "$make_target"
+  printf '（强制启用 remote-mobile-control）'
   ((${#make_vars[@]})) && printf ' %q' "${make_vars[@]}"
   printf '\n'
   exit 0
 fi
 
 ensure_managed_rust
+ensure_debian_node_package
 info "开始构建并安装（官方流程可能会请求 sudo）"
 cd "$repo_dir"
 if ((setup_features == 1)); then
   make setup-native
 fi
+ensure_remote_feature_config
 make "$make_target" "${make_vars[@]}"
+verify_remote_build
 
 configure_root_runtime
 info "安装完成。可从应用菜单启动 ChatGPT Community，或运行："

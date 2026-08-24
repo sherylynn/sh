@@ -148,6 +148,9 @@ if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
     -forever \
     -noshm \
     -shared \
+    -xrandr resize \
+    -reopen \
+    -loop500 \
     -o "$LOG_FILE" &
   #-nodpms \
 
@@ -224,6 +227,9 @@ elif [ -e "$DroidSpaces_path" ]; then
     -forever \
     -noshm \
     -shared \
+    -xrandr resize \
+    -reopen \
+    -loop500 \
     -o "$LOG_FILE" &
   #-nodpms \
 

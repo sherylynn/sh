@@ -235,28 +235,262 @@ git_downloader() {
   #fi
 }
 
-cache_downloader() {
-  local soft_file_pack=$1
-  local soft_url=$2
-  cd $(cache_folder)
-  if [[ $soft_url != "" ]]; then
-    #if [[ ! -f $soft_file_pack ]]; then
-    # use curl with redirect support
-    curl -L -o $soft_file_pack $soft_url
-    # use wget (fallback)
-    #wget -O $soft_file_pack -c $soft_url
-  #fi
-  else
-    # not soft_url is empty; so soft_file_pack is url in fact
-    local soft_url=$soft_file_pack
-    curl -L -O $soft_url
-    #wget -c $soft_url
+_cache_curl_download() {
+  local download_url="$1"
+  local download_target="$2"
+  local partial_file="${download_target}.part"
+
+  if ! curl --fail --location --show-error --retry 5 --retry-delay 1 \
+    --connect-timeout 20 --continue-at - --output "$partial_file" "$download_url" >&2; then
+    rm -f -- "$partial_file"
+    curl --fail --location --show-error --retry 5 --retry-delay 1 \
+      --connect-timeout 20 --output "$partial_file" "$download_url" >&2
   fi
-  cd -
+  mv -f -- "$partial_file" "$download_target"
 }
 
+_cache_curl_segmented_download() {
+  local download_url="$1"
+  local download_target="$2"
+  local connections="$3"
+  local minimum_size="$4"
+  local segment_dir="${download_target}.segments"
+  local metadata_file="${download_target}.segments/metadata"
+  local headers_file="${download_target}.range-headers.$$"
+  local content_range total_size segment_size
+  local index start_pos end_pos existing_size request_start part_file chunk_file
+  local -a pids
+  local pid failed=0 actual_size downloaded last_downloaded speed percent
+  local downloaded_mib total_mib completed launched=0 status_file running
+
+  if [[ -n "${ZSH_VERSION:-}" ]]; then
+    setopt localoptions nomonitor nonotify 2>/dev/null || true
+  fi
+
+  if ! curl --fail --silent --show-error --location --retry 2 \
+    --connect-timeout 20 --range 0-0 --dump-header "$headers_file" \
+    --output /dev/null "$download_url"; then
+    rm -f -- "$headers_file"
+    return 2
+  fi
+  content_range=$(tr -d '\r' <"$headers_file" | sed -n 's/^[Cc]ontent-[Rr]ange:[[:space:]]*bytes[[:space:]][^/]*\/\([0-9][0-9]*\).*$/\1/p' | tail -n 1)
+  rm -f -- "$headers_file"
+  total_size="$content_range"
+  case "$total_size" in
+    ''|*[!0-9]*) return 2 ;;
+  esac
+  if ((total_size < minimum_size || connections < 2)); then
+    return 2
+  fi
+
+  if [[ -f "$metadata_file" ]] && [[ "$(sed -n '1p' "$metadata_file")" == "$download_url" ]] && [[ "$(sed -n '2p' "$metadata_file")" == "$total_size" ]]; then
+    :
+  else
+    rm -rf -- "$segment_dir"
+  fi
+  mkdir -p "$segment_dir"
+  printf '%s\n%s\n' "$download_url" "$total_size" >"$metadata_file"
+  segment_size=$(((total_size + connections - 1) / connections))
+  printf '并发分段下载：%s（%s 字节，%s 段）\n' "$download_target" "$total_size" "$connections" >&2
+
+  index=0
+  while ((index < connections)); do
+    start_pos=$((index * segment_size))
+    ((start_pos < total_size)) || break
+    end_pos=$((start_pos + segment_size - 1))
+    ((end_pos < total_size)) || end_pos=$((total_size - 1))
+    part_file="$segment_dir/part.$index"
+    chunk_file="$segment_dir/chunk.$index"
+    existing_size=0
+    [[ ! -f "$part_file" ]] || existing_size=$(wc -c <"$part_file")
+    if ((existing_size > end_pos - start_pos + 1)); then
+      rm -f -- "$part_file"
+      existing_size=0
+    fi
+    request_start=$((start_pos + existing_size))
+    status_file="$segment_dir/status.$index"
+    rm -f -- "$status_file"
+    if ((request_start <= end_pos)); then
+      (
+        if rm -f -- "$chunk_file" &&
+          curl --fail --silent --location --show-error --retry 5 --retry-delay 1 \
+            --connect-timeout 20 --range "$request_start-$end_pos" \
+            --output "$chunk_file" "$download_url" >&2 &&
+          cat "$chunk_file" >>"$part_file" &&
+          rm -f -- "$chunk_file"; then
+          printf '0\n' >"$status_file"
+        else
+          printf '1\n' >"$status_file"
+          exit 1
+        fi
+      ) &
+      pid=$!
+      pids+=("$pid")
+      launched=$((launched + 1))
+    fi
+    index=$((index + 1))
+  done
+
+  last_downloaded=0
+  while ((launched > 0)); do
+    downloaded=0
+    completed=0
+    index=0
+    while ((index < connections)); do
+      part_file="$segment_dir/part.$index"
+      chunk_file="$segment_dir/chunk.$index"
+      [[ ! -f "$part_file" ]] || downloaded=$((downloaded + $(wc -c <"$part_file")))
+      [[ ! -f "$chunk_file" ]] || downloaded=$((downloaded + $(wc -c <"$chunk_file")))
+      [[ ! -f "$segment_dir/status.$index" ]] || completed=$((completed + 1))
+      index=$((index + 1))
+    done
+    ((downloaded <= total_size)) || downloaded=$total_size
+    percent=$((downloaded * 100 / total_size))
+    downloaded_mib=$((downloaded / 1048576))
+    total_mib=$(((total_size + 1048575) / 1048576))
+    speed=$((downloaded - last_downloaded))
+    ((speed >= 0)) || speed=0
+    printf '\r下载进度：%3s%%  %s/%s MiB  %s KiB/s  完成分段 %s/%s' \
+      "$percent" "$downloaded_mib" "$total_mib" "$((speed / 1024))" "$completed" "$launched" >&2
+    last_downloaded=$downloaded
+    ((completed < launched)) || break
+    sleep 1
+  done
+  ((launched == 0)) || printf '\n' >&2
+
+  for pid in "${pids[@]}"; do
+    wait "$pid" || failed=1
+  done
+  ((failed == 0)) || return 1
+
+  rm -f -- "${download_target}.part"
+  index=0
+  while ((index < connections)); do
+    part_file="$segment_dir/part.$index"
+    [[ -f "$part_file" ]] || break
+    cat "$part_file" >>"${download_target}.part"
+    index=$((index + 1))
+  done
+  actual_size=$(wc -c <"${download_target}.part")
+  if ((actual_size != total_size)); then
+    printf '错误：分段合并大小不符，期望 %s，实际 %s；分段已保留以便续传。\n' "$total_size" "$actual_size" >&2
+    return 1
+  fi
+  mv -f -- "${download_target}.part" "$download_target"
+  rm -rf -- "$segment_dir"
+  printf '下载完成：%s（%s MiB）\n' "$download_target" "$(((actual_size + 1048575) / 1048576))" >&2
+}
+
+cache_downloader() {
+  local soft_file_pack="${1:-}"
+  local soft_url="${2:-}"
+  local cache_dir download_target connections minimum_size segmented_status aria_status aria_size
+  local aria_pid aria_status_file aria_headers total_size downloaded last_downloaded speed percent engine
+
+  if [[ -n "${ZSH_VERSION:-}" ]]; then
+    setopt localoptions nomonitor nonotify 2>/dev/null || true
+  fi
+
+  [[ -n "$soft_file_pack" ]] || {
+    printf '错误：cache_downloader 需要文件名或 URL。\n' >&2
+    return 1
+  }
+  cache_dir=$(cache_folder)
+  if [[ -z "$soft_url" ]]; then
+    soft_url="$soft_file_pack"
+    soft_file_pack="${soft_url##*/}"
+    soft_file_pack="${soft_file_pack%%\?*}"
+  fi
+  soft_file_pack="${soft_file_pack##*/}"
+  [[ -n "$soft_file_pack" ]] || {
+    printf '错误：无法从 URL 推导缓存文件名：%s\n' "$soft_url" >&2
+    return 1
+  }
+
+  download_target="$cache_dir/$soft_file_pack"
+  connections="${CACHE_DOWNLOAD_CONNECTIONS:-8}"
+  minimum_size="${CACHE_DOWNLOAD_MIN_SIZE:-8388608}"
+  engine="${CACHE_DOWNLOAD_ENGINE:-auto}"
+  case "$connections" in ''|*[!0-9]*) connections=8 ;; esac
+  case "$minimum_size" in ''|*[!0-9]*) minimum_size=8388608 ;; esac
+  case "$engine" in
+    auto|aria2|curl) ;;
+    *) printf '错误：CACHE_DOWNLOAD_ENGINE 只能是 auto、aria2 或 curl。\n' >&2; return 1 ;;
+  esac
+  if [[ "$engine" == "aria2" ]] && ! command -v aria2c >/dev/null 2>&1; then
+    printf '错误：已指定 aria2 下载，但系统尚未安装 aria2。\n' >&2
+    return 1
+  fi
+
+  if [[ "$engine" != "curl" ]] && command -v aria2c >/dev/null 2>&1; then
+    printf '使用 aria2 分段下载（%s 连接）：%s\n' "$connections" "$soft_url" >&2
+    aria_status_file="${download_target}.aria-status.$$"
+    aria_headers="${download_target}.aria-headers.$$"
+    rm -f -- "$aria_status_file" "$aria_headers"
+    total_size=""
+    if curl --fail --silent --show-error --location --retry 2 --connect-timeout 20 \
+      --range 0-0 --dump-header "$aria_headers" --output /dev/null "$soft_url"; then
+      total_size=$(tr -d '\r' <"$aria_headers" | sed -n 's/^[Cc]ontent-[Rr]ange:[[:space:]]*bytes[[:space:]][^/]*\/\([0-9][0-9]*\).*$/\1/p' | tail -n 1)
+    fi
+    rm -f -- "$aria_headers"
+    (
+      if aria2c --continue=true --max-connection-per-server="$connections" \
+        --split="$connections" --min-split-size=1M --file-allocation=none \
+        --max-tries=5 --retry-wait=1 --console-log-level=warn \
+        --summary-interval=0 --download-result=hide --show-console-readout=false \
+        --dir="$cache_dir" --out="$soft_file_pack" "$soft_url" >&2; then
+        printf '0\n' >"$aria_status_file"
+      else
+        printf '1\n' >"$aria_status_file"
+        exit 1
+      fi
+    ) &
+    aria_pid=$!
+    last_downloaded=0
+    while [[ ! -f "$aria_status_file" ]]; do
+      downloaded=0
+      [[ ! -f "$download_target" ]] || downloaded=$(wc -c <"$download_target")
+      speed=$((downloaded - last_downloaded))
+      ((speed >= 0)) || speed=0
+      case "$total_size" in
+        ''|*[!0-9]*)
+          printf '\r下载进度：%s MiB  %s KiB/s' "$((downloaded / 1048576))" "$((speed / 1024))" >&2
+          ;;
+        *)
+          percent=$((downloaded * 100 / total_size))
+          ((percent <= 100)) || percent=100
+          printf '\r下载进度：%3s%%  %s/%s MiB  %s KiB/s' "$percent" \
+            "$((downloaded / 1048576))" "$(((total_size + 1048575) / 1048576))" "$((speed / 1024))" >&2
+          ;;
+      esac
+      last_downloaded=$downloaded
+      sleep 1
+    done
+    wait "$aria_pid" || true
+    aria_status=$(sed -n '1p' "$aria_status_file")
+    rm -f -- "$aria_status_file"
+    printf '\n' >&2
+    if ((aria_status == 0)); then
+      aria_size=$(wc -c <"$download_target")
+      printf '下载完成：%s（%s MiB）\n' "$download_target" "$(((aria_size + 1048575) / 1048576))" >&2
+    fi
+    return "$aria_status"
+  fi
+  if _cache_curl_segmented_download "$soft_url" "$download_target" "$connections" "$minimum_size"; then
+    return 0
+  else
+    segmented_status=$?
+    if ((segmented_status == 1)); then
+      printf '错误：并发分段下载失败，可直接再次运行以续传。\n' >&2
+      return 1
+    fi
+  fi
+
+  printf '服务端不支持分段或文件较小，改用 curl 断点续传：%s\n' "$soft_url" >&2
+  _cache_curl_download "$soft_url" "$download_target"
+}
 zget() {
-  cache_downloader $1
+  cache_downloader "$1"
 }
 
 cache_unpacker() {
