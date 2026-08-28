@@ -841,6 +841,65 @@ kill_need() {
   sudo killall emacs
   sudo killall emacs-*
 }
+
+# 从宿主 PID 视角清理容器残留进程。
+# chroot/挂载可能已经被 Android 回收，但进程仍可因已打开的映射继续运行；
+# 因此不能依赖 container_mounted 或仅对挂载点执行 fuser。
+kill_container_processes() {
+  local target="$CHROOT_DIR"
+  log_debug "从宿主 /proc 扫描容器及脱离容器的残留进程..."
+  sudo env CHROOT_TARGET="$target" sh -c '    for proc in /proc/[0-9]*; do
+      pid=${proc##*/}
+      [ "$pid" = "$$" ] && continue
+      matched=0
+      for item in root cwd exe; do
+        link=$(readlink "$proc/$item" 2>/dev/null || true)
+        case "$link" in
+          "$CHROOT_TARGET"|"$CHROOT_TARGET"/*|"(unreachable)$CHROOT_TARGET"|"(unreachable)$CHROOT_TARGET"/*)
+            matched=1
+            break
+            ;;
+        esac
+      done
+      cmd=$(tr "\000" " " < "$proc/cmdline" 2>/dev/null || true)
+      case "$cmd" in
+        *"/root/tools/workbuddy-desktop/app/electron"*|*"/root/.workbuddy/plugins/cache/workbuddy-builtin"*) matched=1 ;;
+      esac
+      [ "$matched" -eq 1 ] && echo "$pid"
+    done
+  ' | sort -nu | while read -r pid; do
+    [ -n "$pid" ] || continue
+    log_debug "终止残留 PID $pid"
+    sudo kill -TERM "$pid" 2>/dev/null || true
+  done
+
+  sleep 1
+
+  # 重新扫描并升级为 SIGKILL，覆盖 TERM 被忽略或孤儿化的进程。
+  sudo env CHROOT_TARGET="$target" sh -c '    for proc in /proc/[0-9]*; do
+      pid=${proc##*/}
+      [ "$pid" = "$$" ] && continue
+      matched=0
+      for item in root cwd exe; do
+        link=$(readlink "$proc/$item" 2>/dev/null || true)
+        case "$link" in
+          "$CHROOT_TARGET"|"$CHROOT_TARGET"/*|"(unreachable)$CHROOT_TARGET"|"(unreachable)$CHROOT_TARGET"/*)
+            matched=1
+            break
+            ;;
+        esac
+      done
+      cmd=$(tr "\000" " " < "$proc/cmdline" 2>/dev/null || true)
+      case "$cmd" in
+        *"/root/tools/workbuddy-desktop/app/electron"*|*"/root/.workbuddy/plugins/cache/workbuddy-builtin"*) matched=1 ;;
+      esac
+      [ "$matched" -eq 1 ] && echo "$pid"
+    done
+  ' | sort -nu | while read -r pid; do
+    [ -n "$pid" ] || continue
+    sudo kill -KILL "$pid" 2>/dev/null || true
+  done
+}
 clean_tmp() {
   sudo rm -rf $PREFIX/tmp/rime*
   sudo rm -rf $PREFIX/tmp/tigervnc*
@@ -1027,10 +1086,14 @@ force_cleanup_chroot() {
 
 # 高级chroot容器管理 - 停止
 stop_chroot_container() {
-  log_info "停止chroot Linux容器..."
+  log_info "停止chroot Linux容器及残留进程..."
+
+  # 必须在 mounted 判断之前执行：Android/Termux 被回收后，挂载状态可能消失，
+  # 但 chroot 内启动的 Electron、Node、服务进程仍可能留在宿主 PID 表中。
+  kill_container_processes || true
 
   if ! container_mounted; then
-    log_warn "容器未运行"
+    log_warn "容器挂载未发现，已完成宿主进程残留扫描"
     return 0
   fi
 

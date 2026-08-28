@@ -275,6 +275,76 @@ setup_gradle_properties() {
 }
 
 # ============================================================
+# Step 8: 反编译 / 逆向分析工具链 (apktool + jadx)
+# 用途：分析第三方 APK（如原版 vtools）的资源与代码，
+#       - apktool: 反编译 resources.arsc / AndroidManifest / 布局，取真实颜色/字符串
+#       - jadx:    把 classes.dex 反编译成可读 Java，研究 daemon 回传与渲染逻辑
+# 两个都是纯 JVM 工具，任意架构通用；依赖 java 在 PATH 或 Android Studio 的 JBR。
+# ============================================================
+install_decompile_tools() {
+  local TOOLS_BASE="$(install_path)"
+  local APKTOOL_HOME="${TOOLS_BASE}/Apktool"
+  local JADX_HOME="${TOOLS_BASE}/jadx"
+  local JAVA_BIN="java"
+
+  # 校验 Java 环境（apktool / jadx 都依赖 JVM）
+  if ! command -v "$JAVA_BIN" >/dev/null 2>&1; then
+    if [[ -x "${ANDROID_STUDIO_HOME}/jbr/bin/java" ]]; then
+      JAVA_BIN="${ANDROID_STUDIO_HOME}/jbr/bin/java"
+    else
+      echo "[工具] 未检测到 java，反编译工具需要 JRE，已跳过（请先安装 Java 或 Android Studio）"
+      return 0
+    fi
+  fi
+
+  # ---------- apktool ----------
+  if [[ -x "${APKTOOL_HOME}/apktool" ]]; then
+    echo "[SKIP] apktool 已安装: ${APKTOOL_HOME}"
+  else
+    echo "[工具] 下载 apktool (反编译资源) ..."
+    local APK_VER
+    APK_VER=$(get_github_release_version iBotPeaches/Apktool 2>/dev/null)
+    APK_VER=${APK_VER#v}
+    [[ -z "$APK_VER" ]] && APK_VER="3.0.3"
+    local APK_JAR="apktool_${APK_VER}.jar"
+    local APK_URL="https://github.com/iBotPeaches/Apktool/releases/download/v${APK_VER}/${APK_JAR}"
+    # 官方 wrapper 脚本（linux）
+    local APK_WRAPPER_URL="https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool"
+
+    mkdir -p "${APKTOOL_HOME}"
+    $(cache_downloader "${APK_JAR}" "${APK_URL}")
+    cp "$(cache_folder)/${APK_JAR}" "${APKTOOL_HOME}/apktool.jar"
+    $(cache_downloader "apktool" "${APK_WRAPPER_URL}")
+    cp "$(cache_folder)/apktool" "${APKTOOL_HOME}/apktool"
+    chmod +x "${APKTOOL_HOME}/apktool"
+    echo "  - apktool ${APK_VER} 安装完成 -> ${APKTOOL_HOME}/apktool"
+  fi
+
+  # ---------- jadx ----------
+  if [[ -x "${JADX_HOME}/bin/jadx" ]]; then
+    echo "[SKIP] jadx 已安装: ${JADX_HOME}"
+  else
+    echo "[工具] 下载 jadx (dex -> java 反编译) ..."
+    local JADX_VER
+    JADX_VER=$(get_github_release_version skylot/jadx 2>/dev/null)
+    JADX_VER=${JADX_VER#v}
+    [[ -z "$JADX_VER" ]] && JADX_VER="1.5.1"
+    local JADX_ZIP="jadx-${JADX_VER}.zip"
+    local JADX_URL="https://github.com/skylot/jadx/releases/download/v${JADX_VER}/${JADX_ZIP}"
+
+    $(cache_downloader "${JADX_ZIP}" "${JADX_URL}")
+    rm -rf "${JADX_HOME}"
+    mkdir -p "${JADX_HOME}"
+    unzip -q "$(cache_folder)/${JADX_ZIP}" -d "${JADX_HOME}"
+    chmod +x "${JADX_HOME}/bin/jadx" "${JADX_HOME}/bin/jadx-gui" 2>/dev/null || true
+    echo "  - jadx ${JADX_VER} 安装完成 -> ${JADX_HOME}/bin/jadx"
+  fi
+
+  echo "[工具] 反编译工具链就绪：apktool + jadx"
+  echo "  用法: apktool d -f -o <out> <apk>   |   jadx -d <out> <apk>"
+}
+
+# ============================================================
 # 主流程
 # ============================================================
 if [[ $(platform) == *linux* ]] && [[ $(arch) == aarch64 ]]; then
@@ -333,6 +403,9 @@ fi
 
 # --- 写入环境变量 (所有平台通用) ---
 if [[ $(platform) != *macos* ]]; then
+  # 反编译 / 逆向分析工具链 (apktool + jadx)
+  install_decompile_tools
+
   tee $TOOLSRC <<EOF
 export ANDROID_STUDIO_HOME=$LIBS_HOME
 export SDK_HOME=$SOFT_HOME
@@ -342,6 +415,8 @@ export ANDROID_SDK_ROOT=$SOFT_HOME
 export ANDROID_SDK=$SOFT_HOME
 export ANDROID_NDK=$SDK_HOME/ndk
 export JAVA_HOME=$LIBS_HOME/jbr
-export PATH=\$PATH:$LIBS_HOME/gradle/gradle-4.10.1/bin:$LIBS_HOME/jbr/bin:$LIBS_HOME/bin:$SOFT_HOME/emulator:$SOFT_HOME/platform-tools:$SOFT_HOME/cmdline-tools/latest/bin:$SOFT_HOME/ndk
+export APKTOOL_HOME=$(install_path)/Apktool
+export JADX_HOME=$(install_path)/jadx
+export PATH=\$PATH:$LIBS_HOME/gradle/gradle-4.10.1/bin:$LIBS_HOME/jbr/bin:$LIBS_HOME/bin:$SOFT_HOME/emulator:$SOFT_HOME/platform-tools:$SOFT_HOME/cmdline-tools/latest/bin:$SOFT_HOME/ndk:$(install_path)/Apktool:$(install_path)/jadx/bin
 EOF
 fi
