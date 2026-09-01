@@ -104,3 +104,87 @@
   Trae 官方 linux 包的更新主机（或官方 `app-update.yml` / `product.json` 的 `updateUrl`）。
   在拿到基址前，不擅自写死 URL；移植产物保持"禁自动更新"以保护（与 donor 默认一致）。
 - 注：`start.sh` 当前无 pending 切换逻辑（不像 workbuddy 已做原子切换），若实现 `--update` 需一并补齐。
+
+### 更新机制研究（二次深挖 · 2026-09-01，修正上文初判）
+> 上文"复用 VSCode api/update feed、updateUrl 未知"**部分过时**。实测下载地址模板已确认，更新系 Trae 自定义逻辑。
+
+**① 下载地址模板（100% 确认，三源交叉）**
+`https://lf-cdn.trae.com.cn/obj/trae-com-cn/pkg/app/releases/stable/{version}/linux/{productName}-linux-{arch}.{ext}`
+- 用户实例：`.../stable/2.3.78542/linux/TraeCode_CN-linux-arm64.deb`
+- 官方论坛：`.../stable/2.3.65780/linux/TraeCode_CN-linux-x64.deb`、`Trae CN-linux-x64.rpm`
+- AUR 打包：`.../stable/2.3.61406/linux/Trae-linux-arm64.tar.gz`
+- CDN 基址来源：`product.json` 的 `CN` 字段（donor product.json:1365，cdnCheckList 附近）。
+- 拼接代码：`out/main.js` 更新逻辑（minified 超长行，live:2209 / donor:1886；Bash 禁用时无法抠子串）。
+
+**② Trae 自定义逻辑证据（非 VSCode 内置）**
+- electron-updater `DebUpdater.doInstall` 用 `dpkg -i`（donor `node_modules/electron-updater/out/DebUpdater.js:40`）；
+  用户实际提示命令是 `dpkg --root=/ --unpack` → 来源不同（Trae 自写）。
+- VSCode `api/update` 因 `updateUrl` 空在 `main.js:173` 被 `Disabled`。
+
+**③ 版本检测接口（部分定位）**
+- 版本号来自运行时远端配置：`main.js:1886 hasUpdateUrl:!!e.update.url` → 更新信息由客户端启动拉取注入 `update.url`，donor 默认空→更新关。
+- 接口 host：`api.trae.com.cn`（product.json `bootConfig` 的 iCube/market/agent host）；具体 path 在 `main.js` 超长行内拼接（host 从配置读、path 代码拼）→ **待补**：Bash 恢复后 node 提取，或抓客户端"检查更新"网络请求。
+
+**④ 实测 lf-cdn**：字节 TOS，无目录列表、`latest.yml`/`latest-linux.yml` 均 "key does not exist" → 版本只能从 `api.trae.com.cn` 取。
+
+**⑤ 给 --update 最小信息集**：✅ 下载 URL 模板 ✅ CDN 基址 ✅ 文件名（traework=CN 版 `TraeCode_CN-linux-arm64.deb`）❌ 最新 version 接口 path。
+**⑥ 下一步**：(a) Bash 恢复抠 path；(b) 抓客户端请求；(c) 先做"version 接口可配置"骨架。实现 `--update` 时 `start.sh` 需补 pending 原子切换（workbuddy 已有）。
+
+### 更新机制研究（三次深挖 · 2026-09-01，Bash 恢复后闭环 + `--update` 落地）
+> 上文 ③"接口 path 待补"已解决，并修正"Trae 自定义逻辑"的归属：**存在两套互不相干的更新体系**。
+
+**① 两套更新体系（本次最关键的架构澄清）**
+| | TraeCode CN（`/usr/share/trae-cn`，donor 来源） | Trae SOLO CN（traework，移植目标） |
+|---|---|---|
+| 框架 | 字节 **Aha Electron**（`aha/components/*`，`packageType:"stable_cn"`） | VSCode fork + **ICUBE tron** 更新服务 |
+| 更新接口 | `app_alert_check`（`log.snssdk.com/service/2/app_alert_check/`） | `/icube/api/v1/package/check_update`（host `api.trae.com.cn`） |
+| linux-arm64 包 | ✅ **官方有发布**（`TraeCode_CN-linux-arm64.deb`） | ❌ **官方无发布**（仅 macOS DMG） |
+
+代码位置（donor `out/main.js`）：
+- `ab()`@787661：`HF(this.o) ? "/trae/gtm/tob/api/v1/package/check_update" : "/icube/api/v1/package/check_update"`
+  （`HF` = tob 判定；`getApi()`@781750 拼 `bootConfig.iCube.normal` = `https://api.trae.com.cn`）
+- `tronClientChecker.checkForUpdate` @773191：参数 `{...getCommonApiParams, pid, uid:deviceId, iid}` +
+  `branch`/`buildId`（读自 `appPath/package.json`），`pid` 固定 `7409949320595642651`；
+  响应 `data.manifest[platform].urls[].url`（服务端直接下发完整 URL，`platform`=`linux-arm64`）。
+- Linux 更新器 `ICUBE:Linux:update#doDownloadUpdate` @2575460：**不自动下载**，
+  仅 `openExternal(url)` 打开下载链接，随后 `ps aux | grep "dpkg.*(--unpack|--install)"` 轮询用户手动安装，装完 relaunch。
+  → 这正解释用户看到的"手动 wget + dpkg --unpack"提示。
+
+**② ICUBE tron 接口实测结论：不可用于移植产物**
+参数全量打通（`err_code:0`）：`pid` + `uid` + `mid` + `branch` + `buildId` + `packageType` + `appVersion` + `platform`。
+但 **`SOLO_CN`/`SOLO_CN_ENTERPRISE` × `linux-arm64`/`darwin-arm64`/`linux-x64` 全部恒返回
+`{"err_code":0,"data":{"needUpdate":false}}`**——官方根本不发布 SOLO_CN 的 linux-arm64 包。
+（参数名逐个试探得出：缺 `packageType` 报"缺少包类型"、缺 `appVersion` 报"缺少客户端版本号"、
+缺 `platform` 报"缺少操作系统信息"、缺 `mid` 报"缺少mid"。）
+
+**③ 可行的版本探针：官方客户端 manifest.json**
+- `/usr/share/trae-cn/manifest.json` 的 **`buildVersion` 即 CDN 路径中的版本号**
+  （实测 `2.3.78542`，与用户 wget 的 URL、日志历史完全对齐）。
+- 历史序列（Trae CN 进程监控日志）：`2.3.72447` → `2.3.73737`（8/22）→ `2.3.76125`（8/25）→ `2.3.77497` → `2.3.78542`（9/1），约 3–7 天一版。
+- CDN 直链 **免签名可下载**：`HTTP/2 200`、`content-length: 365776672`（≈365MB）、`last-modified` 8/27。
+- 注意：`lf-cdn` 无目录列表/`latest.yml`，版本号无法从 CDN 枚举，只能外部获取。
+
+**④ 已实现 `--update` / `--check-update`（本提交）**
+设计取舍：主体代码只能来自 macOS DMG（官方无 SOLO arm64 包），故 `--update` **只升级"依赖环境"**
+（Electron 运行时 / 预编译 `.node` / `modules/*.so` / rg、fd 等 donor 供给物），再用现有 DMG 重跑移植管线。
+- `donor_upstream_version()`：读 `DONOR_UPSTREAM_MANIFESTS`（`/usr/share/trae-cn/manifest.json` 等）的 `buildVersion`；
+  可用 `TRAEWORK_DONOR_VERSION` 覆盖。
+- `check_donor_update()`：与 `$install_dir/.donor-version` 比较，返回 0=有新版本 / 1=已是最新 / 2=探测失败。
+- `download_donor_version()`：CDN 下载到 `$WORK_DIR/cache/TraeCode_CN-linux-arm64-<ver>.deb`；
+  **先 `--noproxy '*'` 直连再回退代理**——环境 `HTTP_PROXY=127.0.0.1:10808` 会让 `lf-cdn`/`log.snssdk.com`
+  TLS 握手失败（`wrong version number`）。
+- 重建前 `mv app → app.old`：`assemble_app` 是覆盖式 `cp -a`，不清旧供体残留 `.node`；失败可 `mv app.old app` 回滚。
+- 记录版本：主流程末尾 `record_donor_version()`（首次运行从解包后 donor manifest 回填基准）。
+- 退出码：`--check-update` 有新版本 0 / 已是最新 0 / 探测失败 1。
+
+**⑤ 踩坑记录**
+- `node -e 'try{...}'` **缺 `catch` 直接 SyntaxError**，`2>/dev/null` 静默吞掉 → 版本探测"莫名失败"。已补 `catch(e){}`。
+- 脚本 `set -Eeuo pipefail`：`f; rc=$?` 在 `f` 返回 1 时会被 errexit 提前终止，必须用 `if f; then ... else rc=$?; fi` 承接。
+- `grep -c 'conversation.preferences'` 里 `.` 是通配符（误判残留）；须转义 `\.`（workbuddy 侧旧坑）。
+
+**⑥ 使用**
+```bash
+./traework-desktop.sh --check-update          # 只检查，不下载
+./traework-desktop.sh --update                # 有新供体则下载(≈365MB)并用现有 DMG 重建
+```
+主体（新功能）升级仍需手动下载新 `TraeWork_CN-darwin-arm64.dmg` 后整体重跑脚本。

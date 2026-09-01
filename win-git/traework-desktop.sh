@@ -88,6 +88,18 @@ electron_zip_source="${TRAEWORK_ELECTRON_ZIP_SOURCE:-}"
 donor_source="${TRAEWORK_DONOR_SOURCE:-}"
 # 开箱即用默认：供体固定 TraeCode deb、nsbox 自动探测（可用 --no-nsbox 关闭）
 readonly DEFAULT_DONOR="/sdcard/Download/TraeCode_CN-linux-arm64.deb"
+# 供体（TraeCode_CN linux-arm64）官方 CDN：/pkg/app/releases/stable/{buildVersion}/linux/{artifact}
+# 实测结论（2026-09-01）：lf-cdn 为字节 TOS，无目录列表/无 latest.yml，版本号只能外部获取；
+# 直链免签名可下载（HTTP 200，约 365MB）。buildVersion 与官方客户端
+# /usr/share/trae-cn/manifest.json 的 buildVersion 一致（历史序列 2.3.72447→2.3.73737→
+# 2.3.76125→2.3.77497→2.3.78542），故以已安装的官方客户端作为"版本探针"。
+readonly DONOR_CDN_BASE="https://lf-cdn.trae.com.cn/obj/trae-com-cn/pkg/app/releases/stable"
+readonly DONOR_ARTIFACT="TraeCode_CN-linux-arm64.deb"
+readonly DONOR_UPSTREAM_MANIFESTS=(
+  "/usr/share/trae-cn/manifest.json"
+  "/opt/trae-cn/manifest.json"
+  "/usr/share/trae/manifest.json"
+)
 nsbox_source="${TRAEWORK_NSBOX_DIR:-auto}"
 nsbox_explicit=0
 [[ -z "${TRAEWORK_NSBOX_DIR:-}" ]] || nsbox_explicit=1
@@ -97,6 +109,10 @@ no_stub=0
 uninstall=0
 purge_data=0
 assume_yes=0
+update=0
+check_update=0
+DONOR_LATEST_VERSION=""
+DONOR_VERSION_PENDING=""
 
 usage() {
   cat <<'EOF'
@@ -119,6 +135,9 @@ usage() {
   --no-nsbox         关闭默认开启的 nsbox 沙箱替换，保留官方 trae-sandbox
   --no-native        跳过原生模块重编（快速验证主进程是否可启动）
   --no-stub          不为闭源 darwin 模块生成 stub（默认生成）
+  --update            检查供体（TraeCode_CN linux-arm64 deb）新版本，有新版则下载
+                      并以「新供体 + 现有 DMG」重跑移植管线（主体代码仍来自 DMG）
+  --check-update      只检查供体是否有新版并打印版本，不下载、不重建
   --uninstall        删除安装目录、构建缓存；--purge-data 一并删运行数据
   --yes              卸载时不询问
   --dry-run          只打印将执行的阶段
@@ -128,6 +147,7 @@ usage() {
   TRAEWORK_DMG_PATH / TRAEWORK_ELECTRON_ZIP_SOURCE / TRAEWORK_DONOR_SOURCE
   TRAEWORK_NSBOX_DIR           等效 --nsbox DIR
   TRAEWORK_ELECTRON_VERSION   覆盖自动探测的 Electron 版本（如 39.2.7）
+  TRAEWORK_DONOR_VERSION       覆盖自动探测的供体版本（跳过上游 manifest 探测）
   ELECTRON_MIRROR / ELECTRON_HEADERS_URL / MAX_BUILD_THREADS
 EOF
 }
@@ -850,6 +870,80 @@ uninstall_traework() {
   info '卸载完成；/sdcard/Download 下的 DMG/Electron/供体包均已保留'
 }
 
+# ---------- 供体（TraeCode_CN linux-arm64）更新 ----------
+# 版本探针：已安装的官方 Trae CN 客户端 manifest.json 的 buildVersion。
+# 该值即 CDN 下载路径中的版本号（实测 2.3.78542 与 manifest 完全一致）。
+# 注：ICUBE tron 接口（/icube/api/v1/package/check_update）对 linux-arm64 恒返回
+# needUpdate:false——官方不发 SOLO_CN 的 linux-arm64 包，故不能作为版本来源。
+donor_manifest_version() {
+  local m v
+  for m in "$@"; do
+    [[ -f "$m" ]] || continue
+    v=$(node -e 'try{const j=require(process.argv[1]);const v=j&&j.buildVersion;if(v)process.stdout.write(String(v))}catch(e){}' "$m" 2>/dev/null || true)
+    if [[ -n "$v" ]]; then printf '%s' "$v"; return 0; fi
+  done
+  return 1
+}
+
+donor_upstream_version() { donor_manifest_version "${DONOR_UPSTREAM_MANIFESTS[@]}"; }
+
+donor_cdn_url() { printf '%s/%s/linux/%s' "$DONOR_CDN_BASE" "$1" "$DONOR_ARTIFACT"; }
+
+donor_version_file() { printf '%s/.donor-version' "$install_dir"; }
+
+# 返回 0=有新版本（置 DONOR_LATEST_VERSION）；1=已是最新；2=探测失败
+check_donor_update() {
+  local latest cur vf
+  latest="${TRAEWORK_DONOR_VERSION:-}"
+  if [[ -z "$latest" ]]; then
+    latest=$(donor_upstream_version || true)
+  fi
+  if [[ -z "$latest" ]]; then
+    warn "无法探测供体最新版本（未找到官方 Trae CN 的 manifest.json）"
+    warn "可用 TRAEWORK_DONOR_VERSION=<版本号> 覆盖，或直接 --donor 指定新包"
+    return 2
+  fi
+  cur=""
+  vf=$(donor_version_file)
+  [[ -f "$vf" ]] && cur=$(tr -d ' \t\n' < "$vf")
+  info "供体版本  本地=${cur:-（未记录）}  上游=$latest"
+  if [[ "$cur" == "$latest" ]]; then
+    info "供体已是最新（$latest），无需更新"
+    return 1
+  fi
+  DONOR_LATEST_VERSION="$latest"
+  return 0
+}
+
+download_donor_version() {
+  local ver="$1" url deb
+  url=$(donor_cdn_url "$ver")
+  deb="$WORK_DIR/cache/TraeCode_CN-linux-arm64-$ver.deb"
+  mkdir -p "$(dirname "$deb")"
+  if [[ -s "$deb" ]]; then
+    info "复用已下载供体：$deb"
+  else
+    info "下载供体：$url"
+    # lf-cdn 直连免签名；环境若设了 HTTP_PROXY 会导致 TLS 握手失败，故优先直连再回退
+    curl -fL --noproxy '*' --progress-bar -o "$deb.part" "$url" \
+      || curl -fL --progress-bar -o "$deb.part" "$url" \
+      || { rm -f "$deb.part"; die "供体下载失败：$url"; }
+    mv -f "$deb.part" "$deb"
+  fi
+  donor_source=$(realpath "$deb")
+  DONOR_VERSION_PENDING="$ver"
+  info "供体就绪：$donor_source"
+}
+
+record_donor_version() {
+  local vf v="$1"
+  [[ -n "$v" ]] || return 0
+  vf=$(donor_version_file)
+  mkdir -p "$(dirname "$vf")"
+  printf '%s\n' "$v" > "$vf"
+  info "已记录供体版本：$v（$(donor_version_file)）"
+}
+
 # ---------- 参数解析 ----------
 while (($#)); do
   case "$1" in
@@ -865,6 +959,8 @@ while (($#)); do
     --no-nsbox) nsbox_source=""; shift ;;
     --no-native) no_native=1; shift ;;
     --no-stub) no_stub=1; shift ;;
+    --update) update=1; shift ;;
+    --check-update) check_update=1; shift ;;
     --uninstall) uninstall=1; shift ;;
     --purge-data) purge_data=1; shift ;;
     --yes) assume_yes=1; shift ;;
@@ -888,6 +984,21 @@ if ((uninstall == 1)); then
   exit 0
 fi
 if ((purge_data != 0)); then die '--purge-data 只能与 --uninstall 一起使用'; fi
+if ((update != 0 && uninstall != 0)); then die '--update 不能与 --uninstall 一起使用'; fi
+if ((update != 0 && check_update != 0)); then die '--update 与 --check-update 只能二选一'; fi
+
+# --check-update 只需版本探针，不依赖 DMG，走快速路径
+# 注意：脚本启用 set -e，此处必须用条件上下文承接返回码，否则 return 1 会触发 errexit
+if ((check_update == 1)); then
+  if check_donor_update; then
+    info "发现供体新版本 $DONOR_LATEST_VERSION；执行 --update 以下载并用新供体重建"
+    exit 0
+  else
+    rc=$?
+    if ((rc == 2)); then exit 1; fi
+    exit 0
+  fi
+fi
 if ((assume_yes != 0)); then die '--yes 只能与 --uninstall 一起使用'; fi
 
 # ---------- 预检 ----------
@@ -931,6 +1042,25 @@ else
   warn "未指定 --donor：将退回 stock Electron + npm 重编 + stub 降级路线"
 fi
 
+# ---------- 供体更新（--update / --check-update）----------
+# 主体代码仍来自 DMG：官方不发 SOLO_CN 的 linux-arm64 包，本更新只升级"依赖环境"
+# （Electron 运行时 / 预编译 .node / modules/*.so / rg、fd 等 donor 供给物）。
+if ((update == 1)); then
+  if check_donor_update; then
+    if ((dry_run == 1)); then
+      info "预览：将下载供体 $(donor_cdn_url "$DONOR_LATEST_VERSION")（约 365MB）并用新供体重建"
+    else
+      download_donor_version "$DONOR_LATEST_VERSION"
+    fi
+  else
+    rc=$?
+    if ((rc == 2)); then
+      die "供体版本探测失败；改用 --donor 显式指定，或设置 TRAEWORK_DONOR_VERSION"
+    fi
+    info "无供体更新，继续以现有供体重建：${donor_source:-（无）}"
+  fi
+fi
+
 if [[ -f /etc/os-release ]]; then
   # shellcheck disable=SC1091
   . /etc/os-release
@@ -964,6 +1094,15 @@ fi
 
 # ---------- 主流程 ----------
 mkdir -p "$WORK_DIR"
+
+# --update 会重建整个 app：assemble_app 是覆盖式 cp -a，无法清除旧供体残留的
+# .node/模块目录，故先把旧应用整体移走，让新供体重建出干净目录。
+if ((update == 1)) && [[ -d "$APP_DIR" ]]; then
+  rm -rf "${APP_DIR}.old"
+  mv "$APP_DIR" "${APP_DIR}.old"
+  info "旧应用已备份为 ${APP_DIR}.old（重建失败可执行：mv ${APP_DIR}.old ${APP_DIR} 回滚）"
+fi
+
 if [[ -n "$donor_source" ]]; then
   extract_donor "$donor_source" >/dev/null
 fi
@@ -986,6 +1125,15 @@ fi
 ensure_linux_ripgrep
 generate_launcher
 configure_root_runtime
+
+# 记录供体版本，供下次 --update 比较；--update 下载的已由 DONOR_VERSION_PENDING 指定，
+# 否则从解包后的供体 manifest.json 回填（首次运行也要有基准）。
+if [[ -n "$DONOR_VERSION_PENDING" ]]; then
+  record_donor_version "$DONOR_VERSION_PENDING"
+elif [[ -n "$DONOR_ROOT" ]]; then
+  recorded=$(donor_manifest_version "$(dirname "$DONOR_ROOT")/manifest.json" 2>/dev/null || true)
+  [[ -n "$recorded" ]] && record_donor_version "$recorded"
+fi
 
 info "移植完成。验证顺序："
 printf '  1) %s/start.sh --diagnose\n' "$APP_DIR"
