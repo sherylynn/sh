@@ -372,6 +372,35 @@ PY
   info "safe-delete shim：linux 静默降级 patch 已应用 ✓"
 }
 
+# 首页"完全访问"授权偏好持久化修复。
+# 根因：首页权限偏好经 renderer 的 localTaskPermissionPreference 写入
+#   wb.storage.user.set("conversation.preferences", "local-task-permission-mode", "full-access")
+# 但服务端存储命名空间校验 NAMESPACE_RE = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/（tar.js）
+# 禁止小数点，导致 "conversation.preferences" 每次 get/set 都被拒：
+#   [Storage] Invalid namespace "conversation.preferences": must match ...
+# 偏好永远写不进磁盘，重启即回落 DEFAULT_MODE="default-sandbox"（默认授权）。
+# 修复：把 renderer 命名空间常量去点（conversation.preferences -> conversation_preferences）。
+# 该命名空间从未成功写入过数据，改名无迁移负担；服务端校验对下划线放行。
+# 幂等：常量已为 conversation_preferences 则跳过。
+patch_home_permission_persistence() {
+  local f="$APP_DIR/resources/app/renderer/assets/ui-docs-viewer-yPqU0qUt.js"
+  [[ -f "$f" ]] || { warn "renderer 包缺失，跳过 home-permission patch"; return 0; }
+  [[ -w "$f" ]] || { warn "renderer 包不可写，跳过 home-permission patch"; return 0; }
+  info "patch 首页授权持久化：conversation.preferences -> conversation_preferences"
+python3 - "$f" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = 'STORAGE_NAMESPACE$1 = "conversation.preferences"'
+new = 'STORAGE_NAMESPACE$1 = "conversation_preferences"'
+if old not in s:
+    print('skip: already patched or constant not found'); sys.exit(0)
+s = s.replace(old, new, 1)
+open(p, 'w', encoding='utf-8').write(s)
+print('patched: conversation.preferences -> conversation_preferences (renderer)')
+PY
+}
+
 apply_runtime_patches() {
   # 对已【安装】的 app 应用所有运行时修复，无需重跑完整构建（extract_dmg 等）。
   # 重建流程（main）也会在 backfill 之后调用本函数，保证解包态与安装态一致。
@@ -406,6 +435,12 @@ apply_runtime_patches() {
 
   # 4) 更新器 patch：Linux 下 checkForUpdates 委托给移植脚本（自带更新检查即走脚本）
   patch_app_updater
+
+  # 5) 首页"完全访问"授权偏好持久化修复：renderer 命名空间含小数点被服务端
+  #    NAMESPACE_RE（tar.js，禁止 .）拒绝，导致 wb.storage.user get/set 全失败、
+  #    偏好永不落盘，重启即回落默认授权。改 renderer 常量 conversation.preferences
+  #    -> conversation_preferences（去点，通过校验；旧命名空间从未成功写入，无迁移负担）。
+  patch_home_permission_persistence
 
   info "运行时 patch 完成 ✓（无需重跑完整构建）"
 }
