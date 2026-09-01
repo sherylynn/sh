@@ -44,18 +44,24 @@ TOOLS_HOME=$(install_path)
 readonly APP_ID="workbuddy"
 readonly APP_DISPLAY_NAME="WorkBuddy"
 install_dir="${WORKBUDDY_INSTALL_DIR:-${TOOLS_HOME}/workbuddy-desktop}"
+# 脚本自身绝对路径（供 --update 在 app 运行时把完整构建派发到暂存目录）
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)/$(basename "${BASH_SOURCE[0]}")"
 DATA_DIR="${WORKBUDDY_DATA_DIR:-${TOOLS_HOME}/workbuddy-desktop-data}"
 readonly DOWNLOAD_DIR="/sdcard/Download"
 readonly ELECTRON_MIRROR="${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/electron/}"
 readonly BS3_RELEASE_BASE="${WORKBUDDY_BS3_BASE:-https://github.com/WiseLibs/better-sqlite3/releases/download}"
 # better-sqlite3 官方 prebuild 下载直连失败时的镜像（gitee/ghproxy 等可自行覆盖）
 readonly GH_DL_PROXY="${WORKBUDDY_GH_PROXY:-}"
+# 自动更新：官方更新 feed（与 WorkBuddy 桌面端 autoUpdater 同源，公开无需鉴权）
+readonly FETCH_UPDATE_BASE="${WORKBUDDY_UPDATE_URL:-https://copilot.tencent.com}"
+readonly UPDATE_DOWNLOAD_DIR="${WORKBUDDY_UPDATE_CACHE:-/tmp/workbuddy-update}"
 
 dmg_path="${WORKBUDDY_DMG_PATH:-}"
 electron_zip_source="${WORKBUDDY_ELECTRON_ZIP_SOURCE:-}"
 stub_telemetry=0
 dry_run=0
 no_native=0
+update=0
 uninstall=0
 purge_data=0
 assume_yes=0
@@ -76,6 +82,8 @@ usage() {
   --stub-telemetry   把 @tencent/qimei-node 替换为 Proxy stub（遥测降级）
   --uninstall        删除安装目录、构建缓存；--purge-data 一并删运行数据
   --yes              卸载时不询问
+  --update           检查线上最新版本（mac darwin-arm64），有新版本则下载并安装；
+                     app 正在运行时改为完整构建到暂存目录，重启时自动应用
   --dry-run          只打印将执行的阶段
   -h, --help         显示帮助
 
@@ -84,6 +92,8 @@ usage() {
   WORKBUDDY_DATA_DIR / WORKBUDDY_ELECTRON_VERSION（覆盖自动探测的 Electron 版本）
   WORKBUDDY_GH_PROXY（better-sqlite3 prebuild 下载代理前缀，拼在 github URL 前）
   WORKBUDDY_ALLOW_ELECTRON_MISMATCH=1（强制使用版本不匹配的本地 Electron zip）
+  WORKBUDDY_UPDATE_URL（覆盖更新 feed 基址，默认 https://copilot.tencent.com）
+  WORKBUDDY_UPDATE_CACHE（更新包下载缓存目录，默认 /tmp/workbuddy-update）
   ELECTRON_MIRROR
 EOF
 }
@@ -383,6 +393,194 @@ apply_runtime_patches() {
   info "运行时 patch 完成 ✓（无需重跑完整构建）"
 }
 
+# ---------- 自动更新：查版本 / 下载 / 安装 ----------
+# 官方更新通道 copilot.tencent.com/v2/update 返回最新 macOS arm64 安装包（zip）直链与四段版本号，
+# 与 WorkBuddy 桌面端 autoUpdater 同源（main/index.js buildUpdateFeedUrl），公开、无需鉴权。
+
+# 四段语义化版本比较：version_gt A B → A 是否严格大于 B（按 . 分段数值比较，段数不足补 0）
+version_gt() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+def norm(v):
+    out = []
+    for p in str(v).split('.'):
+        try: out.append(int(p))
+        except ValueError: out.append(0)
+    return out
+a, b = norm(sys.argv[1]), norm(sys.argv[2])
+while len(a) < len(b): a.append(0)
+while len(b) < len(a): b.append(0)
+print('1' if a > b else '0')
+PY
+}
+
+# 读已安装完整版本：优先标记文件，回退 package.json version
+get_installed_version() {
+  local f="$install_dir/.workbuddy-version" v=""
+  if [[ -f "$f" ]]; then v=$(head -1 "$f" 2>/dev/null | tr -d '[:space:]'); fi
+  if [[ -z "$v" ]]; then
+    local pj="$APP_DIR/resources/app/package.json"
+    [[ -f "$pj" ]] && v=$(python3 -c "import json;print(json.load(open('$pj')).get('version',''))" 2>/dev/null)
+  fi
+  printf '%s' "$v"
+}
+
+# 记录已安装完整版本到标记文件（feed 返回四段版本，避免下次误判）
+write_installed_version() {
+  [[ -n "$1" ]] || return 0
+  printf '%s\n' "$1" > "$install_dir/.workbuddy-version"
+  info "已记录安装版本：$1 → $install_dir/.workbuddy-version"
+}
+
+# 从解包出的 .app 读完整版本（CFBundleVersion，失败回退 package.json）
+read_app_full_version() {
+  local app_dir="$1" v=""
+  local plist="$app_dir/Contents/Info.plist"
+  if [[ -f "$plist" ]]; then
+    v=$(python3 - "$plist" <<'PY' 2>/dev/null || true
+import plistlib, sys
+try:
+    pl = plistlib.load(open(sys.argv[1], 'rb'))
+    print(pl.get('CFBundleVersion') or pl.get('CFBundleShortVersionString') or '')
+except Exception:
+    pass
+PY
+)
+  fi
+  if [[ -z "$v" ]]; then
+    v=$(python3 -c "import json;print(json.load(open('$app_dir/Contents/Resources/app/package.json')).get('version',''))" 2>/dev/null || true)
+  fi
+  printf '%s' "$v"
+}
+
+# 查更新 feed：必须传真实本地版本才会返回比它新的版本；version=0.0.0 返回稳定版（可能偏旧），
+# 已是最新时服务端返回 HTTP 204（无 version/url 字段）。故 get_installed_version 优先读标记/package.json。
+fetch_latest_feed() {
+  local local_v="${1:-0.0.0}" url
+  url="${FETCH_UPDATE_BASE%/}/v2/update?platform=workbuddy-darwin-arm64&version=${local_v}"
+  curl -sS -m 20 -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) WorkBuddy" "$url" 2>/dev/null || true
+}
+
+# 解包安装包：.dmg → 7z；.zip → unzip。返回 .app 目录路径
+extract_app_bundle() {
+  local pkg="$1"
+  case "$pkg" in
+    *.zip) extract_zip "$pkg" ;;
+    *.dmg) extract_dmg "$pkg" ;;
+    *) die "不支持的包格式：$pkg（仅支持 .dmg / .zip）" ;;
+  esac
+}
+extract_zip() {
+  local zip="$1" extract_dir="$WORK_DIR/zip-extract" status=0 app_dir
+  command -v unzip >/dev/null 2>&1 || die "缺少 unzip，请先安装。"
+  rm -rf "$extract_dir"; mkdir -p "$extract_dir"
+  info "解压 ZIP 安装包：$zip"
+  unzip -q -o "$zip" -d "$extract_dir" || status=$?
+  app_dir=$(find "$extract_dir" -maxdepth 4 -name "WorkBuddy.app" -type d | head -1)
+  [[ -n "$app_dir" ]] || app_dir=$(find "$extract_dir" -maxdepth 4 -name "*.app" -type d | head -1)
+  [[ -n "$app_dir" ]] || die "ZIP 内未找到 .app 包"
+  info "找到应用包：$(basename "$app_dir")"
+  printf '%s' "$app_dir"
+}
+
+# 通用安装流程（--dmg 手动安装与 --update 自动更新共用）
+do_install() {
+  local pkg="$1" override_v="${2:-}" app_bundle
+  mkdir -p "$WORK_DIR"
+  app_bundle=$(extract_app_bundle "$pkg")
+  detect_electron_version "$app_bundle"
+  prepare_runtime
+  assemble_app "$app_bundle"
+  if ((no_native == 1)); then
+    warn "--no-native：跳过原生模块回填（darwin .node 加载将失败，仅用于主进程冒烟验证）"
+  else
+    backfill_native_modules
+  fi
+  apply_runtime_patches
+  if ((stub_telemetry == 1)); then apply_stub_telemetry; fi
+  generate_launcher
+  configure_root_runtime
+  if [[ -n "$override_v" ]]; then
+    write_installed_version "$override_v"
+  else
+    write_installed_version "$(read_app_full_version "$app_bundle")"
+  fi
+  info "安装完成。验证顺序："
+  printf '  1) %s/start.sh --diagnose\n' "$APP_DIR"
+  printf '  2) workbuddy（或 %s/start.sh）\n' "$APP_DIR"
+  printf '  3) 观察登录页 → 打开工作区 → 触发终端/搜索/会话历史（覆盖 node-pty、rg、better-sqlite3）\n'
+}
+
+# 自动更新：查 feed（传真实本地版本）→ 下载 mac 包 → 安装 / 暂存
+# feed 实测行为：version=本地版本 返回比它新的版本；version=0.0.0 返回稳定版（偏旧）；
+# 已是最新返回 HTTP 204（无 version/url 字段）。故必须传真实本地版本。
+# 运行时策略：app 正在运行 → 完整构建到暂存目录并写 pending 标记，重启时由 start.sh 原子切换；
+#            app 未运行 → 直接 do_install，并继续循环收敛到最新（应对多次中间版本）。
+cmd_update() {
+  local local_v feed latest_v url zip iter=0
+  local_v=$(get_installed_version)
+  info "已安装版本：${local_v:-未知（将按 0.0.0 查询，可能仅得稳定版）}"
+  info "查询更新服务器：$FETCH_UPDATE_BASE（platform=workbuddy-darwin-arm64，即 macOS 官方包）"
+
+  while ((iter < 20)); do
+    iter=$((iter + 1))
+    feed=$(fetch_latest_feed "$local_v")
+    latest_v=$(printf '%s' "$feed" | python3 -c "import sys,json
+try:
+    d=json.load(sys.stdin); print(d.get('productVersion') or d.get('version') or '')
+except Exception: pass" 2>/dev/null)
+    url=$(printf '%s' "$feed" | python3 -c "import sys,json
+try:
+    d=json.load(sys.stdin); print(d.get('url') or '')
+except Exception: pass" 2>/dev/null)
+    if [[ -z "$latest_v" || -z "$url" ]]; then
+      info "已是最新版本（${local_v:-?}），无需更新。"
+      break
+    fi
+    if [[ -n "$local_v" ]] && [[ "$(version_gt "$latest_v" "$local_v")" != "1" ]]; then
+      info "已是最新版本（${local_v} >= ${latest_v}），无需更新。"
+      break
+    fi
+    info "发现新版本：${local_v:-?} → $latest_v"
+
+    if ((dry_run == 1)); then
+      info "（dry-run）将下载 $url 并安装到 $APP_DIR"
+      break
+    fi
+    if ((assume_yes != 1)); then
+      local ans
+      read -r -p "确认下载并更新到 $latest_v? [Y/n] " ans
+      case "$ans" in n|N) info "已取消。"; return 0 ;; esac
+    fi
+
+    mkdir -p "$UPDATE_DOWNLOAD_DIR"
+    zip="$UPDATE_DOWNLOAD_DIR/WorkBuddy-darwin-arm64-${latest_v}.zip"
+    if [[ ! -s "$zip" ]]; then
+      info "下载新包：$url"
+      curl -L --fail --continue-at - --progress-bar -o "$zip" "$url" || die "下载失败：$url"
+    else
+      info "复用已下载缓存：$zip"
+    fi
+
+    # 避免覆盖正在运行的 app：完整构建到暂存目录，重启时由 start.sh 原子切换
+    if pgrep -f "$APP_DIR/electron" >/dev/null 2>&1; then
+      local stage_dir="$install_dir/.update-stage"
+      info "WorkBuddy 正在运行 → 构建到暂存目录 $stage_dir（重启时自动应用）"
+      rm -rf "$stage_dir"
+      NODE_OPTIONS= bash "$SELF" --dmg "$zip" --dir "$stage_dir" \
+        || { warn "暂存构建失败，已保留下载包 $zip；可退出 WorkBuddy 后手动运行：bash $SELF --update"; return 1; }
+      printf '%s:%s\n' "$stage_dir/app" "$latest_v" > "$install_dir/.workbuddy-pending-update"
+      info "已暂存 $latest_v；下次重启 WorkBuddy 时自动应用（或退出后手动 bash $SELF --update 立即生效）。"
+      break
+    else
+      do_install "$zip" "$latest_v"
+      local_v="$latest_v"
+      # 继续循环：若还有更新的中间版本，一次性收敛到最新
+    fi
+  done
+  return 0
+}
+
 backfill_native_modules() {
   local app_res="$APP_DIR/resources/app" build_dir="$WORK_DIR/native-build"
   local pkg_json ver abi tarball url dst
@@ -581,6 +779,31 @@ fi
 
 # chroot/proot 环境通常无 user namespaces，默认关沙箱；Wayland 可在 flags 文件加
 # --ozone-platform=wayland 切换。
+
+# [自动更新] 若此前在 WorkBuddy 运行期间下载了新包（--update 暂存），重启时原子切换到新版本。
+# 暂存目录 .update-stage/app 已是完整 Linux 构建，这里只做本地 mv，无需联网，启动不卡顿。
+PENDING_MARKER="$APP_DIR/../.workbuddy-pending-update"
+if [[ -f "$PENDING_MARKER" ]]; then
+  IFS=: read -r STAGE_APP STAGE_V < "$PENDING_MARKER" 2>/dev/null || true
+  if [[ -n "$STAGE_APP" && -d "$STAGE_APP" ]] && ! pgrep -f "$APP_DIR/electron" >/dev/null 2>&1; then
+    echo "[workbuddy] 应用待定更新 -> ${STAGE_V:-?}"
+    BACKUP="$APP_DIR/../app.old"
+    rm -rf "$BACKUP"
+    mv "$APP_DIR" "$BACKUP"
+    if mv "$STAGE_APP" "$APP_DIR" 2>/dev/null; then
+      rm -rf "$BACKUP" "$PENDING_MARKER" "${STAGE_APP%/*}"
+      echo "[workbuddy] 更新完成：${STAGE_V:-?}（回滚备份在 app.old，确认无误可手动删除）"
+    else
+      echo "[workbuddy] 切换失败，回退到旧版本"
+      mv "$BACKUP" "$APP_DIR" 2>/dev/null || true
+      rm -f "$PENDING_MARKER"
+    fi
+  else
+    echo "[workbuddy] 待定更新未应用（app 仍在运行或暂存缺失），跳过"
+    rm -f "$PENDING_MARKER"
+  fi
+fi
+
 exec "$APP_DIR/electron" --no-sandbox "${EXTRA_FLAGS[@]}" "$@"
 LAUNCHER
   chmod +x "$APP_DIR/start.sh"
@@ -609,9 +832,11 @@ FLAGS
     info "已生成默认 $flags_file（已关闭 GPU 硬件加速）"
   fi
 
-  local desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-  mkdir -p "$desktop_dir"
-  cat >"$desktop_dir/$APP_ID.desktop" <<EOF
+  # 桌面项仅真实安装时写入；暂存构建跳过，避免 .desktop 指向临时路径
+  if [[ "$install_dir" != *.update-stage ]]; then
+    local desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+    mkdir -p "$desktop_dir"
+    cat >"$desktop_dir/$APP_ID.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=$APP_DISPLAY_NAME
@@ -620,20 +845,25 @@ Terminal=false
 Categories=Development;
 StartupWMClass=WorkBuddy
 EOF
+  fi
   info "启动器：$APP_DIR/start.sh（--diagnose 自检可用）"
 }
 
 configure_root_runtime() {
+  # 暂存构建（install_dir 以 .update-stage 结尾）不污染用户环境：
+  # 别名/rc/桌面项必须指向真实安装目录，否则更新时别名会被临时路径劫持。
+  [[ "$install_dir" == *.update-stage ]] && return 0
   mkdir -p "$DATA_DIR"
-  local line
-  local config_lines=(
-    "export WORKBUDDY_DATA_DIR=$DATA_DIR"
-    "alias workbuddy=\"$APP_DIR/start.sh\""
-    "alias workbuddy-data=\"$APP_DIR/start.sh --user-data-dir $DATA_DIR\""
-  )
-  for line in "${config_lines[@]}"; do
-    grep -Fqx "$line" "$TOOLSRC" 2>/dev/null || printf "%s\n" "$line" >>"$TOOLSRC"
-  done
+  # 幂等：先清掉旧的 workbuddy 相关行（避免临时/旧路径别名堆积），再写当前正确值
+  local tmp; tmp=$(mktemp)
+  grep -vE '^(export WORKBUDDY_DATA_DIR=|alias workbuddy=|alias workbuddy-data=)' "$TOOLSRC" 2>/dev/null > "$tmp" || true
+  cat "$tmp" > "$TOOLSRC" 2>/dev/null || true
+  rm -f "$tmp"
+  {
+    printf 'export WORKBUDDY_DATA_DIR=%s\n' "$DATA_DIR"
+    printf 'alias workbuddy="%s/start.sh"\n' "$APP_DIR"
+    printf 'alias workbuddy-data="%s/start.sh --user-data-dir %s"\n' "$APP_DIR" "$DATA_DIR"
+  } >> "$TOOLSRC"
   info "已写入用户配置：$TOOLSRC（终端直接运行 workbuddy 启动）"
 }
 
@@ -682,6 +912,7 @@ while (($#)); do
   case "$1" in
     --dir) (($# >= 2)) || die "--dir 需要一个目录"; install_dir=$2; shift 2 ;;
     --dmg) (($# >= 2)) || die "--dmg 需要一个文件路径"; dmg_path=$2; shift 2 ;;
+    --update) update=1; shift ;;
     --electron-zip) (($# >= 2)) || die "--electron-zip 需要一个文件路径"; electron_zip_source=$2; shift 2 ;;
     --no-native) no_native=1; shift ;;
     patch) patch_target="${2:-/root/tools/workbuddy-desktop/app}"; shift; APP_DIR="$patch_target" apply_runtime_patches; exit 0 ;;
@@ -709,14 +940,22 @@ if ((uninstall == 1)); then
   exit 0
 fi
 if ((purge_data != 0)); then die '--purge-data 只能与 --uninstall 一起使用'; fi
-if ((assume_yes != 0)); then die '--yes 只能与 --uninstall 一起使用'; fi
+if ((assume_yes != 0)) && ((uninstall == 0)) && ((update == 0)); then die '--yes 只能与 --uninstall 或 --update 一起使用'; fi
 
 # ---------- 预检 ----------
 for cmd in node npm python3 unzip curl; do
   command -v "$cmd" >/dev/null || die "缺少 $cmd，请先安装。"
 done
-node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)' \
-  || die "需要 Node.js >= 20"
+# 清空 NODE_OPTIONS：某些环境注入 --use-system-ca 等会令 `node -e` 直接报错，
+# 改用 `node --version` 解析大版本，保证自动化在任何环境都能跑（含 WorkBuddy automation）。
+node_ver=$(NODE_OPTIONS= node --version 2>/dev/null || true)
+node_major=$(printf '%s' "${node_ver#v}" | grep -oE '^[0-9]+' | head -1)
+[[ -n "$node_major" && "$node_major" -ge 20 ]] || die "需要 Node.js >= 20（当前 ${node_ver:-未知}）"
+
+if ((update == 1)); then
+  cmd_update
+  exit 0
+fi
 
 if [[ -z "$dmg_path" ]]; then
   dmg_path=$(find_downloaded_file "WorkBuddy*.dmg")
@@ -725,7 +964,7 @@ if [[ -z "$dmg_path" ]]; then
   fi
 fi
 if [[ -z "$dmg_path" ]]; then
-  die "未找到 DMG；请用 --dmg 指定 WorkBuddy-darwin-arm64-*.dmg 路径"
+  die "未找到 DMG；请用 --dmg 指定 WorkBuddy-darwin-arm64-*.dmg，或使用 --update 自动下载最新版"
 fi
 [[ -f "$dmg_path" ]] || die "找不到 DMG：$dmg_path"
 dmg_path=$(realpath "$dmg_path")
@@ -742,7 +981,7 @@ if ((dry_run == 1)); then
   if ((stub_telemetry == 1)); then stub_plan="替换 @tencent/qimei-node 为 Proxy stub"; fi
   cat <<EOF
 预览（--dry-run）：
-  1. 解包 DMG            $dmg_path
+  1. 解包安装包        $dmg_path
   2. 探测 Electron       自动（可 WORKBUDDY_ELECTRON_VERSION 覆盖）
   3. stock 运行时        精确匹配 electron-v${ELECTRON_VERSION:-<探测版>}-linux-arm64.zip（本地/下载/缓存）
   4. asar 解包           $APP_DIR/resources/app（平铺，等价 asar:false）
@@ -753,25 +992,4 @@ EOF
   exit 0
 fi
 
-# ---------- 主流程 ----------
-mkdir -p "$WORK_DIR"
-app_bundle=$(extract_dmg "$dmg_path")
-detect_electron_version "$app_bundle"
-prepare_runtime
-assemble_app "$app_bundle"
-if ((no_native == 1)); then
-  warn "--no-native：跳过原生模块回填（darwin .node 加载将失败，仅用于主进程冒烟验证）"
-else
-  backfill_native_modules
-fi
-apply_runtime_patches
-if ((stub_telemetry == 1)); then
-  apply_stub_telemetry
-fi
-generate_launcher
-configure_root_runtime
-
-info "移植完成。验证顺序："
-printf '  1) %s/start.sh --diagnose\n' "$APP_DIR"
-printf '  2) workbuddy（或 %s/start.sh）\n' "$APP_DIR"
-printf '  3) 观察登录页 → 打开工作区 → 触发终端/搜索/会话历史（覆盖 node-pty、rg、better-sqlite3）\n'
+do_install "$dmg_path"
