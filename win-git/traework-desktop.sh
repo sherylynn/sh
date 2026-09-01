@@ -46,6 +46,15 @@ TOOLSRC_NAME=traeworkrc
 TOOLSRC=$(toolsRC "$TOOLSRC_NAME")
 TOOLS_HOME=$(install_path)
 
+# node/npm PATH 引导：非交互 / 自动化 shell（如 MCP run_command、未来 --update 自动化）
+# 初始 PATH 不含 node，脚本内 npm/node 调用会 command not found。探测本地 node 目录前置。
+for _nb in /root/tools/node/node-v22.22.1-linux-arm64/bin "$HOME/tools/node"/*/bin /usr/local/bin; do
+  if [[ -d "$_nb" ]] && [[ ":$PATH:" != *":$_nb:"* ]]; then
+    PATH="$_nb:$PATH"
+  fi
+done
+export PATH
+
 readonly APP_ID="trae-solo-cn"
 readonly APP_DISPLAY_NAME="TRAE SOLO CN"
 install_dir="${TRAEWORK_INSTALL_DIR:-${TOOLS_HOME}/traework-desktop}"
@@ -517,6 +526,42 @@ copy_donor_package() {
   return 0
 }
 
+# ---------- ripgrep 架构校正（macOS DMG 残留 darwin rg 的兜底） ----------
+# 最终 resources/app 取自 macOS DMG，@vscode/ripgrep/bin/rg 必为 Mach-O（darwin）；
+# 即便供体覆盖层拷贝了 @byted-fe/ripgrep-linux-arm64，也从不触碰 @vscode/ripgrep，
+# 导致 VSCode 内置搜索 Grep 工具报 Exec format error (os error 8)。
+# 统一把所有 */bin/rg 中仍为 darwin 二进制的，回填为 linux-arm64 ELF（来源优先级：
+# 供体 @byted-fe/ripgrep-linux-arm64 → 系统 rg），幂等。
+ensure_linux_ripgrep() {
+  local app_res="$APP_DIR/resources/app"
+  local src f fixed=0
+  if [[ -f "$app_res/node_modules/@byted-fe/ripgrep-linux-arm64/bin/rg" ]]; then
+    src="$app_res/node_modules/@byted-fe/ripgrep-linux-arm64/bin/rg"
+  elif command -v rg >/dev/null 2>&1; then
+    src="$(command -v rg)"
+  fi
+  if [[ -z "$src" ]]; then
+    warn "无 linux-arm64 rg 来源；darwin rg 残留将导致 Grep 工具 Exec format error"
+    return 0
+  fi
+  if ! head -c4 "$src" 2>/dev/null | od -An -tx1 | tr -s ' ' | grep -q '7f 45 4c 46'; then
+    warn "候选 rg 非 ELF，跳过：$src"
+    return 0
+  fi
+  while IFS= read -r -d '' f; do
+    if ! head -c4 "$f" 2>/dev/null | od -An -tx1 | tr -s ' ' | grep -q '7f 45 4c 46'; then
+      cp -f "$src" "$f"
+      chmod 0755 "$f"
+      fixed=$((fixed + 1))
+    fi
+  done < <(find "$app_res/node_modules" -type f -name rg -path '*/bin/rg' -print0 2>/dev/null)
+  if ((fixed > 0)); then
+    info "已将 $fixed 个 darwin rg 回填为 linux-arm64（Grep 工具恢复）"
+  else
+    info "rg 架构校验通过（均为 linux-arm64 ELF）"
+  fi
+}
+
 # ---------- 供体覆盖层：官方 Linux 布局照搬 ----------
 apply_donor_overlays() {
   local app_res="$APP_DIR/resources/app" pkg lib mod_dir ok_cnt=0 miss_cnt=0
@@ -938,6 +983,7 @@ fi
 if [[ -n "$nsbox_source" ]]; then
   apply_nsbox_replacement
 fi
+ensure_linux_ripgrep
 generate_launcher
 configure_root_runtime
 

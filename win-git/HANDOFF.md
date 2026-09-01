@@ -69,3 +69,38 @@
 
 - win-git 仓库：`workbuddy-desktop.sh` 为新增未跟踪文件；`probe-toolhost.py`、`workbuddy-port-report/`、`.trae-html-share-packages/` 在仓库外层未跟踪。
 - 用户此前的提交偏好：改完脚本 → commit → push（traework 那次是明确要求的；workbuddy 尚未要求提交，交接后可询问）。
+
+## 6. 2026-09-01 补充：Grep `Exec format error` 根因已定位并修复 + 更新机制研究
+
+### rg 架构根因（原 §4 第 3 点"待修"）
+- 最终 `resources/app` 取自 **macOS DMG**（`assemble_app` 复制 DMG 的 `Contents/Resources/app`，
+  覆盖掉供体 deb 的 linux 版），所以 `@vscode/ripgrep/bin/rg` 恒为 **Mach-O（darwin，`cffaedfe`）**。
+- 供体覆盖层（`apply_donor_overlays`）只拷贝 `@byted-fe/ripgrep-linux-arm64` 包，从不替换 `@vscode/ripgrep`
+  （VSCode 内置搜索实际加载的就是 `@vscode/ripgrep/bin/rg`）→ Grep 工具 `Exec format error (os error 8)`。
+- 实测：安装树 `@vscode/ripgrep/bin/rg` = Mach-O；`@byted-fe/ripgrep-linux-arm64/bin/rg` = ELF（正确）；
+  `@byted-fe/ripgrep/bin/rg` 目录根本不存在（脚本原 overlay 试图写这里，天然 no-op）。
+
+**修复（commit 待 push）**
+- `traework-desktop.sh` 新增 `ensure_linux_ripgrep()`：把 `node_modules` 下所有 `*/bin/rg` 中仍为 darwin
+  二进制的，回填为 linux-arm64 ELF（来源优先级：供体 `@byted-fe/ripgrep-linux-arm64/bin/rg` → 系统 `rg`），
+  在 main 流程 `generate_launcher` 前调用，幂等。
+- live 安装已同步回填：`@vscode/ripgrep/bin/rg` 与 `@byted-fe/ripgrep-darwin-arm64/bin/rg` 现均为 ELF
+  `7f454c46`，Grep 工具应恢复；下次搜索即生效（rg 按需 spawn，无需重启）。
+- 另加 node/npm PATH 引导（脚本顶部，与 workbuddy 移植脚本一致）：非交互/自动化 shell 初始 PATH
+  缺 node，npm/node 调用会 command not found。
+
+### 更新机制研究（用户要求"研究更新"）
+- TraeWork CN 复用 VSCode 内置更新服务，feed 格式 `${updateUrl}/api/update/{platform}/{quality}/{commit}`
+  （`out/main.js:173` 的 `n5e(t,e,i)` 模板；platform 预期 `linux-arm64`，quality 取 product.json `quality=stable`）。
+- **关键**：`product.json` 无 `updateUrl` 字段；`updateUrl` 由运行时远端配置注入
+  （`main.js:1886 hasUpdateUrl:!!e.update.url`），`main.js:173` 在 `!updateUrl||!commit` 时直接
+  `setState(Disabled(3))` → **本构建更新被刻意关闭**。
+- 本地资产无法恢复 `updateUrl` 基址：donor deb（`TraeCode_CN-linux-arm64.deb`）已被删；
+  `build/donor` 残留的 donor `main.js` / `product.json` 同样无 `updateUrl`；`api.trae.cn` 命中项均为
+  account/pay/cloudide，非更新 feed。
+- **结论 / 待用户决策**：要让移植版支持自动更新，需在 `apply_platform_patches` 往 `product.json`
+  注入 `updateUrl`（VSCode-feed 格式），并参照 workbuddy 移植脚本实现 `--update` 子命令（feed 检查 +
+  `.update-stage` 暂存 + `start.sh` 原子切换 + 运行时补丁重打）。但 `updateUrl` 基址未知，**需用户提供**
+  Trae 官方 linux 包的更新主机（或官方 `app-update.yml` / `product.json` 的 `updateUrl`）。
+  在拿到基址前，不擅自写死 URL；移植产物保持"禁自动更新"以保护（与 donor 默认一致）。
+- 注：`start.sh` 当前无 pending 切换逻辑（不像 workbuddy 已做原子切换），若实现 `--update` 需一并补齐。
