@@ -316,6 +316,73 @@ JS
 }
 
 # ---------- 阶段 5：原生模块回填（全部官方预编译，零编译） ----------
+patch_safe_delete_shim() {
+  # safe-delete 的 bash 兜底（trash_linux）在 linux 上即为预期实现；官方不为 linux 随包提供
+  # genie-trash 二进制，trash_one() 探测到 TRASH_BIN 不可执行时会打一行误导性的
+  # "genie-trash unavailable" 错误日志，让人误以为删除保护失效。本 patch 让 linux 上该探测
+  # 失败静默降级（macOS/Windows 本应有二进制却缺失时仍告警）。
+  local shim="$APP_DIR/resources/app/cli/vendor/shim/safe-bin/safe-delete-common.sh"
+  [[ -f "$shim" ]] || { warn "safe-delete shim 不存在，跳过 patch"; return 0; }
+  python3 - "$shim" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '''    else
+        _safe_delete_diag "genie-trash unavailable: bin-not-executable path=$TRASH_BIN"
+    fi
+    # ---- 降级：当前平台实现 ----'''
+new = '''    else
+        # linux 平台官方不随包提供 genie-trash 二进制，内置 trash_linux 即为预期实现，
+        # 视为正常降级，不打错误日志（避免误导“删除保护失效”）。
+        if [ "$OS" != "Linux" ]; then
+            _safe_delete_diag "genie-trash unavailable: bin-not-executable path=$TRASH_BIN"
+        fi
+    fi
+    # ---- 降级：当前平台实现 ----'''
+if old in s:
+    open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+    print("patched")
+else:
+    print("SKIP: pattern not found (already patched or upstream changed)")
+PY
+  info "safe-delete shim：linux 静默降级 patch 已应用 ✓"
+}
+
+apply_runtime_patches() {
+  # 对已【安装】的 app 应用所有运行时修复，无需重跑完整构建（extract_dmg 等）。
+  # 重建流程（main）也会在 backfill 之后调用本函数，保证解包态与安装态一致。
+  local app_dir="${APP_DIR:-/root/tools/workbuddy-desktop/app}"
+  local app_res="$app_dir/resources/app"
+  [[ -d "$app_res" ]] || die "找不到已安装 app：$app_res（patch 子命令需指向已安装目录，或用 APP_DIR=/path 指定）"
+  info "对已安装 app 应用运行时 patch：$app_dir"
+
+  # 1) ripgrep 执行位 + 0 字节占位清理（Grep/Glob 工具的执行体）
+  local rg_dst="$app_res/cli/vendor/ripgrep/arm64-linux/rg"
+  if [[ -e "$rg_dst" ]]; then
+    chmod 755 "$rg_dst"
+    info "ripgrep：arm64-linux/rg 已置 755 ✓"
+  elif command -v rg >/dev/null 2>&1; then
+    info "ripgrep：arm64-linux/rg 缺失，将回落 PATH 上的 rg（系统已安装）"
+  else
+    warn "ripgrep：arm64-linux/rg 缺失且系统无 rg，Grep/Glob 工具将不可用"
+  fi
+  local rg_node="$app_res/cli/vendor/ripgrep/arm64-linux/ripgrep.node"
+  if [[ -f "$rg_node" && ! -s "$rg_node" ]]; then
+    rm -f "$rg_node"
+    info "ripgrep：已清理 0 字节 ripgrep.node 占位（避免 --diagnose 误报）"
+  fi
+
+  # 2) safe-delete 静默降级（linux 不随包提供 genie-trash，trash_linux 即为预期实现）
+  patch_safe_delete_shim
+
+  # 3) 重新生成启动器（含正确的 --diagnose 自检），并置可执行
+  generate_launcher
+  chmod +x "$app_dir/start.sh"
+  info "start.sh 已重新生成（--diagnose 自检可用）"
+
+  info "运行时 patch 完成 ✓（无需重跑完整构建）"
+}
+
 backfill_native_modules() {
   local app_res="$APP_DIR/resources/app" build_dir="$WORK_DIR/native-build"
   local pkg_json ver abi tarball url dst
@@ -326,14 +393,36 @@ backfill_native_modules() {
   else
     warn "koffi linux_arm64 缺失或非 ELF（主进程有 win32 守卫，理论上不影响）"
   fi
-  if is_elf "$app_res/cli/vendor/ripgrep/arm64-linux/ripgrep.node"; then
-    info "ripgrep：包内自带 arm64-linux ELF ✓"
+  # ripgrep（Grep/Glob 工具的执行体）：CLI 侧 RipGrepUtils.getBuiltinRipgrepConfig() 硬编码
+  #   resolve(vendor/ripgrep, `${arch()}-${platform()}`, "rg") 并用 spawn 起子进程，
+  #   全程不加载 ripgrep.node（见 cli/dist/codebuddy.js）。所以判定对象必须是 rg 而非 .node。
+  # 而 isBuiltinRipgrepAvailable() 只做 fileExists()，不查 X_OK、不比对大小：该路径一旦存在，
+  #   ensureRgConfig() 就不会回落系统 rg。因此它必须是「可执行的真 ELF」，否则 Grep 工具直接抛
+  #   Failed to run ripgrep: spawn .../arm64-linux/rg EACCES（占位空文件则为 ENOEXEC）。
+  # 两个叠加的坑：
+  #   ① asar 容错解包会给被 electron-builder 裁掉的其他平台 unpacked 文件建 0 字节占位，
+  #      fs.writeFileSync 默认 mode 0666&~umask → 644，arm64-linux/rg 正在其中；
+  #   ② cp 覆盖【已存在】文件时只写内容、不改目标 mode，故回填后 md5 与 /usr/bin/rg 一致
+  #      但权限仍是 644 → 无执行位。必须显式 chmod，不能依赖 cp 传递权限。
+  local rg_dst="$app_res/cli/vendor/ripgrep/arm64-linux/rg"
+  local rg_node="$app_res/cli/vendor/ripgrep/arm64-linux/ripgrep.node"
+  mkdir -p "$(dirname "$rg_dst")"
+  if is_elf "$rg_dst"; then
+    chmod 755 "$rg_dst"
+    info "ripgrep：包内自带 arm64-linux/rg ELF ✓（已强制置 755）"
   elif is_elf /usr/bin/rg; then
-    mkdir -p "$app_res/cli/vendor/ripgrep/arm64-linux"
-    cp /usr/bin/rg "$app_res/cli/vendor/ripgrep/arm64-linux/rg"
-    info "ripgrep：arm64-linux/rg 已用系统 ripgrep 回填 ✓（ripgrep.node NAPI 变体仍缺失，如搜索异常再处理）"
+    cp -f /usr/bin/rg "$rg_dst"
+    chmod 755 "$rg_dst"
+    info "ripgrep：arm64-linux/rg 已用系统 ripgrep 回填并置 755 ✓"
   else
-    warn "ripgrep arm64-linux 缺失且系统无 /usr/bin/rg，内置搜索可能不可用（apt 安装 ripgrep 后重跑即可回填）"
+    # 关键：留着 0 字节占位会让 isBuiltinRipgrepAvailable() 误判「内置可用」，
+    # 堵死 ensureRgConfig() 的系统 rg 回落分支；删掉才能让 CLI 走 PATH 上的 rg。
+    rm -f "$rg_dst"
+    warn "ripgrep arm64-linux/rg 缺失且系统无 /usr/bin/rg，已删除占位以便 CLI 回落 PATH 上的 rg（apt install ripgrep 后重跑可内置回填）"
+  fi
+  # ripgrep.node 是 NAPI 变体，当前 CLI 不加载；0 字节占位留着只会让 --diagnose 误报，清掉
+  if [[ -f "$rg_node" && ! -s "$rg_node" ]]; then
+    rm -f "$rg_node"
   fi
 
   # 2. node-pty：取 @lydell linux-arm64 变体包（NAPI，ABI 无关）
@@ -455,7 +544,6 @@ if [[ "${1:-}" == "--diagnose" ]]; then
     if [[ -e "$f" ]]; then printf 'ok: %s\n' "$f"; else printf 'missing: %s\n' "$f"; failed=1; fi
   done
   for f in "$APP_DIR/resources/app/node_modules/koffi/build/koffi/linux_arm64/koffi.node" \
-           "$APP_DIR/resources/app/cli/vendor/ripgrep/arm64-linux/ripgrep.node" \
            "$APP_DIR/resources/app/node_modules/node-pty/prebuilds/linux-arm64/pty.node" \
            "$APP_DIR/resources/app/node_modules/better-sqlite3/build/Release/better_sqlite3.node"; do
     if [[ ! -e "$f" ]]; then
@@ -466,6 +554,21 @@ if [[ "${1:-}" == "--diagnose" ]]; then
       printf 'NOT-ELF: %s\n' "$f"; failed=1
     fi
   done
+  # ripgrep 单独校验：CLI 用的是 vendor/ripgrep/arm64-linux/rg（spawn 子进程），不是 ripgrep.node，
+  # 且它只做 fileExists 判定 → 存在但不可执行时不会回落系统 rg，Grep 工具直接 spawn EACCES。
+  RG_BIN="$APP_DIR/resources/app/cli/vendor/ripgrep/arm64-linux/rg"
+  if [[ ! -e "$RG_BIN" ]]; then
+    printf 'missing: %s（预期回落 PATH 上的 rg）\n' "$RG_BIN"
+    if ! command -v rg >/dev/null 2>&1; then
+      printf 'NO-FALLBACK: PATH 中也没有 rg，Grep/Glob 工具将不可用\n'; failed=1
+    fi
+  elif ! head -c4 "$RG_BIN" 2>/dev/null | od -An -tx1 | grep -q '7f 45 4c 46'; then
+    printf 'NOT-ELF: %s（多为 asar 占位空文件，删掉即可回落系统 rg）\n' "$RG_BIN"; failed=1
+  elif [[ ! -x "$RG_BIN" ]]; then
+    printf 'NOT-EXEC: %s（chmod 755 修复，否则 Grep 报 spawn EACCES）\n' "$RG_BIN"; failed=1
+  else
+    printf 'ok(ELF,+x): %s\n' "$RG_BIN"
+  fi
   exit "$failed"
 fi
 
@@ -581,6 +684,7 @@ while (($#)); do
     --dmg) (($# >= 2)) || die "--dmg 需要一个文件路径"; dmg_path=$2; shift 2 ;;
     --electron-zip) (($# >= 2)) || die "--electron-zip 需要一个文件路径"; electron_zip_source=$2; shift 2 ;;
     --no-native) no_native=1; shift ;;
+    patch) patch_target="${2:-/root/tools/workbuddy-desktop/app}"; shift; APP_DIR="$patch_target" apply_runtime_patches; exit 0 ;;
     --stub-telemetry) stub_telemetry=1; shift ;;
     --uninstall) uninstall=1; shift ;;
     --purge-data) purge_data=1; shift ;;
@@ -660,6 +764,7 @@ if ((no_native == 1)); then
 else
   backfill_native_modules
 fi
+apply_runtime_patches
 if ((stub_telemetry == 1)); then
   apply_stub_telemetry
 fi
