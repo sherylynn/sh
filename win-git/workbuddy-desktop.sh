@@ -404,7 +404,101 @@ apply_runtime_patches() {
   chmod +x "$app_dir/start.sh"
   info "start.sh 已重新生成（--diagnose 自检可用）"
 
+  # 4) 更新器 patch：Linux 下 checkForUpdates 委托给移植脚本（自带更新检查即走脚本）
+  patch_app_updater
+
   info "运行时 patch 完成 ✓（无需重跑完整构建）"
+}
+
+# 更新器 patch：把内置 UpdateServiceLinux.checkForUpdates 委托给移植脚本
+# workbuddy-desktop.sh（脚本统一负责查 macOS darwin feed、下载、原生模块回填、
+# 生成 .update-stage + pending，重启由 start.sh 原子切换）。否则 Linux 下更新器
+# 请求 workbuddy-linux-arm64 平台资源，服务端无此通道，检查更新必失败。
+# 幂等：main/index.js 已含 _portCheckForUpdates 则跳过。
+patch_app_updater() {
+  local main_js="$APP_DIR/resources/app/main/index.js"
+  [[ -f "$main_js" ]] || { warn "main/index.js 不存在，跳过 updater patch"; return 0; }
+  [[ -w "$main_js" ]] || { warn "main/index.js 不可写，跳过 updater patch"; return 0; }
+  info "patch 更新器：Linux 下 checkForUpdates 委托给移植脚本 workbuddy-desktop.sh"
+python3 - "$main_js" <<'PY'
+import sys, re
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+if '_portCheckForUpdates' in s:
+    print('skip: already patched'); sys.exit(0)
+marker = 'var UpdateServiceLinux = class extends AbstractUpdateService {'
+if marker not in s:
+    print('skip: UpdateServiceLinux not found'); sys.exit(0)
+i = s.index(marker)
+decl = 'async checkForUpdates(explicit = false) {'
+j = s.index(decl, i)
+s = s[:j] + 'async checkForUpdates(explicit = false) { return this._portCheckForUpdates(explicit);' + s[j+len(decl):]
+m = re.search(r'quitAndInstall\(\)\s*\{[^}]*\}', s[i:])
+if not m:
+    print('error: quitAndInstall not found'); sys.exit(1)
+end = i + m.end()
+methods = r'''_portCheckForUpdates(explicit) {
+this.setLastExplicit(explicit);
+if (this._portBusy) return;
+this._portBusy = true;
+try {
+this.setState("checking");
+const cp = require("child_process");
+const script = this._resolvePortUpdateScript();
+if (!script) {
+this.logger?.warn("[UpdateService.linux] no port update script (workbuddy-desktop.sh) found; skip");
+this.fileLogger.warn("[linux] no port update script found");
+this.setState("idle");
+return;
+}
+this.logger?.info("[UpdateService.linux] delegating update to port script: " + script);
+const child = cp.spawn("bash", [script, "--update", "--yes"], { stdio: ["ignore", "pipe", "pipe"] });
+let out = "";
+child.stdout.on("data", (d) => { out += d.toString(); });
+child.stderr.on("data", (d) => { out += d.toString(); });
+child.on("error", (e) => {
+this._portBusy = false;
+this.logger?.error("[UpdateService.linux] spawn port script failed: " + (e && e.message));
+this.setState("idle");
+});
+child.on("close", (code) => {
+this._portBusy = false;
+this.fileLogger.info("[linux] port script exited code=" + code);
+if (/已暂存|已立即安装/.test(out)) {
+const m = out.match(/(\d+\.\d+\.\d+(?:\.\d+)?)/);
+const ver = m ? m[1] : this.version;
+this.activeUpdateVersion = ver;
+this.setState("available", { version: ver, releaseDate: "", releaseNotes: "已通过移植脚本下载并暂存，请重启 WorkBuddy 完成升级", downloadUrl: script });
+this.logger?.info("[UpdateService.linux] staged update " + ver + "; restart to apply");
+} else if (/已是最新|无需更新|是最新/.test(out)) {
+this.setState("idle");
+} else {
+this.setState("error", void 0, void 0, { message: "port update script failed (code " + code + ")", code: "PORT_UPDATE_FAILED" });
+this.logger?.error("[UpdateService.linux] port script output: " + out.slice(-3000));
+}
+});
+} catch (err) {
+this._portBusy = false;
+this.logger?.error("[UpdateService.linux] _portCheckForUpdates error: " + (err && err.message));
+this.setState("idle");
+}
+}
+_resolvePortUpdateScript() {
+const cands = [
+process.env.WORKBUDDY_DESKTOP_SH,
+"/root/sh/win-git/workbuddy-desktop.sh",
+"/root/tools/workbuddy-desktop/workbuddy-desktop.sh",
+require("node:path").join(require("node:path").dirname(process.resourcesPath), "..", "workbuddy-desktop.sh")
+].filter(Boolean);
+for (const c of cands) {
+try { if (require("node:fs").existsSync(c) && require("node:fs").statSync(c).isFile()) return c; } catch (e) {}
+}
+return null;
+}'''
+s = s[:end] + methods + s[end:]
+open(p, 'w', encoding='utf-8').write(s)
+print('patched: UpdateServiceLinux.checkForUpdates -> port script delegate')
+PY
 }
 
 # ---------- 自动更新：查版本 / 下载 / 安装 ----------
