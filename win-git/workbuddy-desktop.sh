@@ -569,6 +569,13 @@ except Exception: pass" 2>/dev/null)
       rm -rf "$stage_dir"
       NODE_OPTIONS= bash "$SELF" --dmg "$zip" --dir "$stage_dir" \
         || { warn "暂存构建失败，已保留下载包 $zip；可退出 WorkBuddy 后手动运行：bash $SELF --update"; return 1; }
+      # 安全闸：暂存构建须 --diagnose 全绿（尤其 better-sqlite3 须为 ELF），否则不写 pending，
+      # 避免自动应用"原生模块缺失"的坏包（如某版本 better-sqlite3 回填失败）。
+      if ! NODE_OPTIONS= bash "$stage_dir/app/start.sh" --diagnose >/dev/null 2>&1; then
+        warn "暂存构建 --diagnose 未通过（原生模块缺失，例如 better-sqlite3），中止自动暂存；已保留下载包 $zip 供手动处理"
+        rm -rf "$stage_dir"
+        return 1
+      fi
       printf '%s:%s\n' "$stage_dir/app" "$latest_v" > "$install_dir/.workbuddy-pending-update"
       info "已暂存 $latest_v；下次重启 WorkBuddy 时自动应用（或退出后手动 bash $SELF --update 立即生效）。"
       break
