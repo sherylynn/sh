@@ -872,10 +872,12 @@ export WORKBUDDY_APP_PATH="$APP_DIR/resources/app"
 export WORKBUDDY_RESOURCES_PATH="$APP_DIR/resources"
 # 镜像 electron-builder 原生 Resources/app.asar.unpacked 结构（扁平化后该层被合并进
 # resources/app，但解析器仍按 app.asar.unpacked 拼路径），用软链补回。
+# 【必须是相对软链】否则 start.sh 的待定更新 atomic mv 切换（把 .update-stage/app 改名为
+# app）后，绝对软链会指向已被删除的旧路径而悬空，解析器找不到 cli/product.json ->
+# 运行时报"安装文件损坏 / 请从 copilot.tencent.com/work/ 下载官方版"。相对软链随目录移动始终有效。
+# 每次启动都强制重建（幂等、开销可忽略），可自愈任何残留的绝对/悬空软链。
 mkdir -p "$APP_DIR/resources"
-if [ ! -e "$APP_DIR/resources/app.asar.unpacked" ]; then
-  ln -sfn "$APP_DIR/resources/app" "$APP_DIR/resources/app.asar.unpacked"
-fi
+ln -sfn app "$APP_DIR/resources/app.asar.unpacked"
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/$APP_ID"
 export CHROME_DESKTOP="${CHROME_DESKTOP:-${APP_ID}.desktop}"
@@ -912,6 +914,17 @@ if [[ "${1:-}" == "--diagnose" ]]; then
   else
     printf 'ok(ELF,+x): %s\n' "$RG_BIN"
   fi
+  # product.json：解析器实际经由 app.asar.unpacked/cli/product.json 定位（扁平化后由软链补回）。
+  # 若 app.asar.unpacked 软链悬空/损坏，运行时才会报"安装文件损坏"，--diagnose 必须提前暴露，
+  # 否则会出现"diagnose 全绿但启动即崩"的假绿。
+  PRODUCT_JSON="$APP_DIR/resources/app.asar.unpacked/cli/product.json"
+  if [[ ! -e "$PRODUCT_JSON" ]]; then
+    printf 'missing: %s（app.asar.unpacked 软链悬空或 product.json 缺失 -> 运行时将报"安装文件损坏"）\n' "$PRODUCT_JSON"; failed=1
+  elif head -c1 "$PRODUCT_JSON" 2>/dev/null | od -An -tx1 | grep -q '7b'; then
+    printf 'ok(json): %s\n' "$PRODUCT_JSON"
+  else
+    printf 'NOT-JSON: %s（product.json 开头非 { ，可能截断/损坏）\n' "$PRODUCT_JSON"; failed=1
+  fi
   exit "$failed"
 fi
 
@@ -939,6 +952,9 @@ if [[ -f "$PENDING_MARKER" ]]; then
       # 把完整版本号落到真实安装目录（.update-stage 即将被 rm -rf，其内标记会一并消失，
       # 否则下次更新会误判为旧版本而无限重下）。
       [[ -n "$STAGE_V" ]] && printf '%s\n' "$STAGE_V" > "$APP_DIR/../.workbuddy-version"
+      # 切换后强制重建【相对】app.asar.unpacked 软链，覆盖暂存包里可能残留的绝对软链，
+      # 否则解析器找不到 cli/product.json -> "安装文件损坏"。
+      ln -sfn app "$APP_DIR/resources/app.asar.unpacked"
       rm -rf "$BACKUP" "$PENDING_MARKER" "${STAGE_APP%/*}"
       echo "[workbuddy] 更新完成：${STAGE_V:-?}（回滚备份在 app.old，确认无误可手动删除）"
     else
