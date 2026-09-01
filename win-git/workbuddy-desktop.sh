@@ -52,6 +52,9 @@ readonly ELECTRON_MIRROR="${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/elect
 readonly BS3_RELEASE_BASE="${WORKBUDDY_BS3_BASE:-https://github.com/WiseLibs/better-sqlite3/releases/download}"
 # better-sqlite3 官方 prebuild 下载直连失败时的镜像（gitee/ghproxy 等可自行覆盖）
 readonly GH_DL_PROXY="${WORKBUDDY_GH_PROXY:-}"
+# electron 的 NODE_MODULE_VERSION（ABI），prepare_runtime 从实际 electron 二进制推导，
+# 供 better-sqlite3 等 ABI 敏感原生模块选择 prebuild。版本无关（不依赖 mac 包内 darwin 目录布局）。
+ELECTRON_ABI=""
 # 自动更新：官方更新 feed（与 WorkBuddy 桌面端 autoUpdater 同源，公开无需鉴权）
 readonly FETCH_UPDATE_BASE="${WORKBUDDY_UPDATE_URL:-https://copilot.tencent.com}"
 readonly UPDATE_DOWNLOAD_DIR="${WORKBUDDY_UPDATE_CACHE:-/tmp/workbuddy-update}"
@@ -91,9 +94,13 @@ usage() {
   WORKBUDDY_DMG_PATH / WORKBUDDY_ELECTRON_ZIP_SOURCE / WORKBUDDY_INSTALL_DIR
   WORKBUDDY_DATA_DIR / WORKBUDDY_ELECTRON_VERSION（覆盖自动探测的 Electron 版本）
   WORKBUDDY_GH_PROXY（better-sqlite3 prebuild 下载代理前缀，拼在 github URL 前）
+  WORKBUDDY_BS3_BASE（better-sqlite3 prebuild 基址，默认 github WiseLibs releases）
+  WORKBUDDY_BS3_REBUILD=1（prebuild 缺失时强制源码编译 better-sqlite3，需 npm/python3/gcc）
   WORKBUDDY_ALLOW_ELECTRON_MISMATCH=1（强制使用版本不匹配的本地 Electron zip）
   WORKBUDDY_UPDATE_URL（覆盖更新 feed 基址，默认 https://copilot.tencent.com）
   WORKBUDDY_UPDATE_CACHE（更新包下载缓存目录，默认 /tmp/workbuddy-update）
+  多版本兼容：better-sqlite3 的 ABI 从实际 electron 二进制推导（不再依赖 mac 包内
+  bin/darwin-* 目录，5.4.x 已无此目录），任意 WorkBuddy 版本均可正确回填原生模块。
   ELECTRON_MIRROR
 EOF
 }
@@ -266,6 +273,13 @@ prepare_runtime() {
   (cd "$APP_DIR" && unzip -qo "$cached_zip")
   [[ -x "$APP_DIR/electron" ]] || die "Electron 运行时解包失败：缺少 $APP_DIR/electron"
   info "Linux Electron $ELECTRON_VERSION 就绪"
+  # 推导 electron 的 NODE_MODULE_VERSION（ABI），用于 better-sqlite3 等 ABI 敏感原生模块的 prebuild 选择。
+  # 直接从实际 electron 二进制读取（ELECTRON_RUN_AS_NODE），版本无关，且不受 mac 包内目录布局变化影响
+  # （5.4.x 起 better-sqlite3 改为 app.asar.unpacked 且不再带 bin/darwin-*，旧探测方式会拿到空 ABI）。
+  if [[ -x "$APP_DIR/electron" ]]; then
+    ELECTRON_ABI=$(NODE_OPTIONS= ELECTRON_RUN_AS_NODE=1 "$APP_DIR/electron" -p 'process.versions.modules' 2>/dev/null || true)
+    [[ -n "$ELECTRON_ABI" ]] && info "Electron ABI (NODE_MODULE_VERSION)：$ELECTRON_ABI"
+  fi
 }
 
 # ---------- 阶段 4：asar 解包为平铺 resources/app ----------
@@ -569,6 +583,9 @@ except Exception: pass" 2>/dev/null)
       rm -rf "$stage_dir"
       NODE_OPTIONS= bash "$SELF" --dmg "$zip" --dir "$stage_dir" \
         || { warn "暂存构建失败，已保留下载包 $zip；可退出 WorkBuddy 后手动运行：bash $SELF --update"; return 1; }
+      # 暂存构建的 .workbuddy-version 由 read_app_full_version 写（三段 CFBundleVersion），
+      # 但更新语义用 feed 的四段版本号；此处直接落完整版本，供重启切换后 start.sh 透写到真实目录。
+      printf '%s\n' "$latest_v" > "$stage_dir/.workbuddy-version"
       # 安全闸：暂存构建须 --diagnose 全绿（尤其 better-sqlite3 须为 ELF），否则不写 pending，
       # 避免自动应用"原生模块缺失"的坏包（如某版本 better-sqlite3 回填失败）。
       if ! NODE_OPTIONS= bash "$stage_dir/app/start.sh" --diagnose >/dev/null 2>&1; then
@@ -632,7 +649,8 @@ backfill_native_modules() {
 
   # 2. node-pty：取 @lydell linux-arm64 变体包（NAPI，ABI 无关）
   local pty_var_ver
-  pty_var_ver=$(node -p "require('$app_res/node_modules/@lydell/node-pty-darwin-arm64/package.json').version" 2>/dev/null || true)
+  pty_var_ver=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('version',''))" \
+    "$app_res/node_modules/@lydell/node-pty-darwin-arm64/package.json" 2>/dev/null || true)
   [[ -n "$pty_var_ver" ]] || pty_var_ver="1.2.0-beta.14"
   info "node-pty：下载 @lydell/node-pty-linux-arm64@$pty_var_ver（与包内 darwin 变体同版本）..."
   rm -rf "$build_dir"
@@ -652,35 +670,72 @@ backfill_native_modules() {
     warn "node-pty 变体包下载失败（内置终端将不可用，主进程不受影响）"
   fi
 
-  # 3. better-sqlite3：GitHub 官方 prebuild；ABI 从包内 darwin 目录名推导（如 darwin-arm64-136）
-  pkg_json="$app_res/node_modules/better-sqlite3/package.json"
-  ver=$(node -p "require('$pkg_json').version" 2>/dev/null || true)
-  abi=$(basename "$(ls -d "$app_res/node_modules/better-sqlite3/bin/"darwin-* 2>/dev/null | head -1)" 2>/dev/null | grep -oE '[0-9]+$' || true)
+  # 3. better-sqlite3：GitHub 官方 prebuild。
+  #    ABI 优先用 prepare_runtime 从实际 electron 二进制推导的 $ELECTRON_ABI（版本无关，最可靠）；
+  #    回退到 mac 包内 bin/darwin-* 目录名（旧版布局，5.3.x 仍带）。5.4.x 起 better-sqlite3 改为
+  #    app.asar.unpacked 且不再带 bin/darwin-*，旧探测方式会拿到空 ABI 而跳过回填——本改动修复之。
+  #    prebuild 下载失败（如未来版本下架旧 ABI 包）时，尝试源码编译（WORKBUDDY_BS3_REBUILD=1 启用），
+  #    使脚本对任意 WorkBuddy 版本都具备原生模块回填能力。
+  local pkg_json="$app_res/node_modules/better-sqlite3/package.json"
+  local ver=""
+  [[ -f "$pkg_json" ]] && ver=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('version',''))" "$pkg_json" 2>/dev/null || true)
+  local abi="$ELECTRON_ABI"
+  if [[ -z "$abi" ]]; then
+    abi=$(basename "$(ls -d "$app_res/node_modules/better-sqlite3/bin/"darwin-* 2>/dev/null | head -1)" 2>/dev/null | grep -oE '[0-9]+$' || true)
+  fi
   if [[ -z "$ver" || -z "$abi" ]]; then
-    warn "better-sqlite3 版本/ABI 探测失败，跳过回填"
+    warn "better-sqlite3 版本($ver)/ABI($abi) 探测失败，跳过回填"
     return 0
   fi
+  local bs3_dir="$build_dir/bs3" tarball dst src_out
+  mkdir -p "$bs3_dir"
   tarball="better-sqlite3-v${ver}-electron-v${abi}-linux-arm64.tar.gz"
   url="$BS3_RELEASE_BASE/v${ver}/$tarball"
-  info "better-sqlite3：下载官方 prebuild（electron ABI v$abi）..."
-  if curl -L --fail --retry 2 -o "$build_dir/$tarball" "${GH_DL_PROXY}${url}"; then
-    tar -xzf "$build_dir/$tarball" -C "$build_dir"
-    dst=$(find "$build_dir" -name better_sqlite3.node | head -1)
-    if [[ -n "$dst" ]]; then
-      mkdir -p "$app_res/node_modules/better-sqlite3/build/Release" \
-               "$app_res/node_modules/better-sqlite3/bin/linux-arm64-$abi"
-      cp "$dst" "$app_res/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
-      cp "$dst" "$app_res/node_modules/better-sqlite3/bin/linux-arm64-$abi/better-sqlite3.node"
-      rm -rf "$app_res/node_modules/better-sqlite3/bin/"darwin-*
-      is_elf "$app_res/node_modules/better-sqlite3/build/Release/better_sqlite3.node" \
-        && info "better-sqlite3：已回填（build/Release + bin/linux-arm64-$abi）✓" \
-        || warn "better-sqlite3 回填后非 ELF"
-    else
-      warn "better-sqlite3 prebuild 包内未找到 better_sqlite3.node"
-    fi
+  dst=""
+  info "better-sqlite3：下载官方 prebuild（v$ver / electron ABI v$abi）..."
+  if curl -L --fail --retry 2 -o "$bs3_dir/$tarball" "${GH_DL_PROXY}${url}"; then
+    tar -xzf "$bs3_dir/$tarball" -C "$bs3_dir"
+    dst=$(find "$bs3_dir" -name better_sqlite3.node | head -1)
   else
-    warn "better-sqlite3 prebuild 下载失败（可用 WORKBUDDY_GH_PROXY 设镜像前缀重试）"
+    warn "better-sqlite3 prebuild 下载失败（${GH_DL_PROXY}${url}）"
   fi
+  # 兜底：源码编译（需 WORKBUDDY_BS3_REBUILD=1，且环境具备 npm/python3/gcc）
+  if [[ -z "$dst" || ! -f "$dst" ]]; then
+    src_out="$bs3_dir/better_sqlite3.node"
+    if build_better_sqlite3_from_source "$app_res/node_modules/better-sqlite3" "$ver" "$abi" "$src_out"; then
+      dst="$src_out"
+    fi
+  fi
+  if [[ -n "$dst" && -f "$dst" ]]; then
+    mkdir -p "$app_res/node_modules/better-sqlite3/build/Release" \
+             "$app_res/node_modules/better-sqlite3/bin/linux-arm64-$abi"
+    cp "$dst" "$app_res/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+    cp "$dst" "$app_res/node_modules/better-sqlite3/bin/linux-arm64-$abi/better-sqlite3.node"
+    rm -rf "$app_res/node_modules/better-sqlite3/bin/"darwin-*
+    is_elf "$app_res/node_modules/better-sqlite3/build/Release/better_sqlite3.node" \
+      && info "better-sqlite3：已回填（build/Release + bin/linux-arm64-$abi）✓" \
+      || warn "better-sqlite3 回填后非 ELF"
+  else
+    warn "better-sqlite3 回填失败：prebuild 与源码编译均未成功（设 WORKBUDDY_GH_PROXY 镜像前缀，或 WORKBUDDY_BS3_REBUILD=1 强制源码编译）"
+  fi
+}
+
+# 源码编译 better-sqlite3（多版本兜底）：用 electron 头文件针对当前 electron ABI 编译出 linux-arm64 .node。
+# 产物写入 $4（调用方据此覆盖包内 mac 二进制）。需 WORKBUDDY_BS3_REBUILD=1 显式启用，避免默认拖慢安装。
+build_better_sqlite3_from_source() {
+  local mod_dir="$1" ver="$2" abi="$3" out="$4"
+  [[ "${WORKBUDDY_BS3_REBUILD:-0}" == "1" ]] || { warn "better-sqlite3 源码编译未启用（设 WORKBUDDY_BS3_REBUILD=1 强制）"; return 1; }
+  command -v npm >/dev/null 2>&1 || { warn "缺少 npm，无法源码编译"; return 1; }
+  command -v python3 >/dev/null 2>&1 || { warn "缺少 python3，无法源码编译"; return 1; }
+  command -v make >/dev/null 2>&1 || command -v g++ >/dev/null 2>&1 || { warn "缺少 make/g++，无法源码编译"; return 1; }
+  info "better-sqlite3：源码编译（electron v${ELECTRON_VERSION} / ABI v${abi}）..."
+  ( cd "$mod_dir" && NODE_OPTIONS= npm_config_runtime=electron npm_config_target="$ELECTRON_VERSION" \
+      npm_config_arch=arm64 npm_config_platform=linux \
+      npm_config_disturl=https://electronjs.org/headers \
+      npm_config_build_from_source=true npm rebuild better-sqlite3 --build-from-source ) || return 1
+  [[ -f "$mod_dir/build/Release/better_sqlite3.node" ]] || return 1
+  cp "$mod_dir/build/Release/better_sqlite3.node" "$out"
+  return 0
 }
 
 write_stub_module() {
@@ -798,6 +853,9 @@ if [[ -f "$PENDING_MARKER" ]]; then
     rm -rf "$BACKUP"
     mv "$APP_DIR" "$BACKUP"
     if mv "$STAGE_APP" "$APP_DIR" 2>/dev/null; then
+      # 把完整版本号落到真实安装目录（.update-stage 即将被 rm -rf，其内标记会一并消失，
+      # 否则下次更新会误判为旧版本而无限重下）。
+      [[ -n "$STAGE_V" ]] && printf '%s\n' "$STAGE_V" > "$APP_DIR/../.workbuddy-version"
       rm -rf "$BACKUP" "$PENDING_MARKER" "${STAGE_APP%/*}"
       echo "[workbuddy] 更新完成：${STAGE_V:-?}（回滚备份在 app.old，确认无误可手动删除）"
     else
@@ -860,6 +918,10 @@ configure_root_runtime() {
   # 暂存构建（install_dir 以 .update-stage 结尾）不污染用户环境：
   # 别名/rc/桌面项必须指向真实安装目录，否则更新时别名会被临时路径劫持。
   [[ "$install_dir" == *.update-stage ]] && return 0
+  # 临时目录（/tmp、/sdcard/Download 等）视为测试/误装，不写用户环境，避免别名被劫持到即将删除的路径。
+  case "$install_dir" in
+    /tmp/*|/tmp|/sdcard/Download/*|/sdcard/Download) return 0 ;;
+  esac
   mkdir -p "$DATA_DIR"
   # 幂等：先清掉旧的 workbuddy 相关行（避免临时/旧路径别名堆积），再写当前正确值
   local tmp; tmp=$(mktemp)
