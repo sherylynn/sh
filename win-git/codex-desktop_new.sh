@@ -63,11 +63,53 @@ usage() {
 
 环境变量：
   CODEX_NEW_REPO_URL / CODEX_NEW_INSTALL_DIR / CODEX_UPSTREAM_DEB
+  CODEX_AGENT_SANDBOX_MODE  Codex Agent 文件权限模式；root/Android 默认
+                            danger-full-access，设为 preserve 可保留现有配置
 EOF
 }
 
 die() { printf '错误：%s\n' "$*" >&2; exit 1; }
 info() { printf '\n==> %s\n' "$*"; }
+configure_codex_agent_permissions() {
+  local mode="${CODEX_AGENT_SANDBOX_MODE:-danger-full-access}"
+  local codex_home="${CODEX_HOME:-$HOME/.codex}"
+  local config_file="$codex_home/config.toml"
+  local temp_file
+
+  [[ "$mode" != preserve ]] || {
+    info "保留现有 Codex Agent 权限配置"
+    return
+  }
+  case "$mode" in
+    danger-full-access|workspace-write|read-only) ;;
+    *) die "无效的 CODEX_AGENT_SANDBOX_MODE：$mode" ;;
+  esac
+
+  mkdir -p "$codex_home"
+  touch "$config_file"
+  temp_file=$(mktemp "$codex_home/config.toml.XXXXXX")
+  awk -v mode="$mode" '
+    BEGIN { written = 0; in_table = 0 }
+    /^\[/ && !in_table {
+      if (!written) print "sandbox_mode = \"" mode "\""
+      written = 1
+      in_table = 1
+    }
+    !in_table && /^[[:space:]]*sandbox_mode[[:space:]]*=/ {
+      if (!written) print "sandbox_mode = \"" mode "\""
+      written = 1
+      next
+    }
+    { print }
+    END {
+      if (!written) print "sandbox_mode = \"" mode "\""
+    }
+  ' "$config_file" > "$temp_file"
+  chmod --reference="$config_file" "$temp_file" 2>/dev/null || chmod 600 "$temp_file"
+  mv "$temp_file" "$config_file"
+  chmod 600 "$config_file"
+  info "Codex Agent 权限模式：$mode（写入 $config_file；重启桌面应用后生效）"
+}
 configure_root_runtime() {
   local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/codex-desktop"
   local flags_file="$config_dir/electron-flags.conf"
@@ -358,5 +400,6 @@ make "$make_target" "${make_vars[@]}"
 verify_remote_build
 
 configure_root_runtime
+configure_codex_agent_permissions
 info "安装完成。可从应用菜单启动 ChatGPT Community，或运行："
 printf '  %q/codex-app/start.sh\n' "$repo_dir"
