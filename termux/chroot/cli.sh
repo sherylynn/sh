@@ -843,29 +843,58 @@ kill_need() {
 }
 
 # 从宿主 PID 视角列出容器残留进程。
-# 用单个 ls 批量读取 procfs 软链，避免对每个 PID 分别 fork readlink/tr；
-# WorkBuddy 兜底模式使用 [x] 写法，避免 pgrep 命中扫描命令自身。
+#
+# 关键约束：整段扫描必须在 root 下完成。容器进程属于其他 UID，非 root 无法解析
+# /proc/<pid>/{root,cwd,exe}；若把 glob 留在用户态展开再 sudo，会全部漏判成"无残留"。
+#
+# 性能：整段扫描只 fork 少数几个进程（1 个 root shell + 1 个 ls + 1 个 grep），
+# 不再像更早期版本那样对每个 PID 分别 fork readlink/tr。
 list_container_processes() {
   local target="$CHROOT_DIR"
-  {
-    sudo ls -ld /proc/[0-9]*/root /proc/[0-9]*/cwd /proc/[0-9]*/exe 2>/dev/null |
-      awk -v target="$target" '
+  sudo env CHROOT_TARGET="$target" sh -c '
+    # 1) 软链：单个 ls 进程批量输出 "<path> -> <target>"
+    links=$(ls -ld /proc/[0-9]*/root /proc/[0-9]*/cwd /proc/[0-9]*/exe 2>/dev/null)
+    case "$links" in
+      *" -> "*)
+        printf "%s\n" "$links"
+        ;;
+      *)
+        # 该 ls 不打印软链目标（部分 toybox/busybox 实现），退化为逐个 readlink，
+        # 保证不漏扫。
+        for proc in /proc/[0-9]*; do
+          [ "${proc##*/}" = "$$" ] && continue
+          for item in root cwd exe; do
+            printf "%s -> %s\n" "$proc/$item" "$(readlink "$proc/$item" 2>/dev/null)"
+          done
+        done
+        ;;
+    esac
+    # 2) cmdline：单个 grep 进程筛出 WorkBuddy/electron 相关进程。
+    #    [x] 写法让模式字面量本身不出现在 sh/sudo 的命令行里，避免自匹配。
+    grep -l -e "/root/tools/workbuddy-desktop/app/elect[r]on" \
+            -e "/root/.workbuddy/plugins/cache/workbuddy-built[i]n" \
+            /proc/[0-9]*/cmdline 2>/dev/null
+  ' | awk -v target="$target" '
+        function pid_of(s) {
+          if (match(s, /\/proc\/[0-9]+\//)) return substr(s, RSTART + 6, RLENGTH - 7)
+          return ""
+        }
         function points_inside(line, marker, pos, tail) {
           pos = index(line, marker)
           if (!pos) return 0
           tail = substr(line, pos + length(marker), 1)
           return tail == "" || tail == "/"
         }
-        points_inside($0, " -> " target) ||
-        points_inside($0, " -> (unreachable)" target) {
-          if (match($0, /\/proc\/[0-9]+\//)) {
-            print substr($0, RSTART + 6, RLENGTH - 7)
-          }
+        {
+          p = pid_of($0)
+          if (p == "") next
+          # grep -l 输出的是裸路径，代表 cmdline 命中
+          if ($0 ~ /\/cmdline$/ && index($0, " -> ") == 0) { print p; next }
+          # 软链指向容器目录（含挂载被 Android 回收后的 unreachable 形态）
+          if (points_inside($0, " -> " target) ||
+              points_inside($0, " -> (unreachable)" target)) print p
         }
-      '
-    pgrep -f '/root/tools/workbuddy-desktop/app/[e]lectron' 2>/dev/null || true
-    pgrep -f '/root/.workbuddy/plugins/cache/[w]orkbuddy-builtin' 2>/dev/null || true
-  } | sort -nu
+      ' | sort -nu
 }
 
 # chroot/挂载可能已经被 Android 回收，但进程仍可因已打开的映射继续运行；
