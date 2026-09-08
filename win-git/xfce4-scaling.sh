@@ -150,7 +150,7 @@ start_x11vnc_after_resize() {
         -rfbauth "$passwd_file" \
         -rfbport 5900 \
         -forever -noshm -shared \
-        -noxdamage -noxfixes -nowf -noscr \
+        -noxdamage -noxfixes -cursor arrow -nowf -noscr \
         -reopen -loop500 \
         -o "$log_file" </dev/null >/dev/null 2>&1 &
 

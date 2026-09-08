@@ -150,6 +150,7 @@ if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
     -shared \
     -noxdamage \
     -noxfixes \
+    -cursor arrow \
     -nowf \
     -noscr \
     -reopen \
