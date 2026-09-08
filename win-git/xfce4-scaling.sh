@@ -7,7 +7,7 @@
 #   - xrandr 整体缩放：让 xrandr 接管整屏（统一、GPU 加速、VNC 同步可见）。
 #   - DPI + 环境变量：不依赖 xrandr，纯文本/工具包缩放（到处能用）。
 #   - XFCE 全局整数缩放(Gdk/WindowScalingFactor)：屏幕分辨率保持原生(1:1)，UI 按整数倍绘制，真·视网膜最清晰，推荐。
-#   - termux-x11 原生分辨率：直接改 X 服务器分辨率（最稳，但需重启 X 会话）。
+#   - termux-x11 输出分辨率：直接改 X 服务器帧缓冲，App 在线时可即时生效。
 #   - 精细调整：逐项设字体/面板/图标/光标（老方法保留）。
 #   - 切换方法时会先「复位」其它机制，避免叠加导致双重缩放。
 
@@ -33,6 +33,136 @@ CURRENT_H=""
 NATIVE_W=""
 NATIVE_H=""
 SELECTED_SCALE=""
+VNC_WAS_RUNNING=0
+
+# ---------- 从 chroot 调用宿主 Termux:X11 偏好设置 ----------
+# Debian chroot 看不到 Termux 的 /data/data/com.termux；但两边共享宿主 /proc，
+# 可借正在运行的 termux-x11 进程根目录进入 Android/Termux 环境执行命令。
+run_termux_x11_preference() {
+    if command -v termux-x11-preference >/dev/null 2>&1; then
+        timeout 10 termux-x11-preference "$@"
+        return $?
+    fi
+
+    local pid host_root prefix output arg key value
+    local -a extras=()
+    pid=$(pgrep -f '(^|/)termux-x11([[:space:]]|$)' 2>/dev/null | head -1)
+    if [ -z "$pid" ]; then
+        echo -e "${RED}未找到正在运行的宿主 termux-x11 进程。${NC}" >&2
+        return 1
+    fi
+
+    host_root="/proc/${pid}/root"
+    prefix="/data/data/com.termux/files/usr"
+    if [ ! -x "${host_root}/system/bin/am" ] || [ ! -x "${host_root}${prefix}/bin/env" ]; then
+        echo -e "${RED}无法通过 ${host_root} 进入宿主 Android/Termux 环境。${NC}" >&2
+        return 1
+    fi
+
+    # Android 14+ 的 companion loader 从 chroot 调用时可能静默返回 0、实际不写偏好。
+    # 直接调用源码中 Receiver 使用的有序广播，并检查 result/data，杜绝假成功。
+    for arg in "$@"; do
+        if [[ "$arg" != *:* ]]; then
+            echo -e "${RED}无效的 Termux:X11 偏好参数：${arg}${NC}" >&2
+            return 1
+        fi
+        key=${arg%%:*}
+        value=${arg#*:}
+        extras+=("-e" "$key" "$value")
+    done
+    output=$(timeout 10 chroot "$host_root" "$prefix/bin/env" -i \
+        HOME=/data/data/com.termux/files/home \
+        PREFIX="$prefix" TMPDIR="$prefix/tmp" \
+        PATH="$prefix/bin:/system/bin:/system/xbin" \
+        /system/bin/am broadcast --user 0 \
+        -a com.termux.x11.CHANGE_PREFERENCE -p com.termux.x11 \
+        "${extras[@]}" 2>&1) || {
+        echo "$output" >&2
+        return 1
+    }
+    if ! grep -q 'result=\(2\|4\).*data="Done"' <<< "$output"; then
+        echo "$output" >&2
+        return 1
+    fi
+}
+
+# ---------- 分辨率切换时安全重启 x11vnc ----------
+# x11vnc 的 -xrandr resize 在 Termux:X11 在线改 framebuffer 时可能触发
+# Xlib/XCB sequence_lost 断言。先停、改完分辨率再启动可避开该崩溃路径。
+stop_x11vnc_for_resize() {
+    local display=${DISPLAY:-:1}
+    local display_base=${display%.0}
+    local pid cmd
+    local -a pids=()
+    VNC_WAS_RUNNING=0
+
+    while read -r pid; do
+        [ -n "$pid" ] || continue
+        cmd=$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)
+        if [[ "$cmd" == *"-display ${display}"* || "$cmd" == *"-display ${display_base}"* ]]; then
+            pids+=("$pid")
+        fi
+    done < <(pgrep -x x11vnc 2>/dev/null || true)
+
+    if [ "${#pids[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    VNC_WAS_RUNNING=1
+    echo -e "${YELLOW}暂时停止 ${display} 上的 x11vnc，避免在线 RandR resize 崩溃...${NC}"
+    kill -TERM "${pids[@]}" 2>/dev/null || true
+    for _ in {1..20}; do
+        local alive=0
+        for pid in "${pids[@]}"; do
+            kill -0 "$pid" 2>/dev/null && alive=1
+        done
+        [ "$alive" -eq 0 ] && return 0
+        sleep 0.1
+    done
+    kill -KILL "${pids[@]}" 2>/dev/null || true
+}
+
+wait_for_x11_resolution() {
+    local expected=$1 current
+    for _ in {1..40}; do
+        current=$(xrandr 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1x\2/p' | head -1)
+        [ "$current" = "$expected" ] && return 0
+        sleep 0.1
+    done
+    echo -e "${RED}等待 X11 切换到 ${expected} 超时。${NC}" >&2
+    return 1
+}
+
+start_x11vnc_after_resize() {
+    [ "$VNC_WAS_RUNNING" -eq 1 ] || return 0
+
+    local display=${DISPLAY:-:1}
+    local passwd_file="$HOME/.vnc/passwd"
+    local log_file="$HOME/.vnc/x11vnc.log"
+    if [ ! -x /usr/bin/x11vnc ] || [ ! -f "$passwd_file" ]; then
+        echo -e "${RED}无法恢复 x11vnc：程序或密码文件不存在。${NC}" >&2
+        return 1
+    fi
+
+    /usr/bin/x11vnc \
+        -display "$display" \
+        -auth "$HOME/.Xauthority" \
+        -rfbauth "$passwd_file" \
+        -rfbport 5900 \
+        -forever -noshm -shared \
+        -xrandr resize -reopen -loop500 \
+        -o "$log_file" >/dev/null 2>&1 &
+
+    for _ in {1..30}; do
+        if pgrep -x x11vnc >/dev/null 2>&1; then
+            echo -e "${GREEN}✓ VNC 已在新分辨率 ${display} 上恢复。${NC}"
+            return 0
+        fi
+        sleep 0.1
+    done
+    echo -e "${RED}x11vnc 未能恢复，请查看 ${log_file}。${NC}" >&2
+    return 1
+}
 
 # ---------- 探测当前显示 ----------
 detect_display() {
@@ -60,7 +190,7 @@ detect_display() {
 }
 
 # ---------- 复位所有缩放机制 ----------
-# 注意：不会改动 termux-x11 的原生分辨率（那是持久且需重启会话的），
+# 注意：不会改动 termux-x11 的输出分辨率（它由 App 持久保存），
 # 仅复位 xrandr 缩放、Xft DPI、以及 .xsessionrc 里的环境变量块。
 reset_scaling() {
     if [ "$XRANDR_OK" -eq 1 ] && [ -n "$XRANDR_OUTPUT" ]; then
@@ -165,7 +295,7 @@ show_menu() {
     echo -e "  ${GREEN}1)${NC} xrandr 整体缩放   ${BLUE}(让 xrandr 接管整屏，最统一，GPU加速)${NC}"
     echo -e "  ${GREEN}2)${NC} DPI + 环境变量    ${BLUE}(不依赖 xrandr，纯文本/工具包缩放)${NC}"
     echo -e "  ${GREEN}3)${NC} XFCE 全局整数缩放 ${BLUE}(Gdk/WindowScalingFactor，真·视网膜清晰，推荐)${NC}"
-    echo -e "  ${GREEN}4)${NC} termux-x11 降低分辨率 ${BLUE}(改小帧缓冲→UI变大但上采样变糊，非视网膜)${NC}"
+    echo -e "  ${GREEN}4)${NC} Termux:X11 显示预设 ${BLUE}(分辨率 + XFCE/App 缩放一起调整)${NC}"
     echo -e "  ${GREEN}5)${NC} 精细调整         ${BLUE}(逐项设字体/面板/图标/光标)${NC}"
     echo ""
     echo -e "  ${YELLOW}d)${NC} 诊断当前屏幕 & 推荐倍数"
@@ -337,24 +467,83 @@ apply_termux_res() {
     fi
     local tw=$(python3 -c "print(int(${NATIVE_W} / ${scale}))")
     local th=$(python3 -c "print(int(${NATIVE_H} / ${scale}))")
+    local exact_res
+    read -p "目标分辨率 [默认 ${tw}x${th}，也可输入如 1920x1080]: " exact_res
+    if [ -n "$exact_res" ]; then
+        if [[ ! "$exact_res" =~ ^[1-9][0-9]*x[1-9][0-9]*$ ]]; then
+            echo -e "${RED}分辨率格式无效，应为 WIDTHxHEIGHT（如 1920x1080）。${NC}"
+            return 1
+        fi
+        tw=${exact_res%x*}
+        th=${exact_res#*x}
+    fi
     echo ""
     echo -e "${YELLOW}此操作会把 termux-x11 分辨率改为 ${tw}x${th}（≈${scale}x 放大）。${NC}"
     echo -e "${RED}注意: 这把帧缓冲改小、由手机上采样放大 → 与「视网膜清晰」相反，会糊。视网膜请改用方法 3。${NC}"
-    echo -e "${RED}警告: 修改后通常需要重启 termux-x11 的 X 会话才能生效，当前桌面会结束。${NC}"
+    echo -e "${YELLOW}Termux:X11 Activity 在线时会即时改变 X framebuffer，无需重启 X。${NC}"
     read -p "确认继续? [y/N]: " confirm
     if [[ ! "$confirm" =~ ^[yY]$ ]]; then
         echo -e "${YELLOW}已取消。${NC}"
         return 0
     fi
     reset_scaling
-    if command -v termux-x11-preference >/dev/null 2>&1; then
-        termux-x11-preference "resolution:${tw}x${th}" 2>/dev/null || true
-        echo -e "${GREEN}✓ 已设置 termux-x11 分辨率偏好为 ${tw}x${th}${NC}"
+    # custom 模式和具体尺寸必须一起设置。displayScale=100 避免 Android 端再次缩放，
+    # 桌面 UI 的缩放继续由本脚本的 DPI/GDK 等方法控制，避免双重缩放。
+    if run_termux_x11_preference \
+        "displayResolutionMode:custom" \
+        "displayResolutionCustom:${tw}x${th}" \
+        "displayScale:100"; then
+        echo -e "${GREEN}✓ 已设置 Termux:X11：分辨率 ${tw}x${th}，输出缩放 100%${NC}"
     else
-        echo -e "${RED}未找到 termux-x11-preference，请手动在 termux-x11 App 设置里改分辨率。${NC}"
+        echo -e "${RED}设置失败。请确认 Termux:X11 App 已启动（前台或后台均可）。${NC}"
+        return 1
     fi
-    echo -e "${YELLOW}请重启 termux-x11 App 使分辨率生效（VNC 也会同步）。${NC}"
-    # 注意：此处不自动 am start 重启，避免误杀当前会话
+    echo -e "${YELLOW}X 会话已在线刷新；若 Activity 未打开，命令会明确报错而不会假成功。${NC}"
+}
+
+# ---------- 方法 4 菜单：Termux:X11 分辨率 + 应用缩放预设 ----------
+apply_termux_profile() {
+    local resolution=$1 scale=$2
+
+    echo ""
+    echo -e "${YELLOW}正在应用显示预设：${resolution} + ${scale}x...${NC}"
+
+    stop_x11vnc_for_resize
+    if ! run_termux_x11_preference \
+        "displayResolutionMode:custom" \
+        "displayResolutionCustom:${resolution}" \
+        "displayScale:100"; then
+        echo -e "${RED}Termux:X11 分辨率设置失败，未继续调整应用缩放。${NC}"
+        start_x11vnc_after_resize || true
+        return 1
+    fi
+
+    wait_for_x11_resolution "$resolution" || true
+    start_x11vnc_after_resize || true
+
+    # 沿用方法 3 的完整适配链路：XFCE/GTK、Qt、Fcitx5/Rime 和微信保持同一倍数。
+    apply_gdk_int "$scale"
+    echo -e "${GREEN}✓ 显示预设已完成：${resolution} + ${scale}x（Termux:X11 输出缩放 100%）${NC}"
+}
+
+show_termux_profiles() {
+    while true; do
+        echo ""
+        echo -e "${YELLOW}选择 Termux:X11 显示预设:${NC}"
+        echo -e "  ${GREEN}1)${NC} 1920x1080 + 1x"
+        echo -e "  ${GREEN}2)${NC} 2560x1600 + 2x"
+        echo -e "  ${GREEN}3)${NC} 2376x1080 + 2x"
+        echo -e "  ${GREEN}0)${NC} 返回上一级"
+        read -p "请输入: " profile
+        case $profile in
+            1) apply_termux_profile 1920x1080 1; break ;;
+            2) apply_termux_profile 2560x1600 2; break ;;
+            3) apply_termux_profile 2376x1080 2; break ;;
+            0) return 0 ;;
+            *) echo -e "${RED}无效选项！${NC}" ;;
+        esac
+    done
+    read -p "按回车继续..."
 }
 
 # ---------- 方法 5：精细调整（逐项设置 UI 元素） ----------
@@ -560,7 +749,7 @@ while true; do
         1) apply_method xrandr ;;
         2) apply_method dpi ;;
         3) apply_method gdk ;;
-        4) apply_method termux ;;
+        4) show_termux_profiles ;;
         5) apply_method fine ;;
         d|D) show_diagnose ;;
         v|V) show_current ;;
