@@ -140,7 +140,7 @@ if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
 
   # 启动服务
   echo "启动 x11vnc 服务..."
-  $X11VNC_CMD \
+  nohup setsid $X11VNC_CMD \
     -display "$VNC_DISPLAY" \
     -auth "$HOME/.Xauthority" \
     -rfbauth "$VNC_PASSWD_FILE" \
@@ -148,10 +148,13 @@ if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
     -forever \
     -noshm \
     -shared \
-    -xrandr resize \
+    -noxdamage \
+    -noxfixes \
+    -nowf \
+    -noscr \
     -reopen \
     -loop500 \
-    -o "$LOG_FILE" &
+    -o "$LOG_FILE" </dev/null >/dev/null 2>&1 &
   #-nodpms \
 
   # 验证启动状态

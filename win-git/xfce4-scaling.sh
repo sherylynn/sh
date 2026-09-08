@@ -144,14 +144,15 @@ start_x11vnc_after_resize() {
         return 1
     fi
 
-    /usr/bin/x11vnc \
+    nohup setsid /usr/bin/x11vnc \
         -display "$display" \
         -auth "$HOME/.Xauthority" \
         -rfbauth "$passwd_file" \
         -rfbport 5900 \
         -forever -noshm -shared \
-        -xrandr resize -reopen -loop500 \
-        -o "$log_file" >/dev/null 2>&1 &
+        -noxdamage -noxfixes -nowf -noscr \
+        -reopen -loop500 \
+        -o "$log_file" </dev/null >/dev/null 2>&1 &
 
     for _ in {1..30}; do
         if pgrep -x x11vnc >/dev/null 2>&1; then
@@ -518,11 +519,12 @@ apply_termux_profile() {
         return 1
     fi
 
-    wait_for_x11_resolution "$resolution" || true
-    start_x11vnc_after_resize || true
-
     # 沿用方法 3 的完整适配链路：XFCE/GTK、Qt、Fcitx5/Rime 和微信保持同一倍数。
     apply_gdk_int "$scale"
+    wait_for_x11_resolution "$resolution" || true
+    # apply_gdk_int 会重启 xfce4-panel；必须在它之后再启动并脱离 VNC，
+    # 否则由面板启动的 GUI 退出/面板重启可能连带终止 x11vnc。
+    start_x11vnc_after_resize || true
     echo -e "${GREEN}✓ 显示预设已完成：${resolution} + ${scale}x（Termux:X11 输出缩放 100%）${NC}"
 }
 
@@ -544,6 +546,148 @@ show_termux_profiles() {
         esac
     done
     read -p "按回车继续..."
+}
+
+# ---------- 鼠标 GUI：供 XFCE 顶栏按钮调用 ----------
+show_termux_profiles_gui() {
+    if ! command -v zenity >/dev/null 2>&1; then
+        notify-send -u critical "显示预设" "未安装 zenity，无法打开图形选择窗口。" 2>/dev/null || true
+        return 1
+    fi
+
+    local current_res current_scale choice resolution scale worker rc log_file
+    current_res=$(xrandr 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1x\2/p' | head -1)
+    current_scale=$(xfconf-query -c xsettings -p /Gdk/WindowScalingFactor 2>/dev/null || echo 1)
+
+    choice=$(zenity --list --radiolist \
+        --title="显示预设" \
+        --window-icon=preferences-desktop-display \
+        --width=520 --height=300 \
+        --text="当前：${current_res:-未知} + ${current_scale}x\n请选择要切换的显示配置：" \
+        --column="选择" --column="预设" --column="说明" \
+        TRUE  "1920x1080 + 1x" "较大桌面空间，应用保持 1x" \
+        FALSE "2560x1600 + 2x" "高分辨率，XFCE/Rime/Qt 使用 2x" \
+        FALSE "2376x1080 + 2x" "宽屏模式，XFCE/Rime/Qt 使用 2x" \
+        --print-column=2 2>/dev/null) || return 0
+
+    case $choice in
+        "1920x1080 + 1x") resolution=1920x1080; scale=1 ;;
+        "2560x1600 + 2x") resolution=2560x1600; scale=2 ;;
+        "2376x1080 + 2x") resolution=2376x1080; scale=2 ;;
+        *) return 0 ;;
+    esac
+
+    log_file=$(mktemp /tmp/xfce-display-profile.XXXXXX.log)
+    apply_termux_profile "$resolution" "$scale" >"$log_file" 2>&1 &
+    worker=$!
+    while kill -0 "$worker" 2>/dev/null; do
+        echo "# 正在切换到 ${resolution} + ${scale}x…"
+        sleep 0.2
+    done | zenity --progress --pulsate --auto-close --no-cancel \
+        --title="正在应用显示预设" --window-icon=preferences-desktop-display \
+        --width=430 2>/dev/null || true
+    if wait "$worker"; then
+        rc=0
+    else
+        rc=$?
+    fi
+
+    if [ "$rc" -eq 0 ]; then
+        zenity --info --title="显示预设" --window-icon=preferences-desktop-display \
+            --text="已切换到 ${resolution} + ${scale}x。\n\nVNC、XFCE、Rime/Fcitx5 和应用缩放已同步调整。" \
+            --width=430 2>/dev/null || true
+    else
+        zenity --error --title="显示预设切换失败" --window-icon=preferences-desktop-display \
+            --text="未能应用 ${resolution} + ${scale}x。\n\n详细日志：${log_file}" \
+            --width=430 2>/dev/null || true
+        return "$rc"
+    fi
+    rm -f "$log_file"
+}
+
+# ---------- 安装 XFCE 顶栏显示预设按钮（幂等） ----------
+ensure_panel_launcher() {
+    command -v xfconf-query >/dev/null 2>&1 || return 0
+    pgrep -x xfce4-panel >/dev/null 2>&1 || return 0
+
+    local item_name="xfce-display-presets.desktop"
+    local script_path plugin_id max_id=0 systray_id="" id panel_id=1 inserted=0 created=0
+    local plugin_dir desktop_file line
+    local -a panel_plugins=() new_plugins=() set_args=()
+    script_path=$(readlink -f "$0")
+
+    # 已经存在我们的 launcher 时只刷新其入口文件，不重复添加插件。
+    while read -r line; do
+        if [[ "$line" =~ ^/plugins/plugin-([0-9]+)/items.*${item_name} ]]; then
+            plugin_id=${BASH_REMATCH[1]}
+            break
+        fi
+    done < <(xfconf-query -c xfce4-panel -p /plugins -lv 2>/dev/null || true)
+
+    if [ -z "$plugin_id" ]; then
+        created=1
+        while read -r id; do
+            [[ "$id" =~ ^[0-9]+$ ]] || continue
+            (( id > max_id )) && max_id=$id
+        done < <(xfconf-query -c xfce4-panel -p /plugins -l 2>/dev/null |
+            sed -n 's#^/plugins/plugin-\([0-9][0-9]*\)$#\1#p')
+        plugin_id=$((max_id + 1))
+
+        # 找到系统托盘（Fcitx/Rime 图标所在插件）以及它所在的面板。
+        systray_id=$(xfconf-query -c xfce4-panel -p /plugins -lv 2>/dev/null |
+            sed -n 's#^/plugins/plugin-\([0-9][0-9]*\)[[:space:]]\+systray$#\1#p' | head -1)
+        for id in $(seq 1 20); do
+            if xfconf-query -c xfce4-panel -p "/panels/panel-${id}/plugin-ids" >/dev/null 2>&1; then
+                mapfile -t panel_plugins < <(xfconf-query -c xfce4-panel \
+                    -p "/panels/panel-${id}/plugin-ids" 2>/dev/null | grep -E '^[0-9]+$')
+                if [ -n "$systray_id" ] && printf '%s\n' "${panel_plugins[@]}" | grep -qx "$systray_id"; then
+                    panel_id=$id
+                    break
+                fi
+            fi
+        done
+
+        new_plugins=()
+        for id in "${panel_plugins[@]}"; do
+            new_plugins+=("$id")
+            if [ "$id" = "$systray_id" ]; then
+                new_plugins+=("$plugin_id")
+                inserted=1
+            fi
+        done
+        [ "$inserted" -eq 1 ] || new_plugins+=("$plugin_id")
+
+        xfconf-query -c xfce4-panel -p "/plugins/plugin-${plugin_id}" \
+            -n -t string -s launcher
+        xfconf-query -c xfce4-panel -p "/plugins/plugin-${plugin_id}/items" \
+            -n -a -t string -s "$item_name"
+
+        for id in "${new_plugins[@]}"; do
+            set_args+=(-t int -s "$id")
+        done
+        xfconf-query -c xfce4-panel -p "/panels/panel-${panel_id}/plugin-ids" \
+            -a "${set_args[@]}"
+    fi
+
+    plugin_dir="$HOME/.config/xfce4/panel/launcher-${plugin_id}"
+    desktop_file="$plugin_dir/$item_name"
+    mkdir -p "$plugin_dir"
+    cat > "$desktop_file" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=显示预设
+Comment=切换 Termux:X11 分辨率和桌面缩放
+Exec=$script_path --gui
+Icon=preferences-desktop-display
+Terminal=false
+StartupNotify=false
+Categories=Settings;DesktopSettings;
+EOF
+
+    if [ "$created" -eq 1 ]; then
+        xfce4-panel -r >/dev/null 2>&1 &
+    fi
 }
 
 # ---------- 方法 5：精细调整（逐项设置 UI 元素） ----------
@@ -741,7 +885,23 @@ apply_method() {
     read -p "按回车继续..."
 }
 
-# ---------- 主循环 ----------
+# ---------- 命令行入口 / 主循环 ----------
+case ${1:-} in
+    --gui)
+        show_termux_profiles_gui
+        exit $?
+        ;;
+    --profiles)
+        show_termux_profiles
+        exit 0
+        ;;
+    --install-panel-launcher)
+        ensure_panel_launcher
+        exit 0
+        ;;
+esac
+
+ensure_panel_launcher
 while true; do
     show_menu
     read -p "请输入选项: " choice
