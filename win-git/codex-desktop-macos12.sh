@@ -283,9 +283,173 @@ rebuild_better_sqlite() {
 	cp "$package_dir/build/Release/better_sqlite3.node" "$target_node"
 }
 
+# 新版 ChatGPT/Codex（26.903+）的 app.asar 要求宿主是 OpenAI 定制的 Electron
+# （内部代号 Owl，对外为 Codex Framework.framework）。官方包做了两道限制：
+#   1) 校验 app.showTaskManager，缺失则抛
+#      "Codex requires the Owl app shell; stock Electron is no longer supported."
+#   2) 运行时直接调用 Owl 私有 API（BrowserWindow.is*Supported、
+#      session.setPreferredLanguages 等），stock Electron 上缺失即崩溃。
+# 这里注入兼容层，并把校验语句改写为引入兼容层（等长替换，不破坏 asar 结构）。
+patch_owl_shell() {
+	local app_asar="$output_app/Contents/Resources/app.asar"
+	local unpacked_dir="$output_app/Contents/Resources/app.asar.unpacked"
+	[[ -f "$app_asar" ]] || die "缺少 app.asar：$app_asar"
+	mkdir -p "$unpacked_dir"
+
+	info "注入 Owl app shell 兼容层"
+	cat >"$unpacked_dir/owl-shim.js" <<'OWL_SHIM'
+// Owl app shell 兼容层
+// ---------------------------------------------------------------------------
+// 新版 ChatGPT/Codex 官方包（26.903+）的 app.asar 要求宿主是 OpenAI 定制的
+// Electron（内部代号 Owl / 对外为 Codex Framework.framework），做了两道限制：
+//   1) 运行时校验 app.showTaskManager 存在，否则抛
+//      "Codex requires the Owl app shell; stock Electron is no longer supported."
+//   2) 运行时直接调用 Owl 私有 API（BrowserWindow.is*Supported、
+//      session.setPreferredLanguages 等），缺失即崩溃。
+//
+// 本文件为 stock Electron 补齐这些私有 API，使其能继续启动。
+//
+// 实现要点：
+//   - 打包器（esbuild/vite）会把 electron 模块包装成副本，因此"替换导出对象属性"
+//     （例如让 BrowserWindow 指向 Proxy）不生效；必须把方法写到**原始对象**上，
+//     副本与原始对象共享同一引用，这样才有效。
+//   - Electron 的 session 只能在 app ready 之后访问
+//     （否则抛 "Session can only be received when app is ready"），
+//     因此 Session 的补齐必须延迟到 whenReady 回调中。
+//   - 能力查询类 API 返回 undefined（= false），让调用方走"不支持"的降级分支，
+//     功能减弱但不会崩溃。
+//   - macOS 12 上 GPU/网络子进程沙箱初始化失败会导致
+//     FATAL "GPU process isn't usable"，故默认关闭沙箱，双击 .app 即可启动。
+//
+// 由 codex-desktop-macos12.sh 生成，被 app.asar 内早期入口以绝对路径 require。
+(function () {
+  try {
+    var e = require('electron');
+    var noop = function () { return undefined; };
+
+    // macOS 12：关闭子进程沙箱，避免 GPU 进程反复崩溃后被判定不可用而退出
+    try { e.app.commandLine.appendSwitch('no-sandbox'); } catch (x) {}
+
+    // 需要补齐的静态/单例 API
+    var patchStatic = {
+      app: [
+        'showTaskManager',
+        'setDebugChromePagesEnabled',
+        'setRuntimeFeatures',
+        'isRuntimeFeatureEnabled',
+        'beginNativeMenuTracking',
+        'endNativeMenuTracking',
+        'hideOthers',
+        'showAll'
+      ],
+      BrowserWindow: [
+        'isAlwaysOnTopSupported',
+        'isInputShapeSupported',
+        'isSystemBackdropSupported'
+      ],
+      Notification: ['getPermissionStatus'],
+      systemPreferences: ['getFontFamilies'],
+      session: ['clearForLogout']
+    };
+
+    // 需要补齐的实例方法（写到原型上，对所有实例生效）
+    var patchProto = {
+      webContents: [
+        'setPageCapturePaintLeaseEnabled',
+        'getExtensionActions',
+        'showExtensionActionContextMenu',
+        'triggerExtensionAction'
+      ]
+    };
+
+    // 归属对象不确定的私有 API：在多个候选宿主上都补（补在不存在的位置无害）
+    var ambiguous = ['setPreferredLanguages', 'getDownloadHistory'];
+
+    function apply(target, names) {
+      if (!target) return;
+      for (var i = 0; i < names.length; i++) {
+        var n = names[i];
+        if (n in target) continue;
+        try {
+          target[n] = noop;
+        } catch (x) {
+          try { Object.defineProperty(target, n, { value: noop, configurable: true }); } catch (y) {}
+        }
+      }
+    }
+
+    Object.keys(patchStatic).forEach(function (k) { apply(e[k], patchStatic[k]); });
+    Object.keys(patchProto).forEach(function (k) {
+      var C = e[k];
+      if (C && C.prototype) apply(C.prototype, patchProto[k]);
+    });
+
+    // 立即补齐：app / webContents 原型 / 所有导出对象及其原型（尽力而为）
+    apply(e.app, ambiguous);
+    if (e.webContents && e.webContents.prototype) apply(e.webContents.prototype, ambiguous);
+    try {
+      Object.keys(e).forEach(function (k) {
+        try {
+          var v = e[k];
+          if (v == null) return;
+          try { apply(v, ambiguous); } catch (x) {}
+          try { if (typeof v === 'function' && v.prototype) apply(v.prototype, ambiguous); } catch (x) {}
+        } catch (x) {}
+      });
+    } catch (err) {}
+
+    // 延迟补齐：Session 只能在 app ready 后访问。
+    // shim 比启动流程更早注册 whenReady，因此本回调会先于业务代码执行。
+    try {
+      e.app.whenReady().then(function () {
+        try {
+          var ds = e.session && e.session.defaultSession;
+          var proto = ds && ds.constructor && ds.constructor.prototype;
+          if (proto) apply(proto, ambiguous);
+        } catch (x) {}
+      });
+    } catch (x) {}
+  } catch (err) {}
+})();
+OWL_SHIM
+
+	info "改写 app.asar 内的 Owl shell 校验"
+	OWL_APP_ASAR="$app_asar" node <<'PATCH_JS'
+const fs = require('fs');
+const file = process.env.OWL_APP_ASAR;
+const buf = fs.readFileSync(file);
+const marker = 'Codex requires the Owl app shell';
+const m = buf.indexOf(Buffer.from(marker, 'utf8'));
+if (m < 0) {
+  console.log('未发现 Owl shell 校验（官方可能已放宽），跳过改写');
+  process.exit(0);
+}
+// 校验语句形如：if(<条件>)throw Error(`Codex requires the Owl app shell; ...`);
+// 以 marker 为锚点向前找 if( 、向后找语句结尾，避免依赖压缩后的变量名。
+const ifIdx = buf.lastIndexOf(Buffer.from('if(', 'utf8'), m);
+if (ifIdx < 0) { console.error('未找到校验语句起点 if('); process.exit(1); }
+const tailIdx = buf.indexOf(Buffer.from('`);', 'utf8'), m);
+if (tailIdx < 0) { console.error('未找到校验语句结尾'); process.exit(1); }
+const end = tailIdx + 3;
+const span = end - ifIdx;
+const stmt = 'require(process.resourcesPath+"/app.asar.unpacked/owl-shim.js");';
+if (stmt.length > span) {
+  console.error('可用空间不足：需要 ' + stmt.length + ' 字节，实际 ' + span + ' 字节');
+  process.exit(1);
+}
+buf.fill(0x20, ifIdx, end);
+Buffer.from(stmt, 'utf8').copy(buf, ifIdx);
+fs.writeFileSync(file, buf);
+console.log('已改写 Owl 校验 -> 引入兼容层（可用 ' + span + ' 字节，使用 ' + stmt.length + ' 字节）');
+PATCH_JS
+}
+
 if ((rebuild_native == 1)); then
 	rebuild_better_sqlite
 fi
+
+# 官方包已改用 Owl shell，stock Electron 必须打兼容层才能启动。
+patch_owl_shell
 
 # 使用官方应用名称和图标，最低系统版本改为 Monterey；这不是绕过 Electron 框架检查，
 # 真正的兼容性来自 Electron 43 的 Chromium/原生框架。
