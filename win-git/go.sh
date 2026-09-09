@@ -3,9 +3,12 @@
 # 确保 toolsinit.sh 已加载
 source "$(dirname "$0")/toolsinit.sh"
 
+# 任一步骤失败时立即停止，避免下载或解压失败后仍然删除旧版本并提示成功
+set -e
+
 # --- 配置 ---
 # 您可以在这里更改希望安装的 Go 版本
-GO_VERSION="1.24.5"
+GO_VERSION="1.26.6"
 # 国内用户可以考虑使用: https://golang.google.cn/dl/
 GO_DOWNLOAD_HOST="https://go.dev/dl"
 
@@ -28,6 +31,7 @@ esac
 case "$PLATFORM" in
   win) GO_PLATFORM="windows" ;;
   wslinux) GO_PLATFORM="linux" ;;
+  macos) GO_PLATFORM="darwin" ;;
   *) GO_PLATFORM=$PLATFORM ;;
 esac
 
@@ -47,12 +51,17 @@ SOFT_URL="${GO_DOWNLOAD_HOST}/${SOFT_FILE_PACK}"
 # 3. 下载和解压
 cache_downloader "$SOFT_FILE_PACK" "$SOFT_URL"
 # Go 的压缩包解压后文件夹名是 go
+rm -rf "$(cache_folder)/go"
 cache_unpacker "$SOFT_FILE_PACK" "go"
 
 # 4. 安装到工具目录
 INSTALL_DIR=$(install_path)
 GO_ROOT_DIR="$INSTALL_DIR/goroot"
 echo "正在安装到 $GO_ROOT_DIR..."
+if [[ ! -x "$(cache_folder)/go/go/bin/go" ]]; then
+  echo "错误：Go 解压结果不完整，保留现有安装。" >&2
+  exit 1
+fi
 rm -rf "$GO_ROOT_DIR"
 mv "$(cache_folder)/go/go" "$GO_ROOT_DIR"
 
@@ -81,4 +90,3 @@ echo ""
 echo "✅ Go v${GO_VERSION} 安装并配置完成！"
 echo "请重启您的终端或运行 'source ~/.zshrc' 来使配置生效。"
 echo "您可以通过运行 'go version' 来验证安装。"
-
