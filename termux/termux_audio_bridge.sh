@@ -27,10 +27,14 @@ module_loaded() {
 
 find_module_file() {
   local name="$1"
-  local base
+  local base path
   for base in "$PREFIX/lib/pulseaudio/modules" "$PREFIX/lib/pulse" "$PREFIX/lib"; do
     [ -d "$base" ] || continue
-    find "$base" -type f -name "${name}.so" -print -quit 2>/dev/null && return 0
+    path="$(find "$base" -type f -name "${name}.so" -print -quit 2>/dev/null)"
+    if [ -n "$path" ]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
   done
   return 1
 }

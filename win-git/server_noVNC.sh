@@ -95,7 +95,8 @@ DroidSpaces_path="/run/droidspaces/container.config"
 if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
-  export PULSE_SERVER=127.0.0.1
+  export PULSE_SERVER=tcp:127.0.0.1:4713
+  ~/sh/termux/newhome_mic_bridge.sh start >/tmp/newhome-mic-xfce-start.log 2>&1 || true
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
   #source  ~/tools/rc/allToolsrc
   zsh ~/tools/rc/allToolsrc

@@ -49,13 +49,14 @@ if [ -f ~/tools/rurima/rurima ]; then
   #sudo $busybox mount --bind $PREFIX/tmp $CHROOT_DIR/tmp
   unset LD_PRELOAD LD_DEBUG
 
-  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 && \
+  sudo rurima ruri -m /sdcard /sdcard -m /data/data/com.termux/files/usr/tmp /tmp -m /dev /dev -m /dev/pts /dev/pts -m /dev/shm /dev/shm -m /sys /sys -m /proc /proc -p $DEBIAN_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=tcp:127.0.0.1:4713 && \
     export GTK_IM_MODULE="fcitx" &&
     export QT_IM_MODULE="fcitx" &&
     export XMODIFIERS="@im=fcitx" &&
     '"$DRIVER_ENV"' \
     #fcitx5 & 
     source ~/tools/rc/allToolsrc
+  ~/sh/termux/newhome_mic_bridge.sh start >/tmp/newhome-mic-xfce-start.log 2>&1 || true
   dbus-launch --exit-with-session startxfce4'
 elif [ -n "$busybox" ]; then
   # Execute chroot script
@@ -70,12 +71,13 @@ elif [ -n "$busybox" ]; then
   test -f $termux_gitcredentials && sudo cp $termux_gitcredentials $CHROOT_DIR/root/
 
   unset LD_PRELOAD LD_DEBUG
-  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=127.0.0.1 &&
+  sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'export DISPLAY=:0 && export PULSE_SERVER=tcp:127.0.0.1:4713 &&
     export GTK_IM_MODULE="fcitx" &&
     export QT_IM_MODULE="fcitx" &&
     export XMODIFIERS="@im=fcitx" &&
     '"$DRIVER_ENV"' \
     zsh ~/tools/rc/allToolsrc
+  ~/sh/termux/newhome_mic_bridge.sh start >/tmp/newhome-mic-xfce-start.log 2>&1 || true
   dbus-launch --exit-with-session startxfce4'
 #startxfce4'
 #vncserver -kill :0 && \

@@ -924,6 +924,17 @@ case ${1:-} in
         ensure_panel_launcher
         exit 0
         ;;
+    --install-panel-launcher-wait)
+        for _ in {1..60}; do
+            if pgrep -x xfce4-panel >/dev/null 2>&1; then
+                ensure_panel_launcher
+                exit $?
+            fi
+            sleep 1
+        done
+        echo "等待 xfce4-panel 启动超时，未安装显示预设按钮。" >&2
+        exit 1
+        ;;
 esac
 
 ensure_panel_launcher

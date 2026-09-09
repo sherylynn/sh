@@ -137,6 +137,10 @@ cat > "$WRAPPER" <<'EOF'
 set -Eeuo pipefail
 
 readonly APP="/usr/lib/chatgpt/ChatGPT"
+export PULSE_SERVER="${PULSE_SERVER:-tcp:127.0.0.1:4713}"
+if [[ -x /root/sh/termux/newhome_mic_bridge.sh ]]; then
+  /root/sh/termux/newhome_mic_bridge.sh start >/tmp/newhome-mic-chatgpt-start.log 2>&1 || true
+fi
 if (( EUID == 0 )); then
   exec "$APP" --no-sandbox "$@"
 fi

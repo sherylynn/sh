@@ -99,6 +99,7 @@ configure_debian_chroot() {
   unset LD_PRELOAD LD_DEBUG
   #在chroot里面执行配置文件
   #sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
+  # 全新 proot rootfs 的真实系统配置入口；其中会安装麦克风桥和 XFCE 显示预设按钮。
   sudo $busybox chroot $CHROOT_DIR /bin/su - root -c 'zsh /root/sh/win-git/server_configure.sh'
 
 }

@@ -27,4 +27,5 @@ cd ../../
 vncserver --localhost
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
 export DISPLAY=":1"
+export PULSE_SERVER="tcp:127.0.0.1:4713"
 xfce4-session &
