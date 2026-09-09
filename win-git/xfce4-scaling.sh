@@ -423,6 +423,31 @@ restart_fcitx5_scaled() {
         XMODIFIERS=@im=fcitx5 \
         fcitx5 -d >/dev/null 2>&1 &
 }
+
+# ---------- 恢复应用的逻辑基准尺寸 ----------
+# Gdk/WindowScalingFactor 已负责 1x/2x 物理缩放；这里的逻辑尺寸不能再乘倍数，
+# 否则工具栏、Thunar 图标和面板会形成双重缩放。
+reset_logical_ui_sizes() {
+    xfconf-query -c xsettings -p /Gtk/FontName -s "Sans 10" 2>/dev/null || true
+    xfconf-query -c xsettings -p /Gtk/MonospaceFontName -s "Monospace 10" 2>/dev/null || true
+
+    # Gtk/ToolbarIconSize 是 GTK 图标尺寸枚举，不是像素；清除旧脚本写入的 24/48。
+    xfconf-query -c xsettings -p /Gtk/ToolbarIconSize -r 2>/dev/null || true
+    xfconf-query -c xsettings -p /Gtk/IconSizes -s "" 2>/dev/null || true
+    xfconf-query -c xsettings -p /Gtk/CursorThemeSize -s 0 2>/dev/null || true
+
+    xfconf-query -c xfce4-panel -p /panels/panel-1/size -s 26 2>/dev/null || true
+    xfconf-query -c xfce4-panel -p /panels/panel-1/icon-size -s 16 2>/dev/null || true
+    xfconf-query -c xfce4-panel -p /panels/panel-2/size -s 48 2>/dev/null || true
+    xfconf-query -c xfwm4 -p /general/title_font -s "Sans Bold 9" 2>/dev/null || true
+    xfconf-query -c xfwm4 -p /general/button-icon-size -r 2>/dev/null || true
+
+    # 清除精细缩放留下的固定像素值，让 Thunar 回到自身的缩放级别管理。
+    xfconf-query -c thunar -p /default-view-icon-size -r 2>/dev/null || true
+    xfconf-query -c thunar -p /compact-view-icon-size -r 2>/dev/null || true
+    xfconf-query -c thunar -p /last-icon-view-zoom-level \
+        -s THUNAR_ZOOM_LEVEL_100_PERCENT 2>/dev/null || true
+}
 # ---------- 方法 3：XFCE 全局整数缩放（真·视网膜，最清晰，推荐） ----------
 # 原理：屏幕物理分辨率保持原生（termux displayScale 必须=100/native，帧缓冲与物理屏 1:1 不缩放），
 #       再让 XFCE 把 UI 按整数倍绘制 → 1584x720 逻辑桌面以 3168x1440 原生渲染，
@@ -443,6 +468,7 @@ apply_gdk_int() {
     xfconf-query -c xsettings -p /Gdk/WindowScalingFactor -s "$gdk"
     # 保持干净基准 DPI：WindowScalingFactor 已负责缩放字体，不要再放大 Xft/DPI（否则字体翻倍变糊/过大）
     xfconf-query -c xsettings -p /Xft/DPI -s "$BASE_DPI"
+    reset_logical_ui_sizes
     update_fcitx5_classicui "$gdk"
     # Qt 程序：用环境变量（仅影响之后启动的 Qt 程序）；GTK 已由 WindowScalingFactor 处理，故不设 GDK_SCALE
     write_env qt_only "$gdk"
@@ -698,7 +724,7 @@ apply_fine() {
     # 计算各项缩放后的值（沿用原始基准）
     local BASE_FONT_SIZE=10 BASE_PANEL1_SIZE=26 BASE_PANEL1_ICON=16 BASE_PANEL2_SIZE=48
     local BASE_CURSOR_SIZE=16 BASE_DESKTOP_ICON_SIZE=48 BASE_THUNAR_ICON_SIZE=48
-    local BASE_THUNAR_COMPACT_ICON=36 BASE_WM_BUTTON_ICON=16 BASE_TOOLBAR_ICON_SIZE=24
+    local BASE_THUNAR_COMPACT_ICON=36 BASE_WM_BUTTON_ICON=16
     local BASE_WM_TITLE_FONT="Sans Bold"
 
     local font_size=$(python3 -c "print(int(${BASE_FONT_SIZE} * ${scale}))")
@@ -711,7 +737,6 @@ apply_fine() {
     local thunar_icon_size=$(python3 -c "print(int(${BASE_THUNAR_ICON_SIZE} * ${scale}))")
     local thunar_compact_icon=$(python3 -c "print(int(${BASE_THUNAR_COMPACT_ICON} * ${scale}))")
     local wm_button_icon=$(python3 -c "print(int(${BASE_WM_BUTTON_ICON} * ${scale}))")
-    local toolbar_icon_size=$(python3 -c "print(int(${BASE_TOOLBAR_ICON_SIZE} * ${scale}))")
 
     font_size=$(python3 -c "print(max(8, ${font_size}))")
     panel1_size=$(python3 -c "print(max(20, ${panel1_size}))")
@@ -723,7 +748,6 @@ apply_fine() {
     thunar_icon_size=$(python3 -c "print(max(24, ${thunar_icon_size}))")
     thunar_compact_icon=$(python3 -c "print(max(16, ${thunar_compact_icon}))")
     wm_button_icon=$(python3 -c "print(max(8, ${wm_button_icon}))")
-    toolbar_icon_size=$(python3 -c "print(max(16, ${toolbar_icon_size}))")
 
     echo ""
     echo -e "${YELLOW}正在精细应用 (${scale}x)...${NC}"
@@ -731,7 +755,8 @@ apply_fine() {
     xfconf-query -c xsettings -p /Xft/DPI -s "$dpi" 2>/dev/null || true
     xfconf-query -c xsettings -p /Gtk/FontName -s "Sans ${font_size}" 2>/dev/null || true
     xfconf-query -c xsettings -p /Gtk/MonospaceFontName -s "Monospace ${font_size}" 2>/dev/null || true
-    xfconf-query -c xsettings -p /Gtk/ToolbarIconSize -s "$toolbar_icon_size" --create 2>/dev/null || true
+    # ToolbarIconSize 是 GTK 枚举而不是像素，不随 scale 写入 24/48；交给 GTK/GDK 缩放。
+    xfconf-query -c xsettings -p /Gtk/ToolbarIconSize -r 2>/dev/null || true
     xfconf-query -c xsettings -p /Gtk/CursorThemeSize -s "$cursor_size" 2>/dev/null || true
     xfconf-query -c xfce4-panel -p /panels/panel-1/size -s "$panel1_size" 2>/dev/null || true
     xfconf-query -c xfce4-panel -p /panels/panel-1/icon-size -s "$panel1_icon" 2>/dev/null || true
