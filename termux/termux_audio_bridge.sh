@@ -7,6 +7,8 @@ PULSE_PORT="${PULSE_PORT:-4713}"
 PULSE_SERVER_ADDR="tcp:127.0.0.1:${PULSE_PORT}"
 MODULE_TCP_ARGS="auth-ip-acl=127.0.0.1 auth-anonymous=1 port=${PULSE_PORT}"
 PROFILE_FILE="/etc/profile.d/termux-pulse.sh"
+STATE_DIR="${PREFIX}/var/run/termux_audio_bridge"
+TCP_MODULE_ID_FILE="${STATE_DIR}/tcp_module_id"
 
 log() { printf '[termux-audio] %s\n' "$*"; }
 warn() { printf '[termux-audio] WARN: %s\n' "$*" >&2; }
@@ -50,13 +52,18 @@ ensure_pulseaudio() {
 
 ensure_tcp_module() {
   if module_loaded module-native-protocol-tcp; then
-    log "module-native-protocol-tcp 已加载"
+    log "module-native-protocol-tcp 已由现有环境加载，直接复用"
     return 0
   fi
 
   log "加载 module-native-protocol-tcp (127.0.0.1:${PULSE_PORT})"
-  pactl load-module module-native-protocol-tcp $MODULE_TCP_ARGS >/dev/null || \
+  local id
+  id="$(pactl load-module module-native-protocol-tcp $MODULE_TCP_ARGS 2>/dev/null)" || \
     die "无法加载 module-native-protocol-tcp"
+  [ -n "$id" ] || die "PulseAudio 未返回 module id"
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$id" > "$TCP_MODULE_ID_FILE"
+  log "本工具加载的 native TCP module id=$id"
 }
 
 try_load_android_audio() {
@@ -188,17 +195,25 @@ start_bridge() {
 stop_bridge() {
   if ! pulse_running; then
     log "PulseAudio 未运行"
+    rm -f "$TCP_MODULE_ID_FILE" 2>/dev/null || true
     return 0
   fi
 
-  local ids
-  ids="$(pactl list short modules 2>/dev/null | awk '$2=="module-native-protocol-tcp" {print $1}')"
-  if [ -n "$ids" ]; then
-    while read -r id; do
-      [ -n "$id" ] && pactl unload-module "$id" >/dev/null 2>&1 || true
-    done <<< "$ids"
-    log "已卸载 native TCP bridge"
+  if [ -f "$TCP_MODULE_ID_FILE" ]; then
+    local id current_name
+    id="$(cat "$TCP_MODULE_ID_FILE" 2>/dev/null || true)"
+    current_name="$(pactl list short modules 2>/dev/null | awk -v id="$id" '$1==id {print $2; exit}')"
+    if [ -n "$id" ] && [ "$current_name" = "module-native-protocol-tcp" ]; then
+      pactl unload-module "$id" >/dev/null 2>&1 || true
+      log "已卸载本工具创建的 native TCP module id=$id"
+    else
+      warn "记录的 module id 已不存在或已复用，不执行卸载"
+    fi
+    rm -f "$TCP_MODULE_ID_FILE" 2>/dev/null || true
+  else
+    log "没有本工具创建的 TCP module 记录；保留现有 native-protocol-tcp"
   fi
+
   log "未停止 PulseAudio 本体，避免影响你现有 tstart 服务"
 }
 
@@ -207,15 +222,19 @@ test_bridge() {
   ensure_tcp_module
   log "Termux 本地播放测试"
   if have paplay; then
-    local wav=""
-    for wav in \
+    local wav="" candidate played=false
+    for candidate in \
       "$PREFIX/share/sounds/freedesktop/stereo/complete.oga" \
       "$PREFIX/share/sounds/freedesktop/stereo/bell.oga"; do
-      if [ -f "$wav" ]; then
-        paplay "$wav" && break
+      if [ -f "$candidate" ]; then
+        wav="$candidate"
+        if paplay "$wav"; then
+          played=true
+          break
+        fi
       fi
     done
-    [ -n "$wav" ] || warn "未找到系统测试音频；可手动执行 paplay <wav-file>"
+    [ "$played" = true ] || warn "未完成系统测试音频播放；可手动执行 paplay <wav-file>"
   else
     warn "没有 paplay，跳过 Termux 本地播放测试"
   fi
@@ -244,7 +263,7 @@ Commands:
   status         显示当前 sinks/sources/modules
   chroot-config  在 chroot 写入 /etc/profile.d/termux-pulse.sh
   test           测试 Termux 与 chroot PulseAudio 连通性
-  stop           仅卸载 native TCP bridge，不停止 PulseAudio 本体
+  stop           仅卸载本工具自行创建的 TCP bridge，不停止 PulseAudio 本体
 
 Environment:
   PULSE_PORT=4713 可覆盖默认端口
