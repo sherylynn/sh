@@ -7,12 +7,14 @@
 - noVNC 默认客户端参数：Tight、compression 2、quality 6。
 - 目标：保持 noVNC 远程调整大小稳定，在此基础上逐项验证性能参数。
 
-稳定基线：
+测试开始时的稳定基线：
 
 ```text
 -noshm -shared -noxdamage -noxfixes -cursor arrow -nowf -noscr
 -xrandr resize -reopen -loop500
 ```
+
+测试结束后按实际使用需求启用 XFixes，并将固定箭头改为 `-cursor most`；其余性能相关参数不变。
 
 测试使用 `termux/chroot/remote/rfb_load_client.c` 模拟已认证的 noVNC 客户端，并在持续画面更新时切换分辨率。CPU 数值只适合在本机同轮测试中横向比较，不能当作绝对基准。
 
@@ -23,7 +25,7 @@
 | 稳定基线 | CPU 约 2.61%，682 次更新，调整大小后连接和进程均存活 | 保留 |
 | 启用 XDamage | CPU 约 6.36%；无客户端持续绘制时约 34% | 拒绝，保留 `-noxdamage` |
 | 启用 MIT-SHM | `shmget(scanline) failed: Function not implemented`，监听子进程退出 | 拒绝，保留 `-noshm` |
-| 启用 XFixes | CPU 约 2.24%，1264 次更新，未崩溃 | 性能无明确收益，且鼠标视觉效果尚未人工验收；保留 `-noxfixes` |
+| 启用 XFixes | CPU 约 2.24%，1264 次更新，未崩溃 | 为获得文本、缩放、拖动等动态鼠标形状，启用并使用 `-cursor most` |
 | `-wait 5` | CPU 约 3.01%，641 次更新 | 拒绝 |
 | `-defer 5` | CPU 约 3.15%，820 次更新；一次尺寸同步滞后 | 拒绝 |
 | 启用 scroll-copy | CPU 约 3.14%，325 次更新，未观察到有效 CopyRect 命中 | 拒绝，保留 `-noscr` |
@@ -45,5 +47,4 @@
 
 ## 结论
 
-本轮没有找到可以在当前设备上稳定提高性能的 x11vnc 开关。生产启动参数保持不变，已经是这组候选中最稳妥的组合。后续若继续优化，应优先做真实浏览器中的画质、输入延迟和长时间稳定性验收，而不是同时开启多个服务端实验参数。
-
+本轮没有找到可以在当前设备上稳定提高性能的 x11vnc 开关。性能相关参数保持基线；XFixes 虽无性能收益，但其动态鼠标形状属于必要功能，因此生产配置启用 XFixes 并从固定 `-cursor arrow` 改为 `-cursor most`。后续若继续优化，应优先做真实浏览器中的画质、输入延迟和长时间稳定性验收，而不是同时开启多个服务端实验参数。
