@@ -1,12 +1,17 @@
 #!/bin/bash
 . $(dirname "$0")/toolsinit.sh
-AUTHOR=novnc
+
 NAME=noVNC
 TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
-SOFT_VERSION=$(get_github_release_version $AUTHOR/$NAME)
-echo "soft version is $SOFT_VERSION"
+
+# 默认使用自己的 noVNC fork。需要临时切回其他仓库时可覆盖 NOVNC_GIT_URL。
+NOVNC_GIT_URL=${NOVNC_GIT_URL:-https://github.com/sherylynn/noVNC.git}
+NOVNC_BRANCH=${NOVNC_BRANCH:-master}
+
+echo "noVNC repository: $NOVNC_GIT_URL"
+echo "noVNC branch: $NOVNC_BRANCH"
 
 case $(arch) in
   amd64) SOFT_ARCH=x86_64 ;;
@@ -14,32 +19,24 @@ case $(arch) in
   armhf) SOFT_ARCH=armhf ;;
   aarch64) SOFT_ARCH=aarch64 ;;
 esac
-# uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-PLATFORM=$(platform)
-SOFT_FILE_NAME=${SOFT_VERSION}
-SOFT_FILE_PACK=${SOFT_FILE_NAME}.zip
 
-SOFT_URL=https://github.com/${AUTHOR}/${NAME}/archive/refs/tags/${SOFT_VERSION}
-SOFT_GIT_URL=https://github.com/${AUTHOR}/${NAME}
+PLATFORM=$(platform)
 
 if [[ $(platform) == *linux* ]]; then
-  #  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  git clone ${SOFT_GIT_URL} ${SOFT_HOME}
-  cd ${SOFT_HOME}
-  git pull
+  if [ -d "${SOFT_HOME}/.git" ]; then
+    echo "updating existing noVNC checkout: ${SOFT_HOME}"
+    git -C "${SOFT_HOME}" remote set-url origin "${NOVNC_GIT_URL}"
+    git -C "${SOFT_HOME}" fetch --depth 1 origin "${NOVNC_BRANCH}"
+    git -C "${SOFT_HOME}" checkout -B "${NOVNC_BRANCH}" "origin/${NOVNC_BRANCH}"
+  else
+    rm -rf "${SOFT_HOME}"
+    git clone --depth 1 --branch "${NOVNC_BRANCH}" "${NOVNC_GIT_URL}" "${SOFT_HOME}"
+  fi
+
   sudo apt purge kasmvncserver -y
   sudo apt autoremove -y
   sudo apt install python3-numpy x11vnc tigervnc-standalone-server tigervnc-tools -y
-  #  rm -rf ${SOFT_HOME} && mkdir -p ${SOFT_HOME}
-  #  cp $(cache_folder)/${SOFT_FILE_PACK} ${SOFT_HOME}/${SOFT_FILE_NAME}
-  #  chmod 777 ${SOFT_HOME}/${SOFT_FILE_NAME}
-  echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
-  cd ${SOFT_HOME}/../../
-  #rm -rf /tmp/.X*
-  #rm -rf /tmp/.x*
-  #vncserver -kill :0
-  #vncserver -geometry 1920x966 :0
-  #./tools/noVNC/utils/novnc_proxy --vnc 127.0.0.1:5900 --listen 10000
 
-#  ./systemd_novnc.sh
+  echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
+  echo "noVNC installed from ${NOVNC_GIT_URL} (${NOVNC_BRANCH})"
 fi
