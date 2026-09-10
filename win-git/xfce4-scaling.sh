@@ -580,33 +580,49 @@ show_termux_profiles_gui() {
         return 1
     fi
 
-    local current_res current_scale choice resolution scale worker rc log_file
+    local current_res current_scale choice resolution scale action target worker rc log_file
     current_res=$(xrandr 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1x\2/p' | head -1)
     current_scale=$(xfconf-query -c xsettings -p /Gdk/WindowScalingFactor 2>/dev/null || echo 1)
 
     choice=$(zenity --list --radiolist \
         --title="显示预设" \
         --window-icon=preferences-desktop-display \
-        --width=520 --height=300 \
-        --text="当前：${current_res:-未知} + ${current_scale}x\n请选择要切换的显示配置：" \
-        --column="选择" --column="预设" --column="说明" \
-        TRUE  "1920x1080 + 1x" "较大桌面空间，应用保持 1x" \
-        FALSE "2560x1600 + 2x" "高分辨率，XFCE/Rime/Qt 使用 2x" \
-        FALSE "2376x1080 + 2x" "宽屏模式，XFCE/Rime/Qt 使用 2x" \
-        --print-column=2 2>/dev/null) || return 0
+        --width=760 --height=520 \
+        --text="当前：${current_res:-未知} + ${current_scale}x\nnoVNC 只负责分辨率；也可以保持当前分辨率，单独调整 Linux 界面缩放。" \
+        --column="选择" --column="操作ID" --column="类型" --column="设置" --column="说明" \
+        TRUE  "profile-1920-1" "分辨率 + 缩放" "1920x1080 + 1x" "普通分辨率，应用使用 1x" \
+        FALSE "profile-2560-2" "分辨率 + 缩放" "2560x1600 + 2x" "高分辨率，应用使用 2x" \
+        FALSE "profile-2376-2" "分辨率 + 缩放" "2376x1080 + 2x" "宽屏模式，应用使用 2x" \
+        FALSE "scale-current-1" "仅界面缩放" "保持当前分辨率 + 1x" "不改变 noVNC/Termux:X11 分辨率" \
+        FALSE "scale-current-2" "仅界面缩放" "保持当前分辨率 + 2x" "高分屏推荐，XFCE/Rime/Qt 使用 2x" \
+        FALSE "scale-current-3" "仅界面缩放" "保持当前分辨率 + 3x" "超高分辨率使用 3x" \
+        --hide-column=2 --print-column=2 2>/dev/null) || return 0
 
     case $choice in
-        "1920x1080 + 1x") resolution=1920x1080; scale=1 ;;
-        "2560x1600 + 2x") resolution=2560x1600; scale=2 ;;
-        "2376x1080 + 2x") resolution=2376x1080; scale=2 ;;
+        profile-1920-1) action=profile; resolution=1920x1080; scale=1 ;;
+        profile-2560-2) action=profile; resolution=2560x1600; scale=2 ;;
+        profile-2376-2) action=profile; resolution=2376x1080; scale=2 ;;
+        scale-current-1) action=scale; scale=1 ;;
+        scale-current-2) action=scale; scale=2 ;;
+        scale-current-3) action=scale; scale=3 ;;
         *) return 0 ;;
     esac
 
     log_file=$(mktemp /tmp/xfce-display-profile.XXXXXX.log)
-    apply_termux_profile "$resolution" "$scale" >"$log_file" 2>&1 &
+    if [ "$action" = profile ]; then
+        target="${resolution} + ${scale}x"
+        apply_termux_profile "$resolution" "$scale" >"$log_file" 2>&1 &
+    else
+        target="当前分辨率 ${current_res:-未知} + ${scale}x"
+        (
+            exec 9>/tmp/xfce-remote-resize.lock
+            flock 9
+            apply_gdk_int "$scale"
+        ) >"$log_file" 2>&1 &
+    fi
     worker=$!
     while kill -0 "$worker" 2>/dev/null; do
-        echo "# 正在切换到 ${resolution} + ${scale}x…"
+        echo "# 正在应用 ${target}…"
         sleep 0.2
     done | zenity --progress --pulsate --auto-close --no-cancel \
         --title="正在应用显示预设" --window-icon=preferences-desktop-display \
@@ -619,11 +635,11 @@ show_termux_profiles_gui() {
 
     if [ "$rc" -eq 0 ]; then
         zenity --info --title="显示预设" --window-icon=preferences-desktop-display \
-            --text="已切换到 ${resolution} + ${scale}x。\n\nVNC、XFCE、Rime/Fcitx5 和应用缩放已同步调整。" \
+            --text="已应用 ${target}。\n\nXFCE、Rime/Fcitx5 和应用缩放已同步调整。" \
             --width=430 2>/dev/null || true
     else
         zenity --error --title="显示预设切换失败" --window-icon=preferences-desktop-display \
-            --text="未能应用 ${resolution} + ${scale}x。\n\n详细日志：${log_file}" \
+            --text="未能应用 ${target}。\n\n详细日志：${log_file}" \
             --width=430 2>/dev/null || true
         return "$rc"
     fi
