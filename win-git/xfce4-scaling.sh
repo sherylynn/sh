@@ -13,6 +13,11 @@
 
 set -e
 
+# 本脚本也会由 x11vnc 的 LD_PRELOAD 适配回调启动。该变量不能继续传给
+# chroot 后的 Android/Termux 动态链接器，否则宿主 env/am 会因找不到 Debian
+# 路径下的适配库而拒绝启动。
+unset LD_PRELOAD LD_DEBUG
+
 # ---------- 基准值 ----------
 BASE_DPI=100
 

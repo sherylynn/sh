@@ -4,6 +4,7 @@
 #include <rfb/rfbproto.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -41,6 +42,8 @@ static int newhome_set_desktop_size(int width, int height, int num_screens,
         long max_fd = sysconf(_SC_OPEN_MAX);
         if (max_fd < 0 || max_fd > 65536) max_fd = 65536;
         setsid();
+        unsetenv("LD_PRELOAD");
+        unsetenv("LD_DEBUG");
         for (int fd = 3; fd < max_fd; ++fd) close(fd);
         snprintf(geometry, sizeof(geometry), "%dx%d", width, height);
         execl("/root/sh/win-git/xfce4-scaling.sh", "xfce4-scaling.sh",
