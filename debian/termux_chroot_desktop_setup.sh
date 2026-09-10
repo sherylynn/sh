@@ -6,6 +6,7 @@ if (( EUID != 0 )); then
 fi
 
 SCALING_SCRIPT=/root/sh/win-git/xfce4-scaling.sh
+TRAY_SCRIPT=/root/sh/win-git/xfce_display_tray.py
 RESIZE_SOURCE=/root/sh/win-git/x11vnc_remote_resize.c
 RESIZE_LIBRARY=/root/.local/lib/x11vnc_remote_resize.so
 AUTOSTART_DIR=/root/.config/autostart
@@ -20,8 +21,8 @@ trap cleanup EXIT
 bash /root/sh/debian/newhome_mic_bridge_setup.sh
 
 # The display preset launcher uses a native mouse-driven Zenity dialog.
-apt-get install -y zenity libnotify-bin x11vnc gcc binutils libvncserver-dev
-chmod 0755 "$SCALING_SCRIPT"
+apt-get install -y zenity libnotify-bin python3-gi gir1.2-gtk-3.0 x11vnc gcc binutils libvncserver-dev
+chmod 0755 "$SCALING_SCRIPT" "$TRAY_SCRIPT"
 if [ ! -f "$RESIZE_SOURCE" ]; then
     echo "缺少 noVNC 远程分辨率适配源码：$RESIZE_SOURCE" >&2
     exit 1
@@ -41,14 +42,17 @@ mkdir -p "$AUTOSTART_DIR"
 cat > "$AUTOSTART_DIR/xfce-display-presets-panel.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Install XFCE Display Presets Button
-Comment=Add the Termux:X11 resolution and scaling presets beside the system tray
-Exec=$SCALING_SCRIPT --install-panel-launcher-wait
+Name=Termux:X11 Display Tray
+Comment=Termux:X11 resolution and Linux UI scaling menu
+Exec=$TRAY_SCRIPT
 Terminal=false
 Hidden=false
 X-GNOME-Autostart-enabled=true
 OnlyShowIn=XFCE;
 EOF
 chmod 0644 "$AUTOSTART_DIR/xfce-display-presets-panel.desktop"
+
+# Migrate the old panel Launcher to the real tray icon. This only removes our own item.
+DISPLAY=${DISPLAY:-:1.0} "$SCALING_SCRIPT" --remove-panel-launcher || true
 
 echo "Termux chroot 桌面集成完成：按需麦克风、XFCE 显示按钮和 noVNC 远程调整大小已启用。"

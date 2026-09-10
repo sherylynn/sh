@@ -731,6 +731,27 @@ EOF
     fi
 }
 
+# 从旧版 XFCE Launcher 迁移到真正的系统托盘程序。
+remove_panel_launcher() {
+    command -v xfconf-query >/dev/null 2>&1 || return 0
+    local item_name=xfce-display-presets.desktop plugin_id panel id
+    local -a old=() new=() args=()
+    plugin_id=$(xfconf-query -c xfce4-panel -p /plugins -lv 2>/dev/null |
+        sed -n "s#^/plugins/plugin-\([0-9][0-9]*\)/items.*${item_name}.*#\1#p" | head -1)
+    [ -n "$plugin_id" ] || return 0
+    for panel in $(seq 1 20); do
+        mapfile -t old < <(xfconf-query -c xfce4-panel -p "/panels/panel-${panel}/plugin-ids" 2>/dev/null |
+            grep -E '^[0-9]+$' || true)
+        new=(); args=()
+        for id in "${old[@]}"; do [ "$id" = "$plugin_id" ] || new+=("$id"); done
+        [ "${#new[@]}" -eq "${#old[@]}" ] && continue
+        for id in "${new[@]}"; do args+=(-t int -s "$id"); done
+        xfconf-query -c xfce4-panel -p "/panels/panel-${panel}/plugin-ids" -a "${args[@]}"
+    done
+    xfconf-query -c xfce4-panel -p "/plugins/plugin-${plugin_id}" -r -R 2>/dev/null || true
+    rm -f "$HOME/.config/xfce4/panel/launcher-${plugin_id}/${item_name}"
+}
+
 # ---------- 方法 5：精细调整（逐项设置 UI 元素） ----------
 apply_fine() {
     local scale=$1
@@ -934,6 +955,23 @@ case ${1:-} in
     --profiles)
         show_termux_profiles
         exit 0
+        ;;
+    --apply-profile)
+        [ $# -eq 3 ] || exit 2
+        apply_termux_profile "$2" "$3"
+        exit $?
+        ;;
+    --apply-scale)
+        [ $# -eq 2 ] || exit 2
+        [[ "$2" =~ ^[123]$ ]] || exit 2
+        exec 9>/tmp/xfce-remote-resize.lock
+        flock 9
+        apply_gdk_int "$2"
+        exit $?
+        ;;
+    --remove-panel-launcher)
+        remove_panel_launcher
+        exit $?
         ;;
     --install-panel-launcher)
         ensure_panel_launcher
