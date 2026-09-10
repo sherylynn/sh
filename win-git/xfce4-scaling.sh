@@ -959,6 +959,11 @@ case ${1:-} in
         ;;
     --apply-profile)
         [ $# -eq 3 ] || exit 2
+        [[ "$2" =~ ^[0-9]+x[0-9]+$ ]] || exit 2
+        profile_width=${2%x*}; profile_height=${2#*x}
+        (( profile_width >= 320 && profile_width <= 8192 &&
+           profile_height >= 240 && profile_height <= 8192 )) || exit 2
+        [[ "$3" =~ ^[123]$ ]] || exit 2
         apply_termux_profile "$2" "$3"
         exit $?
         ;;
