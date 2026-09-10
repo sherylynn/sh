@@ -547,9 +547,16 @@ apply_termux_profile() {
         return 1
     fi
 
+    if ! wait_for_x11_resolution "$resolution"; then
+        echo -e "${RED}Termux:X11 未能稳定切换到 ${resolution}，未继续调整应用缩放。${NC}"
+        return 1
+    fi
+    # 后续会重启面板、Fcitx5 等常驻进程；必须先关闭锁 FD，禁止它们继承分辨率锁。
+    flock -u 9
+    exec 9>&-
+
     # 沿用方法 3 的完整适配链路：XFCE/GTK、Qt、Fcitx5/Rime 和微信保持同一倍数。
     apply_gdk_int "$scale"
-    wait_for_x11_resolution "$resolution" || true
     echo -e "${GREEN}✓ 显示预设已完成：${resolution} + ${scale}x（Termux:X11 输出缩放 100%）${NC}"
 }
 
@@ -615,8 +622,6 @@ show_termux_profiles_gui() {
     else
         target="当前分辨率 ${current_res:-未知} + ${scale}x"
         (
-            exec 9>/tmp/xfce-remote-resize.lock
-            flock 9
             apply_gdk_int "$scale"
         ) >"$log_file" 2>&1 &
     fi
@@ -970,8 +975,6 @@ case ${1:-} in
     --apply-scale)
         [ $# -eq 2 ] || exit 2
         [[ "$2" =~ ^[123]$ ]] || exit 2
-        exec 9>/tmp/xfce-remote-resize.lock
-        flock 9
         apply_gdk_int "$2"
         exit $?
         ;;
