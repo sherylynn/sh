@@ -144,15 +144,15 @@ start_x11vnc_after_resize() {
         return 1
     fi
 
-    nohup setsid /usr/bin/x11vnc \
+    nohup setsid env LD_PRELOAD="$HOME/.local/lib/x11vnc_remote_resize.so" /usr/bin/x11vnc \
         -display "$display" \
         -auth "$HOME/.Xauthority" \
         -rfbauth "$passwd_file" \
         -rfbport 5900 \
         -forever -noshm -shared \
         -noxdamage -noxfixes -cursor arrow -nowf -noscr \
-        -reopen -loop500 \
-        -o "$log_file" </dev/null >/dev/null 2>&1 &
+        -xrandr resize -reopen -loop500 \
+        -o "$log_file" 9>&- </dev/null >/dev/null 2>&1 &
 
     for _ in {1..30}; do
         if pgrep -x x11vnc >/dev/null 2>&1; then
@@ -163,6 +163,38 @@ start_x11vnc_after_resize() {
     done
     echo -e "${RED}x11vnc 未能恢复，请查看 ${log_file}。${NC}" >&2
     return 1
+}
+
+# noVNC Remote Resizing 通过 RFB SetDesktopSize 传入任意浏览器视口尺寸。
+# x11vnc 适配层调用本入口；先停 VNC 再调整 Termux:X11，规避在线 resize 崩溃。
+apply_remote_resize() {
+    local resolution=$1 lock_file=/tmp/xfce-remote-resize.lock
+    [[ "$resolution" =~ ^[0-9]+x[0-9]+$ ]] || {
+        echo "拒绝无效的远程分辨率：$resolution" >&2
+        return 1
+    }
+    local width=${resolution%x*} height=${resolution#*x}
+    (( width >= 320 && width <= 8192 && height >= 240 && height <= 8192 )) || {
+        echo "远程分辨率超出允许范围：$resolution" >&2
+        return 1
+    }
+    exec 9>"$lock_file"
+    flock -n 9 || return 0
+
+    local current
+    current=$(xrandr 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1x\2/p' | head -1)
+    [ "$current" = "$resolution" ] && return 0
+
+    stop_x11vnc_for_resize
+    if ! run_termux_x11_preference \
+        "displayResolutionMode:custom" \
+        "displayResolutionCustom:${resolution}" \
+        "displayScale:100"; then
+        start_x11vnc_after_resize || true
+        return 1
+    fi
+    wait_for_x11_resolution "$resolution" || true
+    start_x11vnc_after_resize
 }
 
 # ---------- 探测当前显示 ----------
@@ -934,6 +966,11 @@ case ${1:-} in
         done
         echo "等待 xfce4-panel 启动超时，未安装显示预设按钮。" >&2
         exit 1
+        ;;
+    --remote-resize)
+        [ $# -eq 2 ] || { echo "用法：$0 --remote-resize WIDTHxHEIGHT" >&2; exit 2; }
+        apply_remote_resize "$2"
+        exit $?
         ;;
 esac
 

@@ -92,7 +92,10 @@ if ! dpkg -s kwin-wayland &>/dev/null; then
 fi
 # install_proot -> installer_proot.sh 会进入新 rootfs 调用本脚本；这里统一安装
 # 麦克风桥和 XFCE 顶栏显示预设按钮。脚本幂等，可用于全新安装和升级。
-bash ~/sh/debian/termux_chroot_desktop_setup.sh
+if ! bash ~/sh/debian/termux_chroot_desktop_setup.sh; then
+  echo "Termux chroot 桌面集成安装失败，停止系统配置。" >&2
+  exit 1
+fi
 zsh ~/sh/win-git/koreader.sh
 zsh ~/sh/debian/firefox.sh
 if [[ $(platform) == *wsl* ]]; then

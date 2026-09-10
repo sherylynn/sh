@@ -141,7 +141,7 @@ if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
 
   # 启动服务
   echo "启动 x11vnc 服务..."
-  nohup setsid $X11VNC_CMD \
+  nohup setsid env LD_PRELOAD="$HOME/.local/lib/x11vnc_remote_resize.so" $X11VNC_CMD \
     -display "$VNC_DISPLAY" \
     -auth "$HOME/.Xauthority" \
     -rfbauth "$VNC_PASSWD_FILE" \
@@ -154,6 +154,7 @@ if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
     -cursor arrow \
     -nowf \
     -noscr \
+    -xrandr resize \
     -reopen \
     -loop500 \
     -o "$LOG_FILE" </dev/null >/dev/null 2>&1 &
@@ -224,7 +225,7 @@ elif [ -e "$DroidSpaces_path" ]; then
 
   # 启动服务
   echo "启动 x11vnc 服务..."
-  $X11VNC_CMD \
+  env LD_PRELOAD="$HOME/.local/lib/x11vnc_remote_resize.so" $X11VNC_CMD \
     -display "$VNC_DISPLAY" \
     -auth "$HOME/.Xauthority" \
     -rfbauth "$VNC_PASSWD_FILE" \
