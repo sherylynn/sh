@@ -748,6 +748,7 @@ remove_panel_launcher() {
         for id in "${new[@]}"; do args+=(-t int -s "$id"); done
         xfconf-query -c xfce4-panel -p "/panels/panel-${panel}/plugin-ids" -a "${args[@]}"
     done
+    xfconf-query -c xfce4-panel -p "/plugins/plugin-${plugin_id}/items" -r 2>/dev/null || true
     xfconf-query -c xfce4-panel -p "/plugins/plugin-${plugin_id}" -r -R 2>/dev/null || true
     rm -f "$HOME/.config/xfce4/panel/launcher-${plugin_id}/${item_name}"
 }

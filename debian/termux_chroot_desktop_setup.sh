@@ -10,6 +10,8 @@ TRAY_SCRIPT=/root/sh/win-git/xfce_display_tray.py
 RESIZE_SOURCE=/root/sh/win-git/x11vnc_remote_resize.c
 RESIZE_LIBRARY=/root/.local/lib/x11vnc_remote_resize.so
 AUTOSTART_DIR=/root/.config/autostart
+AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-tray.desktop
+LEGACY_AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-presets-panel.desktop
 RESIZE_BUILD=""
 
 cleanup() {
@@ -39,7 +41,7 @@ chmod 0755 "$RESIZE_BUILD"
 mv -f "$RESIZE_BUILD" "$RESIZE_LIBRARY"
 RESIZE_BUILD=""
 mkdir -p "$AUTOSTART_DIR"
-cat > "$AUTOSTART_DIR/xfce-display-presets-panel.desktop" <<EOF
+cat > "$AUTOSTART_FILE" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Termux:X11 Display Tray
@@ -50,9 +52,18 @@ Hidden=false
 X-GNOME-Autostart-enabled=true
 OnlyShowIn=XFCE;
 EOF
-chmod 0644 "$AUTOSTART_DIR/xfce-display-presets-panel.desktop"
+chmod 0644 "$AUTOSTART_FILE"
+rm -f "$LEGACY_AUTOSTART_FILE"
 
 # Migrate the old panel Launcher to the real tray icon. This only removes our own item.
 DISPLAY=${DISPLAY:-:1.0} "$SCALING_SCRIPT" --remove-panel-launcher || true
+
+# server_configure may run while XFCE is already open. Start the tray immediately as well as
+# installing its next-login autostart entry; setsid keeps it independent of the installer shell.
+if pgrep -x xfce4-panel >/dev/null 2>&1 &&
+   ! pgrep -f '^python3 /root/sh/win-git/xfce_display_tray.py$' >/dev/null 2>&1; then
+    nohup setsid env DISPLAY=${DISPLAY:-:1.0} "$TRAY_SCRIPT" \
+        </dev/null >/tmp/xfce-display-tray.log 2>&1 &
+fi
 
 echo "Termux chroot 桌面集成完成：按需麦克风、XFCE 显示按钮和 noVNC 远程调整大小已启用。"
