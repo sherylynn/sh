@@ -124,7 +124,7 @@ stop_x11vnc_for_resize() {
 
 wait_for_x11_resolution() {
     local expected=$1 current
-    for _ in {1..40}; do
+    for _ in {1..150}; do
         current=$(xrandr 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1x\2/p' | head -1)
         [ "$current" = "$expected" ] && return 0
         sleep 0.1
@@ -152,7 +152,7 @@ start_x11vnc_after_resize() {
         -forever -noshm -shared \
         -noxdamage -noxfixes -cursor arrow -nowf -noscr \
         -xrandr resize -reopen -loop500 \
-        -o "$log_file" 9>&- </dev/null >/dev/null 2>&1 &
+        -o "$log_file" 8>&- 9>&- </dev/null >/dev/null 2>&1 &
 
     for _ in {1..30}; do
         if pgrep -x x11vnc >/dev/null 2>&1; then
@@ -193,8 +193,41 @@ apply_remote_resize() {
         start_x11vnc_after_resize || true
         return 1
     fi
-    wait_for_x11_resolution "$resolution" || true
+    if ! wait_for_x11_resolution "$resolution"; then
+        start_x11vnc_after_resize || true
+        return 1
+    fi
     start_x11vnc_after_resize
+}
+
+# 浏览器最大化/拖动窗口时会密集发送 SetDesktopSize。先把请求合并，连续 1 秒
+# 没有新尺寸后才真正调整；所有后来者只更新 pending 文件，不会反复重启 VNC。
+queue_remote_resize() {
+    local resolution=$1
+    local pending=/tmp/xfce-remote-resize.pending
+    local worker_lock=/tmp/xfce-remote-resize.worker.lock
+    local suppress_file=/tmp/xfce-remote-resize.suppress-until
+    local next suppress_until=0 now
+
+    [[ "$resolution" =~ ^[0-9]+x[0-9]+$ ]] || return 1
+    now=$(date +%s)
+    [ -f "$suppress_file" ] && suppress_until=$(head -n 1 "$suppress_file" 2>/dev/null || echo 0)
+    if [[ "$suppress_until" =~ ^[0-9]+$ ]] && (( now < suppress_until )); then
+        printf 'time=%s ignored=%s reason=manual-profile-cooldown\n' "$now" "$resolution" \
+            >> /tmp/x11vnc-remote-resize.log
+        return 0
+    fi
+    printf '%s\n' "$resolution" > "${pending}.$$"
+    mv -f "${pending}.$$" "$pending"
+
+    exec 8>"$worker_lock"
+    flock -n 8 || return 0
+    while true; do
+        next=$(head -n 1 "$pending" 2>/dev/null || true)
+        sleep 1
+        [ "$next" = "$(head -n 1 "$pending" 2>/dev/null || true)" ] && break
+    done
+    apply_remote_resize "$next"
 }
 
 # ---------- 探测当前显示 ----------
@@ -566,6 +599,12 @@ apply_termux_profile() {
 
     echo ""
     echo -e "${YELLOW}正在应用显示预设：${resolution} + ${scale}x...${NC}"
+
+    # 与 noVNC 的远程尺寸 worker 串行，避免两条路径同时停止/恢复 x11vnc。
+    exec 9>/tmp/xfce-remote-resize.lock
+    flock 9
+    # 本次改分辨率会让 VNC 客户端重连；短时间忽略重连自动产生的旧视口请求。
+    printf '%s\n' "$(( $(date +%s) + 5 ))" > /tmp/xfce-remote-resize.suppress-until
 
     stop_x11vnc_for_resize
     if ! run_termux_x11_preference \
@@ -970,6 +1009,11 @@ case ${1:-} in
     --remote-resize)
         [ $# -eq 2 ] || { echo "用法：$0 --remote-resize WIDTHxHEIGHT" >&2; exit 2; }
         apply_remote_resize "$2"
+        exit $?
+        ;;
+    --queue-remote-resize)
+        [ $# -eq 2 ] || { echo "用法：$0 --queue-remote-resize WIDTHxHEIGHT" >&2; exit 2; }
+        queue_remote_resize "$2"
         exit $?
         ;;
 esac

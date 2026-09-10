@@ -4,6 +4,7 @@
 #include <rfb/rfbproto.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 typedef rfbScreenInfoPtr (*rfb_get_screen_fn)(int *, char **, int, int, int, int, int);
@@ -29,7 +30,8 @@ static int newhome_set_desktop_size(int width, int height, int num_screens,
     }
     FILE *log = fopen("/tmp/x11vnc-remote-resize.log", "a");
     if (log != NULL) {
-        fprintf(log, "request=%dx%d\n", width, height);
+        fprintf(log, "time=%ld request=%dx%d pid=%ld\n",
+                (long)time(NULL), width, height, (long)getpid());
         fclose(log);
     }
     pid_t pid = fork();
@@ -42,7 +44,7 @@ static int newhome_set_desktop_size(int width, int height, int num_screens,
         for (int fd = 3; fd < max_fd; ++fd) close(fd);
         snprintf(geometry, sizeof(geometry), "%dx%d", width, height);
         execl("/root/sh/win-git/xfce4-scaling.sh", "xfce4-scaling.sh",
-              "--remote-resize", geometry, (char *)NULL);
+              "--queue-remote-resize", geometry, (char *)NULL);
         _exit(127);
     }
     return rfbExtDesktopSize_Success;
@@ -61,7 +63,8 @@ rfbScreenInfoPtr rfbGetScreen(int *argc, char **argv, int width, int height,
     if (screen != NULL) {
         FILE *log = fopen("/tmp/x11vnc-remote-resize.log", "a");
         if (log != NULL) {
-            fprintf(log, "adapter=loaded framebuffer=%dx%d\n", width, height);
+            fprintf(log, "time=%ld adapter=loaded framebuffer=%dx%d\n",
+                    (long)time(NULL), width, height);
             fclose(log);
         }
         pthread_t thread;
