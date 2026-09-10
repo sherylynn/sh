@@ -4,7 +4,7 @@
 
 ## 目标
 
-当前手机 Linux 桌面已经可以稳定使用：
+当前手机 Linux 桌面链路：
 
 ```text
 Android / Root
@@ -17,22 +17,24 @@ Android / Root
            -> noVNC/websockify :10086
 ```
 
-用户日常通过 USB 连接手机，并使用 `adb forward` 转发端口，因此：
+用户日常通过 USB 连接手机，并使用 `adb forward` 转发 noVNC 端口。用户明确偏好浏览器直接访问，不希望安装 TigerVNC、Xpra 原生客户端或其它 PC 端专用客户端。
 
-- 不需要公网域名；
-- 不需要独立 host；
-- 不以公网穿透为目标；
-- 优先目标是 **低延迟、鼠标/键盘语义完整、保留 XFCE、保留 Termux:X11、保留当前 GPU 渲染能力**；
-- 当前 noVNC 输入体验比 scrcpy 更适合 Linux 桌面，因此本轮不把 scrcpy 作为主线；
-- 允许继续保留 noVNC 作为兼容和应急方案。
+因此本轮原则是：
 
-本 handoff 的任务是：**边在真机上测试，边优化或替换 `x11vnc -> noVNC` 这一段远程链路。**
+- **保留 noVNC 浏览器前端作为主入口**；
+- 不迁移 Wayland；
+- 不替换 XFCE4；
+- 不修改 Termux:X11 源码；
+- 不破坏当前 KGSL / VirGL GPU 渲染；
+- 优先优化 `Termux:X11 -> x11vnc -> websockify -> noVNC`；
+- 如果替换 x11vnc，也必须优先选择能继续通过浏览器/noVNC 或 HTML5 前端访问的服务端；
+- 不再测试 TigerVNC Viewer 或其它必须安装桌面客户端的路线。
 
 ---
 
-## 一、当前仓库真实状态
+## 一、当前架构判断
 
-当前主要启动入口：
+当前仓库关键入口：
 
 ```text
 termux/chroot/termux_all_in_one.sh
@@ -40,31 +42,23 @@ termux/chroot/cli.sh
 win-git/server_noVNC.sh
 ```
 
-`tstart` 会启动 Termux:X11，然后启动 chroot。
+`tstart` 启动 Termux:X11 与 chroot，`server_noVNC.sh` 在 `DISPLAY=:1` 上启动 XFCE4、x11vnc 和 noVNC。
 
-当前 `win-git/server_noVNC.sh` 在 Termux:X11 存在时使用：
-
-```bash
-DISPLAY=:1
-```
-
-并启动 XFCE4 和 x11vnc。
-
-Oryon / 新高通设备分支会设置：
+当前 GPU 相关路径包括：
 
 ```bash
 export MESA_LOADER_DRIVER_OVERRIDE=kgsl
 export TU_DEBUG=noconform
 ```
 
-VirGL 路径会设置：
+或：
 
 ```bash
 export GALLIUM_DRIVER=virpipe
 export MESA_GL_VERSION_OVERRIDE=4.0
 ```
 
-所以需要明确区分两个概念：
+因此应区分：
 
 ```text
 Linux 应用 / OpenGL
@@ -72,9 +66,9 @@ Linux 应用 / OpenGL
   -> Termux:X11
 ```
 
-这一段**可以有 GPU 加速**。
+这一段可以 GPU 加速。
 
-但后面的：
+而：
 
 ```text
 Termux:X11 framebuffer
@@ -84,36 +78,15 @@ Termux:X11 framebuffer
   -> browser/noVNC
 ```
 
-目前主要还是 CPU 抓屏和 CPU 编码路径。
+目前主要还是 CPU 抓屏、CPU 编码和浏览器解码/绘制路径。
 
-因此“Linux 桌面用了 GPU”并不代表“VNC 远程传输用了 GPU”。
+本轮目标是优化后半段，而不是重做 Linux 图形栈。
 
 ---
 
-## 二、当前 x11vnc 配置尤其值得检查
+## 二、当前 x11vnc 参数是第一优化重点
 
-当前稳定分支实际使用：
-
-```bash
-x11vnc \
-  -display :1 \
-  -auth "$HOME/.Xauthority" \
-  -rfbauth "$HOME/.vnc/passwd" \
-  -rfbport 5900 \
-  -forever \
-  -noshm \
-  -shared \
-  -noxdamage \
-  -noxfixes \
-  -cursor arrow \
-  -nowf \
-  -noscr \
-  -xrandr resize \
-  -reopen \
-  -loop500
-```
-
-这里有三个非常重要的性能相关开关：
+当前稳定配置包含：
 
 ```text
 -noshm
@@ -121,57 +94,36 @@ x11vnc \
 -noxfixes
 ```
 
-其中：
+这三个参数可能显著影响性能：
 
-- `-noshm` 禁用 MIT-SHM，x11vnc 会退回较慢的 framebuffer 读取方式；
-- `-noxdamage` 禁用 XDamage，x11vnc 无法依赖 X server 精确获知屏幕哪些区域发生变化；
-- `-noxfixes` 禁用 XFixes，一部分 cursor / region 能力会退回兼容路径。
+- `-noshm`：禁用 MIT-SHM，可能增加 framebuffer 读取开销；
+- `-noxdamage`：禁用 XDamage，可能导致 x11vnc 更频繁地扫描较大区域；
+- `-noxfixes`：禁用 XFixes，可能使 cursor/region 处理退回兼容路径。
 
-这些参数过去可能是为了 Termux:X11 兼容性而加入，但**不要假设今天仍然必须全部关闭**。
+这些参数过去可能是为 Termux:X11 兼容性加入，但不要假设现在仍然必须全部关闭。
 
-上游 x11vnc：
-
-```text
-https://github.com/LibVNC/x11vnc
-```
-
-官方 OPTIONS 文档仍明确说明正常 X display 路径会使用 MIT-SHM。
-
-因此本轮第一优先级不是立刻替换 x11vnc，而是做可靠 A/B 测试。
+第一阶段必须逐项恢复并真机验证。
 
 ---
 
-# 三、总原则
+## 三、总原则
 
-本地 Agent 必须遵守：
+本地 Agent 调试时必须遵守：
 
-1. **每次只改变一个变量。**
-2. 任何实验失败后必须能一条命令回到当前稳定配置。
-3. 暂时不要删除 `server_noVNC.sh` 的现有稳定分支。
-4. 不迁移 Wayland。
-5. 不替换 XFCE4。
-6. 不修改 Termux:X11 源码。
-7. 不为了远程桌面破坏当前 KGSL / VirGL 加速。
-8. 真机数据优先于理论判断。
-9. 对每个方案同时评价：
-   - 延迟；
-   - CPU；
-   - GPU；
-   - 功耗；
-   - 画质；
-   - 鼠标右键/中键/滚轮；
-   - Ctrl/Alt/Super/F1-F12；
-   - 中文输入；
-   - 剪贴板；
-   - 动态分辨率；
-   - 重连稳定性。
-10. 用户主要通过 USB + ADB 使用，优先为 localhost / adb-forward 优化，不需要为公网高 RTT 做复杂设计。
+1. 每次只改变一个变量。
+2. 当前 `server_noVNC.sh` 稳定配置必须可立即恢复。
+3. 实验代码优先放独立脚本，不要一开始重构生产启动链路。
+4. 真机结果优先于理论判断。
+5. 用户主场景是 USB + ADB，本机带宽较高、RTT 很低，因此可以用更高带宽换更低 CPU 和更低延迟。
+6. 浏览器/noVNC 是最终用户入口，所有优化最终必须回到浏览器场景验证。
+7. 不把“Linux 应用 GPU 加速”误认为“VNC 编码 GPU 加速”。
+8. 每轮记录 CPU、延迟、画质、键鼠、滚轮、组合键、中文输入、剪贴板、resize 和重连稳定性。
 
 ---
 
-# 四、Phase 0：建立当前性能基线
+# 四、Phase 0：建立 noVNC 当前基线
 
-不要先改代码。
+先不要修改代码。
 
 启动：
 
@@ -179,168 +131,40 @@ https://github.com/LibVNC/x11vnc
 tstart
 ```
 
-chroot 内记录：
+记录：
 
 ```bash
-ps -ef | grep -E 'x11vnc|novnc|websockify|X11|xfce' | grep -v grep
-
-top -H -p $(pgrep -d, x11vnc)
-
+ps -ef | grep -E 'x11vnc|novnc|websockify|termux-x11|xfce' | grep -v grep
 cat ~/.vnc/x11vnc.log
-```
-
-确认 X11 扩展：
-
-```bash
-DISPLAY=:1 xdpyinfo | grep -A2 -E 'MIT-SHM|DAMAGE|XFIXES|RANDR'
-```
-
-如果 `xdpyinfo` 输出不直观：
-
-```bash
 DISPLAY=:1 xdpyinfo -queryExtensions | grep -Ei 'MIT-SHM|DAMAGE|XFIXES|RANDR'
-```
-
-确认当前 GPU：
-
-```bash
 DISPLAY=:1 glxinfo -B
 ```
 
-如果有 EGL 工具：
-
-```bash
-eglinfo 2>/dev/null | head -100
-```
-
-记录：
-
-```text
-renderer
-vendor
-direct rendering
-OpenGL version
-```
-
-还要记录：
+监控：
 
 ```bash
 pidstat -p $(pgrep -n x11vnc) 1
 ```
 
-没有 `pidstat` 时：
+同时记录 websockify/noVNC 对应进程 CPU。
 
-```bash
-apt install sysstat
-```
-
-人为制造三种场景，每个持续约几十秒即可：
+测试固定场景：
 
 ```text
 A. 桌面静止
-B. 拖动一个终端窗口
-C. Firefox 快速滚动网页 / 播放视频
+B. 拖动终端窗口
+C. Firefox 快速滚动
+D. Firefox 播放视频
+E. 终端快速输出
 ```
 
-记录 x11vnc CPU。
-
-如果方便，可以额外记录手机温度 / 频率，但不是阻塞项。
+记录主观延迟和 CPU。
 
 ---
 
-# 五、Phase 1：先确认 noVNC 是否本身就是瓶颈
+# 五、Phase 1：逐项恢复 XDamage / MIT-SHM / XFixes
 
-这是成本最低、信息量最大的实验之一。
-
-当前 x11vnc 已监听：
-
-```text
-127.0.0.1/0.0.0.0:5900
-```
-
-电脑直接：
-
-```bash
-adb forward tcp:5900 tcp:5900
-```
-
-然后使用原生 VNC Viewer 连接：
-
-```text
-127.0.0.1:5900
-```
-
-优先测试：
-
-```text
-TigerVNC Viewer
-```
-
-项目：
-
-```text
-https://github.com/TigerVNC/tigervnc
-```
-
-不要通过：
-
-```text
-browser -> WebSocket -> websockify -> x11vnc
-```
-
-而直接：
-
-```text
-TigerVNC Viewer
-  -> USB / adb forward
-  -> x11vnc
-```
-
-### 必须比较
-
-同一时刻、同一桌面、同一分辨率比较：
-
-```text
-A. noVNC :10086
-B. TigerVNC native client :5900
-```
-
-比较：
-
-- 拖动窗口是否跟手；
-- 浏览器滚动；
-- 终端快速输出；
-- Firefox 视频；
-- x11vnc CPU；
-- websockify CPU；
-- 浏览器 CPU；
-- 键鼠功能。
-
-### 判定
-
-如果原生 VNC 明显更快：
-
-> 当前主要问题至少有一部分在 noVNC/WebSocket/browser，而不是 x11vnc 本身。
-
-此时不要急着换 VNC server，可以直接把：
-
-```text
-原生 VNC over adb
-```
-
-作为电脑 USB 场景的新默认方案，把 noVNC 留给浏览器访问。
-
-如果两者一样慢：
-
-> 继续查 x11vnc framebuffer capture / encoding。
-
----
-
-# 六、Phase 2：逐项恢复 XDamage / MIT-SHM / XFixes
-
-绝对不要一次把三个选项都删除，否则无法知道是谁导致问题。
-
-建议给 `server_noVNC.sh` 增加实验模式，例如环境变量：
+建议新增 profile，而不是直接覆盖稳定参数：
 
 ```bash
 X11VNC_PROFILE=stable
@@ -350,9 +174,7 @@ X11VNC_PROFILE=damage-shm
 X11VNC_PROFILE=full
 ```
 
-但第一次真机调试也可以先手工执行。
-
-## Profile A：当前 stable
+## Profile A：stable
 
 保持：
 
@@ -362,68 +184,32 @@ X11VNC_PROFILE=full
 -noxfixes
 ```
 
-作为基准。
-
 ## Profile B：只恢复 XDamage
 
-删除：
+只删除：
 
 ```text
 -noxdamage
-```
-
-仍保留：
-
-```text
--noshm
--noxfixes
-```
-
-重点观察：
-
-- 是否黑屏；
-- 是否局部区域不刷新；
-- 窗口拖动是否更快；
-- 静止桌面时 CPU 是否下降；
-- Firefox 滚动是否改善；
-- x11vnc log 是否有 DAMAGE error。
-
-如果稳定，XDamage 应优先保留。
-
-## Profile C：只恢复 MIT-SHM
-
-恢复 stable 后，仅删除：
-
-```text
--noshm
-```
-
-保留：
-
-```text
--noxdamage
--noxfixes
 ```
 
 观察：
 
-- x11vnc 是否启动；
-- 是否 Segmentation fault；
-- 是否出现 BadAccess / BadMatch；
-- 是否花屏；
-- framebuffer 抓取 CPU 是否显著降低。
+- 是否黑屏；
+- 是否局部不刷新；
+- 静止桌面 CPU；
+- 拖窗延迟；
+- Firefox 滚动；
+- x11vnc log 中是否有 DAMAGE 错误。
 
-如果失败，完整保留：
+如果稳定，优先保留。
 
-```bash
-~/.vnc/x11vnc.log
-dmesg | tail -100
-logcat | tail -200
+## Profile C：只恢复 MIT-SHM
+
+回到 stable，仅删除：
+
+```text
+-noshm
 ```
-
-这里非常重要：
-
-> 如果 MIT-SHM 失败，不要简单写“Termux:X11 不支持”。要判断是 X server 不支持、chroot IPC namespace、/dev/shm、权限、还是 x11vnc/Termux:X11 兼容 bug。
 
 检查：
 
@@ -434,117 +220,45 @@ ipcs -m
 DISPLAY=:1 xdpyinfo -queryExtensions | grep MIT-SHM
 ```
 
+观察：
+
+- x11vnc 是否崩溃；
+- BadAccess / BadMatch；
+- 花屏；
+- framebuffer 读取 CPU 是否下降。
+
+如果失败，不要简单写“Termux:X11 不支持 SHM”，要判断是 X server、chroot IPC、`/dev/shm`、权限还是 x11vnc 本身的问题。
+
 ## Profile D：XDamage + MIT-SHM
 
-如果 B/C 分别工作，再同时恢复：
-
-```text
-XDamage
-MIT-SHM
-```
-
-仍保留：
-
-```text
--noxfixes
-```
-
-这是非常值得期待的组合。
+B/C 分别稳定后再组合。
 
 ## Profile E：恢复 XFixes
 
-最后再删除：
-
-```text
--noxfixes
-```
-
-检查 cursor 是否正常、是否有残影、鼠标样式是否正确。
+最后再恢复 XFixes，重点看 cursor、残影和 region 更新。
 
 ---
 
-# 七、Phase 3：调 x11vnc，而不是盲目追求“最高画质”
+# 六、Phase 2：针对 USB 场景优化 x11vnc 编码与刷新
 
-USB/adb 场景特点是：
-
-```text
-网络 RTT 很低
-带宽较高
-手机 CPU 比网络更加珍贵
-```
-
-因此优化原则和公网 VNC 不同。
-
-不要为了节省几 Mbps 让手机疯狂压缩。
-
-优先策略：
+用户通过 ADB/USB 使用，因此优化目标不是省流量，而是：
 
 ```text
-减少 server CPU 压缩
+减少手机 CPU 压缩
 允许更高带宽
-换取更低延迟
+减少等待和合并帧
+降低交互延迟
 ```
 
-RFB encoding 很大程度由 client 协商，因此使用 TigerVNC Viewer 时要 A/B：
-
-```text
-Tight
-ZRLE
-低 compression / 高质量 JPEG
-```
-
-不要凭感觉选择。
-
-对 Linux 桌面文字来说 Tight 通常值得保留；对于视频区域 JPEG quality 也会影响 CPU 和带宽。
-
-记录：
-
-```text
-手机 x11vnc CPU
-PC client CPU
-USB 实际吞吐
-视觉延迟
-文字清晰度
-```
-
-如果降低压缩后 CPU 明显下降、延迟更低，就符合本项目的 USB 使用场景。
-
----
-
-# 八、Phase 4：检查当前轮询参数是否人为增加延迟
-
-x11vnc 自身有 screen polling、defer-update 等机制。
-
-上游源码默认值中可以看到类似：
-
-```text
-waitms = 20
-
-defer_update = 20
-```
-
-当前项目另外使用：
-
-```text
--loop500
-```
-
-需要区分：
-
-- `loop500` 是 server 重启/重新打开 display 相关机制；
-- screen poll / defer update 才直接影响交互刷新节奏。
-
-本地 Agent 应通过：
+本地 Agent 必须先：
 
 ```bash
 x11vnc -help
 ```
 
-确认当前安装版本支持的参数，再做实验。
+确认当前安装版本真实支持的参数，再实验。
 
-不要从网上复制当前二进制不支持的参数。
-
-可以重点搜索和 A/B：
+重点研究：
 
 ```text
 -wait
@@ -553,282 +267,181 @@ x11vnc -help
 -pointer_mode
 ```
 
-原则仍然是：一次只调一个参数。
+每次只调一个参数。
 
-USB 模式可以尝试用更多 CPU polling 换低延迟，但要观察功耗。
+不要盲目提高刷新频率；需要对比手机 CPU、温度与延迟。
 
 ---
 
-# 九、Phase 5：第一替代方案 —— Xpra shadow
+# 七、Phase 3：优化 websockify / noVNC 本身
 
-如果优化 x11vnc 后仍达不到要求，第一替代方案优先测试：
-
-```text
-Xpra
-```
-
-项目：
+因为用户最终一定使用浏览器，所以服务端优化后必须继续检查：
 
 ```text
-https://github.com/Xpra-org/xpra
+x11vnc -> websockify -> noVNC
 ```
 
-Xpra 当前明确支持：
+重点排查：
+
+1. websockify 是否成为单核 CPU 瓶颈；
+2. 是否存在不必要的 TLS / 加密开销（用户是 localhost + adb forward 场景）；
+3. WebSocket buffer 是否产生额外排队；
+4. noVNC quality/compression 配置是否适合 USB 高带宽场景；
+5. noVNC 是否启用了适合低延迟的 resize/scale 策略；
+6. 浏览器 canvas 绘制是否成为瓶颈；
+7. 不同浏览器的性能差异是否明显。
+
+如果 noVNC 支持运行时设置，优先做 A/B：
 
 ```text
-shadow an existing display
+更低 compression
+更高 quality
+更少 server CPU
 ```
 
-这正符合我们的要求，因为不能另起一个 Xvnc desktop，必须尽量复用：
+允许 USB 流量增加。
+
+记录：
+
+```text
+x11vnc CPU
+websockify CPU
+浏览器 CPU/GPU
+USB 流量
+主观拖窗延迟
+Firefox 滚动延迟
+视频连续性
+```
+
+---
+
+# 八、Phase 4：研究 x11vnc 的可替代服务端，但必须保留 Web 客户端
+
+只有 x11vnc 优化后仍明显不足，再进入替代方案。
+
+优先条件：
+
+```text
+必须能复用现有 Termux:X11 :1 session
+最好能 shadow existing X display
+必须提供 WebSocket/RFB/HTML5 浏览器访问路径
+不要求 PC 安装原生客户端
+```
+
+## 1. Xpra HTML5 / Web client
+
+Xpra 可以研究 shadow existing display，并提供 HTML5/WebSocket 访问。
+
+研究重点不是原生 Xpra client，而是：
 
 ```text
 Termux:X11 :1
+  -> Xpra shadow
+  -> HTML5/WebSocket
+  -> browser
 ```
 
-理想结构：
+必须测试 ARM64 Debian 包实际提供的编码器，以及在手机上的 CPU 开销。
+
+如果它需要明显更复杂的依赖且没有性能收益，就放弃。
+
+## 2. KasmVNC
+
+可以研究，因为它本身以浏览器体验为核心。
+
+但必须先确认能否在当前架构下复用/映射现有 Termux:X11 session。
+
+不要为了 KasmVNC 改成新的独立桌面 session，更不要替换 Termux:X11。
+
+## 3. 其它 noVNC-compatible VNC server
+
+可以搜索 GitHub 上仍在维护的：
 
 ```text
-XFCE4
-  -> Termux:X11 :1
-      -> Xpra shadow
-          -> TCP localhost
-              -> adb forward
-                  -> PC Xpra client
+VNC server
+RFB server
+X11 shadow server
+WebSocket VNC
 ```
 
-### 首轮实验
+筛选条件：
 
-chroot 内先确认 Debian 包版本：
-
-```bash
-apt-cache policy xpra
-```
-
-安装：
-
-```bash
-apt install xpra
-```
-
-查看当前版本支持的准确语法：
-
-```bash
-xpra shadow --help
-```
-
-目标是 shadow：
-
-```text
-DISPLAY=:1
-```
-
-并只监听 localhost，例如目标端口：
-
-```text
-14500
-```
-
-电脑：
-
-```bash
-adb forward tcp:14500 tcp:14500
-```
-
-PC 使用原生 Xpra client。
-
-不要第一轮就使用 Xpra HTML5 client，否则又把 browser/WebSocket 变量加进来了。
-
-### Xpra 必测项目
-
-- 是否能正确 shadow Termux:X11；
-- 鼠标右键、中键、滚轮；
-- Ctrl/Alt/Super；
-- 中文输入；
-- clipboard；
-- resize；
-- 视频时 CPU；
-- 窗口拖动延迟；
-- client OpenGL；
-- 是否能使用 H.264/H.265 encoder；
-- Debian/ARM64 包提供哪些 codecs。
-
-查看：
-
-```bash
-xpra encoding
-xpra showconfig | grep -Ei 'encoding|codec|video|opengl'
-```
-
-具体命令以当前版本 `--help` 为准。
-
-### 为什么 Xpra 优先于 KasmVNC
-
-Xpra 官方当前明确支持：
-
-```text
-Shadow an existing display
-```
-
-并且支持原生客户端、TCP、WebSocket、RFB 等协议。
-
-它更适合“保留 Termux:X11 :1 当前 session”。
-
-而很多 VNC server 更擅长自己创建一个新的 X server/session，这不符合我们当前架构。
+- ARM64 可构建；
+- 支持已有 X11 display；
+- 浏览器/noVNC 可直接接；
+- 抓屏路径比 x11vnc 更现代；
+- 最好支持 XDamage；
+- 最好支持更高效的像素格式转换；
+- 不依赖传统 PC GPU/DRM/KMS。
 
 ---
 
-# 十、可以研究，但暂不作为首选的方案
+# 九、Phase 5：如果传统 RFB 到顶，再研究硬件视频编码 + Web 输入
 
-## 1. KasmVNC
+这是高级路线，不是第一阶段任务。
 
-项目：
-
-```text
-https://github.com/kasmtech/KasmVNC
-```
-
-优势是浏览器体验和现代 web remote desktop。
-
-问题是它更偏向：
-
-```text
-KasmVNC 自己作为 X server
-```
-
-而我们的核心要求是复用：
-
-```text
-Termux:X11 :1
-```
-
-因此只有确认它能可靠 shadow existing X11 display 后才进入主线。
-
-不要为了 KasmVNC 换掉现有 Termux:X11。
-
-## 2. TurboVNC + VirtualGL
-
-项目：
-
-```text
-https://github.com/TurboVNC/turbovnc
-https://github.com/VirtualGL/virtualgl
-```
-
-它们在传统 Linux GPU workstation/HPC 环境很成熟，但通常假设：
-
-```text
-标准 Xorg
-标准 DRM/DRI
-正常 Linux GPU device
-```
-
-我们这里是：
-
-```text
-Android Adreno
-Termux:X11
-KGSL / Turnip / VirGL
-chroot
-```
-
-适配风险明显更高。
-
-可以作为后续研究，但不要第一阶段投入大量修改。
-
-## 3. Sunshine / Moonlight
-
-理论上的低延迟视频体验很好，但 Linux Sunshine host 通常依赖：
-
-```text
-DRM/KMS
-Wayland/X11 capture
-VAAPI/NVENC/AMF 等
-```
-
-我们的最终显示是 Android/Termux:X11 Surface，不是传统 Linux KMS desktop。
-
-不要为了 Sunshine 破坏现有架构。
-
-## 4. wayvnc
-
-当前不考虑。
-
-原因：本项目明确暂不迁移 Wayland。
-
----
-
-# 十一、Phase 6：如果传统 VNC/Xpra 都不够，再研究“视频与输入拆分”
-
-这是后续高级路线，不是第一阶段任务。
-
-核心思路：
+最终可研究：
 
 ```text
 视频：
-Termux:X11 framebuffer
+Termux:X11 / Android Surface
   -> 高速 capture
-  -> Android hardware H.264/H.265
-  -> USB/ADB
-  -> PC decoder
+  -> Android MediaCodec H.264/H.265
+  -> WebSocket/WebRTC
+  -> browser
 
 输入：
-PC mouse/keyboard
-  -> 极小 TCP protocol
-  -> adb forward
+browser keyboard/mouse
+  -> WebSocket/DataChannel
   -> chroot
   -> XTest / XInput2
   -> DISPLAY=:1
 ```
 
-这样输入不经过 Android InputManager，因此可以完整保留 Linux：
+这样仍然满足用户要求：
 
 ```text
-right click
-middle click
-wheel
-extra buttons
-Ctrl/Alt/Super
-key down/up
+浏览器直接打开
+无需安装 PC 客户端
+右键/中键/滚轮/组合键由 Web 前端直接注入 X11
 ```
 
-这条路线的真正难点不是输入，而是：
+真正难点是避免从 Termux:X11 framebuffer 做昂贵 CPU readback，再送给 Android MediaCodec。
 
-> 怎样从 Termux:X11 / Android Surface 高效取得帧，并送入 Android MediaCodec，而且不再做昂贵的 CPU readback/copy。
-
-在没有证明现有方案做不到之前，不进入这一阶段。
+没有证明 x11vnc/noVNC 已到性能上限前，不投入这一阶段。
 
 ---
 
-# 十二、建议在仓库新增一个实验管理脚本
+# 十、建议新增实验工具
 
-真机 Agent 可以在确认实验方向后创建：
+建议本地 Agent 创建：
 
 ```text
 termux/chroot/remote/
   remote_test.sh
   x11vnc_profiles.sh
-  xpra_shadow.sh
+  novnc_profile.sh
+  xpra_web_test.sh
   README.md
 ```
 
-但不要一开始重构 `server_noVNC.sh`。
+第一阶段不要重写 `server_noVNC.sh`。
 
-第一阶段应先写一个独立脚本调用当前 x11vnc，避免破坏生产路径。
-
-例如目标接口：
+目标接口可设计为：
 
 ```bash
 bash ~/sh/termux/chroot/remote/remote_test.sh doctor
 bash ~/sh/termux/chroot/remote/remote_test.sh baseline
-bash ~/sh/termux/chroot/remote/remote_test.sh native-vnc
 bash ~/sh/termux/chroot/remote/remote_test.sh xdamage
 bash ~/sh/termux/chroot/remote/remote_test.sh shm
 bash ~/sh/termux/chroot/remote/remote_test.sh damage-shm
-bash ~/sh/termux/chroot/remote/remote_test.sh xpra
+bash ~/sh/termux/chroot/remote/remote_test.sh full
+bash ~/sh/termux/chroot/remote/remote_test.sh novnc-lowlatency
+bash ~/sh/termux/chroot/remote/remote_test.sh xpra-web
 bash ~/sh/termux/chroot/remote/remote_test.sh status
 ```
 
-测试成功以后，再决定哪些配置并入：
+测试成功以后，再把稳定配置并回：
 
 ```text
 win-git/server_noVNC.sh
@@ -836,9 +449,7 @@ win-git/server_noVNC.sh
 
 ---
 
-# 十三、doctor 应收集的信息
-
-建议最终实现的 `doctor` 一次输出：
+# 十一、doctor 应收集的信息
 
 ```bash
 uname -a
@@ -846,15 +457,13 @@ uname -m
 cat /etc/os-release
 
 echo "DISPLAY=$DISPLAY"
-
 DISPLAY=:1 xdpyinfo -queryExtensions
 DISPLAY=:1 glxinfo -B
 
 x11vnc -version
-x11vnc -help 2>&1 | head -200
+x11vnc -help 2>&1 | head -250
 
 ps -ef | grep -E 'termux-x11|x11vnc|novnc|websockify|xfce' | grep -v grep
-
 ss -ltnp | grep -E '5900|10086|14500'
 
 ls -ld /dev/shm
@@ -864,7 +473,7 @@ ipcs -m
 cat ~/.vnc/x11vnc.log 2>/dev/null
 ```
 
-Termux 宿主如果可执行，再收集：
+Termux 宿主如果可以，再记录：
 
 ```bash
 getprop ro.product.model
@@ -874,9 +483,9 @@ getprop ro.hardware
 
 ---
 
-# 十四、建议保存测试结果
+# 十二、测试结果必须保存
 
-每轮测试保存到：
+统一写到：
 
 ```text
 docs/remote-tests/
@@ -885,214 +494,93 @@ docs/remote-tests/
 例如：
 
 ```text
-docs/remote-tests/2026-09-10-baseline.md
-docs/remote-tests/2026-09-10-native-vnc.md
-docs/remote-tests/2026-09-10-xdamage.md
-docs/remote-tests/2026-09-10-shm.md
-docs/remote-tests/2026-09-10-xpra.md
+2026-09-10-baseline.md
+2026-09-10-xdamage.md
+2026-09-10-shm.md
+2026-09-10-damage-shm.md
+2026-09-10-novnc-lowlatency.md
+2026-09-10-xpra-web.md
 ```
 
-每个文件统一记录：
+每个文件统一包含：
 
 ```markdown
 ## 配置
-
 ## 启动命令
-
 ## 是否稳定
-
-## CPU
-
+## x11vnc CPU
+## websockify CPU
+## 浏览器 CPU/GPU
 ## 输入体验
-
 ## 窗口拖动
-
 ## Firefox 滚动
-
 ## 视频
-
 ## 分辨率调整
-
 ## 日志
-
 ## 结论
 ```
 
-如果实验失败也要保存，避免未来 Agent 重复踩坑。
+失败结果也必须保存，避免以后重复踩坑。
 
 ---
 
-# 十五、第一轮真机任务清单
+# 十三、第一轮真机任务
 
-本地 Agent 拿到这个 handoff 后，第一轮只做以下任务：
+第一轮只做：
 
-### Task 1：建立 baseline
+### Task 1：baseline
 
-确认当前：
+确认当前 `x11vnc + websockify + noVNC` CPU、输入和延迟。
 
-```text
-x11vnc + noVNC
-```
-
-CPU、输入和延迟情况。
-
-### Task 2：原生 VNC over ADB
-
-电脑：
-
-```bash
-adb forward tcp:5900 tcp:5900
-```
-
-用 TigerVNC Viewer 直接连接。
-
-这是最高优先级。
-
-### Task 3：确认 X extensions
+### Task 2：确认 X extensions
 
 ```bash
 DISPLAY=:1 xdpyinfo -queryExtensions | grep -Ei 'MIT-SHM|DAMAGE|XFIXES|RANDR'
 ```
 
-### Task 4：只恢复 XDamage
+### Task 3：只恢复 XDamage
 
-不要动 MIT-SHM。
+不要同时动 SHM。
 
-如果稳定，比较 CPU/延迟。
+### Task 4：单独恢复 MIT-SHM
 
-### Task 5：单独恢复 MIT-SHM
+收集完整失败原因。
 
-重点收集失败原因。
+### Task 5：组合 XDamage + MIT-SHM
 
-### Task 6：如果 B/C 都稳定，组合 XDamage + MIT-SHM
+只在单项都稳定后进行。
 
-### Task 7：如果 x11vnc 已明显改善
+### Task 6：优化 noVNC/websockify
 
-先不要装 Xpra。
+在 USB 高带宽条件下测试降低压缩、减少等待是否明显降低延迟。
 
-继续把稳定配置做成 profile。
+### Task 7：如果 x11vnc/noVNC 已明显改善
 
-### Task 8：如果 x11vnc 上限仍明显不足
+把最稳定 profile 固化，但保留原 stable fallback。
 
-再安装并测试：
+### Task 8：如果仍明显不足
 
-```text
-Xpra shadow :1
-```
+再测试 Xpra HTML5 或其它浏览器优先服务端；不测试 TigerVNC Viewer / Xpra 原生客户端。
 
 ---
 
-# 十六、成功判定标准
+# 十四、明确不做的路线
 
-本项目不是追求理论 benchmark，而是改善实际 Linux 桌面。
-
-优先级：
+本轮明确不做：
 
 ```text
-1. 输入必须完整
-2. 稳定
-3. 交互延迟
-4. 手机 CPU / 功耗
-5. Firefox 滚动 / IDE / terminal
-6. 视频
-7. 带宽
-8. 浏览器访问便利性
+TigerVNC Viewer
+RealVNC Viewer
+Xpra native client
+其它要求 PC 安装专用客户端的方案
+scrcpy 作为主远程桌面方案
+Wayland 迁移
+替换 XFCE
+重写 Termux:X11
 ```
 
-在 USB/ADB 场景，带宽排名很低。
+用户的产品目标很明确：
 
-如果一个方案：
+> 插 USB，通过 adb forward，然后浏览器直接打开 Linux 桌面。
 
-```text
-多吃 20 Mbps
-但手机 CPU 从 80% 降到 30%
-并且延迟明显下降
-```
-
-这是成功优化。
-
----
-
-# 十七、目前最可能的收敛路线
-
-优先猜测，但必须由真机数据验证：
-
-```text
-方案 A：
-Termux:X11 :1
-  -> x11vnc（重新启用 XDamage，可能重新启用 MIT-SHM）
-  -> native TigerVNC client
-  -> adb forward
-```
-
-这是最小改动、最可能快速改善的路线。
-
-如果仍不够：
-
-```text
-方案 B：
-Termux:X11 :1
-  -> Xpra shadow
-  -> native Xpra client
-  -> adb forward
-```
-
-noVNC 保留：
-
-```text
-方案 C：浏览器兼容 / 应急
-Termux:X11 :1
-  -> x11vnc
-  -> noVNC
-```
-
-只有前三者都不能达到要求，才研究：
-
-```text
-方案 D：
-Android hardware video encoding
-+
-独立 X11 input bridge
-```
-
----
-
-# 十八、参考项目
-
-```text
-x11vnc
-https://github.com/LibVNC/x11vnc
-
-TigerVNC
-https://github.com/TigerVNC/tigervnc
-
-Xpra
-https://github.com/Xpra-org/xpra
-
-KasmVNC
-https://github.com/kasmtech/KasmVNC
-
-TurboVNC
-https://github.com/TurboVNC/turbovnc
-
-VirtualGL
-https://github.com/VirtualGL/virtualgl
-
-Termux:X11
-https://github.com/termux/termux-x11
-```
-
-其中当前优先阅读：
-
-```text
-x11vnc OPTIONS
-Xpra Shadow Existing Display
-Xpra picture/video encodings
-TigerVNC client encoding / compression
-```
-
----
-
-# 十九、给下一位 Agent 的一句话任务
-
-> 不要重做桌面环境。保持 `tstart -> Termux:X11 :1 -> XFCE4` 不变，先用真机数据拆解 `x11vnc -> noVNC` 的延迟来源；第一步比较原生 TigerVNC over adb 和 noVNC，随后逐项恢复 XDamage/MIT-SHM/XFixes，确认最优 x11vnc profile；只有 x11vnc 达到上限后再测试 Xpra shadow，所有成功和失败结果都写入 `docs/remote-tests/`，避免重复试错。
+所有优化都围绕这个体验展开。
