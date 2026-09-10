@@ -3,10 +3,14 @@
 #include <rfb/rfb.h>
 #include <rfb/rfbproto.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+
+#define NEWHOME_FLAGS_MASK  0xffff0000U
+#define NEWHOME_FLAGS_MAGIC 0x4e480000U /* "NH" */
 
 typedef rfbScreenInfoPtr (*rfb_get_screen_fn)(int *, char **, int, int, int, int, int);
 static rfbScreenInfoPtr hooked_screen;
@@ -21,6 +25,17 @@ static void *reinstall_hook_after_x11vnc_init(void *unused) {
     return NULL;
 }
 
+static int dpi_to_integer_scale(unsigned int dpi) {
+    /*
+     * The browser reports CSS DPI on a 96-DPI baseline. XFCE's recommended
+     * retina path is integer Gdk/WindowScalingFactor, so map the common DPR
+     * bands conservatively while keeping ordinary clients untouched.
+     */
+    if (dpi >= 240U) return 3;
+    if (dpi >= 144U) return 2;
+    return 1;
+}
+
 static int newhome_set_desktop_size(int width, int height, int num_screens,
                                     struct rfbExtDesktopScreen *screens,
                                     struct _rfbClientRec *client) {
@@ -29,25 +44,49 @@ static int newhome_set_desktop_size(int width, int height, int num_screens,
         num_screens != 1 || screens == NULL || screens[0].x != 0 || screens[0].y != 0) {
         return rfbExtDesktopSize_InvalidScreenLayout;
     }
+
+    uint32_t flags = screens[0].flags;
+    unsigned int dpi = 0;
+    int scale = 0;
+    if ((flags & NEWHOME_FLAGS_MASK) == NEWHOME_FLAGS_MAGIC) {
+        dpi = flags & 0xffffU;
+        if (dpi >= 48U && dpi <= 768U) {
+            scale = dpi_to_integer_scale(dpi);
+        } else {
+            dpi = 0;
+        }
+    }
+
     FILE *log = fopen("/tmp/x11vnc-remote-resize.log", "a");
     if (log != NULL) {
-        fprintf(log, "time=%ld request=%dx%d pid=%ld\n",
-                (long)time(NULL), width, height, (long)getpid());
+        fprintf(log, "time=%ld request=%dx%d flags=0x%08x dpi=%u scale=%d pid=%ld\n",
+                (long)time(NULL), width, height, flags, dpi, scale, (long)getpid());
         fclose(log);
     }
+
     pid_t pid = fork();
     if (pid < 0) return rfbExtDesktopSize_OutOfResources;
     if (pid == 0) {
         char geometry[32];
+        char command[512];
         long max_fd = sysconf(_SC_OPEN_MAX);
         if (max_fd < 0 || max_fd > 65536) max_fd = 65536;
         setsid();
         unsetenv("LD_PRELOAD");
         unsetenv("LD_DEBUG");
         for (int fd = 3; fd < max_fd; ++fd) close(fd);
+
         snprintf(geometry, sizeof(geometry), "%dx%d", width, height);
-        execl("/root/sh/win-git/xfce4-scaling.sh", "xfce4-scaling.sh",
-              "--queue-remote-resize", geometry, (char *)NULL);
+        if (scale > 0) {
+            snprintf(command, sizeof(command),
+                     "/root/sh/win-git/xfce4-scaling.sh --queue-remote-resize %s && "
+                     "/root/sh/win-git/xfce4-scaling.sh --apply-scale %d",
+                     geometry, scale);
+            execl("/bin/bash", "bash", "-c", command, (char *)NULL);
+        } else {
+            execl("/root/sh/win-git/xfce4-scaling.sh", "xfce4-scaling.sh",
+                  "--queue-remote-resize", geometry, (char *)NULL);
+        }
         _exit(127);
     }
     return rfbExtDesktopSize_Success;
