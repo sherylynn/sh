@@ -33,7 +33,6 @@ CURRENT_H=""
 NATIVE_W=""
 NATIVE_H=""
 SELECTED_SCALE=""
-VNC_WAS_RUNNING=0
 
 # ---------- 从 chroot 调用宿主 Termux:X11 偏好设置 ----------
 # Debian chroot 看不到 Termux 的 /data/data/com.termux；但两边共享宿主 /proc，
@@ -86,42 +85,6 @@ run_termux_x11_preference() {
     fi
 }
 
-# ---------- 分辨率切换时安全重启 x11vnc ----------
-# x11vnc 的 -xrandr resize 在 Termux:X11 在线改 framebuffer 时可能触发
-# Xlib/XCB sequence_lost 断言。先停、改完分辨率再启动可避开该崩溃路径。
-stop_x11vnc_for_resize() {
-    local display=${DISPLAY:-:1}
-    local display_base=${display%.0}
-    local pid cmd
-    local -a pids=()
-    VNC_WAS_RUNNING=0
-
-    while read -r pid; do
-        [ -n "$pid" ] || continue
-        cmd=$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)
-        if [[ "$cmd" == *"-display ${display}"* || "$cmd" == *"-display ${display_base}"* ]]; then
-            pids+=("$pid")
-        fi
-    done < <(pgrep -x x11vnc 2>/dev/null || true)
-
-    if [ "${#pids[@]}" -eq 0 ]; then
-        return 0
-    fi
-
-    VNC_WAS_RUNNING=1
-    echo -e "${YELLOW}暂时停止 ${display} 上的 x11vnc，避免在线 RandR resize 崩溃...${NC}"
-    kill -TERM "${pids[@]}" 2>/dev/null || true
-    for _ in {1..20}; do
-        local alive=0
-        for pid in "${pids[@]}"; do
-            kill -0 "$pid" 2>/dev/null && alive=1
-        done
-        [ "$alive" -eq 0 ] && return 0
-        sleep 0.1
-    done
-    kill -KILL "${pids[@]}" 2>/dev/null || true
-}
-
 wait_for_x11_resolution() {
     local expected=$1 current
     for _ in {1..150}; do
@@ -133,40 +96,9 @@ wait_for_x11_resolution() {
     return 1
 }
 
-start_x11vnc_after_resize() {
-    [ "$VNC_WAS_RUNNING" -eq 1 ] || return 0
-
-    local display=${DISPLAY:-:1}
-    local passwd_file="$HOME/.vnc/passwd"
-    local log_file="$HOME/.vnc/x11vnc.log"
-    if [ ! -x /usr/bin/x11vnc ] || [ ! -f "$passwd_file" ]; then
-        echo -e "${RED}无法恢复 x11vnc：程序或密码文件不存在。${NC}" >&2
-        return 1
-    fi
-
-    nohup setsid env LD_PRELOAD="$HOME/.local/lib/x11vnc_remote_resize.so" /usr/bin/x11vnc \
-        -display "$display" \
-        -auth "$HOME/.Xauthority" \
-        -rfbauth "$passwd_file" \
-        -rfbport 5900 \
-        -forever -noshm -shared \
-        -noxdamage -noxfixes -cursor arrow -nowf -noscr \
-        -xrandr resize -reopen -loop500 \
-        -o "$log_file" 8>&- 9>&- </dev/null >/dev/null 2>&1 &
-
-    for _ in {1..30}; do
-        if pgrep -x x11vnc >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ VNC 已在新分辨率 ${display} 上恢复。${NC}"
-            return 0
-        fi
-        sleep 0.1
-    done
-    echo -e "${RED}x11vnc 未能恢复，请查看 ${log_file}。${NC}" >&2
-    return 1
-}
-
 # noVNC Remote Resizing 通过 RFB SetDesktopSize 传入任意浏览器视口尺寸。
-# x11vnc 适配层调用本入口；先停 VNC 再调整 Termux:X11，规避在线 resize 崩溃。
+# x11vnc 使用 -xrandr resize 在线更新 framebuffer；这里不能停掉 VNC，否则
+# noVNC 会断线重连并再次发送 SetDesktopSize，形成关闭/重启循环。
 apply_remote_resize() {
     local resolution=$1 lock_file=/tmp/xfce-remote-resize.lock
     [[ "$resolution" =~ ^[0-9]+x[0-9]+$ ]] || {
@@ -185,19 +117,15 @@ apply_remote_resize() {
     current=$(xrandr 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1x\2/p' | head -1)
     [ "$current" = "$resolution" ] && return 0
 
-    stop_x11vnc_for_resize
     if ! run_termux_x11_preference \
         "displayResolutionMode:custom" \
         "displayResolutionCustom:${resolution}" \
         "displayScale:100"; then
-        start_x11vnc_after_resize || true
         return 1
     fi
     if ! wait_for_x11_resolution "$resolution"; then
-        start_x11vnc_after_resize || true
         return 1
     fi
-    start_x11vnc_after_resize
 }
 
 # 浏览器最大化/拖动窗口时会密集发送 SetDesktopSize。先把请求合并，连续 1 秒
@@ -600,28 +528,23 @@ apply_termux_profile() {
     echo ""
     echo -e "${YELLOW}正在应用显示预设：${resolution} + ${scale}x...${NC}"
 
-    # 与 noVNC 的远程尺寸 worker 串行，避免两条路径同时停止/恢复 x11vnc。
+    # 与 noVNC 的远程尺寸 worker 串行，避免两条路径同时修改 Termux:X11。
     exec 9>/tmp/xfce-remote-resize.lock
     flock 9
     # 本次改分辨率会让 VNC 客户端重连；短时间忽略重连自动产生的旧视口请求。
     printf '%s\n' "$(( $(date +%s) + 5 ))" > /tmp/xfce-remote-resize.suppress-until
 
-    stop_x11vnc_for_resize
     if ! run_termux_x11_preference \
         "displayResolutionMode:custom" \
         "displayResolutionCustom:${resolution}" \
         "displayScale:100"; then
         echo -e "${RED}Termux:X11 分辨率设置失败，未继续调整应用缩放。${NC}"
-        start_x11vnc_after_resize || true
         return 1
     fi
 
     # 沿用方法 3 的完整适配链路：XFCE/GTK、Qt、Fcitx5/Rime 和微信保持同一倍数。
     apply_gdk_int "$scale"
     wait_for_x11_resolution "$resolution" || true
-    # apply_gdk_int 会重启 xfce4-panel；必须在它之后再启动并脱离 VNC，
-    # 否则由面板启动的 GUI 退出/面板重启可能连带终止 x11vnc。
-    start_x11vnc_after_resize || true
     echo -e "${GREEN}✓ 显示预设已完成：${resolution} + ${scale}x（Termux:X11 输出缩放 100%）${NC}"
 }
 
