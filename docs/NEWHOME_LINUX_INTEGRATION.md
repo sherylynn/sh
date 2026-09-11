@@ -77,12 +77,11 @@ Linux 侧唯一合并点是 X11 `CLIPBOARD`：
 
 ### 浏览器 -> Linux
 
-- ASCII 文本：保留已经验证较稳定的 RFB clipboard 路径。
-- 非 ASCII / Unicode：noVNC 优先 `POST /newhome-clipboard`。
-- `newhome_websockify.py` 将 UTF-8 JSON 转成 4715 的 Base64 UTF-8 `SET`。
-- NewHome 立即向 `WATCH` 客户端广播。
-- `newhome_clipboard_bridge.py` 收到后用 UTF-8 解码并写 X11 `CLIPBOARD`。
-- side channel 不可用时，noVNC 回退到原 RFB 路径，而不是让粘贴整体失败。
+- ASCII 与非 ASCII / Unicode 使用同一条 RFB clipboard 路径。
+- noVNC 把文本编码为 UTF-8 bytes，再发送经典 `ClientCutText`；支持 Extended Clipboard 时继续使用协议原有的 UTF-8 路径。
+- x11vnc 把收到的 bytes 写入 X11 `CLIPBOARD`。
+- 不再使用 `/newhome-clipboard` HTTP side channel，也不让浏览器直接调用 NewHome 4715。
+- 4715 只负责同机 Android/NewHome 与 X11 之间的 UTF-8 + Base64 同步。
 
 ### Linux -> 浏览器
 
@@ -177,3 +176,4 @@ xclip -selection clipboard -out
 5. 是否让麦克风开关停止 4715 或 control socket？若是，停止。
 6. 是否对 privileged control 开放任意 shell command？若是，停止。
 7. Unicode 修复失败时，ASCII/RFB 原路径是否仍能工作？必须保留回退。
+8. 浏览器与 Linux 之间是否重新引入 `/newhome-clipboard` side channel？若是，停止；该链路只能走 RFB。
