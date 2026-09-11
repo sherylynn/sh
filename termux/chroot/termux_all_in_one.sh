@@ -76,12 +76,12 @@ start_base_services() {
     local services=()
     if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
       log "检测到强制使用虚拟显卡文件，启动virgl服务"
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     elif lscpu | grep -q "Oryon"; then
       log "Oryon CPU detected, skipping virgl service startup."
-      services=("pulseaudio" "x11")
+      services=("pulseaudio")
     else
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     fi
 
     for service in "${services[@]}"; do
@@ -95,24 +95,44 @@ start_base_services() {
 # 启动X11服务
 start_x11() {
     log "启动X11服务..."
-    
-    # 清理旧的进程
+
+    local ready_file="${TMPDIR}/.termux-x11-ready"
+    local startup_log="${HOME}/.termux-x11-startup.log"
+    local ready=false
+
+    # runit 是 X server 的唯一所有者。必须先停服务，否则 kill 后 runit 会立即
+    # 重启 server_x11.sh，与本函数再次启动 X server 形成竞争。
+    sv down x11 2>/dev/null || true
+    am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 \
+        >>"$startup_log" 2>&1 || true
     sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
     sudo pkill -f com.termux.x11 2>/dev/null || true
-    am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
-    
+
     # 清理临时文件
     clean_tmp
-    
-    # 启动X11应用
-    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity 2>/dev/null || true
-    
-    # 启动X11服务器
-    export XDG_RUNTIME_DIR="${TMPDIR}"
-    termux-x11 :1 -ac +extension DPMS -dpi 100 &
-    
-    sleep 2
-    log "X11服务启动完成"
+    rm -f "$ready_file"
+
+    # server_x11.sh 会先启动 X server、等待 X1 socket，再使用 am start -W
+    # 拉起 Activity；每次 runit 自动重启也走同一条可靠路径。
+    sv up x11 || error "无法启动 runit x11 服务"
+    for _ in $(seq 1 200); do
+        if [ -f "$ready_file" ]; then
+            ready=true
+            break
+        fi
+        if ! sv status x11 2>/dev/null | grep -q '^run:'; then
+            break
+        fi
+        sleep 0.1
+    done
+
+    if [ "$ready" != true ]; then
+        log "ERROR: Termux:X11 未在超时内就绪；最近启动日志如下："
+        tail -40 "$startup_log" 2>/dev/null || true
+        return 1
+    fi
+
+    log "X11服务启动完成 ($(cat "$ready_file" 2>/dev/null))"
 }
 
 # 启动chroot linux (调用cli.sh中的函数)
@@ -138,21 +158,22 @@ stop_all() {
     # 停止chroot容器 (调用cli.sh中的完整实现)
     stop_chroot_container 2>/dev/null || true
     
-    # 停止X11
+    # 先停止 runit 监控，再杀 X11；否则服务会在清理期间自动拉起。
+    sv down x11 2>/dev/null || true
+    am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
     sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
     sudo pkill -f com.termux.x11 2>/dev/null || true
-    am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
     
     # 停止sv服务
     local services=()
     if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
       log "检测到强制使用虚拟显卡文件，停止virgl服务"
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     elif lscpu | grep -q "Oryon"; then
       log "Oryon CPU detected, skipping virgl service shutdown."
-      services=("pulseaudio" "x11")
+      services=("pulseaudio")
     else
-      services=("virgl" "pulseaudio" "x11")
+      services=("virgl" "pulseaudio")
     fi
 
     for service in "${services[@]}"; do
