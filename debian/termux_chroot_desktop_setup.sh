@@ -7,17 +7,9 @@ fi
 
 SCALING_SCRIPT=/root/sh/win-git/xfce4-scaling.sh
 TRAY_SCRIPT=/root/sh/win-git/xfce_display_tray.py
-RESIZE_SOURCE=/root/sh/win-git/x11vnc_remote_resize.c
-RESIZE_LIBRARY=/root/.local/lib/x11vnc_remote_resize.so
 AUTOSTART_DIR=/root/.config/autostart
 AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-tray.desktop
 LEGACY_AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-presets-panel.desktop
-RESIZE_BUILD=""
-
-cleanup() {
-    [ -z "$RESIZE_BUILD" ] || rm -f "$RESIZE_BUILD"
-}
-trap cleanup EXIT
 
 # Audio/ALSA/PulseAudio integration for all chroot applications.
 bash /root/sh/debian/newhome_mic_bridge_setup.sh
@@ -25,21 +17,7 @@ bash /root/sh/debian/newhome_mic_bridge_setup.sh
 # The display preset launcher uses a native mouse-driven Zenity dialog.
 apt-get install -y zenity libnotify-bin python3-gi gir1.2-gtk-3.0 x11vnc gcc binutils libvncserver-dev
 chmod 0755 "$SCALING_SCRIPT" "$TRAY_SCRIPT"
-if [ ! -f "$RESIZE_SOURCE" ]; then
-    echo "缺少 noVNC 远程分辨率适配源码：$RESIZE_SOURCE" >&2
-    exit 1
-fi
-mkdir -p "$(dirname "$RESIZE_LIBRARY")"
-RESIZE_BUILD=$(mktemp "${RESIZE_LIBRARY}.new.XXXXXX")
-gcc -shared -fPIC -O2 -Wall -Wextra -Werror \
-    -o "$RESIZE_BUILD" "$RESIZE_SOURCE" -ldl -pthread
-if ! readelf -Ws "$RESIZE_BUILD" | grep -q '[[:space:]]rfbGetScreen$'; then
-    echo "noVNC 远程分辨率适配库校验失败：未导出 rfbGetScreen" >&2
-    exit 1
-fi
-chmod 0755 "$RESIZE_BUILD"
-mv -f "$RESIZE_BUILD" "$RESIZE_LIBRARY"
-RESIZE_BUILD=""
+bash /root/sh/win-git/build_x11vnc_remote_resize.sh
 mkdir -p "$AUTOSTART_DIR"
 cat > "$AUTOSTART_FILE" <<EOF
 [Desktop Entry]

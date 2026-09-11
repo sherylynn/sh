@@ -18,4 +18,10 @@ gcc -O2 -Wall -Wextra -Werror \
 /tmp/rfb_load_client 15 2 6
 ```
 
+测试带 NewHome HiDPI 标志的远程调整大小（尺寸 2464x1429、DPI 192）：
+
+```sh
+/tmp/rfb_load_client 15 2 6 2464 1429 192
+```
+
 客户端读取现有 `/root/.vnc/passwd` 完成认证，但不会输出密码。

@@ -71,6 +71,12 @@ if [[ $(platform) == *linux* ]]; then
   sudo apt autoremove -y
   sudo apt install python3-numpy x11vnc tigervnc-standalone-server tigervnc-tools -y
 
+  # Browser patch and x11vnc receiver form one protocol pair. Rebuild the receiver
+  # here as well as during a fresh desktop installation, so a noVNC-only update
+  # cannot leave an older library that silently drops Retina DPI flags.
+  sudo apt install gcc binutils libvncserver-dev -y
+  bash "$HOME/sh/win-git/build_x11vnc_remote_resize.sh"
+
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
   echo "noVNC installed from official upstream and patched locally"
 fi
