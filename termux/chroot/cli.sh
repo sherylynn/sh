@@ -1242,17 +1242,25 @@ RESTART_REQUEST_FILE="${RESTART_REQUEST_FILE:-$CHROOT_DIR/root/.container_restar
 CONTAINER_WATCHDOG_PIDFILE="${CONTAINER_WATCHDOG_PIDFILE:-$HOME/.container_watchdog.pid}"
 
 watchdog_chroot_restart() {
-  local self
+  local self actual
   self="$(readlink -f "${BASH_SOURCE[0]}")"
-  log_info "容器重启看门狗启动，监听: $RESTART_REQUEST_FILE"
+  # 选定触发文件路径：默认 Termux 外视角 $CHROOT_DIR/root/...；
+  # 若看门狗被误在 chroot 内拉起（$CHROOT_DIR 不可见），回退到 chroot 内绝对路径，
+  # 避免「双重 /data/local/mnt」路径错位导致永远读不到触发文件。
+  if [ ! -e "$CHROOT_DIR" ] && [ -d /root ]; then
+    actual="/root/.container_restart_request"
+  else
+    actual="$RESTART_REQUEST_FILE"
+  fi
+  log_info "容器重启看门狗启动，监听: $actual"
   while true; do
-    if [ -e "$RESTART_REQUEST_FILE" ]; then
+    if [ -e "$actual" ]; then
       # 原子消费：先改名，避免 restart 期间重复触发
-      if sudo mv -f "$RESTART_REQUEST_FILE" "${RESTART_REQUEST_FILE}.processing" 2>/dev/null || \
-         mv -f "$RESTART_REQUEST_FILE" "${RESTART_REQUEST_FILE}.processing" 2>/dev/null; then
+      if sudo mv -f "$actual" "${actual}.processing" 2>/dev/null || \
+         mv -f "$actual" "${actual}.processing" 2>/dev/null; then
         log_info "收到容器重启请求，执行 restart..."
         bash "$self" restart
-        sudo rm -f "${RESTART_REQUEST_FILE}.processing" 2>/dev/null || rm -f "${RESTART_REQUEST_FILE}.processing" 2>/dev/null
+        sudo rm -f "${actual}.processing" 2>/dev/null || rm -f "${actual}.processing" 2>/dev/null
       fi
     fi
     sleep 2

@@ -9,3 +9,4 @@ tmp/
 
 *.mimo/
 *.cron-lock
+__pycache__
