@@ -13,7 +13,7 @@ diff --git a/core/rfb.js b/core/rfb.js
  // Minimum wait (ms) between two mouse moves
  const MOUSE_MOVE_DELAY = 17;
  
-@@ -784,12 +789,55 @@ export default class RFB extends EventTargetMixin {
+@@ -784,14 +789,58 @@ export default class RFB extends EventTargetMixin {
      }
  
      _updateScale() {
@@ -73,7 +73,7 @@ diff --git a/core/rfb.js b/core/rfb.js
  
      // Requests a change of remote desktop size. This message is an extension
      // and may only be sent if we have received an ExtendedDesktopSize message
-@@ -821,21 +869,31 @@ export default class RFB extends EventTargetMixin {
+@@ -821,21 +869,30 @@ export default class RFB extends EventTargetMixin {
          }
          this._resizeTimeout = null;
  

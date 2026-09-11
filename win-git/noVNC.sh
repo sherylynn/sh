@@ -36,11 +36,12 @@ apply_hidpi_patch() {
     return 1
   fi
 
-  if ! git -C "${SOFT_HOME}" apply --check "$HIDPI_PATCH"; then
+  patch_check_output=$(git -C "${SOFT_HOME}" apply --check --verbose "$HIDPI_PATCH" 2>&1) || {
     echo "noVNC HiDPI 补丁无法应用到当前官方版本。" >&2
+    echo "$patch_check_output" >&2
     echo "官方 noVNC 可能已经修改了 core/rfb.js；请更新 $HIDPI_PATCH。" >&2
     return 1
-  fi
+  }
 
   git -C "${SOFT_HOME}" apply "$HIDPI_PATCH"
   grep -q "$HIDPI_MARKER" "${SOFT_HOME}/core/rfb.js" || {
