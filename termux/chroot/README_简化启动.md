@@ -137,6 +137,38 @@ bash ~/sh/termux/chroot/cli.sh [start|stop|restart|status|shell|exec|force-clean
 - ✅ 安全的资源管理和强制清理
 - ✅ VNC服务通过 sysv 初始化系统自动管理
 
+### 重启 chroot 容器（免手动 tstop/tstart）
+
+> 痛点：每次改完服务都要手动跑 `tstop` + `tstart`。已在 `cli.sh` 内置**看门狗**机制，
+> 让"重启"可由 Android 侧或 chroot 内随时发起，看门狗（运行在容器外）真正执行 stop+start。
+
+**原理（为什么不能在 chroot 内直接 restart）**：`stop_chroot_container` 第一步会从宿主 PID 视角
+扫描 `/proc/<pid>/root` 指向 `$CHROOT_DIR` 的进程并杀掉；若在 chroot 内执行重启，执行命令自身的
+`/proc/self/root` 也指向 CHROOT_DIR，会被一并杀掉 → 重启自相矛盾。因此 stop+start 必须由**容器外**
+的 Termux 看门狗执行。
+
+**机制**：任一入口发起重启 → 在 `$CHROOT_DIR/root/.container_restart_request`（chroot 内即
+`/root/.container_restart_request`，host 可见、非 tmpfs）写入触发文件 → Termux 看门狗（随 `tstart`
+自动拉起，pidfile 防重入）每 2 秒轮询，命中即 `restart` → 容器 stop+start，剪贴板桥/麦克风桥自动重连。
+
+**两个发起入口（任选其一）**：
+
+1. **chroot 内 · 显示托盘小程序**（最顺手，时刻可见）
+   右键 Termux:X11 系统托盘图标（`xfce_display_tray.py`，即调分辨率的那个）→ **重启 chroot 容器**。
+   直接原子写触发文件，不依赖 newhome 是否连着。
+   ```bash
+   # 等价地，在 chroot 终端里一行也能发起（写触发文件）：
+   echo $$ > /root/.container_restart_request
+   ```
+
+2. **Android 侧 · newhome 设置页**
+   设置 → 容器管理 → **Linux 容器** → **重启容器**；newhome 经已有的 4715 剪贴板桥下发
+   `CTRL RESTART` → chroot 桥（`newhome_clipboard_bridge.py`）写同一触发文件。
+   （该入口还包含「Linux 麦克风桥」开关，原散落在「本地大模型」设置里，已归并至此。）
+
+**前提**：看门狗须已在跑（容器 `tstart` 时自动拉起）。若容器是更早之前启动的、看门狗尚未在，
+手动跑一次 `bash ~/sh/termux/chroot/cli.sh watchdog`（或 `tstop && tstart`）即可，之后两个入口都生效。
+
 ### 3. `setup_aliases.sh` - 快捷别名配置
 **功能:** 自动配置便捷别名
 ```bash
