@@ -6,8 +6,9 @@ TOOLSRC_NAME=${NAME}rc
 TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
 SOFT_HOME=$(install_path)/${NAME}
 
-# 始终跟随官方 noVNC；NewHome/Retina 扩展由 sh 仓库中的 patch 在部署时叠加。
-NOVNC_GIT_URL=${NOVNC_GIT_URL:-https://github.com/novnc/noVNC.git}
+# 默认跟随用户维护的 noVNC fork，其中已直接集成 NewHome/Retina 扩展。
+# patch 检测仍保留，供显式指定旧版或官方 NOVNC_GIT_URL 时兼容使用。
+NOVNC_GIT_URL=${NOVNC_GIT_URL:-https://github.com/sherylynn/noVNC.git}
 NOVNC_BRANCH=${NOVNC_BRANCH:-master}
 HIDPI_PATCH=${HIDPI_PATCH:-$HOME/sh/win-git/noVNC_hidpi.patch}
 HIDPI_MARKER=NEWHOME_FLAGS_MAGIC
@@ -150,8 +151,8 @@ EOF
 
 if [[ $(platform) == *linux* ]]; then
   if [ -d "${SOFT_HOME}/.git" ]; then
-    echo "refreshing official noVNC checkout: ${SOFT_HOME}"
-    # 清掉上一轮部署产生的工作区 patch/wrapper，再同步官方分支，保证每次都从干净 upstream 开始。
+    echo "refreshing configured noVNC checkout: ${SOFT_HOME}"
+    # 清掉上一轮部署产生的工作区 wrapper，再同步配置的仓库分支。
     git -C "${SOFT_HOME}" reset --hard
     git -C "${SOFT_HOME}" clean -fd
     git -C "${SOFT_HOME}" remote set-url origin "${NOVNC_GIT_URL}"
@@ -182,5 +183,5 @@ if [[ $(platform) == *linux* ]]; then
   install_https_launcher || exit 1
 
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
-  echo "noVNC installed from official upstream, patched locally, HTTPS enabled by default"
+  echo "noVNC installed from configured repository, NewHome features verified, HTTPS enabled by default"
 fi
