@@ -13,6 +13,11 @@ diff --git a/core/rfb.js b/core/rfb.js
  // Minimum wait (ms) between two mouse moves
  const MOUSE_MOVE_DELAY = 17;
  
+@@ -309,3 +314,4 @@ export default class RFB extends EventTargetMixin {
+         this._qualityLevel = 6;
+         this._compressionLevel = 2;
++        this._newHomeLastSentDPI = null;
+     }
 @@ -784,14 +789,58 @@ export default class RFB extends EventTargetMixin {
      }
  
@@ -73,7 +78,7 @@ diff --git a/core/rfb.js b/core/rfb.js
  
      // Requests a change of remote desktop size. This message is an extension
      // and may only be sent if we have received an ExtendedDesktopSize message
-@@ -821,21 +869,30 @@ export default class RFB extends EventTargetMixin {
+@@ -821,21 +869,32 @@ export default class RFB extends EventTargetMixin {
          }
          this._resizeTimeout = null;
  
@@ -82,7 +87,8 @@ diff --git a/core/rfb.js b/core/rfb.js
  
          // Do we actually change anything?
 -        if (size.w === this._fbWidth && size.h === this._fbHeight) {
-+        if (target.width === this._fbWidth && target.height === this._fbHeight) {
++        if (target.width === this._fbWidth && target.height === this._fbHeight &&
++            this._newHomeLastSentDPI === target.dpi) {
              return;
          }
  
@@ -91,6 +97,7 @@ diff --git a/core/rfb.js b/core/rfb.js
 +
          this._pendingRemoteResize = true;
          this._lastResize = Date.now();
++        this._newHomeLastSentDPI = target.dpi;
          RFB.messages.setDesktopSize(this._sock,
 -                                    Math.floor(size.w), Math.floor(size.h),
 -                                    this._screenID, this._screenFlags);

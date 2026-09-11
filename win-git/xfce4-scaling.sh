@@ -978,6 +978,19 @@ case ${1:-} in
         apply_gdk_int "$2"
         exit $?
         ;;
+    --apply-remote-scale)
+        [ $# -eq 2 ] || exit 2
+        [[ "$2" =~ ^[0-9]+([.][0-9]+)?$ ]] || exit 2
+        remote_scale=$2
+        nearest=$(python3 -c "print(int(round(float('${remote_scale}'))))")
+        if python3 -c "import sys; sys.exit(0 if abs(float('${remote_scale}') - ${nearest}) < 0.03 else 1)" &&
+           (( nearest >= 1 && nearest <= 3 )); then
+            apply_gdk_int "$nearest"
+        else
+            apply_dpi_mode "$remote_scale"
+        fi
+        exit $?
+        ;;
     --remove-panel-launcher)
         remove_panel_launcher
         exit $?

@@ -18,13 +18,7 @@ height=${resolution#*x}
 
 scale=0
 if (( dpi >= 48 && dpi <= 768 )); then
-  if (( dpi >= 240 )); then
-    scale=3
-  elif (( dpi >= 144 )); then
-    scale=2
-  else
-    scale=1
-  fi
+  scale=$(awk -v dpi="$dpi" 'BEGIN { printf "%.4g", dpi / 96 }')
 fi
 
 now=$(date +%s)
@@ -53,7 +47,12 @@ read -r final_resolution final_scale final_dpi < "$PENDING"
 printf 'time=%s apply-profile=%s dpi=%s scale=%s\n' \
   "$(date +%s)" "$final_resolution" "$final_dpi" "$final_scale" >> "$LOG_FILE"
 
+# Release the lock before launching desktop programs. Otherwise fcitx5 and other
+# long-lived children inherit fd 8 and permanently block every later client.
+flock -u 8
+exec 8>&-
+
 "$SCALING_SCRIPT" --remote-resize "$final_resolution"
-if (( final_scale > 0 )); then
-  "$SCALING_SCRIPT" --apply-scale "$final_scale"
+if awk -v scale="$final_scale" 'BEGIN { exit !(scale >= 0.5 && scale <= 4) }'; then
+  "$SCALING_SCRIPT" --apply-remote-scale "$final_scale"
 fi
