@@ -1,8 +1,9 @@
 diff --git a/core/clipboard.js b/core/clipboard.js
 --- a/core/clipboard.js
 +++ b/core/clipboard.js
-@@ -12,9 +12,15 @@ export default class AsyncClipboard {
+@@ -12,9 +12,16 @@ export default class AsyncClipboard {
          this._target = target || null;
++        this._eventTarget = this._target?.ownerDocument || this._target;
  
          this._isAvailable = null;
 +        // NEWHOME_EXPLICIT_PASTE: Firefox keyboard/right-click clipboard bridge.
@@ -17,11 +18,12 @@ diff --git a/core/clipboard.js b/core/clipboard.js
          };
  
          // ===== EVENT HANDLERS =====
-@@ -45,6 +51,44 @@ export default class AsyncClipboard {
+@@ -45,6 +52,53 @@ export default class AsyncClipboard {
          }
      }
  
 +    _handlePasteKeyDown(event) {
++        if (this._isEditableTarget(event.target)) return;
 +        if ((event.ctrlKey || event.metaKey) && !event.altKey &&
 +            event.key.toLowerCase() === 'v') {
 +            this._explicitPasteShortcut = true;
@@ -40,6 +42,7 @@ diff --git a/core/clipboard.js b/core/clipboard.js
 +    }
 +
 +    _handlePaste(event) {
++        if (this._isEditableTarget(event.target)) return;
 +        const text = event.clipboardData?.getData('text/plain');
 +        if (typeof text !== 'string') return;
 +        event.preventDefault();
@@ -47,7 +50,8 @@ diff --git a/core/clipboard.js b/core/clipboard.js
 +        this.onpaste(text, true);
 +    }
 +
-+    async _handleContextMenu() {
++    async _handleContextMenu(event) {
++        if (event.target !== this._target) return;
 +        // Firefox does not expose clipboard-read through the Permissions API,
 +        // but permits an explicit read attempt from a user-triggered action.
 +        if (!navigator?.clipboard?.readText) return;
@@ -59,28 +63,34 @@ diff --git a/core/clipboard.js b/core/clipboard.js
 +        }
 +    }
 +
++    _isEditableTarget(target) {
++        if (!target) return false;
++        const tag = target.tagName?.toLowerCase();
++        return tag === 'input' || tag === 'textarea' || target.isContentEditable;
++    }
++
      // ===== PUBLIC METHODS =====
  
      writeClipboard(text) {
-@@ -57,6 +101,10 @@ export default class AsyncClipboard {
+@@ -57,6 +111,10 @@ export default class AsyncClipboard {
  
      grab() {
          if (!this._target) return;
-+        this._target.addEventListener('paste', this._eventHandlers.paste);
-+        this._target.addEventListener('keydown', this._eventHandlers.keydown, true);
-+        this._target.addEventListener('keyup', this._eventHandlers.keyup, true);
-+        this._target.addEventListener('contextmenu', this._eventHandlers.contextmenu);
++        this._eventTarget.addEventListener('paste', this._eventHandlers.paste, true);
++        this._eventTarget.addEventListener('keydown', this._eventHandlers.keydown, true);
++        this._eventTarget.addEventListener('keyup', this._eventHandlers.keyup, true);
++        this._eventTarget.addEventListener('contextmenu', this._eventHandlers.contextmenu, true);
          this._ensureAvailable()
              .then((isAvailable) => {
                  if (isAvailable) {
-@@ -67,6 +115,11 @@ export default class AsyncClipboard {
+@@ -67,6 +125,11 @@ export default class AsyncClipboard {
  
      ungrab() {
          if (!this._target) return;
-+        this._target.removeEventListener('paste', this._eventHandlers.paste);
-+        this._target.removeEventListener('keydown', this._eventHandlers.keydown, true);
-+        this._target.removeEventListener('keyup', this._eventHandlers.keyup, true);
-+        this._target.removeEventListener('contextmenu', this._eventHandlers.contextmenu);
++        this._eventTarget.removeEventListener('paste', this._eventHandlers.paste, true);
++        this._eventTarget.removeEventListener('keydown', this._eventHandlers.keydown, true);
++        this._eventTarget.removeEventListener('keyup', this._eventHandlers.keyup, true);
++        this._eventTarget.removeEventListener('contextmenu', this._eventHandlers.contextmenu, true);
          this._target.removeEventListener('focus', this._eventHandlers.focus);
 +        this._explicitPasteShortcut = false;
      }
