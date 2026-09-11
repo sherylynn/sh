@@ -84,7 +84,12 @@ def request_container_restart():
                 [sys.executable, CONTROL_CLIENT, "restart"],
                 text=True,
                 capture_output=True,
-                timeout=8,
+                # The first request may remain open while KernelSU/APatch/
+                # Magisk asks the user to authorize NewHome. Keep this longer
+                # than newhome_control.py's 20-second protocol timeout so the
+                # tray does not kill the client before it can report the real
+                # result.
+                timeout=25,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             GLib.idle_add(notify, "容器重启失败", f"NewHome 控制桥不可用：{exc}", "critical")
