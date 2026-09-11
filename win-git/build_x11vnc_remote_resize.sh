@@ -26,7 +26,7 @@ for symbol in rfbGetScreen XConvertSelection XChangeProperty; do
         exit 1
     fi
 done
-if ! strings "$BUILD" | grep -q 'flags=0x%08x dpi=%u render='; then
+if ! strings "$BUILD" | grep -q 'flags=0x%08x dpi=%u mode=%s render='; then
     echo "noVNC 远程分辨率适配库校验失败：缺少 HiDPI/DPI 协议支持" >&2
     exit 1
 fi

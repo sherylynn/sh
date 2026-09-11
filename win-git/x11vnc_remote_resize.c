@@ -150,6 +150,7 @@ static int newhome_set_desktop_size(int width, int height, int num_screens,
 
     uint32_t flags = screens[0].flags;
     unsigned int dpi = 0;
+    unsigned int mode_code = 0;
     unsigned int render_milli = 0;
     if ((flags & NEWHOME_FLAGS_V1_MASK) == NEWHOME_FLAGS_V1_MAGIC) {
         dpi = flags & 0xffffU;
@@ -157,20 +158,27 @@ static int newhome_set_desktop_size(int width, int height, int num_screens,
     } else if ((flags & NEWHOME_FLAGS_V2_MASK) == NEWHOME_FLAGS_V2_MAGIC) {
         dpi = (flags >> 12) & 0xfffU;
         render_milli = flags & 0xfffU;
+        if (dpi > 0U && dpi < 16U) {
+            mode_code = dpi;
+            dpi = 0;
+        }
         if (dpi < 48U || dpi > 768U) dpi = 0;
         if (render_milli < 1U || render_milli > 4095U) render_milli = 0;
     }
 
     FILE *log = fopen("/tmp/x11vnc-remote-resize.log", "a");
     if (log != NULL) {
-        fprintf(log, "time=%ld request=%dx%d flags=0x%08x dpi=%u render=%.3f canvas=%ux%u pid=%ld\n",
+        fprintf(log, "time=%ld request=%dx%d flags=0x%08x dpi=%u mode=%s render=%.3f canvas=%ux%u pid=%ld\n",
                 (long)time(NULL), width, height, flags, dpi,
+                mode_code == 1U ? "local" : (mode_code == 2U ? "remote" : "resize"),
                 render_milli / 1000.0,
                 (unsigned int)((width * (uint64_t)render_milli + 500U) / 1000U),
                 (unsigned int)((height * (uint64_t)render_milli + 500U) / 1000U),
                 (long)getpid());
         fclose(log);
     }
+
+    if (mode_code != 0U) return rfbExtDesktopSize_Success;
 
     pid_t pid = fork();
     if (pid < 0) return rfbExtDesktopSize_OutOfResources;
