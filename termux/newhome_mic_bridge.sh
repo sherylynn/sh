@@ -35,8 +35,9 @@ clipboard_running() {
 }
 
 start_clipboard_bridge() {
-    # This helper is also called by non-X11 Linux applications. Clipboard sync is
-    # meaningful only when an X display exists; XFCE autostart covers later sessions.
+    # Clipboard sync is a base Linux integration and is deliberately independent
+    # from the optional microphone client below. XFCE autostart also covers a
+    # later graphical login when this helper runs before DISPLAY exists.
     [ -n "${DISPLAY:-}" ] || { log "剪贴板桥未启动：DISPLAY 未设置"; return 0; }
     [ -f "$CLIPBOARD_BRIDGE" ] || { log "剪贴板桥未启动：缺少 $CLIPBOARD_BRIDGE"; return 0; }
     command -v python3 >/dev/null 2>&1 || { log "剪贴板桥未启动：缺少 python3"; return 0; }
@@ -49,11 +50,6 @@ start_clipboard_bridge() {
     fi
     nohup python3 "$CLIPBOARD_BRIDGE" </dev/null >"$CLIPBOARD_LOG" 2>&1 &
     log "已请求启动 Android/X11/VNC 剪贴板桥 (DISPLAY=$DISPLAY)"
-}
-
-stop_clipboard_bridge() {
-    pkill -f '^python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' 2>/dev/null || true
-    pkill -f '^/usr/bin/python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' 2>/dev/null || true
 }
 
 resolve_client_fifo() {
@@ -168,7 +164,8 @@ PY
 }
 
 stop_bridge() {
-    stop_clipboard_bridge
+    # Stop only the microphone transport. Clipboard is a separate base
+    # integration and must remain alive across microphone stop/restart cycles.
     if client_running; then
         local pid
         pid=$(cat "$PID_FILE")
@@ -192,7 +189,7 @@ stop_bridge() {
     resolve_client_fifo 2>/dev/null || true
     [ -n "$CLIENT_FIFO" ] && rm -f "$CLIENT_FIFO"
     rm -f "$MODULE_FILE" "$DEFAULT_SOURCE_FILE"
-    log "录音已停止，麦克风和 PulseAudio source 已释放；剪贴板桥已停止"
+    log "录音已停止，麦克风和 PulseAudio source 已释放；剪贴板桥保持运行"
 }
 
 status_bridge() {
