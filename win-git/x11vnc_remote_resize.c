@@ -10,8 +10,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#define NEWHOME_FLAGS_MASK  0xffff0000U
-#define NEWHOME_FLAGS_MAGIC 0x4e480000U /* "NH" */
+#define NEWHOME_FLAGS_V1_MASK  0xffff0000U
+#define NEWHOME_FLAGS_V1_MAGIC 0x4e480000U /* "NH" */
+#define NEWHOME_FLAGS_V2_MASK  0xff000000U
+#define NEWHOME_FLAGS_V2_MAGIC 0x4e000000U /* "N" + DPI12 + render12 */
 
 typedef struct _XDisplay Display;
 typedef unsigned long Atom;
@@ -148,15 +150,25 @@ static int newhome_set_desktop_size(int width, int height, int num_screens,
 
     uint32_t flags = screens[0].flags;
     unsigned int dpi = 0;
-    if ((flags & NEWHOME_FLAGS_MASK) == NEWHOME_FLAGS_MAGIC) {
+    unsigned int render_milli = 0;
+    if ((flags & NEWHOME_FLAGS_V1_MASK) == NEWHOME_FLAGS_V1_MAGIC) {
         dpi = flags & 0xffffU;
         if (dpi < 48U || dpi > 768U) dpi = 0;
+    } else if ((flags & NEWHOME_FLAGS_V2_MASK) == NEWHOME_FLAGS_V2_MAGIC) {
+        dpi = (flags >> 12) & 0xfffU;
+        render_milli = flags & 0xfffU;
+        if (dpi < 48U || dpi > 768U) dpi = 0;
+        if (render_milli < 1U || render_milli > 4095U) render_milli = 0;
     }
 
     FILE *log = fopen("/tmp/x11vnc-remote-resize.log", "a");
     if (log != NULL) {
-        fprintf(log, "time=%ld request=%dx%d flags=0x%08x dpi=%u pid=%ld\n",
-                (long)time(NULL), width, height, flags, dpi, (long)getpid());
+        fprintf(log, "time=%ld request=%dx%d flags=0x%08x dpi=%u render=%.3f canvas=%ux%u pid=%ld\n",
+                (long)time(NULL), width, height, flags, dpi,
+                render_milli / 1000.0,
+                (unsigned int)((width * (uint64_t)render_milli + 500U) / 1000U),
+                (unsigned int)((height * (uint64_t)render_milli + 500U) / 1000U),
+                (long)getpid());
         fclose(log);
     }
 
