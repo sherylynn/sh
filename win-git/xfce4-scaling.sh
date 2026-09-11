@@ -407,9 +407,91 @@ update_wechat_desktop() {
     echo -e "${GREEN}✓ 微信启动项已更新：force-device-scale-factor=${scale}${NC}"
 }
 # ---------- 让 Fcitx5 立即应用新的候选栏缩放 ----------
+fcitx5_scale_state_file() {
+    printf '%s/newhome/fcitx5-scale\n' "${XDG_CONFIG_HOME:-$HOME/.config}"
+}
+
+current_fcitx5_scale() {
+    local state_file pid value autostart_file
+    state_file=$(fcitx5_scale_state_file)
+    if [ -s "$state_file" ]; then
+        head -n 1 "$state_file"
+        return 0
+    fi
+
+    # Bootstrap the state from the running daemon when upgrading an existing
+    # desktop, so the first resolution-only resize does not restart Fcitx5.
+    pid=$(pgrep -o -x fcitx5 2>/dev/null || true)
+    if [ -n "$pid" ] && [ -r "/proc/$pid/environ" ]; then
+        value=$(tr '\0' '\n' < "/proc/$pid/environ" |
+            sed -n 's/^QT_SCALE_FACTOR=//p' | head -n 1)
+        if [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    fi
+
+    autostart_file="$HOME/.config/autostart/fcitx5.desktop"
+    value=$(sed -n 's/.*QT_SCALE_FACTOR=\([0-9.]*\).*/\1/p' "$autostart_file" 2>/dev/null | head -n 1)
+    [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]] && printf '%s\n' "$value"
+}
+
+remember_fcitx5_scale() {
+    local scale=$1 state_file temporary
+    state_file=$(fcitx5_scale_state_file)
+    mkdir -p "$(dirname "$state_file")"
+    temporary="${state_file}.$$"
+    printf '%s\n' "$scale" > "$temporary"
+    mv -f "$temporary" "$state_file"
+}
+
+fcitx5_scale_equal() {
+    local left=$1 right=$2
+    awk -v left="$left" -v right="$right" \
+        'BEGIN { exit !(left > 0 && right > 0 && (left - right < 0.001) && (right - left < 0.001)) }'
+}
+
+ensure_fcitx5_rime_preferred() {
+    local profile="$HOME/.config/fcitx5/profile"
+    [ -f "$profile" ] || return 0
+
+    # Preserve the user's groups and ordering; only repair the default input
+    # method field that Fcitx5 consults when the daemon starts again.
+    if grep -q '^DefaultIM=' "$profile"; then
+        sed -i '0,/^DefaultIM=/{s/^DefaultIM=.*/DefaultIM=rime/;}' "$profile"
+    elif grep -q '^Default Layout=' "$profile"; then
+        sed -i '0,/^Default Layout=/{/^Default Layout=/a DefaultIM=rime
+}' "$profile"
+    fi
+}
+
+activate_fcitx5_rime() {
+    local _
+    command -v fcitx5-remote >/dev/null 2>&1 || return 0
+    for _ in {1..30}; do
+        if fcitx5-remote -s rime >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    echo -e "${YELLOW}Fcitx5 已启动，但暂时无法切换到 Rime。${NC}" >&2
+    return 0
+}
+
 restart_fcitx5_scaled() {
-    local scale=$1
+    local scale=$1 current_scale
     update_fcitx5_autostart "$scale"
+    ensure_fcitx5_rime_preferred
+
+    current_scale=$(current_fcitx5_scale || true)
+    if pgrep -x fcitx5 >/dev/null 2>&1 &&
+       [ -n "$current_scale" ] && fcitx5_scale_equal "$current_scale" "$scale"; then
+        remember_fcitx5_scale "$scale"
+        activate_fcitx5_rime
+        echo -e "${GREEN}✓ Fcitx5 缩放仍为 ${scale}x，保留现有进程（Rime 已保持为当前输入法）${NC}"
+        return 0
+    fi
+
     pkill -TERM -x fcitx5 2>/dev/null || true
     sleep 1
     env QT_SCALE_FACTOR="$scale" \
@@ -420,6 +502,8 @@ restart_fcitx5_scaled() {
         QT_IM_MODULE=fcitx5 \
         XMODIFIERS=@im=fcitx5 \
         fcitx5 -d >/dev/null 2>&1 &
+    remember_fcitx5_scale "$scale"
+    activate_fcitx5_rime
 }
 
 # ---------- 恢复应用的逻辑基准尺寸 ----------
