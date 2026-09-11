@@ -1,8 +1,8 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-SOURCE=${RESIZE_SOURCE:-/root/sh/win-git/x11vnc_remote_resize.c}
-LIBRARY=${RESIZE_LIBRARY:-/root/.local/lib/x11vnc_remote_resize.so}
+SOURCE=${RESIZE_SOURCE:-"${BASH_SOURCE%/*}/x11vnc_remote_resize.c"}
+LIBRARY=${RESIZE_LIBRARY:-"$HOME/.local/lib/x11vnc_remote_resize.so"}
 BUILD=""
 
 cleanup() {
