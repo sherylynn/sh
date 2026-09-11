@@ -11,6 +11,8 @@ LOG_FILE=$STATE_DIR/client.log
 DEFAULT_SOURCE_FILE=$STATE_DIR/previous-default-source
 PULSE_FIFO=/data/data/com.termux/files/usr/tmp/newhome-mic-bridge.pcm
 CLIENT_FIFO=
+CLIPBOARD_BRIDGE=/root/sh/termux/chroot/newhome_clipboard_bridge.py
+CLIPBOARD_LOG=/tmp/newhome-clipboard-bridge-start.log
 
 log() { printf '[newhome-mic] %s\n' "$*"; }
 die() { printf '[newhome-mic] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -27,6 +29,30 @@ client_running() {
     kill -0 "$pid" 2>/dev/null
 }
 
+clipboard_running() {
+    pgrep -f '^python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' >/dev/null 2>&1 ||
+        pgrep -f '^/usr/bin/python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' >/dev/null 2>&1
+}
+
+start_clipboard_bridge() {
+    # This helper is also called by non-X11 Linux applications. Clipboard sync is
+    # meaningful only when an X display exists; XFCE autostart covers later sessions.
+    [ -n "${DISPLAY:-}" ] || return 0
+    [ -f "$CLIPBOARD_BRIDGE" ] || return 0
+    command -v python3 >/dev/null 2>&1 || return 0
+    command -v xclip >/dev/null 2>&1 || return 0
+    if clipboard_running; then
+        return 0
+    fi
+    nohup python3 "$CLIPBOARD_BRIDGE" </dev/null >"$CLIPBOARD_LOG" 2>&1 &
+    log "已请求启动 Android/X11/VNC 剪贴板桥 (DISPLAY=$DISPLAY)"
+}
+
+stop_clipboard_bridge() {
+    pkill -f '^python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' 2>/dev/null || true
+    pkill -f '^/usr/bin/python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' 2>/dev/null || true
+}
+
 resolve_client_fifo() {
     local pulse_pid
     pulse_pid=$(ps -eo pid,args | awk '$2=="pulseaudio" {print $1; exit}')
@@ -35,6 +61,7 @@ resolve_client_fifo() {
 }
 
 start_bridge() {
+    start_clipboard_bridge || true
     command -v pactl >/dev/null 2>&1 || die "未找到 pactl"
     command -v python3 >/dev/null 2>&1 || die "未找到 python3"
     [ -n "${PULSE_SERVER:-}" ] || export PULSE_SERVER=tcp:127.0.0.1:4713
@@ -138,6 +165,7 @@ PY
 }
 
 stop_bridge() {
+    stop_clipboard_bridge
     if client_running; then
         local pid
         pid=$(cat "$PID_FILE")
@@ -161,16 +189,18 @@ stop_bridge() {
     resolve_client_fifo 2>/dev/null || true
     [ -n "$CLIENT_FIFO" ] && rm -f "$CLIENT_FIFO"
     rm -f "$MODULE_FILE" "$DEFAULT_SOURCE_FILE"
-    log "录音已停止，麦克风和 PulseAudio source 已释放"
+    log "录音已停止，麦克风和 PulseAudio source 已释放；剪贴板桥已停止"
 }
 
 status_bridge() {
     printf 'Client: %s\n' "$(client_running && echo "running (PID $(cat "$PID_FILE"))" || echo stopped)"
+    printf 'Clipboard bridge: %s\n' "$(clipboard_running && echo running || echo stopped)"
     local id
     id=$(module_id)
     printf 'PulseAudio source: %s\n' "$(if [ -n "$id" ]; then echo "loaded (module $id)"; else echo 'not loaded'; fi)"
     pactl list short sources 2>/dev/null | grep -F "$SOURCE_NAME" || true
     [ -f "$LOG_FILE" ] && tail -20 "$LOG_FILE"
+    [ -f "$CLIPBOARD_LOG" ] && tail -10 "$CLIPBOARD_LOG"
 }
 
 case ${1:-status} in
