@@ -57,6 +57,7 @@ if [ -f ~/tools/rurima/rurima ]; then
     #fcitx5 & 
     source ~/tools/rc/allToolsrc
   ~/sh/termux/newhome_mic_bridge.sh start >/tmp/newhome-mic-xfce-start.log 2>&1 || true
+  nohup python3 ~/sh/termux/chroot/newhome_clipboard_bridge.py >/tmp/newhome-clipboard-bridge-start.log 2>&1 &
   dbus-launch --exit-with-session startxfce4'
 elif [ -n "$busybox" ]; then
   # Execute chroot script
@@ -78,6 +79,7 @@ elif [ -n "$busybox" ]; then
     '"$DRIVER_ENV"' \
     zsh ~/tools/rc/allToolsrc
   ~/sh/termux/newhome_mic_bridge.sh start >/tmp/newhome-mic-xfce-start.log 2>&1 || true
+  nohup python3 ~/sh/termux/chroot/newhome_clipboard_bridge.py >/tmp/newhome-clipboard-bridge-start.log 2>&1 &
   dbus-launch --exit-with-session startxfce4'
 #startxfce4'
 #vncserver -kill :0 && \
