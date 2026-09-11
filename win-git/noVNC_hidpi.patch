@@ -18,7 +18,7 @@ diff --git a/core/rfb.js b/core/rfb.js
          this._compressionLevel = 2;
 +        this._newHomeLastSentDPI = null;
      }
-@@ -784,14 +789,58 @@ export default class RFB extends EventTargetMixin {
+@@ -784,14 +789,61 @@ export default class RFB extends EventTargetMixin {
      }
  
      _updateScale() {
@@ -70,7 +70,10 @@ diff --git a/core/rfb.js b/core/rfb.js
 +        return {
 +            enabled: hidpi.enabled,
 +            scale: scale,
-+            width: Math.max(1, Math.floor(rect.width * scale)),
++            // Termux:X11 rounds framebuffer width down to an 8-pixel boundary.
++            // Request the same geometry so the server response does not create
++            // an endless 2468 -> 2464 resize feedback loop on Retina screens.
++            width: Math.max(8, Math.floor(rect.width * scale / 8) * 8),
 +            height: Math.max(1, Math.floor(rect.height * scale)),
 +            dpi: Math.max(48, Math.min(65535, Math.round(NEWHOME_BASE_DPI * scale))),
 +        };
