@@ -28,7 +28,8 @@ case "$(uname -s)" in
         certutil -A -d "sql:$db" -n "$CA_NAME" -t "C,," -i "$CA_FILE"
         echo "Installed $CA_NAME in browser profile: $db"
         installed=1
-      done < <(find "$HOME/.mozilla/firefox" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || true)
+      done < <(find "$HOME/.mozilla/firefox" -mindepth 2 -maxdepth 2 \
+        -type f -name cert9.db -printf '%h\n' 2>/dev/null | sort -u || true)
 
       nssdb="$HOME/.pki/nssdb"
       mkdir -p "$nssdb"

@@ -18,7 +18,7 @@ diff --git a/core/clipboard.js b/core/clipboard.js
          };
  
          // ===== EVENT HANDLERS =====
-@@ -45,6 +52,53 @@ export default class AsyncClipboard {
+@@ -45,6 +52,58 @@ export default class AsyncClipboard {
          }
      }
  
@@ -51,7 +51,8 @@ diff --git a/core/clipboard.js b/core/clipboard.js
 +    }
 +
 +    async _handleContextMenu(event) {
-+        if (event.target !== this._target) return;
++        if (event.target !== this._target &&
++            event.target?.id !== 'noVNC_keyboardinput') return;
 +        // Firefox does not expose clipboard-read through the Permissions API,
 +        // but permits an explicit read attempt from a user-triggered action.
 +        if (!navigator?.clipboard?.readText) return;
@@ -65,6 +66,10 @@ diff --git a/core/clipboard.js b/core/clipboard.js
 +
 +    _isEditableTarget(target) {
 +        if (!target) return false;
++        // noVNC deliberately focuses this hidden textarea for keyboard input.
++        // Firefox dispatches Cmd+V and context-menu Paste to it, so it belongs
++        // to the remote canvas rather than to noVNC's local settings forms.
++        if (target.id === 'noVNC_keyboardinput') return false;
 +        const tag = target.tagName?.toLowerCase();
 +        return tag === 'input' || tag === 'textarea' || target.isContentEditable;
 +    }
@@ -72,7 +77,7 @@ diff --git a/core/clipboard.js b/core/clipboard.js
      // ===== PUBLIC METHODS =====
  
      writeClipboard(text) {
-@@ -57,6 +111,10 @@ export default class AsyncClipboard {
+@@ -57,6 +116,10 @@ export default class AsyncClipboard {
  
      grab() {
          if (!this._target) return;
@@ -83,7 +88,7 @@ diff --git a/core/clipboard.js b/core/clipboard.js
          this._ensureAvailable()
              .then((isAvailable) => {
                  if (isAvailable) {
-@@ -67,6 +125,11 @@ export default class AsyncClipboard {
+@@ -67,6 +130,11 @@ export default class AsyncClipboard {
  
      ungrab() {
          if (!this._target) return;

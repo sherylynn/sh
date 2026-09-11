@@ -167,7 +167,8 @@ if [[ $(platform) == *linux* ]]; then
 
   sudo apt purge kasmvncserver -y
   sudo apt autoremove -y
-  sudo apt install python3-numpy x11vnc tigervnc-standalone-server tigervnc-tools openssl -y
+  sudo apt install python3-numpy x11vnc tigervnc-standalone-server tigervnc-tools \
+    openssl libnss3-tools -y
 
   # Browser patch and x11vnc receiver form one protocol pair. Rebuild the receiver
   # here as well as during a fresh desktop installation, so a noVNC-only update
