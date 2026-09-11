@@ -24,4 +24,10 @@ gcc -O2 -Wall -Wextra -Werror \
 /tmp/rfb_load_client 15 2 6 2464 1429 192
 ```
 
+发送与 noVNC fallback 相同的标准 RFB `ClientCutText` 测试文本：
+
+```sh
+/tmp/rfb_load_client 5 2 6 0 0 0 clipboard-probe
+```
+
 客户端读取现有 `/root/.vnc/passwd` 完成认证，但不会输出密码。

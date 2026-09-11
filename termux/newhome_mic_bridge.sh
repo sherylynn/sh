@@ -37,10 +37,13 @@ clipboard_running() {
 start_clipboard_bridge() {
     # This helper is also called by non-X11 Linux applications. Clipboard sync is
     # meaningful only when an X display exists; XFCE autostart covers later sessions.
-    [ -n "${DISPLAY:-}" ] || return 0
-    [ -f "$CLIPBOARD_BRIDGE" ] || return 0
-    command -v python3 >/dev/null 2>&1 || return 0
-    command -v xclip >/dev/null 2>&1 || return 0
+    [ -n "${DISPLAY:-}" ] || { log "剪贴板桥未启动：DISPLAY 未设置"; return 0; }
+    [ -f "$CLIPBOARD_BRIDGE" ] || { log "剪贴板桥未启动：缺少 $CLIPBOARD_BRIDGE"; return 0; }
+    command -v python3 >/dev/null 2>&1 || { log "剪贴板桥未启动：缺少 python3"; return 0; }
+    command -v xclip >/dev/null 2>&1 || {
+        log "剪贴板桥未启动：缺少 xclip；请运行 bash /root/sh/debian/termux_chroot_desktop_setup.sh"
+        return 0
+    }
     if clipboard_running; then
         return 0
     fi

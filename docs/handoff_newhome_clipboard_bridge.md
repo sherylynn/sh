@@ -137,6 +137,10 @@ print(f.readline().strip())
 PY
 ```
 
+如果现有 chroot 只是 `git pull` 到新脚本，而不是全新安装，仍需执行一次
+`termux_chroot_desktop_setup.sh`；否则系统可能没有 `xclip` 和 XFCE 自启动项。
+`newhome_mic_bridge.sh start` 会在缺少这些依赖时输出明确提示，不再静默跳过。
+
 Android 日志 tag：`LinuxClipboardBridge`。
 
 ## 安全边界

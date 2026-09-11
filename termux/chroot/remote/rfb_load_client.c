@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 static volatile sig_atomic_t running = 1;
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
     int resize_width = argc > 4 ? atoi(argv[4]) : 0;
     int resize_height = argc > 5 ? atoi(argv[5]) : 0;
     int resize_dpi = argc > 6 ? atoi(argv[6]) : 0;
+    char *clipboard_text = argc > 7 ? argv[7] : NULL;
     int resize_sent = 0;
     char *client_argv[] = {"rfb-load-client", "127.0.0.1:0", NULL};
     int client_argc = 2;
@@ -69,6 +71,11 @@ int main(int argc, char **argv) {
     signal(SIGINT, stop_client);
     signal(SIGTERM, stop_client);
     if (!rfbInitClient(client, &client_argc, client_argv)) return 3;
+    if (clipboard_text != NULL &&
+        !SendClientCutText(client, clipboard_text, (int)strlen(clipboard_text))) {
+        rfbClientCleanup(client);
+        return 5;
+    }
     while (running && time(NULL) < deadline) {
         int ready = WaitForMessage(client, 100000);
         if (ready < 0 || (ready > 0 && !HandleRFBServerMessage(client))) break;
