@@ -85,9 +85,8 @@ if ! dpkg -s kwin-wayland &>/dev/null; then
     else
       zsh ~/sh/win-git/init_d_noVNC.sh
     fi
-    # 固定使用自己的 noVNC fork，承载 NewHome HiDPI/Retina 扩展。
-    NOVNC_GIT_URL=https://github.com/sherylynn/noVNC.git NOVNC_BRANCH=master \
-      zsh ~/sh/win-git/noVNC.sh
+    # noVNC.sh 拉取官方 novnc/noVNC，并自动应用 sh 仓库维护的 HiDPI patch。
+    zsh ~/sh/win-git/noVNC.sh
   else
     zsh ~/sh/win-git/kasmVNC.sh
   fi
