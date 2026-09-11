@@ -4,15 +4,21 @@
 Android side: NewHome LinuxClipboardBridge on 127.0.0.1:4715.
 Linux side: X11 CLIPBOARD via xclip.
 
-The X11 CLIPBOARD is intentionally the merge point. x11vnc/noVNC already maps
-VNC clipboard messages to the X selection, so a remote PC can participate
-without a second VNC-specific protocol.
+Android/NewHome and Linux intentionally form one *remote clipboard domain* for
+noVNC. Any real copy on either side converges here, while noVNC may temporarily
+stage a controller (PC/Mac) clipboard into X11 immediately before a remote paste.
+
+The bridge also publishes a small state file for the existing XFCE tray tooling
+(or future diagnostics) so it can show where the latest remote-domain clipboard
+change came from without storing the full clipboard contents.
 """
 
 from __future__ import annotations
 
 import base64
 import fcntl
+import hashlib
+import json
 import logging
 import os
 import signal
@@ -31,11 +37,26 @@ CONNECT_TIMEOUT = 2.0
 RECONNECT_SECONDS = 1.0
 LOCK_PATH = Path("/tmp/newhome-clipboard-bridge.lock")
 LOG_PATH = Path("/tmp/newhome-clipboard-bridge.log")
+STATE_PATH = Path(os.environ.get(
+    "NEWHOME_CLIPBOARD_STATE_PATH",
+    "/tmp/newhome-clipboard-state.json",
+))
 
 stop_event = threading.Event()
 android_snapshot_ready = threading.Event()
 state_lock = threading.Lock()
+metadata_lock = threading.Lock()
 last_x_text: str | None = None
+state_generation = 0
+android_connected = False
+state_record: dict[str, object | None] = {
+    "origin": None,
+    "direction": None,
+    "pending": False,
+    "sha256": None,
+    "chars": None,
+    "preview": None,
+}
 
 
 def configure_logging() -> None:
@@ -78,6 +99,85 @@ def require_environment() -> None:
         )
     except FileNotFoundError as exc:
         raise RuntimeError("xclip is not installed") from exc
+
+
+def _clipboard_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _clipboard_preview(text: str, limit: int = 80) -> str:
+    compact = " ".join(text.replace("\x00", "").split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 1] + "…"
+
+
+def publish_state(
+    *,
+    origin: str | None = None,
+    direction: str | None = None,
+    text: str | None = None,
+    pending: bool | None = None,
+    increment_generation: bool = False,
+) -> None:
+    """Write an atomic diagnostic state snapshot for tray/UI consumers.
+
+    origin is deliberately `android` or `x11`.  At this layer an X11 owner may
+    be a native Linux app *or* x11vnc after a PC injection; classifying it as
+    `linux` would be false precision.  A future XFixes owner watcher can refine
+    that provenance without changing the sync protocol.
+    """
+
+    global state_generation
+    with metadata_lock:
+        if increment_generation:
+            state_generation += 1
+
+        if origin is not None:
+            state_record["origin"] = origin
+        if direction is not None:
+            state_record["direction"] = direction
+        if pending is not None:
+            state_record["pending"] = pending
+        if text is not None:
+            state_record.update({
+                "sha256": _clipboard_hash(text),
+                "chars": len(text),
+                "preview": _clipboard_preview(text),
+            })
+
+        snapshot = {
+            "version": 1,
+            "pid": os.getpid(),
+            "display": os.environ.get("DISPLAY"),
+            "updated_at": time.time(),
+            "generation": state_generation,
+            "android_connected": android_connected,
+            **state_record,
+        }
+
+        tmp = STATE_PATH.with_name(f"{STATE_PATH.name}.{os.getpid()}.tmp")
+        try:
+            STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(
+                json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(tmp, STATE_PATH)
+        except OSError as exc:
+            logging.debug("failed to publish clipboard state: %s", exc)
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def set_android_connected(connected: bool) -> None:
+    global android_connected
+    changed = android_connected != connected
+    android_connected = connected
+    if changed:
+        publish_state()
 
 
 def read_x_clipboard() -> str | None:
@@ -183,6 +283,7 @@ def android_watch_loop() -> None:
         sock = reader = writer = None
         try:
             sock, reader, writer = connect_bridge()
+            set_android_connected(True)
             writer.write("WATCH\n")
             writer.flush()
             response = reader.readline().rstrip("\r\n")
@@ -197,7 +298,6 @@ def android_watch_loop() -> None:
                 line = line.rstrip("\r\n")
                 if line == "EMPTY":
                     # Do not erase a useful Linux clipboard just because Android starts empty.
-                    # Mark initialization complete so the Linux value may flow Android-ward.
                     android_snapshot_ready.set()
                     continue
                 if line.startswith("ERR "):
@@ -214,12 +314,20 @@ def android_watch_loop() -> None:
                         continue
                     # Set state before xclip so the poller cannot echo our own write back.
                     last_x_text = text
+
                 if write_x_clipboard(text or ""):
                     logging.info("Android -> X11 clipboard (%d chars)", len(text or ""))
+                    publish_state(
+                        origin="android",
+                        direction="android->x11",
+                        text=text or "",
+                        increment_generation=True,
+                    )
                 android_snapshot_ready.set()
         except (OSError, RuntimeError, ConnectionError) as exc:
             logging.debug("Android clipboard watcher unavailable: %s", exc)
         finally:
+            set_android_connected(False)
             for obj in (writer, reader, sock):
                 if obj is not None:
                     try:
@@ -236,19 +344,39 @@ def x_poll_loop() -> None:
     android_snapshot_ready.wait(timeout=3.0)
 
     pending_text: str | None = None
+    pending_announced = False
     while not stop_event.is_set():
         text = read_x_clipboard()
         if text is not None:
             with state_lock:
                 already_synced = text == last_x_text
-            if not already_synced:
+            if not already_synced and text != pending_text:
                 pending_text = text
+                pending_announced = False
 
-        if pending_text is not None and send_android_clipboard(pending_text):
-            with state_lock:
-                last_x_text = pending_text
-            logging.info("X11 -> Android clipboard (%d chars)", len(pending_text))
-            pending_text = None
+        if pending_text is not None:
+            if not pending_announced:
+                publish_state(
+                    origin="x11",
+                    direction="x11->android",
+                    text=pending_text,
+                    pending=True,
+                )
+                pending_announced = True
+
+            if send_android_clipboard(pending_text):
+                with state_lock:
+                    last_x_text = pending_text
+                logging.info("X11 -> Android clipboard (%d chars)", len(pending_text))
+                publish_state(
+                    origin="x11",
+                    direction="x11->android",
+                    text=pending_text,
+                    pending=False,
+                    increment_generation=True,
+                )
+                pending_text = None
+                pending_announced = False
 
         stop_event.wait(POLL_SECONDS)
 
@@ -273,6 +401,7 @@ def main() -> int:
     signal.signal(signal.SIGINT, handle_signal)
 
     logging.info("starting NewHome clipboard bridge DISPLAY=%s", os.environ.get("DISPLAY"))
+    publish_state()
     watcher = threading.Thread(target=android_watch_loop, name="AndroidClipboardWatch", daemon=True)
     poller = threading.Thread(target=x_poll_loop, name="XClipboardPoll", daemon=True)
     watcher.start()
@@ -283,6 +412,8 @@ def main() -> int:
             pass
     finally:
         logging.info("stopping NewHome clipboard bridge")
+        set_android_connected(False)
+        publish_state()
         # Keep lock_file referenced until shutdown so flock remains held.
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
         lock_file.close()
