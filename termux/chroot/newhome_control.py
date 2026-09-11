@@ -16,7 +16,10 @@ import sys
 HOST = os.environ.get("NEWHOME_CONTROL_HOST", "127.0.0.1")
 PORT = int(os.environ.get("NEWHOME_CONTROL_PORT", "4716"))
 HELLO = "HELLO NEWHOME_CONTROL 1"
-TIMEOUT = float(os.environ.get("NEWHOME_CONTROL_TIMEOUT", "5"))
+# First RESTART may display the KernelSU/APatch/Magisk authorization UI for
+# NewHome. Keep PING fast in practice, but do not abort the control socket while
+# the user is granting that one-time root permission.
+TIMEOUT = float(os.environ.get("NEWHOME_CONTROL_TIMEOUT", "20"))
 MAX_LINE = 4096
 
 
@@ -62,6 +65,12 @@ def main() -> int:
     if response == "OK RESTARTING":
         print("NewHome accepted container restart; this chroot session may disconnect now.")
         return 0
+    if response == "ERR ROOT_REQUIRED":
+        print(
+            "NewHome needs root authorization from KernelSU/APatch/Magisk before it can restart Termux.",
+            file=sys.stderr,
+        )
+        return 3
 
     print(f"NewHome rejected restart: {response}", file=sys.stderr)
     return 2
