@@ -79,10 +79,9 @@ apply_clipboard_patch() {
 
 install_https_launcher() {
   local proxy="${SOFT_HOME}/utils/novnc_proxy"
-  local upstream="${SOFT_HOME}/utils/novnc_proxy.upstream"
 
   [ -x "$proxy" ] || {
-    echo "找不到官方 noVNC 启动脚本：$proxy" >&2
+    echo "找不到 noVNC 启动脚本：$proxy" >&2
     return 1
   }
   [ -f "$TLS_HELPER" ] || {
@@ -90,63 +89,14 @@ install_https_launcher() {
     return 1
   }
 
-  # 每次部署都从刚同步的官方启动器复制一份，再把公开入口换成很薄的
-  # NewHome wrapper。server_noVNC.sh 无需关心 TLS 参数，仍调用 novnc_proxy。
-  cp -f "$proxy" "$upstream"
-  chmod 0755 "$upstream"
+  grep -q 'NEWHOME_AUTO_TLS' "$proxy" || {
+    echo "配置的 noVNC 仓库未集成 NewHome HTTPS 启动逻辑：$proxy" >&2
+    return 1
+  }
   cp -f "$CA_INSTALL_SH" "${SOFT_HOME}/install-noVNC-ca.sh"
   cp -f "$CA_INSTALL_PS1" "${SOFT_HOME}/install-noVNC-ca.ps1"
   chmod 0755 "${SOFT_HOME}/install-noVNC-ca.sh"
-
-  cat > "$proxy" <<'EOF'
-#!/usr/bin/env bash
-set -e
-
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-UPSTREAM="$HERE/novnc_proxy.upstream"
-TLS_HELPER=${NOVNC_TLS_HELPER:-$HOME/sh/win-git/noVNC_tls.sh}
-
-[ -x "$UPSTREAM" ] || {
-  echo "noVNC upstream launcher missing: $UPSTREAM" >&2
-  exit 1
-}
-
-# Explicit upstream TLS flags always win. This keeps the wrapper compatible
-# with callers that already manage their own certificates.
-explicit_tls=0
-for arg in "$@"; do
-  case "$arg" in
-    --cert|--key|--ssl-only) explicit_tls=1 ;;
-  esac
-done
-
-case "${NOVNC_HTTPS:-1}" in
-  0|off|false|no)
-    exec "$UPSTREAM" "$@"
-    ;;
-  *)
-    if [ "$explicit_tls" -eq 1 ]; then
-      exec "$UPSTREAM" "$@"
-    fi
-    [ -f "$TLS_HELPER" ] || {
-      echo "noVNC HTTPS helper missing: $TLS_HELPER" >&2
-      exit 1
-    }
-    # shellcheck source=/dev/null
-    . "$TLS_HELPER"
-    novnc_tls_prepare || exit 1
-    ln -sfn "$NOVNC_TLS_CA_CERT" "$HERE/../novnc-ca.crt"
-    echo "[noVNC TLS] HTTPS/WSS enabled (set NOVNC_HTTPS=0 to use plain HTTP)"
-    exec "$UPSTREAM" \
-      --cert "$NOVNC_TLS_CERT" \
-      --key "$NOVNC_TLS_KEY" \
-      --ssl-only \
-      "$@"
-    ;;
-esac
-EOF
-  chmod 0755 "$proxy"
-  echo "installed NewHome HTTPS wrapper over official novnc_proxy"
+  echo "verified NewHome HTTPS support in maintained noVNC fork"
 }
 
 if [[ $(platform) == *linux* ]]; then
