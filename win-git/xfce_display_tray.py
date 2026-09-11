@@ -15,6 +15,7 @@ from gi.repository import GLib, Gtk
 SCALING = "/root/sh/win-git/xfce4-scaling.sh"
 CONFIG_DIR = os.path.expanduser("~/.config/termux-x11-display")
 PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
+REMOTE_EVENT_FILE = "/tmp/xfce-display-remote-event"
 
 
 def load_presets():
@@ -80,6 +81,29 @@ class DisplayTray:
         self.icon.set_visible(True)
         self.icon.connect("popup-menu", self.popup)
         self.icon.connect("activate", self.activate)
+        self._last_remote_event = None
+        GLib.timeout_add(500, self.check_remote_event)
+
+    def check_remote_event(self):
+        try:
+            with open(REMOTE_EVENT_FILE, encoding="utf-8") as stream:
+                event = stream.read().strip()
+        except OSError:
+            return True
+        if not event or event == self._last_remote_event:
+            return True
+        self._last_remote_event = event
+        parts = event.split("\t", 2)
+        if len(parts) != 3:
+            return True
+        _event_id, state, message = parts
+        if state == "received":
+            notify("noVNC 远程显示请求", message)
+        elif state == "applied":
+            notify("noVNC 显示设置已更新", message)
+        elif state == "failed":
+            notify("noVNC 显示设置失败", message, "critical")
+        return True
 
     @staticmethod
     def item(label, callback):

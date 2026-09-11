@@ -1,0 +1,203 @@
+diff --git a/core/clipboard.js b/core/clipboard.js
+--- a/core/clipboard.js
++++ b/core/clipboard.js
+@@ -12,9 +12,15 @@ export default class AsyncClipboard {
+         this._target = target || null;
+ 
+         this._isAvailable = null;
++        // NEWHOME_EXPLICIT_PASTE: Firefox keyboard/right-click clipboard bridge.
++        this._explicitPasteShortcut = false;
+ 
+         this._eventHandlers = {
+             'focus': this._handleFocus.bind(this),
++            'paste': this._handlePaste.bind(this),
++            'keydown': this._handlePasteKeyDown.bind(this),
++            'keyup': this._handlePasteKeyUp.bind(this),
++            'contextmenu': this._handleContextMenu.bind(this),
+         };
+ 
+         // ===== EVENT HANDLERS =====
+@@ -45,6 +51,44 @@ export default class AsyncClipboard {
+         }
+     }
+ 
++    _handlePasteKeyDown(event) {
++        if ((event.ctrlKey || event.metaKey) && !event.altKey &&
++            event.key.toLowerCase() === 'v') {
++            this._explicitPasteShortcut = true;
++            // Keyboard's normal handler would send Ctrl/Meta+V before the RFB
++            // clipboard update. Keep the browser's paste action, but stop that
++            // premature remote key event.
++            event.stopImmediatePropagation();
++        }
++    }
++
++    _handlePasteKeyUp(event) {
++        if (this._explicitPasteShortcut && event.key.toLowerCase() === 'v') {
++            event.stopImmediatePropagation();
++            this._explicitPasteShortcut = false;
++        }
++    }
++
++    _handlePaste(event) {
++        const text = event.clipboardData?.getData('text/plain');
++        if (typeof text !== 'string') return;
++        event.preventDefault();
++        event.stopImmediatePropagation();
++        this.onpaste(text, true);
++    }
++
++    async _handleContextMenu() {
++        // Firefox does not expose clipboard-read through the Permissions API,
++        // but permits an explicit read attempt from a user-triggered action.
++        if (!navigator?.clipboard?.readText) return;
++        try {
++            const text = await navigator.clipboard.readText();
++            this.onpaste(text, false);
++        } catch (error) {
++            Log.Warn("Clipboard read on right click failed: ", error);
++        }
++    }
++
+     // ===== PUBLIC METHODS =====
+ 
+     writeClipboard(text) {
+@@ -57,6 +101,10 @@ export default class AsyncClipboard {
+ 
+     grab() {
+         if (!this._target) return;
++        this._target.addEventListener('paste', this._eventHandlers.paste);
++        this._target.addEventListener('keydown', this._eventHandlers.keydown, true);
++        this._target.addEventListener('keyup', this._eventHandlers.keyup, true);
++        this._target.addEventListener('contextmenu', this._eventHandlers.contextmenu);
+         this._ensureAvailable()
+             .then((isAvailable) => {
+                 if (isAvailable) {
+@@ -67,6 +115,11 @@ export default class AsyncClipboard {
+ 
+     ungrab() {
+         if (!this._target) return;
++        this._target.removeEventListener('paste', this._eventHandlers.paste);
++        this._target.removeEventListener('keydown', this._eventHandlers.keydown, true);
++        this._target.removeEventListener('keyup', this._eventHandlers.keyup, true);
++        this._target.removeEventListener('contextmenu', this._eventHandlers.contextmenu);
+         this._target.removeEventListener('focus', this._eventHandlers.focus);
++        this._explicitPasteShortcut = false;
+     }
+ }
+diff --git a/app/ui.js b/app/ui.js
+--- a/app/ui.js
++++ b/app/ui.js
+@@ -184,7 +184,15 @@ const UI = {
+         UI.initSetting('password');
+         UI.initSetting('autoconnect', false);
+         UI.initSetting('view_clip', false);
+-        UI.initSetting('resize', 'off');
++        // HTTP and HTTPS have separate localStorage. Migrate the old/default
++        // "off" once, then continue respecting explicit user changes.
++        if (WebUtil.readSetting('newhome_remote_resize_default_v1') !== 'done') {
++            if ([null, 'off'].includes(WebUtil.readSetting('resize'))) {
++                WebUtil.writeSetting('resize', 'remote');
++            }
++            WebUtil.writeSetting('newhome_remote_resize_default_v1', 'done');
++        }
++        UI.initSetting('resize', 'remote');
+         UI.initSetting('quality', 6);
+         UI.initSetting('compression', 2);
+         UI.initSetting('shared', true);
+@@ -402,10 +402,10 @@ const UI = {
+         document.getElementById("noVNC_fullscreen_button")
+             .addEventListener('click', UI.toggleFullscreen);
+ 
+-        window.addEventListener('fullscreenchange', UI.updateFullscreenButton);
+-        window.addEventListener('mozfullscreenchange', UI.updateFullscreenButton);
+-        window.addEventListener('webkitfullscreenchange', UI.updateFullscreenButton);
+-        window.addEventListener('msfullscreenchange', UI.updateFullscreenButton);
++        window.addEventListener('fullscreenchange', UI.handleFullscreenChange);
++        window.addEventListener('mozfullscreenchange', UI.handleFullscreenChange);
++        window.addEventListener('webkitfullscreenchange', UI.handleFullscreenChange);
++        window.addEventListener('msfullscreenchange', UI.handleFullscreenChange);
+     },
+ 
+ /* ------^-------
+@@ -1443,6 +1443,17 @@ const UI = {
+                 .classList.remove("noVNC_selected");
+         }
+     },
++
++    handleFullscreenChange() {
++        UI.updateFullscreenButton();
++        // Firefox can dispatch fullscreenchange before its final viewport size
++        // reaches ResizeObserver. Re-evaluate after layout has settled.
++        window.setTimeout(() => {
++            if (UI.rfb && UI.getSetting('resize') === 'remote') {
++                UI.rfb.resizeSession = true;
++            }
++        }, 250);
++    },
+ 
+ /* ------^-------
+  *  /FULLSCREEN
+diff --git a/core/rfb.js b/core/rfb.js
+--- a/core/rfb.js
++++ b/core/rfb.js
+@@ -269,7 +269,7 @@ export default class RFB extends EventTargetMixin {
+         }
+ 
+         this._asyncClipboard = new AsyncClipboard(this._canvas);
+-        this._asyncClipboard.onpaste = this.clipboardPasteFrom.bind(this);
++        this._asyncClipboard.onpaste = this._handleLocalClipboardPaste.bind(this);
+ 
+         this._keyboard = new Keyboard(this._canvas);
+         this._keyboard.onkeyevent = this._handleKeyEvent.bind(this);
+@@ -513,33 +513,27 @@ export default class RFB extends EventTargetMixin {
+             this._clipboardText = text;
+             RFB.messages.extendedClipboardNotify(this._sock, [extendedClipboardFormatText]);
+         } else {
+-            let length, i;
+-            let data;
+-
+-            length = 0;
+-            // eslint-disable-next-line no-unused-vars
+-            for (let codePoint of text) {
+-                length++;
+-            }
+-
+-            data = new Uint8Array(length);
+-
+-            i = 0;
+-            for (let codePoint of text) {
+-                let code = codePoint.codePointAt(0);
+-
+-                /* Only ISO 8859-1 is supported */
+-                if (code > 0xff) {
+-                    code = 0x3f; // '?'
+-                }
+-
+-                data[i++] = code;
+-            }
+-
++            // x11vnc passes ClientCutText bytes into the X11 UTF-8 selection.
++            // Sending UTF-8 here preserves Chinese and other non-Latin text;
++            // noVNC's stock ISO-8859-1 fallback replaces them with '?'.
++            const data = new TextEncoder().encode(text);
+             RFB.messages.clientCutText(this._sock, data);
+         }
+     }
+ 
++    _handleLocalClipboardPaste(text, explicitPaste = false) {
++        this.clipboardPasteFrom(text);
++        if (!explicitPaste) return;
++
++        // RFB messages retain order: update the remote clipboard first, then
++        // paste it into the focused Linux application. macOS Command+V and
++        // Windows/Linux Ctrl+V both map to the Linux Ctrl+V shortcut here.
++        this.sendKey(KeyTable.XK_Control_L, 'ControlLeft', true);
++        this.sendKey(KeyTable.XK_v, 'KeyV', true);
++        this.sendKey(KeyTable.XK_v, 'KeyV', false);
++        this.sendKey(KeyTable.XK_Control_L, 'ControlLeft', false);
++    }
++
+     getImageData() {
+         return this._display.getImageData();
+     }

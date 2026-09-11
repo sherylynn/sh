@@ -11,11 +11,14 @@ NOVNC_GIT_URL=${NOVNC_GIT_URL:-https://github.com/novnc/noVNC.git}
 NOVNC_BRANCH=${NOVNC_BRANCH:-master}
 HIDPI_PATCH=${HIDPI_PATCH:-$HOME/sh/win-git/noVNC_hidpi.patch}
 HIDPI_MARKER=NEWHOME_FLAGS_MAGIC
+CLIPBOARD_PATCH=${NOVNC_CLIPBOARD_PATCH:-$HOME/sh/win-git/noVNC_firefox_clipboard.patch}
+CLIPBOARD_MARKER=NEWHOME_EXPLICIT_PASTE
 TLS_HELPER=${NOVNC_TLS_HELPER:-$HOME/sh/win-git/noVNC_tls.sh}
 
 echo "noVNC upstream: $NOVNC_GIT_URL"
 echo "noVNC branch: $NOVNC_BRANCH"
 echo "HiDPI patch: $HIDPI_PATCH"
+echo "Firefox clipboard patch: $CLIPBOARD_PATCH"
 echo "HTTPS helper: $TLS_HELPER"
 
 case $(arch) in
@@ -51,6 +54,24 @@ apply_hidpi_patch() {
     return 1
   }
   echo "applied NewHome HiDPI/Retina patch to official noVNC"
+}
+
+apply_clipboard_patch() {
+  if grep -q "$CLIPBOARD_MARKER" "${SOFT_HOME}/core/clipboard.js" 2>/dev/null; then
+    echo "NewHome Firefox clipboard support already present"
+    return 0
+  fi
+  if [ ! -f "$CLIPBOARD_PATCH" ]; then
+    echo "缺少 noVNC Firefox 剪贴板补丁：$CLIPBOARD_PATCH" >&2
+    return 1
+  fi
+  if ! git -C "${SOFT_HOME}" apply --check "$CLIPBOARD_PATCH"; then
+    echo "noVNC Firefox 剪贴板补丁无法应用到当前官方版本：$CLIPBOARD_PATCH" >&2
+    return 1
+  fi
+  git -C "${SOFT_HOME}" apply "$CLIPBOARD_PATCH"
+  grep -q "$CLIPBOARD_MARKER" "${SOFT_HOME}/core/clipboard.js" || return 1
+  echo "applied NewHome Firefox keyboard/right-click clipboard patch"
 }
 
 install_https_launcher() {
@@ -136,6 +157,7 @@ if [[ $(platform) == *linux* ]]; then
   fi
 
   apply_hidpi_patch || exit 1
+  apply_clipboard_patch || exit 1
 
   sudo apt purge kasmvncserver -y
   sudo apt autoremove -y
