@@ -6,7 +6,6 @@ import re
 import subprocess
 import sys
 import threading
-from pathlib import Path
 
 import gi
 
@@ -14,11 +13,10 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
 SCALING = "/root/sh/win-git/xfce4-scaling.sh"
+CONTROL_CLIENT = "/root/sh/termux/chroot/newhome_control.py"
 CONFIG_DIR = os.path.expanduser("~/.config/termux-x11-display")
 PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
 REMOTE_EVENT_FILE = "/tmp/xfce-display-remote-event"
-RESTART_REQUEST_PATH = Path(os.environ.get("NEWHOME_RESTART_REQUEST_PATH",
-                                          "/root/.container_restart_request"))
 
 
 def load_presets():
@@ -77,16 +75,28 @@ def run_setting(args, label):
 
 
 def request_container_restart():
-    # 在 chroot 内直接写触发文件；真正的 stop+start 由容器外的 Termux 看门狗执行，
-    # 因此这里写文件不会自杀。路径与 newhome_clipboard_bridge.py / cli.sh watchdog 保持一致。
-    try:
-        RESTART_REQUEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = RESTART_REQUEST_PATH.with_name(RESTART_REQUEST_PATH.name + ".tmp")
-        tmp.write_text(str(os.getpid()), encoding="utf-8")
-        os.replace(tmp, RESTART_REQUEST_PATH)
-        notify("容器重启", "已发送重启请求，Termux 看门狗将在数秒内 stop+start 容器")
-    except OSError as exc:
-        notify("容器重启失败", f"无法写入触发文件：{exc}", "critical")
+    """Ask NewHome to restart Termux/chroot; never self-manage from chroot."""
+    notify("容器重启", "正在请求 NewHome 重启 Termux/chroot…")
+
+    def worker():
+        try:
+            result = subprocess.run(
+                [sys.executable, CONTROL_CLIENT, "restart"],
+                text=True,
+                capture_output=True,
+                timeout=8,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            GLib.idle_add(notify, "容器重启失败", f"NewHome 控制桥不可用：{exc}", "critical")
+            return
+
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "NewHome 拒绝了重启请求").strip()[-500:]
+            GLib.idle_add(notify, "容器重启失败", detail, "critical")
+        # On success NewHome will stop this chroot, so a success notification
+        # here is intentionally unnecessary and may never be rendered.
+
+    threading.Thread(target=worker, daemon=True).start()
 
 
 class DisplayTray:
