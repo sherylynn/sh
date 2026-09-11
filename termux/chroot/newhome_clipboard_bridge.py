@@ -42,6 +42,15 @@ STATE_PATH = Path(os.environ.get(
     "/tmp/newhome-clipboard-state.json",
 ))
 
+# Restart request written when NewHome sends CTRL RESTART. The bridge runs
+# inside the chroot, so this path resolves to $CHROOT_DIR/root/.container_restart_request
+# on the host, which the Termux-side watchdog (cli.sh watchdog) polls and turns
+# into an actual stop+start of the container.
+RESTART_REQUEST_PATH = Path(os.environ.get(
+    "NEWHOME_RESTART_REQUEST_PATH",
+    "/root/.container_restart_request",
+))
+
 stop_event = threading.Event()
 android_snapshot_ready = threading.Event()
 state_lock = threading.Lock()
@@ -250,6 +259,25 @@ def decode_clip_line(line: str) -> str | None:
     return payload.decode("utf-8", errors="replace")
 
 
+def request_container_restart() -> None:
+    """Write a restart request file that a Termux-side watchdog consumes.
+
+    The bridge runs inside the chroot; writing here lands at
+    $CHROOT_DIR/root/.container_restart_request on the host, which the
+    termux watchdog (cli.sh watchdog) polls and turns into stop+start.
+    A concurrent request from the same loop is harmless: atomic rename avoids
+    the watchdog consuming a half-written file.
+    """
+    try:
+        RESTART_REQUEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = RESTART_REQUEST_PATH.with_name(RESTART_REQUEST_PATH.name + ".tmp")
+        tmp.write_text(str(os.getpid()), encoding="utf-8")
+        os.replace(tmp, RESTART_REQUEST_PATH)
+        logging.info("wrote container restart request: %s", RESTART_REQUEST_PATH)
+    except OSError as exc:
+        logging.error("failed to write container restart request: %s", exc)
+
+
 def send_android_clipboard(text: str) -> bool:
     payload = text.encode("utf-8")
     if len(payload) > MAX_PAYLOAD_BYTES:
@@ -302,6 +330,10 @@ def android_watch_loop() -> None:
                     continue
                 if line.startswith("ERR "):
                     logging.warning("NewHome clipboard watcher: %s", line)
+                    android_snapshot_ready.set()
+                    continue
+                if line == "CTRL RESTART":
+                    request_container_restart()
                     android_snapshot_ready.set()
                     continue
                 text = decode_clip_line(line)
