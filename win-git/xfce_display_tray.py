@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 import threading
+from pathlib import Path
 
 import gi
 
@@ -16,6 +17,8 @@ SCALING = "/root/sh/win-git/xfce4-scaling.sh"
 CONFIG_DIR = os.path.expanduser("~/.config/termux-x11-display")
 PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
 REMOTE_EVENT_FILE = "/tmp/xfce-display-remote-event"
+RESTART_REQUEST_PATH = Path(os.environ.get("NEWHOME_RESTART_REQUEST_PATH",
+                                          "/root/.container_restart_request"))
 
 
 def load_presets():
@@ -71,6 +74,19 @@ def run_setting(args, label):
             GLib.idle_add(notify, "显示设置失败", detail, "critical")
     notify("显示设置", f"正在应用：{label}")
     threading.Thread(target=worker, daemon=True).start()
+
+
+def request_container_restart():
+    # 在 chroot 内直接写触发文件；真正的 stop+start 由容器外的 Termux 看门狗执行，
+    # 因此这里写文件不会自杀。路径与 newhome_clipboard_bridge.py / cli.sh watchdog 保持一致。
+    try:
+        RESTART_REQUEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = RESTART_REQUEST_PATH.with_name(RESTART_REQUEST_PATH.name + ".tmp")
+        tmp.write_text(str(os.getpid()), encoding="utf-8")
+        os.replace(tmp, RESTART_REQUEST_PATH)
+        notify("容器重启", "已发送重启请求，Termux 看门狗将在数秒内 stop+start 容器")
+    except OSError as exc:
+        notify("容器重启失败", f"无法写入触发文件：{exc}", "critical")
 
 
 class DisplayTray:
@@ -156,6 +172,7 @@ class DisplayTray:
         menu.append(scales)
 
         menu.append(Gtk.SeparatorMenuItem())
+        menu.append(self.item("重启 chroot 容器", lambda _i: request_container_restart()))
         menu.append(self.item("打开完整设置窗口…", lambda _i: subprocess.Popen([SCALING, "--gui"])))
         menu.append(self.item("退出显示托盘", lambda _i: Gtk.main_quit()))
         menu.show_all()
