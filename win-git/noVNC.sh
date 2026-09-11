@@ -14,6 +14,8 @@ HIDPI_MARKER=NEWHOME_FLAGS_MAGIC
 CLIPBOARD_PATCH=${NOVNC_CLIPBOARD_PATCH:-$HOME/sh/win-git/noVNC_firefox_clipboard.patch}
 CLIPBOARD_MARKER=NEWHOME_EXPLICIT_PASTE
 TLS_HELPER=${NOVNC_TLS_HELPER:-$HOME/sh/win-git/noVNC_tls.sh}
+CA_INSTALL_SH=${NOVNC_CA_INSTALL_SH:-$HOME/sh/win-git/install_noVNC_ca.sh}
+CA_INSTALL_PS1=${NOVNC_CA_INSTALL_PS1:-$HOME/sh/win-git/install_noVNC_ca.ps1}
 
 echo "noVNC upstream: $NOVNC_GIT_URL"
 echo "noVNC branch: $NOVNC_BRANCH"
@@ -91,6 +93,9 @@ install_https_launcher() {
   # NewHome wrapper。server_noVNC.sh 无需关心 TLS 参数，仍调用 novnc_proxy。
   cp -f "$proxy" "$upstream"
   chmod 0755 "$upstream"
+  cp -f "$CA_INSTALL_SH" "${SOFT_HOME}/install-noVNC-ca.sh"
+  cp -f "$CA_INSTALL_PS1" "${SOFT_HOME}/install-noVNC-ca.ps1"
+  chmod 0755 "${SOFT_HOME}/install-noVNC-ca.sh"
 
   cat > "$proxy" <<'EOF'
 #!/usr/bin/env bash
@@ -129,6 +134,7 @@ case "${NOVNC_HTTPS:-1}" in
     # shellcheck source=/dev/null
     . "$TLS_HELPER"
     novnc_tls_prepare || exit 1
+    ln -sfn "$NOVNC_TLS_CA_CERT" "$HERE/../novnc-ca.crt"
     echo "[noVNC TLS] HTTPS/WSS enabled (set NOVNC_HTTPS=0 to use plain HTTP)"
     exec "$UPSTREAM" \
       --cert "$NOVNC_TLS_CERT" \

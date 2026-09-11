@@ -105,6 +105,26 @@ Linux ↔ noVNC 使用标准 RFB clipboard，不依赖浏览器 Clipboard API；
 - **稳定传输层**：RFB clipboard ↔ X11 ↔ NewHome 既有 ClipboardManager ↔ Android。
 - **浏览器自动系统剪贴板层**：能用 Clipboard API 时自动；不能用时通过 noVNC clipboard UI 或后续用户手势辅助功能触发。
 
+当前 noVNC 补丁还会捕获画布上的 `Ctrl+V` / `Cmd+V` 和右键操作：
+
+- 键盘粘贴依赖浏览器原生 `paste` 事件，不要求程序主动读取剪贴板，可作为免安装 CA 时的降级路径。
+- 右键直接获取使用 `navigator.clipboard.readText()`，必须处于浏览器认可的可信 HTTPS 环境，并可能仍需用户授予剪贴板权限。
+- 私有 IP 的本地 CA 无法被全新控制端自动信任。noVNC 服务提供 `/novnc-ca.crt`，以及 `/install-noVNC-ca.sh`、`/install-noVNC-ca.ps1` 两个安装脚本。
+
+macOS / Linux 下载三个文件后，在同一目录运行：
+
+```bash
+bash install-noVNC-ca.sh
+```
+
+Windows 当前用户安装（不要求写入整机证书库）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-noVNC-ca.ps1
+```
+
+安装后需完全重启 Firefox。若不安装 CA，可以继续使用 `Ctrl+V` / `Cmd+V` 或 noVNC 剪贴板面板，但浏览器不会允许一次右键静默读取操作系统剪贴板。
+
 ## 部署
 
 更新 `newhome` APK 后，确保原来的「Linux 麦克风桥」开关开启；然后 chroot 中：
