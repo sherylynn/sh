@@ -1048,9 +1048,6 @@ EOF
   export DISPLAY=:1
   export PULSE_RUNTIME_PATH=/run/user/$(id -u)/pulse
 
-  # 确保容器重启看门狗在运行（Termux 侧常驻，容器重启时不会被杀）
-  start_container_watchdog
-
   log_info "Chroot Linux容器启动完成！(包括初始化系统服务)"
   return 0
 }
@@ -1235,53 +1232,6 @@ restart_chroot_container() {
   start_chroot_container
 }
 
-# 容器重启看门狗：常驻于 Termux 侧（容器之外），轮询触发文件，由
-# chroot 内 newhome_clipboard_bridge.py 收到 CTRL RESTART 后写出。
-# 看门狗自身不在 chroot 内，所以 stop+start 杀光容器进程时它安然无恙。
-RESTART_REQUEST_FILE="${RESTART_REQUEST_FILE:-$CHROOT_DIR/root/.container_restart_request}"
-CONTAINER_WATCHDOG_PIDFILE="${CONTAINER_WATCHDOG_PIDFILE:-$HOME/.container_watchdog.pid}"
-
-watchdog_chroot_restart() {
-  local self actual
-  self="$(readlink -f "${BASH_SOURCE[0]}")"
-  # 选定触发文件路径：默认 Termux 外视角 $CHROOT_DIR/root/...；
-  # 若看门狗被误在 chroot 内拉起（$CHROOT_DIR 不可见），回退到 chroot 内绝对路径，
-  # 避免「双重 /data/local/mnt」路径错位导致永远读不到触发文件。
-  if [ ! -e "$CHROOT_DIR" ] && [ -d /root ]; then
-    actual="/root/.container_restart_request"
-  else
-    actual="$RESTART_REQUEST_FILE"
-  fi
-  log_info "容器重启看门狗启动，监听: $actual"
-  while true; do
-    if [ -e "$actual" ]; then
-      # 原子消费：先改名，避免 restart 期间重复触发
-      if sudo mv -f "$actual" "${actual}.processing" 2>/dev/null || \
-         mv -f "$actual" "${actual}.processing" 2>/dev/null; then
-        log_info "收到容器重启请求，执行 restart..."
-        bash "$self" restart
-        sudo rm -f "${actual}.processing" 2>/dev/null || rm -f "${actual}.processing" 2>/dev/null
-      fi
-    fi
-    sleep 2
-  done
-}
-
-# 确保看门狗只启动一个实例（带 pidfile 锁）。看门狗由 start_chroot_container
-# 在容器启动时自动拉起，运行的也是 Termux 侧进程，不会被容器 restart 杀掉。
-start_container_watchdog() {
-  if [ -f "$CONTAINER_WATCHDOG_PIDFILE" ]; then
-    local oldpid
-    oldpid=$(cat "$CONTAINER_WATCHDOG_PIDFILE" 2>/dev/null) || true
-    if [ -n "$oldpid" ] && kill -0 "$oldpid" 2>/dev/null; then
-      return 0
-    fi
-  fi
-  nohup bash "$(readlink -f "${BASH_SOURCE[0]}")" watchdog >/dev/null 2>&1 &
-  echo "$!" > "$CONTAINER_WATCHDOG_PIDFILE"
-  log_info "容器重启看门狗已启动 (pid $(cat "$CONTAINER_WATCHDOG_PIDFILE" 2>/dev/null))"
-}
-
 # 命令行接口
 chroot_manager_cli() {
   case "${1:-help}" in
@@ -1293,9 +1243,6 @@ chroot_manager_cli() {
       ;;
     restart | r)
       restart_chroot_container
-      ;;
-    watchdog | wd)
-      watchdog_chroot_restart
       ;;
     status | stat)
       check_chroot_status
