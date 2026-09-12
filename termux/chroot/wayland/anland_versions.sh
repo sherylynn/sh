@@ -11,7 +11,7 @@ ANLAND_APK_STANDARD="AnlandTermux-${ANLAND_VERSION}.apk"
 ANLAND_APK_COMPATIBLE="AnlandTermux-${ANLAND_VERSION}-compatible.apk"
 ANLAND_DAEMON_DEB="anland_${ANLAND_VERSION}_aarch64.deb"
 
-# Debian 13 / trixie assets from the same upstream release.  Weston is used
+# Debian 13 / trixie assets from the same upstream release. Weston is used
 # only as a bootstrap compatibility producer until our wlroots Anland backend
 # is ready; Labwc remains the user-facing compositor in both modes.
 ANLAND_DEBIAN_XWAYLAND_DEB="xwayland_24.1.6-91_arm64.deb"
@@ -27,8 +27,10 @@ ANLAND_ANDROID_ACTIVITY="com.anland.termux/.MainActivity"
 ANLAND_SOCKET_TERMUX="${PREFIX:-/data/data/com.termux/files/usr}/tmp/anland/display_daemon.sock"
 ANLAND_SOCKET_CHROOT="/tmp/anland/display_daemon.sock"
 
-# Debian 13 ships Labwc 0.8.3 on wlroots 0.18.  That is our first direct
-# wlroots-anland ABI target: it lets us keep distro Labwc and substitute only
-# a patched wlroots 0.18 build via LD_LIBRARY_PATH once the backend is ready.
+# Debian 13/trixie stable currently ships Labwc 0.8.3 against wlroots
+# 0.18.2-3. This exact ABI is our first direct wlroots-anland target: keep the
+# distro Labwc binary and substitute only a patched libwlroots-0.18 build via
+# LD_LIBRARY_PATH. Upgrading this pin is a deliberate compatibility change.
 NEWHOME_LABWC_BASELINE="0.8.3"
-NEWHOME_WLROOTS_BASELINE="0.18"
+NEWHOME_WLROOTS_BASELINE="0.18.2"
+NEWHOME_WLROOTS_DEBIAN_BASELINE="0.18.2-3"
