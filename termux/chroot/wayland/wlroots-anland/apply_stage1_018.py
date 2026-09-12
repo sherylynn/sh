@@ -27,7 +27,7 @@ PUBLIC_HEADER = r'''#ifndef WLR_BACKEND_ANLAND_H
 #include <wlr/backend.h>
 #include <wlr/types/wlr_output.h>
 
-struct wlr_backend *wlr_anland_backend_create(struct wl_display *display);
+struct wlr_backend *wlr_anland_backend_create(struct wl_event_loop *loop);
 bool wlr_backend_is_anland(struct wlr_backend *backend);
 bool wlr_output_is_anland(struct wlr_output *output);
 
@@ -43,13 +43,12 @@ INTERNAL_HEADER = r'''#ifndef BACKEND_ANLAND_H
 #include <wlr/backend.h>
 #include <wlr/types/wlr_output.h>
 
-#include "vendor/display_producer.h"
+#include "anland/vendor/display_producer.h"
 
 struct wlr_anland_backend {
     struct wlr_backend backend;
-    struct wl_display *display_server;
     struct wl_event_loop *event_loop;
-    struct wl_listener display_destroy;
+    struct wl_listener event_loop_destroy;
     struct wl_list outputs;
     struct wl_event_source *reconnect_timer;
     display_ctx *display;
@@ -141,7 +140,6 @@ static bool backend_start(struct wlr_backend *wlr_backend) {
 
     struct wlr_anland_output *output;
     wl_list_for_each(output, &backend->outputs, link) {
-        wlr_output_update_enabled(&output->wlr_output, true);
         wl_signal_emit_mutable(&backend->backend.events.new_output,
             &output->wlr_output);
     }
@@ -156,7 +154,7 @@ static void backend_destroy(struct wlr_backend *wlr_backend) {
         return;
     }
     struct wlr_anland_backend *backend = anland_backend_from_backend(wlr_backend);
-    wl_list_remove(&backend->display_destroy.link);
+    wl_list_remove(&backend->event_loop_destroy.link);
 
     struct wlr_anland_output *output, *tmp;
     wl_list_for_each_safe(output, tmp, &backend->outputs, link) {
@@ -185,14 +183,14 @@ static const struct wlr_backend_impl backend_impl = {
     .get_buffer_caps = get_buffer_caps,
 };
 
-static void handle_display_destroy(struct wl_listener *listener, void *data) {
+static void handle_event_loop_destroy(struct wl_listener *listener, void *data) {
     (void)data;
     struct wlr_anland_backend *backend =
-        wl_container_of(listener, backend, display_destroy);
+        wl_container_of(listener, backend, event_loop_destroy);
     backend_destroy(&backend->backend);
 }
 
-struct wlr_backend *wlr_anland_backend_create(struct wl_display *display) {
+struct wlr_backend *wlr_anland_backend_create(struct wl_event_loop *loop) {
     const char *socket_path = getenv("ANLAND_SOCKET");
     if (socket_path == NULL || socket_path[0] == '\0') {
         socket_path = DEFAULT_SOCKET_PATH;
@@ -205,8 +203,7 @@ struct wlr_backend *wlr_anland_backend_create(struct wl_display *display) {
     }
 
     wlr_backend_init(&backend->backend, &backend_impl);
-    backend->display_server = display;
-    backend->event_loop = wl_display_get_event_loop(display);
+    backend->event_loop = loop;
     wl_list_init(&backend->outputs);
     backend->socket_path = strdup(socket_path);
     if (backend->socket_path == NULL) {
@@ -241,8 +238,8 @@ struct wlr_backend *wlr_anland_backend_create(struct wl_display *display) {
         return NULL;
     }
 
-    backend->display_destroy.notify = handle_display_destroy;
-    wl_display_add_destroy_listener(display, &backend->display_destroy);
+    backend->event_loop_destroy.notify = handle_event_loop_destroy;
+    wl_event_loop_add_destroy_listener(loop, &backend->event_loop_destroy);
 
     if (anland_backend_add_output(backend) == NULL) {
         backend_destroy(&backend->backend);
@@ -338,11 +335,14 @@ struct wlr_output *anland_backend_add_output(struct wlr_anland_backend *backend)
     }
     output->backend = backend;
 
-    wlr_output_init(&output->wlr_output, &backend->backend, &output_impl,
-        backend->display_server);
-    wlr_output_update_custom_mode(&output->wlr_output,
+    struct wlr_output_state state;
+    wlr_output_state_init(&state);
+    wlr_output_state_set_custom_mode(&state,
         (int32_t)backend->width, (int32_t)backend->height,
         backend->refresh > INT32_MAX ? 0 : (int32_t)backend->refresh);
+    wlr_output_init(&output->wlr_output, &backend->backend, &output_impl,
+        backend->event_loop, &state);
+    wlr_output_state_finish(&state);
     wlr_output_set_name(&output->wlr_output, "ANLAND-1");
     wlr_output_set_description(&output->wlr_output,
         "Anland Android display (wlroots 0.18 backend)");
@@ -359,7 +359,6 @@ struct wlr_output *anland_backend_add_output(struct wlr_anland_backend *backend)
 
     wl_list_insert(&backend->outputs, &output->link);
     if (backend->started) {
-        wlr_output_update_enabled(&output->wlr_output, true);
         wl_signal_emit_mutable(&backend->backend.events.new_output,
             &output->wlr_output);
     }
@@ -398,24 +397,20 @@ def main() -> None:
         "#include <wlr/backend/headless.h>\n",
         "#include <wlr/backend/headless.h>\n#include <wlr/backend/anland.h>\n")
 
-    headless_anchor = (
-        "static struct wlr_backend *attempt_headless_backend(\n"
-        "\t\tstruct wl_display *display) {"
-    )
+    headless_anchor = "static struct wlr_backend *attempt_headless_backend(struct wl_event_loop *loop) {"
     helper = (
-        "static struct wlr_backend *attempt_anland_backend(\n"
-        "\t\tstruct wl_display *display) {\n"
-        "\treturn wlr_anland_backend_create(display);\n"
+        "static struct wlr_backend *attempt_anland_backend(struct wl_event_loop *loop) {\n"
+        "\treturn wlr_anland_backend_create(loop);\n"
         "}\n\n"
     )
     replace_once(backend, headless_anchor, helper + headless_anchor)
     replace_once(backend,
         "\t} else if (strcmp(name, \"headless\") == 0) {\n"
-        "\t\tbackend = attempt_headless_backend(display);\n",
+        "\t\tbackend = attempt_headless_backend(loop);\n",
         "\t} else if (strcmp(name, \"headless\") == 0) {\n"
-        "\t\tbackend = attempt_headless_backend(display);\n"
+        "\t\tbackend = attempt_headless_backend(loop);\n"
         "\t} else if (strcmp(name, \"anland\") == 0) {\n"
-        "\t\tbackend = attempt_anland_backend(display);\n")
+        "\t\tbackend = attempt_anland_backend(loop);\n")
 
     print(f"wlroots 0.18.2 Anland base overlay applied to {root}")
 

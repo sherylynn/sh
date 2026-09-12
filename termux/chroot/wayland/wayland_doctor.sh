@@ -80,7 +80,9 @@ check_chroot() {
     fi
 
     local wlr
-    wlr=$(chroot_exec -u root 'dpkg-query -W -f="${Version}" libwlroots-0.18 2>/dev/null' 2>/dev/null | tail -n 1)
+    # Avoid dpkg-query's ${Version} format token here: chroot_exec passes the
+    # command through another login shell, which would expand it too early.
+    wlr=$(chroot_exec -u root "dpkg-query -W libwlroots-0.18 2>/dev/null | awk '{print \\$2}'" 2>/dev/null | tail -n 1)
     if [ -n "$wlr" ]; then
         case "$wlr" in
             "$NEWHOME_WLROOTS_DEBIAN_BASELINE"*) ok "系统 wlroots: $wlr" ;;

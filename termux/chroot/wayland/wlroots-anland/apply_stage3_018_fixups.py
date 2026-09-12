@@ -82,23 +82,6 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
         '        free(backend);\n        return NULL;\n')
     backend.write_text(text)
 
-    old_init = '''    int32_t refresh = backend->refresh > INT32_MAX ? 0 : (int32_t)backend->refresh;
-    struct wlr_output_state state;
-    wlr_output_state_init(&state);
-    wlr_output_state_set_custom_mode(&state,
-        (int32_t)backend->width, (int32_t)backend->height, refresh);
-    wlr_output_init(&output->wlr_output, &backend->backend, &output_impl,
-        backend->event_loop, &state);
-    wlr_output_state_finish(&state);
-'''
-    new_init = '''    int32_t refresh = backend->refresh > INT32_MAX ? 0 : (int32_t)backend->refresh;
-    wlr_output_init(&output->wlr_output, &backend->backend, &output_impl,
-        backend->display_server);
-    wlr_output_update_custom_mode(&output->wlr_output,
-        (int32_t)backend->width, (int32_t)backend->height, refresh);
-'''
-    replace_once(output, old_init, new_init)
-
     old_commit = '''    if (state->committed & WLR_OUTPUT_STATE_BUFFER) {
         if (!anland_presenter_blit(output->backend->presenter,
                 output->backend, state->buffer)) {
@@ -108,15 +91,7 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
     }
     return true;
 '''
-    new_commit = '''    if (state->committed & WLR_OUTPUT_STATE_ENABLED) {
-        wlr_output_update_enabled(wlr_output, state->enabled);
-    }
-    if (state->committed & WLR_OUTPUT_STATE_MODE) {
-        wlr_output_update_custom_mode(wlr_output,
-            state->custom_mode.width, state->custom_mode.height,
-            state->custom_mode.refresh);
-    }
-    if (state->committed & WLR_OUTPUT_STATE_BUFFER) {
+    new_commit = '''    if (state->committed & WLR_OUTPUT_STATE_BUFFER) {
         if (!anland_presenter_blit(output->backend->presenter,
                 output->backend, state->buffer)) {
             wlr_log(WLR_ERROR, "Anland GPU DMA-BUF presentation failed");
@@ -149,6 +124,10 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
     /* Frame events are emitted only by presenter.c's buffer-ready eventfd. */
 }
 ''')
+
+    replace_once(presenter,
+        '#include <wlr/types/wlr_output.h>\n',
+        '#include <wlr/interfaces/wlr_output.h>\n#include <wlr/types/wlr_output.h>\n')
 
     replace_once(presenter,
         '    return trigger_refresh(backend->display) == 0;\n',

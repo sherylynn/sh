@@ -18,8 +18,8 @@ fail() { printf '[wlroots-anland-build] ERROR: %s\n' "$*" >&2; exit 1; }
 
 install_deps() {
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt-get install -y --no-install-recommends \
+    apt-get -o Acquire::Retries=8 update
+    apt-get -o Acquire::Retries=8 install -y --no-install-recommends \
         ca-certificates curl xz-utils bzip2 patch git python3 \
         build-essential meson ninja-build pkg-config binutils devscripts dpkg-dev \
         libwayland-dev wayland-protocols libdrm-dev libgbm-dev \
@@ -78,6 +78,10 @@ apply_overlays() {
     cp -f "$TRANSPORT_PREFIX/include/display_producer.h" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/include/socket_utils.h" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/include/protocol.h" backend/anland/vendor/
+    # On Linux EAGAIN and EWOULDBLOCK are equal; -Wlogical-op under -Werror
+    # rejects testing both even though the vendored Android source is portable.
+    sed -i 's/errno != EAGAIN && errno != EWOULDBLOCK/errno != EAGAIN/g' \
+        backend/anland/vendor/display_producer.c
 
     # apply_stage3_presentation.py was originally written on top of the older
     # stage1 capability line. Normalize only this generated source anchor; the
@@ -125,7 +129,9 @@ validate_install() {
     [ -n "$lib" ] || fail "安装目录没有 libwlroots-0.18"
 
     log "检查 Anland backend/presenter 导出与依赖"
-    nm -D "$lib" | grep -q 'wlr_anland_backend_create' || \
+    local symbols
+    symbols=$(nm -D "$lib")
+    grep -q 'wlr_anland_backend_create' <<<"$symbols" || \
         fail "生成的 wlroots 库没有导出 wlr_anland_backend_create"
 
     if command -v labwc >/dev/null 2>&1; then
