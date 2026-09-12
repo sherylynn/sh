@@ -19,6 +19,28 @@ ok() { printf '  [OK]   %s\n' "$*"; PASS=$((PASS + 1)); }
 warn() { printf '  [WARN] %s\n' "$*"; WARN=$((WARN + 1)); }
 bad() { printf '  [FAIL] %s\n' "$*"; FAIL=$((FAIL + 1)); }
 
+# Test the live bind semantically with a temporary marker. /proc/mounts often
+# reports a bind mount's underlying device rather than the original source path,
+# so comparing source strings is not reliable on Android.
+tmp_bridge_visible() {
+    container_mounted || return 1
+    local source_dir="$PREFIX/tmp"
+    local target_dir="$CHROOT_DIR/tmp"
+    local marker=".newhome-wayland-doctor-probe.$$"
+    local token="doctor-$$-$(date +%s)"
+
+    [ -d "$source_dir" ] || return 1
+    [ -d "$target_dir" ] || return 1
+    printf '%s\n' "$token" >"$source_dir/$marker" || return 1
+
+    local visible=1
+    if [ -f "$target_dir/$marker" ] && [ "$(cat "$target_dir/$marker" 2>/dev/null)" = "$token" ]; then
+        visible=0
+    fi
+    rm -f "$source_dir/$marker" "$target_dir/$marker" 2>/dev/null || true
+    return "$visible"
+}
+
 check_termux() {
     echo '=== Termux / Android ==='
     if command -v anland >/dev/null 2>&1; then
@@ -50,9 +72,40 @@ check_termux() {
     fi
 
     if [ -S "$ANLAND_SOCKET_TERMUX" ]; then
-        ok "Anland socket 已就绪: $ANLAND_SOCKET_TERMUX"
+        ok "Host Anland socket 已就绪: $ANLAND_SOCKET_TERMUX"
     else
-        warn "Anland socket 尚未启动: $ANLAND_SOCKET_TERMUX"
+        warn "Host Anland socket 尚未启动: $ANLAND_SOCKET_TERMUX"
+    fi
+}
+
+check_bridge() {
+    echo
+    echo '=== Anland host -> chroot bridge ==='
+    if ! container_mounted; then
+        warn 'chroot 未挂载，无法验证 /tmp bridge'
+        return
+    fi
+
+    if tmp_bridge_visible; then
+        ok "Termux tmp 与 chroot /tmp 为同一实时目录 ($PREFIX/tmp -> $CHROOT_DIR/tmp)"
+    else
+        bad "Termux tmp 未正确共享到 chroot /tmp；Wayland start/restart 会尝试自动修复"
+    fi
+
+    if [ -S "$ANLAND_SOCKET_TERMUX" ]; then
+        if [ -S "$CHROOT_DIR$ANLAND_SOCKET_CHROOT" ]; then
+            ok "宿主侧 chroot mount 视图可见 Anland socket: $CHROOT_DIR$ANLAND_SOCKET_CHROOT"
+        else
+            warn "Host socket 存在，但 $CHROOT_DIR$ANLAND_SOCKET_CHROOT 不存在"
+        fi
+
+        if chroot_exec -u root "test -S '$ANLAND_SOCKET_CHROOT'" >/dev/null 2>&1; then
+            ok "chroot 内可见 Anland socket: $ANLAND_SOCKET_CHROOT"
+        else
+            bad "Host socket 存在，但 chroot 内看不到 $ANLAND_SOCKET_CHROOT"
+        fi
+    else
+        warn 'Host Anland socket 未启动，因此 chroot socket 检查暂不成立'
     fi
 }
 
@@ -80,8 +133,6 @@ check_chroot() {
     fi
 
     local wlr
-    # Avoid both dpkg-query's ${Version} token and awk's $2 here: chroot_exec
-    # passes the command through another login shell which expands them early.
     wlr=$(chroot_exec -u root 'dpkg-query -W libwlroots-0.18 2>/dev/null | cut -f2' 2>/dev/null | tail -n 1)
     if [ -n "$wlr" ]; then
         case "$wlr" in
@@ -90,11 +141,6 @@ check_chroot() {
         esac
     else
         bad 'libwlroots-0.18 未安装'
-    fi
-    if [ -S "$ANLAND_SOCKET_CHROOT" ]; then
-        ok "chroot 可见 Anland socket: $ANLAND_SOCKET_CHROOT"
-    else
-        warn "chroot 当前看不到 $ANLAND_SOCKET_CHROOT"
     fi
 
     if chroot_exec -u root 'test -r /dev/dri/renderD128 && test -w /dev/dri/renderD128'; then
@@ -154,6 +200,7 @@ check_profiles() {
 }
 
 check_termux
+check_bridge
 check_chroot
 check_profiles
 
