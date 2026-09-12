@@ -10,12 +10,12 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # 日志函数
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
 error() {
-    log "ERROR: $1" >&2
-    exit 1
+  log "ERROR: $1" >&2
+  exit 1
 }
 
 # ERR trap: set -e 静默退出时打印失败位置, 便于定位
@@ -34,214 +34,214 @@ log "cli.sh 加载完成, DEBIAN_DIR=$DEBIAN_DIR"
 
 # 检查必要的权限和环境
 check_requirements() {
-    log "检查运行环境..."
+  log "检查运行环境..."
 
-    # 检查root权限 (依次尝试 sudo / tsu / su, 打印命中方式)
-    local root_method=""
-    if [ "$(id -u 2>/dev/null)" = "0" ]; then
-        root_method="uid0"
-    elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-        root_method="sudo-nopass"
-    elif command -v tsu >/dev/null 2>&1 && tsu -c true 2>/dev/null; then
-        root_method="tsu"
+  # 检查root权限 (依次尝试 sudo / tsu / su, 打印命中方式)
+  local root_method=""
+  if [ "$(id -u 2>/dev/null)" = "0" ]; then
+    root_method="uid0"
+  elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    root_method="sudo-nopass"
+  elif command -v tsu >/dev/null 2>&1 && tsu -c true 2>/dev/null; then
+    root_method="tsu"
+  fi
+  if [ -z "$root_method" ]; then
+    # 最后兜底: 交互式 sudo (原行为, 可能阻塞等密码)
+    if sudo true 2>/dev/null; then
+      root_method="sudo-interactive"
     fi
-    if [ -z "$root_method" ]; then
-        # 最后兜底: 交互式 sudo (原行为, 可能阻塞等密码)
-        if sudo true 2>/dev/null; then
-            root_method="sudo-interactive"
-        fi
+  fi
+  if [ -z "$root_method" ]; then
+    error "需要root权限，请确保已获取root权限 (尝试过 uid0/sudo-n/tsu/sudo)"
+  fi
+  log "root 权限检测通过 (方式: $root_method)"
+
+  # 检查必要的包
+  local required_packages=("termux-x11-nightly" "tsu" "pulseaudio" "virglrenderer-android")
+  for pkg in "${required_packages[@]}"; do
+    if ! pkg list-installed 2>/dev/null | grep -q "^$pkg/"; then
+      log "安装必要的包: $pkg"
+      pkg install "$pkg" -y || error "无法安装 $pkg"
     fi
-    if [ -z "$root_method" ]; then
-        error "需要root权限，请确保已获取root权限 (尝试过 uid0/sudo-n/tsu/sudo)"
-    fi
-    log "root 权限检测通过 (方式: $root_method)"
-    
-    # 检查必要的包
-    local required_packages=("termux-x11-nightly" "tsu" "pulseaudio" "virglrenderer-android")
-    for pkg in "${required_packages[@]}"; do
-        if ! pkg list-installed 2>/dev/null | grep -q "^$pkg/"; then
-            log "安装必要的包: $pkg"
-            pkg install "$pkg" -y || error "无法安装 $pkg"
-        fi
-    done
-    
-    log "环境检查完成"
+  done
+
+  log "环境检查完成"
 }
 
 # 启动基础服务
 start_base_services() {
-    log "启动基础服务..."
-    
-    # 启动必要的sv服务
-    local services=()
-    if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
-      log "检测到强制使用虚拟显卡文件，启动virgl服务"
-      services=("virgl" "pulseaudio" "x11")
-    elif lscpu | grep -q "Oryon"; then
-      log "Oryon CPU detected, skipping virgl service startup."
-      services=("pulseaudio" "x11")
-    else
-      services=("virgl" "pulseaudio" "x11")
-    fi
+  log "启动基础服务..."
 
-    for service in "${services[@]}"; do
-        if [ -d "$PREFIX/var/service/$service" ]; then
-            log "启动服务: $service"
-            sv up "$PREFIX/var/service/$service" 2>/dev/null || true
-        fi
-    done
+  # 启动必要的sv服务
+  local services=()
+  if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+    log "检测到强制使用虚拟显卡文件，启动virgl服务"
+    services=("virgl" "pulseaudio" "x11")
+  elif lscpu | grep -q "Oryon"; then
+    log "Oryon CPU detected, skipping virgl service startup."
+    services=("pulseaudio" "x11")
+  else
+    services=("virgl" "pulseaudio" "x11")
+  fi
+
+  for service in "${services[@]}"; do
+    if [ -d "$PREFIX/var/service/$service" ]; then
+      log "启动服务: $service"
+      sv up "$PREFIX/var/service/$service" 2>/dev/null || true
+    fi
+  done
 }
 
 # 启动X11服务
 start_x11() {
-    log "启动X11服务..."
+  log "启动X11服务..."
 
-    # X11 and Anland are alternative display consumers. A surviving Anland
-    # Activity/daemon can otherwise take focus again after the X11 restart.
-    pkill -TERM -x anland-compatible 2>/dev/null || true
-    pkill -TERM -x anland 2>/dev/null || true
-    am force-stop --user 0 com.anland.termux 2>/dev/null || true
-    
-    # 清理旧的进程
-    sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
-    sudo pkill -f com.termux.x11 2>/dev/null || true
-    am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
-    
-    # 清理临时文件
-    clean_tmp
-    
-    # 启动X11应用
-    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity 2>/dev/null || true
-    
-    # 启动X11服务器
-    export XDG_RUNTIME_DIR="${TMPDIR}"
-    termux-x11 :1 -ac +extension DPMS -dpi 100 &
-    
-    sleep 2
-    log "X11服务启动完成"
+  # X11 and Anland are alternative display consumers. A surviving Anland
+  # Activity/daemon can otherwise take focus again after the X11 restart.
+  pkill -TERM -x anland-compatible 2>/dev/null || true
+  pkill -TERM -x anland 2>/dev/null || true
+  am force-stop --user 0 com.anland.termux 2>/dev/null || true
+
+  # 清理旧的进程
+  sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+  sudo pkill -f com.termux.x11 2>/dev/null || true
+  am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
+
+  # 清理临时文件
+  clean_tmp
+
+  # 启动X11应用
+  am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity 2>/dev/null || true
+
+  # 启动X11服务器
+  export XDG_RUNTIME_DIR="${TMPDIR}"
+  termux-x11 :1 -ac +extension DPMS -dpi 100 &
+
+  sleep 2
+  log "X11服务启动完成"
 }
 
 # 启动chroot linux (调用cli.sh中的函数)
 start_chroot() {
-    log "启动chroot Linux环境..."
-    log "容器 rootfs 路径: $DEBIAN_DIR"
-    log "挂载点路径: $CHROOT_DIR"
+  log "启动chroot Linux环境..."
+  log "容器 rootfs 路径: $DEBIAN_DIR"
+  log "挂载点路径: $CHROOT_DIR"
 
-    # 直接调用cli.sh中的完整实现
-    if ! start_chroot_container; then
-        error "无法启动chroot环境"
-    fi
+  # 直接调用cli.sh中的完整实现
+  if ! start_chroot_container; then
+    error "无法启动chroot环境"
+  fi
 
-    log "Chroot Linux环境启动完成 (包括初始化系统服务)"
-    log "可以使用以下命令进入Linux环境:"
-    log "  tenter 或 cshell"
+  log "Chroot Linux环境启动完成 (包括初始化系统服务)"
+  log "可以使用以下命令进入Linux环境:"
+  log "  tenter 或 cshell"
 }
 
 # 停止所有服务
 stop_all() {
-    log "停止所有服务..."
-    
-    # 停止chroot容器 (调用cli.sh中的完整实现)
-    stop_chroot_container 2>/dev/null || true
-    
-    # 停止X11
-    sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
-    sudo pkill -f com.termux.x11 2>/dev/null || true
-    am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
+  log "停止所有服务..."
 
-    # Also stop the alternate Wayland display consumer when changing profile.
-    pkill -TERM -x anland-compatible 2>/dev/null || true
-    pkill -TERM -x anland 2>/dev/null || true
-    am force-stop --user 0 com.anland.termux 2>/dev/null || true
-    
-    # 停止sv服务
-    local services=()
-    if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
-      log "检测到强制使用虚拟显卡文件，停止virgl服务"
-      services=("virgl" "pulseaudio" "x11")
-    elif lscpu | grep -q "Oryon"; then
-      log "Oryon CPU detected, skipping virgl service shutdown."
-      services=("pulseaudio" "x11")
-    else
-      services=("virgl" "pulseaudio" "x11")
+  # 停止chroot容器 (调用cli.sh中的完整实现)
+  stop_chroot_container 2>/dev/null || true
+
+  # 停止X11
+  sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+  sudo pkill -f com.termux.x11 2>/dev/null || true
+  am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
+
+  # Also stop the alternate Wayland display consumer when changing profile.
+  pkill -TERM -x anland-compatible 2>/dev/null || true
+  pkill -TERM -x anland 2>/dev/null || true
+  am force-stop --user 0 com.anland.termux 2>/dev/null || true
+
+  # 停止sv服务
+  local services=()
+  if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
+    log "检测到强制使用虚拟显卡文件，停止virgl服务"
+    services=("virgl" "pulseaudio" "x11")
+  elif lscpu | grep -q "Oryon"; then
+    log "Oryon CPU detected, skipping virgl service shutdown."
+    services=("pulseaudio" "x11")
+  else
+    services=("virgl" "pulseaudio" "x11")
+  fi
+
+  for service in "${services[@]}"; do
+    if [ -d "$PREFIX/var/service/$service" ]; then
+      sv down "$PREFIX/var/service/$service" 2>/dev/null || true
     fi
+  done
 
-    for service in "${services[@]}"; do
-        if [ -d "$PREFIX/var/service/$service" ]; then
-            sv down "$PREFIX/var/service/$service" 2>/dev/null || true
-        fi
-    done
-    
-    # 清理进程
-    kill_need 2>/dev/null || true
-    clean_tmp
-    
-    log "所有服务已停止"
+  # 清理进程
+  kill_need 2>/dev/null || true
+  clean_tmp
+
+  log "所有服务已停止"
 }
 
 # 检查状态 (整合X11和chroot状态)
 check_status() {
-    echo "=== Termux 整体环境状态 ==="
-    
-    echo -n "X11服务: "
-    if pgrep -f "termux-x11" >/dev/null; then
-        echo "运行中"
-    else
-        echo "已停止"
-    fi
-    
-    # 调用cli.sh中的详细chroot状态检查
-    check_chroot_status
-    
-    echo
-    echo "=== X11 进程信息 ==="
-    echo "X11进程:"
-    pgrep -f "termux-x11" | head -5 || echo "  无"
+  echo "=== Termux 整体环境状态 ==="
+
+  echo -n "X11服务: "
+  if pgrep -f "termux-x11" >/dev/null; then
+    echo "运行中"
+  else
+    echo "已停止"
+  fi
+
+  # 调用cli.sh中的详细chroot状态检查
+  check_chroot_status
+
+  echo
+  echo "=== X11 进程信息 ==="
+  echo "X11进程:"
+  pgrep -f "termux-x11" | head -5 || echo "  无"
 }
 
 # 进入chroot环境 (调用cli.sh中的函数)
 enter_chroot() {
-    log "进入chroot Linux环境..."
-    enter_chroot_shell
+  log "进入chroot Linux环境..."
+  enter_chroot_shell
 }
 
 # 在chroot中执行命令 (调用cli.sh中的函数)
 exec_in_chroot() {
-    if [ $# -eq 0 ]; then
-        error "请提供要执行的命令"
-    fi
-    
-    exec_chroot_command "$@"
+  if [ $# -eq 0 ]; then
+    error "请提供要执行的命令"
+  fi
+
+  exec_chroot_command "$@"
 }
 
 # 安装debian环境
 install_debian() {
-    log "开始安装Debian环境..."
+  log "开始安装Debian环境..."
 
-    if [ -e "$DEBIAN_DIR/bin/dpkg" ]; then
-        log "Debian环境已存在"
-        return 0
-    fi
+  if [ -e "$DEBIAN_DIR/bin/dpkg" ]; then
+    log "Debian环境已存在"
+    return 0
+  fi
 
-    # 运行安装脚本
-    bash "$SCRIPT_DIR/chroot/installer_ruri.sh"
+  # 运行安装脚本
+  bash "$SCRIPT_DIR/chroot/installer_proot.sh"
 
-    log "Debian环境安装完成"
+  log "Debian环境安装完成"
 }
 
 # 安装proot环境
 install_proot() {
-    log "开始安装Proot Linux环境..."
+  log "开始安装Proot Linux环境..."
 
-    # 运行安装脚本
-    bash "$SCRIPT_DIR/chroot/installer_proot.sh"
+  # 运行安装脚本
+  bash "$SCRIPT_DIR/chroot/installer_proot.sh"
 
-    log "Proot Linux环境安装完成"
+  log "Proot Linux环境安装完成"
 }
 
 # 显示使用帮助
 show_usage() {
-    cat << EOF
+  cat <<EOF
 Termux 一键启动脚本 - 整体服务编排器
 
 使用方法:
@@ -279,55 +279,55 @@ EOF
 
 # 主函数
 main() {
-    local command="${1:-start}"
-    
-    case "$command" in
-        "start")
-            check_requirements
-            start_base_services
-            start_x11
-            start_chroot
-            log "所有服务启动完成！"
-            log "使用 '$0 enter' 进入Linux环境"
-            ;;
-        "stop")
-            stop_all
-            ;;
-        "restart")
-            stop_all
-            sleep 2
-            main start
-            ;;
-        "status")
-            check_status
-            ;;
-        "enter")
-            enter_chroot
-            ;;
-        "exec")
-            shift
-            exec_in_chroot "$@"
-            ;;
-        "install")
-            check_requirements
-            install_debian
-            ;;
-        "init")
-            check_requirements
-            install_proot
-            ;;
-        "help"|"-h"|"--help")
-            show_usage
-            ;;
-        *)
-            echo "未知命令: $command"
-            show_usage
-            exit 1
-            ;;
-    esac
+  local command="${1:-start}"
+
+  case "$command" in
+    "start")
+      check_requirements
+      start_base_services
+      start_x11
+      start_chroot
+      log "所有服务启动完成！"
+      log "使用 '$0 enter' 进入Linux环境"
+      ;;
+    "stop")
+      stop_all
+      ;;
+    "restart")
+      stop_all
+      sleep 2
+      main start
+      ;;
+    "status")
+      check_status
+      ;;
+    "enter")
+      enter_chroot
+      ;;
+    "exec")
+      shift
+      exec_in_chroot "$@"
+      ;;
+    "install")
+      check_requirements
+      install_debian
+      ;;
+    "init")
+      check_requirements
+      install_proot
+      ;;
+    "help" | "-h" | "--help")
+      show_usage
+      ;;
+    *)
+      echo "未知命令: $command"
+      show_usage
+      exit 1
+      ;;
+  esac
 }
 
 # 检查是否直接运行脚本
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
-fi 
+  main "$@"
+fi
