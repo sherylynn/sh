@@ -22,6 +22,7 @@ def main() -> None:
     header = root / "backend/anland.h"
     backend = root / "backend/anland/backend.c"
     output = root / "backend/anland/output.c"
+    presenter = root / "backend/anland/presenter.c"
     meson = root / "backend/anland/meson.build"
 
     replace_once(header,
@@ -131,8 +132,19 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
 '''
     replace_once(output, old_commit, new_commit)
 
-    # presenter.c calls EGL/GLES directly. Make these explicit wlroots library
-    # dependencies instead of relying on renderer subdir side effects.
+    # Make successful presentation observable without spamming every frame.
+    replace_once(presenter,
+        '    return trigger_refresh(backend->display) == 0;\n',
+        '    int refresh_status = trigger_refresh(backend->display);\n'
+        '    if (refresh_status == 0) {\n'
+        '        static bool first_frame_logged = false;\n'
+        '        if (!first_frame_logged) {\n'
+        '            first_frame_logged = true;\n'
+        '            wlr_log(WLR_INFO, "Anland first GPU DMA-BUF frame presented successfully");\n'
+        '        }\n'
+        '    }\n'
+        '    return refresh_status == 0;\n')
+
     replace_once(meson,
         "wlr_files += files(\n",
         "wlr_deps += [dependency('egl'), dependency('glesv2')]\n\n"
