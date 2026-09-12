@@ -65,7 +65,7 @@ install_termux_side() {
     verify_sha256 "$daemon" "$ANLAND_DAEMON_DEB_SHA256"
 
     log "安装/更新 Termux Anland daemon $ANLAND_VERSION"
-    pkg install -y "$daemon"
+    apt install -y "$daemon"
 
     mkdir -p "$HOME/storage/downloads" 2>/dev/null || true
     cp -f "$apk" "$HOME/storage/downloads/$apk_name" 2>/dev/null || true
@@ -96,13 +96,13 @@ install_container_side() {
     chroot_exec -u root 'grep -Eq "^(13|trixie)" /etc/debian_version /etc/os-release 2>/dev/null || { echo "需要 Debian 13/trixie chroot" >&2; exit 20; }'
 
     log "安装 Labwc + XFCE 用户体验层"
-    chroot_exec -u root 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y labwc xfce4-panel xfce4-terminal xfce4-settings xfce4-notifyd thunar dbus-x11 unzip procps coreutils pipewire-audio'
+    chroot_exec -u root 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y labwc xfce4-panel xfce4-terminal xfce4-settings xfce4-notifyd thunar dbus-x11 unzip procps coreutils pipewire-audio python3 python3-gi gir1.2-gtk-3.0 libnotify-bin'
 
     log "安装 Anland 5.13.3 对应 Debian 13 XWayland/Weston bootstrap 包"
     chroot_exec -u root "set -e; cd /tmp/newhome-wayland-packages; apt-get install -y ./$ANLAND_DEBIAN_XWAYLAND_DEB; rm -rf weston-anland-debs; mkdir weston-anland-debs; unzip -oq ./$ANLAND_DEBIAN_WESTON_ZIP -d weston-anland-debs; apt-get install -y ./weston-anland-debs/*.deb"
 
-    # Labwc uses its own config directory so the experiment does not disturb
-    # an existing desktop configuration.
+    # Labwc uses its own config directory so the experiment does not disturb an
+    # existing X11/XFCE configuration.
     chroot_exec -u root 'install -d -m 0700 /root/.config/newhome-labwc'
     chroot_exec -u root 'cat > /root/.config/newhome-labwc/autostart <<"EOF"
 #!/bin/sh
@@ -110,6 +110,7 @@ xfsettingsd --replace >/tmp/newhome-wayland-xfsettings.log 2>&1 &
 xfce4-notifyd >/tmp/newhome-wayland-notify.log 2>&1 &
 thunar --daemon >/tmp/newhome-wayland-thunar.log 2>&1 &
 xfce4-panel >/tmp/newhome-wayland-panel.log 2>&1 &
+python3 /root/sh/win-git/wayland_profile_tray.py >/tmp/newhome-wayland-tray.log 2>&1 &
 EOF
 chmod +x /root/.config/newhome-labwc/autostart'
 
@@ -137,13 +138,16 @@ Wayland bootstrap 已安装。
   Labwc baseline: Debian 13 package ($NEWHOME_LABWC_BASELINE / wlroots $NEWHOME_WLROOTS_BASELINE)
 
 启动测试：
+  bash ~/sh/termux/chroot/termux_wayland_all_in_one.sh doctor
   bash ~/sh/termux/chroot/termux_wayland_all_in_one.sh start
 
-当前脚本会在直接 wlroots-anland backend 尚未安装时使用：
+当前脚本会在 direct wlroots-anland backend 尚未 ready 时使用：
   Anland -> Weston(anland backend) -> Labwc -> XFCE components
 
-后续安装直接 wlroots-anland 后，同一启动脚本会自动切换为：
+后续 direct backend 安装并通过校验后，同一启动脚本自动切换为：
   Anland -> wlroots(anland backend) -> Labwc -> XFCE components
+
+Wayland 会话内提供独立托盘，可从桌面直接重启回 X11。
 EOF
 }
 
