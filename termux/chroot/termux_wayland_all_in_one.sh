@@ -64,13 +64,93 @@ start_anland() {
     fi
 }
 
+# Verify the bind semantically instead of trusting the root mount alone. Android
+# can leave /data/local/mnt mounted while an individual child mount has vanished.
+# A temporary marker proves that Termux $PREFIX/tmp and chroot's host-side /tmp
+# are the same live directory; this also avoids relying on /proc/mounts' bind
+# source string, which may be reported as the underlying device instead.
+tmp_bridge_visible() {
+    container_mounted || return 1
+    local source_dir="$PREFIX/tmp"
+    local target_dir="$CHROOT_DIR/tmp"
+    local marker=".newhome-anland-mount-probe.$$"
+    local token="newhome-anland-$$-$(date +%s)"
+
+    [ -d "$source_dir" ] || return 1
+    [ -d "$target_dir" ] || return 1
+
+    printf '%s\n' "$token" >"$source_dir/$marker" || return 1
+    local visible=1
+    if [ -f "$target_dir/$marker" ] && [ "$(cat "$target_dir/$marker" 2>/dev/null)" = "$token" ]; then
+        visible=0
+    fi
+    rm -f "$source_dir/$marker" "$target_dir/$marker" 2>/dev/null || true
+    return "$visible"
+}
+
+chroot_anland_socket_visible() {
+    container_mounted || return 1
+    chroot_exec -u root "test -S '$ANLAND_SOCKET_CHROOT'" >/dev/null 2>&1
+}
+
+repair_tmp_bridge() {
+    container_mounted || return 1
+    local target="$CHROOT_DIR/tmp"
+
+    log "检测到 chroot /tmp 未正确共享 Termux tmp，尝试原位修复"
+    sudo mkdir -p "$target" || return 1
+
+    if is_mounted "$target"; then
+        # Do not use lazy/force unmount here: if a live process makes /tmp busy,
+        # fall back to a clean container restart instead of creating split views.
+        sudo "$busybox" umount "$target" >/dev/null 2>&1 || \
+            sudo umount "$target" >/dev/null 2>&1 || return 1
+    fi
+
+    mount_part tmp || return 1
+    tmp_bridge_visible
+}
+
+ensure_anland_bridge() {
+    [ -S "$ANLAND_SOCKET_TERMUX" ] || {
+        log "Anland host socket 尚未出现: $ANLAND_SOCKET_TERMUX"
+        return 1
+    }
+
+    if ! tmp_bridge_visible; then
+        repair_tmp_bridge || return 1
+    fi
+
+    if ! chroot_anland_socket_visible; then
+        log "Termux socket 存在，但 chroot 仍看不到 $ANLAND_SOCKET_CHROOT"
+        return 1
+    fi
+
+    log "Anland /tmp bridge 已验证: $ANLAND_SOCKET_TERMUX -> $ANLAND_SOCKET_CHROOT"
+    return 0
+}
+
 start_container() {
     if ! container_mounted; then
         log "启动 Debian chroot"
         start_chroot_container || fail "chroot 启动失败"
     else
-        log "Debian chroot 已挂载，复用现有容器"
+        log "Debian chroot root mount 已存在，验证 Wayland 所需 /tmp bridge"
     fi
+
+    if ensure_anland_bridge; then
+        log "Debian chroot 可安全复用"
+        return 0
+    fi
+
+    # A missing child bind mount can sometimes be repaired in place. If that
+    # failed (busy mount, stale namespace, partial Android reclaim), do one
+    # clean container restart while keeping the already-running Anland daemon.
+    log "现有 chroot 无法安全复用，执行一次完整 chroot 重挂载"
+    stop_chroot_container 2>/dev/null || true
+    sleep 1
+    start_chroot_container || fail "chroot 重挂载失败"
+    ensure_anland_bridge || fail "chroot 重挂载后仍看不到 Anland socket；请运行 status/doctor 查看三层状态"
 }
 
 foreground_anland() {
@@ -103,14 +183,36 @@ stop_all() {
     log "Wayland 环境已停止；Termux:X11 未被本脚本触碰"
 }
 
+print_bridge_status() {
+    printf 'Host Anland socket: '
+    [ -S "$ANLAND_SOCKET_TERMUX" ] && echo "OK ($ANLAND_SOCKET_TERMUX)" || echo "MISSING ($ANLAND_SOCKET_TERMUX)"
+
+    printf 'Termux tmp -> chroot /tmp: '
+    if container_mounted && tmp_bridge_visible; then
+        echo "OK ($PREFIX/tmp -> $CHROOT_DIR/tmp)"
+    elif container_mounted; then
+        echo "BROKEN/NOT-MOUNTED ($PREFIX/tmp -> $CHROOT_DIR/tmp)"
+    else
+        echo 'N/A (chroot 未挂载)'
+    fi
+
+    printf 'Chroot Anland socket: '
+    if container_mounted && chroot_anland_socket_visible; then
+        echo "OK ($ANLAND_SOCKET_CHROOT)"
+    elif container_mounted; then
+        echo "MISSING ($ANLAND_SOCKET_CHROOT)"
+    else
+        echo 'N/A (chroot 未挂载)'
+    fi
+}
+
 status_all() {
     echo "=== NewHome Wayland profile ==="
     printf 'Anland daemon: '
     pgrep -x anland >/dev/null 2>&1 && echo '运行中' || echo '已停止'
-    printf 'Anland socket: '
-    [ -S "$ANLAND_SOCKET_TERMUX" ] && echo "$ANLAND_SOCKET_TERMUX" || echo '不存在'
     printf 'Anland Android app: '
     cmd package path "$ANLAND_ANDROID_PACKAGE" >/dev/null 2>&1 && echo '已安装' || echo '未安装'
+    print_bridge_status
     check_chroot_status || true
     if container_mounted; then
         echo "Wayland processes:"
@@ -129,7 +231,15 @@ doctor() {
 
 build_direct() {
     check_requirements
-    start_container
+    # build itself doesn't need Anland running, but if an already-mounted
+    # container is being reused, keep its /tmp semantics correct for the later
+    # direct validation path.
+    if container_mounted && ! tmp_bridge_visible; then
+        repair_tmp_bridge || log "警告：build-direct 前无法原位修复 /tmp；构建仍可继续，真机验证前会强制重挂载"
+    fi
+    if ! container_mounted; then
+        start_chroot_container || fail "chroot 启动失败"
+    fi
     log "在 Debian chroot 中构建 wlroots-anland Stage3"
     chroot_exec -u root "/bin/bash $DIRECT_DIR/build_direct_backend.sh"
 }
@@ -163,8 +273,8 @@ NewHome Anland Wayland 编排器
 用法:
   $0 start            启动 Anland + chroot + Labwc/XFCE
   $0 stop             停止 Wayland profile（不触碰 Termux:X11）
-  $0 restart          重启到 Wayland profile
-  $0 status           查看状态
+  $0 restart          重启到 Wayland profile，并重建/校验 Anland /tmp bridge
+  $0 status           查看 host socket / tmp bind / chroot socket 三层状态
   $0 install          安装固定版本 Anland/Labwc/Weston bootstrap
   $0 doctor           检查 Anland/GPU/Labwc/wlroots/Stage3 状态
   $0 build-direct     构建 wlroots-anland Stage3（不会启用 direct）
