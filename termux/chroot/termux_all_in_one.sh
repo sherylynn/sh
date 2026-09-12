@@ -87,7 +87,7 @@ start_base_services() {
     for service in "${services[@]}"; do
         if [ -d "$PREFIX/var/service/$service" ]; then
             log "启动服务: $service"
-            sv up "$service" 2>/dev/null || true
+            sv up "$PREFIX/var/service/$service" 2>/dev/null || true
         fi
     done
 }
@@ -168,7 +168,7 @@ stop_all() {
 
     for service in "${services[@]}"; do
         if [ -d "$PREFIX/var/service/$service" ]; then
-            sv down "$service" 2>/dev/null || true
+            sv down "$PREFIX/var/service/$service" 2>/dev/null || true
         fi
     done
     

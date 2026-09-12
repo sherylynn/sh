@@ -11,6 +11,29 @@ SESSION_SCRIPT="/root/sh/termux/chroot/wayland/start_labwc_anland.sh"
 SESSION_LOG="/tmp/newhome-wayland-session-supervisor.log"
 DIRECT_DIR="/root/sh/termux/chroot/wayland/wlroots-anland"
 
+# A normal Termux shell has a private mount namespace on current Android. The
+# chroot mounts must be created in KernelSU's global namespace, which is also
+# where NewHome and the long-lived desktop processes run. Re-enter that
+# namespace while retaining the Termux UID so a direct `... start` behaves the
+# same as a NewHome-triggered start and does not create root-owned Termux files.
+enter_global_mount_namespace() {
+    [ "${NEWHOME_GLOBAL_MNT:-0}" = 1 ] && return 0
+    [ "$(id -u)" = 0 ] && return 0
+    local current_ns global_ns termux_uid inner root_command quoted_args
+    current_ns=$(readlink /proc/self/ns/mnt 2>/dev/null || true)
+    global_ns=$(readlink /proc/1/ns/mnt 2>/dev/null || true)
+    [ -n "$current_ns" ] && [ "$current_ns" = "$global_ns" ] && return 0
+    termux_uid=$(id -u)
+    printf -v quoted_args '%q ' "$@"
+    printf -v inner 'exec env NEWHOME_GLOBAL_MNT=1 HOME=%q PREFIX=%q TMPDIR=%q PATH=%q SHELL=%q %q %q %s' \
+        "$HOME" "$PREFIX" "$PREFIX/tmp" "$PREFIX/bin:/system/bin:/system/xbin" \
+        "$PREFIX/bin/bash" "$PREFIX/bin/bash" "$0" "$quoted_args"
+    printf -v root_command 'exec su -M %q -c %q' "$termux_uid" "$inner"
+    exec su -M -c "$root_command"
+}
+
+enter_global_mount_namespace "$@"
+
 . "$WAYLAND_DIR/anland_versions.sh"
 set +e
 . "$SCRIPT_DIR/cli.sh"
@@ -40,7 +63,8 @@ check_requirements() {
 quiesce_x11_profile() {
     log "停止 X11 profile，避免 Termux:X11 抢占 Wayland 前台"
     for service in x11 tx11 tx11-xfce4; do
-        [ -d "$PREFIX/var/service/$service" ] && sv down "$service" >/dev/null 2>&1 || true
+        [ -d "$PREFIX/var/service/$service" ] && \
+            sv down "$PREFIX/var/service/$service" >/dev/null 2>&1 || true
     done
     killall -TERM termux-x11 >/dev/null 2>&1 || true
     pkill -TERM -f 'termux-x11 com\.termux\.x11 :[0-9]+' >/dev/null 2>&1 || true
