@@ -16,7 +16,7 @@ fail() { printf '[anland-transport] ERROR: %s\n' "$*" >&2; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
-    ca-certificates git quilt build-essential pkg-config
+    ca-certificates git quilt build-essential pkg-config file
 
 rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR" "$PREFIX_DIR/bin" "$PREFIX_DIR/include" "$PREFIX_DIR/lib" "$PREFIX_DIR/src"
