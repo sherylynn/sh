@@ -36,7 +36,6 @@ def read_line(stream) -> str:
 
 
 def request(command: str) -> str:
-    # Linux abstract-namespace Unix sockets are addressed by a leading NUL.
     address = "\0" + SOCKET_NAME
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
         sock.settimeout(TIMEOUT)
@@ -55,7 +54,11 @@ def request(command: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="NewHome Linux control client")
-    parser.add_argument("command", choices=("ping", "restart"))
+    parser.add_argument(
+        "command",
+        choices=("ping", "restart", "restart-x11", "restart-wayland"),
+        help="restart remains an alias for restart-x11 for backward compatibility",
+    )
     args = parser.parse_args()
 
     if os.geteuid() != 0:
@@ -65,7 +68,12 @@ def main() -> int:
         )
         return 4
 
-    wire = {"ping": "PING", "restart": "RESTART"}[args.command]
+    wire = {
+        "ping": "PING",
+        "restart": "RESTART",
+        "restart-x11": "RESTART X11",
+        "restart-wayland": "RESTART WAYLAND",
+    }[args.command]
     try:
         response = request(wire)
     except (OSError, UnicodeError, RuntimeError, PermissionError) as exc:
@@ -80,7 +88,10 @@ def main() -> int:
         return 0
 
     if response == "OK RESTARTING":
-        print("NewHome accepted container restart; this chroot session may disconnect now.")
+        profile = "Wayland" if args.command == "restart-wayland" else "X11"
+        print(
+            f"NewHome accepted {profile} restart; this chroot session may disconnect now."
+        )
         return 0
     if response == "ERR ROOT_REQUIRED":
         print(
