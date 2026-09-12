@@ -206,6 +206,13 @@ rm -f /opt/newhome-wayland/wlroots-anland.ready
 
 The existing X11 / Termux:X11 profile remains independent and is not replaced.
 
+When noVNC sends an RFB desktop-size request while this profile is active,
+`win-git/xfce4-scaling.sh` routes it to `../anland_remote_resize.sh`. The helper
+updates Anland's official `custom_width` / `custom_height` preferences and
+reconnects Anland, Weston and Labwc without unmounting or restarting the Debian
+container. Repeated requests for the already-active size are ignored so an
+XWayland/noVNC reconnect cannot create a resize loop.
+
 ## References
 
 1. `lfdevs/weston` Anland backend is authoritative for the Anland 5.13 producer protocol, reconnect behaviour, buffer-ready cadence, consumer DMA-BUF metadata and `trigger_refresh()` semantics.

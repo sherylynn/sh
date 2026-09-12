@@ -101,6 +101,11 @@ wait_for_x11_resolution() {
     return 1
 }
 
+is_anland_wayland_session() {
+    pgrep -x anland >/dev/null 2>&1 && \
+        (pgrep -x weston >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1)
+}
+
 # noVNC Remote Resizing 通过 RFB SetDesktopSize 传入任意浏览器视口尺寸。
 # x11vnc 使用 -xrandr resize 在线更新 framebuffer；这里不能停掉 VNC，否则
 # noVNC 会断线重连并再次发送 SetDesktopSize，形成关闭/重启循环。
@@ -117,6 +122,14 @@ apply_remote_resize() {
     }
     exec 9>"$lock_file"
     flock -n 9 || return 0
+
+    # Under the Anland profile DISPLAY points at Labwc's XWayland server. Its
+    # framebuffer is an output of the Wayland session, not a Termux:X11 server,
+    # so send the requested size to Anland and reconnect only that display chain.
+    if is_anland_wayland_session; then
+        /bin/bash /root/sh/termux/chroot/wayland/anland_remote_resize.sh "$resolution"
+        return $?
+    fi
 
     local current
     current=$(xrandr 2>/dev/null | sed -n 's/.*current \([0-9]*\) x \([0-9]*\).*/\1x\2/p' | head -1)
