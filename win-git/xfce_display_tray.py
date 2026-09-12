@@ -74,32 +74,34 @@ def run_setting(args, label):
     threading.Thread(target=worker, daemon=True).start()
 
 
-def request_container_restart():
-    """Ask NewHome to restart Termux/chroot; never self-manage from chroot."""
-    notify("容器重启", "正在请求 NewHome 重启 Termux/chroot…")
+def request_container_restart(profile="x11"):
+    """Ask NewHome to restart into a selected display profile."""
+    if profile == "wayland":
+        command = "restart-wayland"
+        label = "Wayland (Anland/Labwc)"
+    else:
+        command = "restart-x11"
+        label = "X11 (Termux:X11)"
+
+    notify("桌面重启", f"正在请求 NewHome 重启到 {label}…")
 
     def worker():
         try:
             result = subprocess.run(
-                [sys.executable, CONTROL_CLIENT, "restart"],
+                [sys.executable, CONTROL_CLIENT, command],
                 text=True,
                 capture_output=True,
-                # The first request may remain open while KernelSU/APatch/
-                # Magisk asks the user to authorize NewHome. Keep this longer
-                # than newhome_control.py's 20-second protocol timeout so the
-                # tray does not kill the client before it can report the real
-                # result.
                 timeout=25,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            GLib.idle_add(notify, "容器重启失败", f"NewHome 控制桥不可用：{exc}", "critical")
+            GLib.idle_add(notify, "桌面重启失败", f"NewHome 控制桥不可用：{exc}", "critical")
             return
 
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "NewHome 拒绝了重启请求").strip()[-500:]
-            GLib.idle_add(notify, "容器重启失败", detail, "critical")
-        # On success NewHome will stop this chroot, so a success notification
-        # here is intentionally unnecessary and may never be rendered.
+            GLib.idle_add(notify, "桌面重启失败", detail, "critical")
+        # On success NewHome stops this chroot, so a success notification here
+        # is intentionally unnecessary and may never be rendered.
 
     threading.Thread(target=worker, daemon=True).start()
 
@@ -187,7 +189,16 @@ class DisplayTray:
         menu.append(scales)
 
         menu.append(Gtk.SeparatorMenuItem())
-        menu.append(self.item("重启 chroot 容器", lambda _i: request_container_restart()))
+        restart = Gtk.MenuItem(label="重启 / 切换桌面")
+        restart_menu = Gtk.Menu()
+        restart_menu.append(self.item(
+            "重启到 X11（Termux:X11）",
+            lambda _i: request_container_restart("x11")))
+        restart_menu.append(self.item(
+            "重启到 Wayland（Anland + Labwc）",
+            lambda _i: request_container_restart("wayland")))
+        restart.set_submenu(restart_menu)
+        menu.append(restart)
         menu.append(self.item("打开完整设置窗口…", lambda _i: subprocess.Popen([SCALING, "--gui"])))
         menu.append(self.item("退出显示托盘", lambda _i: Gtk.main_quit()))
         menu.show_all()
