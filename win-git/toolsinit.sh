@@ -1315,3 +1315,13 @@ realScriptPathDir() {
   )
 
 }
+
+# Termux 快捷命令直接从 Git 仓库加载。git pull 后下一个 shell 会自动使用
+# 最新定义；Android chroot/proot 即使 source 本文件也不会注入这些命令。
+if [[ "${PREFIX:-}" == "/data/data/com.termux/files/usr" ]] && \
+   [[ "${HOME:-}" == /data/data/com.termux/files/home* ]] && \
+   [[ -x "/data/data/com.termux/files/usr/bin/pkg" ]]; then
+  _newhome_termux_shortcuts="$HOME/sh/termux/chroot/termux_shortcuts.sh"
+  test -f "$_newhome_termux_shortcuts" && . "$_newhome_termux_shortcuts"
+  unset _newhome_termux_shortcuts
+fi
