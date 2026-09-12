@@ -27,7 +27,7 @@ download() {
     local name=$1
     local target="$CACHE_DIR/$name"
     if [ ! -s "$target" ]; then
-        log "下载 $name"
+        log "下载 $name" >&2
         curl -fL --retry 3 --connect-timeout 15 \
             "$ANLAND_RELEASE_BASE/$name" -o "$target"
     fi
@@ -85,6 +85,8 @@ install_container_side() {
     local xwayland weston_zip
     xwayland=$(download "$ANLAND_DEBIAN_XWAYLAND_DEB")
     weston_zip=$(download "$ANLAND_DEBIAN_WESTON_ZIP")
+    verify_sha256 "$xwayland" "$ANLAND_DEBIAN_XWAYLAND_SHA256"
+    verify_sha256 "$weston_zip" "$ANLAND_DEBIAN_WESTON_SHA256"
     cp -f "$xwayland" "$SHARED_DIR/"
     cp -f "$weston_zip" "$SHARED_DIR/"
 
