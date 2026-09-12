@@ -1,6 +1,6 @@
 # wlroots-anland direct backend workspace
 
-This directory is the implementation workspace for the final direct path:
+Final target:
 
 ```text
 XFCE components
@@ -14,144 +14,208 @@ wlroots 0.18.2 + Anland backend
    Android
 ```
 
-The existing Weston-Anland path is only a bootstrap/fallback and stays usable while this backend is developed.
+The existing Weston-Anland path remains a bootstrap/fallback and A/B reference.
 
-## Why the backend lives here first
+## Version policy
 
-We do not fork Anland or Labwc for the first implementation. The Android consumer and Termux daemon stay on upstream `lfdevs/anland-termux` 5.13.3, and Debian 13's Labwc stays unmodified.
+We do **not** fork Anland or Labwc for the first implementation.
 
-The only component that needs Android display integration is wlroots. During development the source-overlay/build pipeline lives in `sh` so the ABI pin, deployment and chroot lifecycle stay versioned together. Once stable, it can be split into a dedicated `sherylynn/wlroots` fork without changing the runtime contract.
+- Android consumer + Termux daemon: upstream `lfdevs/anland-termux` **5.13.3**
+- Debian: **13 / trixie**
+- Labwc: distro **0.8.3**
+- wlroots ABI: upstream **0.18.2**, Debian **0.18.2-3**
 
-## ABI pin
+Only wlroots needs the Anland display backend. The source-overlay/build pipeline lives in `sh` while the ABI and device behaviour are still being validated. Once stable it can be split into a dedicated `sherylynn/wlroots` fork without changing runtime contracts.
 
-Target exactly:
+Do not silently move this work to wlroots master: backend/output interfaces are unstable.
 
-- Debian 13/trixie
-- Labwc 0.8.3
-- wlroots upstream 0.18.2 / Debian 0.18.2-3 ABI
-- Anland 5.13.3 transport
+## Implemented stages
 
-Do not silently build against wlroots master. wlroots backend/output interfaces are unstable.
+### Stage A — Anland transport probe
 
-## Current implementation status
+`prepare_transport.sh` reconstructs the exact Anland 5.13 producer transport from the pinned Weston-Anland implementation and builds `/opt/newhome-wayland/anland-transport/bin/anland-probe`.
 
-### Stage A — transport probe: implemented
+It reports:
 
-`prepare_transport.sh` reconstructs the current Anland 5.13 producer transport from the pinned `lfdevs/weston` Debian patch and builds a standalone probe. It validates daemon protocol, screen metadata, consumer reconnect and every DMA-BUF descriptor (`fd/stride/format/modifier/offset`).
+- Android screen width/height/refresh;
+- consumer attach/detach;
+- every Anland DMA-BUF fd/stride/format/modifier/offset;
+- Android pointer/keyboard/touch events.
 
-Inside the running chroot:
+### Stage B1 — wlroots 0.18 output/reconnect
 
-```bash
-bash /root/sh/termux/chroot/wayland/wlroots-anland/prepare_transport.sh
-/opt/newhome-wayland/anland-transport/bin/anland-probe
+`apply_stage1_018.py` targets the actual wlroots 0.18 ABI:
+
+- `WLR_BACKENDS=anland`;
+- `wl_display *` backend lifecycle;
+- `ANLAND-1` output with Android's real mode;
+- fallback/reconnect tracking;
+- wlroots output enable/new-output lifecycle.
+
+### Stage B2 — input
+
+`apply_stage2_input.py` maps Anland `InputEvent` into wlroots devices:
+
+- absolute/relative pointer motion;
+- buttons + wheel axes;
+- keyboard evdev keycodes;
+- multi-touch down/up/motion/frame;
+- reconnect-safe input fd attachment.
+
+The build pipeline removes newer-than-0.18 pointer fields so the generated code stays pinned to Debian 13's ABI.
+
+### Stage B3 — GPU-only DMA-BUF presentation
+
+Implemented by `apply_stage3_presentation.py` plus `apply_stage3_018_fixups.py`.
+
+The first direct implementation intentionally does **not** replace Labwc's allocator with Anland consumer-owned buffers. Instead it uses a backend-local surfaceless EGL/GLES2 presenter:
+
+```text
+Android buffer-ready eventfd
+        |
+        v
+wlroots frame event
+        |
+        v
+Labwc renders normal GBM DMA-BUF
+        |
+        v
+wlr_output commit
+        |
+        +--> import source DMA-BUF as EGLImage/texture
+        |
+        +--> import selected Anland DMA-BUF as EGLImage/FBO
+        |
+        v
+GPU-only fullscreen GLES blit
+        |
+      glFinish
+        |
+ trigger_refresh()
+        |
+        v
+Android consumer / Surface
 ```
 
-The Android `Anland Termux` Activity must be open when probing the consumer DMA-BUF set.
+Important properties:
 
-### Stage B1 — wlroots output/reconnect: implemented in source overlay
+- **no CPU framebuffer readback or memcpy/upload**;
+- backend exposes `ANLAND_DRM_DEVICE` through wlroots `get_drm_fd()` so Labwc can create a GLES2 renderer + GBM allocator;
+- default render node is `/dev/dri/renderD128`;
+- Android owns DMA-BUF rotation; wlroots only emits a new frame after Anland's `buffer_ready` eventfd fires;
+- the first successful `GPU blit -> trigger_refresh()` is logged explicitly for smoke testing;
+- Stage3 currently uses `glFinish` as a conservative synchronization barrier. Native-fence/explicit-sync is a later optimization.
 
-`apply_stage1_overlay.py` adds an explicit `anland` wlroots backend to the pinned Debian source tree:
+This is **GPU-only blit**, not direct scanout. A future optimization may teach the wlroots allocator to hand Anland consumer buffers directly to Labwc and remove the last GPU blit.
 
-- `WLR_BACKENDS=anland` selection;
-- Anland 5.13 daemon connection;
-- real Android width/height/refresh discovery;
-- `ANLAND-1` wlroots output;
-- consumer fallback/reconnect tracking.
+## Build
 
-It deliberately rejects framebuffer commits. It is not a usable direct desktop by itself.
-
-### Stage B2 — pointer/keyboard/touch: implemented in source overlay
-
-`apply_stage2_input.py` maps the Anland `InputEvent` protocol into native wlroots input devices:
-
-- absolute + relative pointer motion;
-- mouse buttons and wheel axes;
-- keyboard evdev keycodes (same semantics used by the upstream Anland Weston backend);
-- multi-touch down/up/motion/frame events;
-- input fd detach/re-attach across Android consumer reconnects.
-
-### Stage B3 — consumer-owned DMA-BUF presentation: in progress
-
-This is the remaining blocker for direct mode. The backend must import the DMA-BUF set handed over by Anland and make wlroots render/present into the consumer-selected buffer without CPU framebuffer copies.
-
-The authoritative Weston implementation renders directly into Anland-owned renderbuffers and calls `trigger_refresh()` only after the selected buffer has been painted. wlroots normally renders into buffers obtained from its own allocator/swapchain, so the integration point has to be designed explicitly rather than pretending a normal wlroots buffer is an Anland buffer.
-
-Two acceptable implementations are being evaluated after the device transport probe reports the actual SM8750 buffer format/modifier set:
-
-1. **Preferred:** wrap Anland consumer DMA-BUFs as wlroots-owned render targets / allocator buffers so Labwc renders directly into the selected Android buffer.
-2. **Fallback:** keep wlroots' normal GPU render target and perform a GPU-only blit into the selected Anland DMA-BUF. This avoids CPU copies but must be documented as a GPU blit, not direct scanout.
-
-A CPU framebuffer readback/memcpy/upload path is not acceptable for the final backend.
-
-## Build vs activation safety gate
-
-Run the development build inside Debian chroot:
+Inside the Debian chroot:
 
 ```bash
 bash /root/sh/termux/chroot/wayland/wlroots-anland/build_direct_backend.sh
 ```
 
-The build script obtains the exact Debian `0.18.2-3` source through its `.dsc`, applies the strict-anchor source overlays, vendors the pinned Anland transport, builds into an isolated prefix and never replaces Debian's system wlroots.
+The builder:
 
-Successful B1/B2 compilation creates only:
+1. fetches the exact Debian `wlroots_0.18.2-3.dsc` source;
+2. applies the wlroots-0.18-specific output/reconnect overlay;
+3. applies input mapping;
+4. vendors the pinned Anland 5.13 producer transport;
+5. applies Stage3 GPU DMA-BUF presentation;
+6. exposes `/dev/dri/renderD128` through `get_drm_fd()`;
+7. links EGL/GLES2 explicitly;
+8. installs only under `/opt/newhome-wayland/wlroots-anland`.
+
+It never overwrites Debian's system wlroots.
+
+Successful compilation creates:
 
 ```text
 /opt/newhome-wayland/wlroots-anland.built
 ```
 
-It does **not** create:
+but deliberately removes/does not create:
 
 ```text
 /opt/newhome-wayland/wlroots-anland.ready
 ```
 
-`auto` mode therefore continues to use the safe Weston bootstrap.
+so `NEWHOME_WAYLAND_MODE=auto` continues using the Weston fallback until the phone itself validates Stage3.
 
-After B3 exists, `activate_direct_backend.sh` will run the on-device output/input/DMA-BUF smoke test. Only a successful runtime test may create `.ready`, after which:
+## Device smoke test and activation
 
-```text
-NEWHOME_WAYLAND_MODE=auto
-```
-
-selects the direct Labwc → wlroots-anland path.
-
-## Nested profile available now
-
-The current end-to-end test path is:
-
-```text
-XFCE components
-      |
-    Labwc
-      |
-wlroots Wayland backend
-      |
-Weston Anland backend
-      |
- Anland 5.13.3
-      |
-   Android
-```
-
-Install/start from Termux:
+With the Anland daemon running and Android `Anland Termux` Activity open:
 
 ```bash
-cd ~/sh
-git pull
-bash ~/sh/termux/chroot/termux_wayland_all_in_one.sh install
-bash ~/sh/termux/chroot/termux_wayland_all_in_one.sh doctor
-NEWHOME_WAYLAND_MODE=nested bash ~/sh/termux/chroot/termux_wayland_all_in_one.sh start
+bash /root/sh/termux/chroot/wayland/wlroots-anland/validate_direct_backend.sh
 ```
 
-The Wayland tray can switch back to the existing Termux:X11 profile. The X11 profile remains the stable default and is not modified by these experiments.
+The smoke test requires all of these before it passes automatically:
 
-## Reference implementations
+- render node opened successfully;
+- wlroots Anland backend/output started;
+- Android consumer entered ready state;
+- surfaceless EGL/GLES DMA-BUF presenter initialized;
+- **at least one real frame** completed GPU blit + `trigger_refresh()`;
+- no non-DMA-BUF source, EGL import failure, incomplete destination FBO, buffer-ready error, or output presentation failure.
 
-Two references serve different purposes and must not be mixed up:
+Even then it does **not** create `.ready`, because logs cannot prove colors/orientation/Android Surface visibility.
 
-1. `lfdevs/weston` Anland backend is authoritative for the **Anland 5.13 producer protocol**, reconnect behaviour, DMA-BUF metadata and fence channel.
-2. `Xtr126/wlroots-android-bridge` / `labwc-android` is useful for **wlroots Android allocator/output integration patterns**. It already demonstrates GPU-only wlroots buffers presented to Android SurfaceFlinger, but its Android transport/allocator is not Anland and is not copied wholesale here.
+After visually confirming the Labwc/XFCE desktop and pointer behaviour:
 
-## Zero-copy definition
+```bash
+bash /root/sh/termux/chroot/wayland/wlroots-anland/validate_direct_backend.sh --accept-visible
+```
 
-For this project, "zero-copy" means no CPU framebuffer readback/upload between Labwc/wlroots and Android. A GPU-only render into a DMA-BUF later queued by Anland is acceptable. If an intermediate GPU blit is temporarily required, logs/docs must call that out explicitly; it must not be described as direct scanout.
+Only this second successful smoke run creates:
+
+```text
+/opt/newhome-wayland/wlroots-anland.ready
+```
+
+After that `NEWHOME_WAYLAND_MODE=auto` selects:
+
+```text
+Labwc -> wlroots-anland -> Anland
+```
+
+instead of Weston nested mode.
+
+## Recovery / A-B mode
+
+The bootstrap remains available intentionally:
+
+```text
+NEWHOME_WAYLAND_MODE=nested
+Labwc -> wlroots Wayland backend -> Weston-Anland -> Anland
+```
+
+and direct can be forced only after validation:
+
+```text
+NEWHOME_WAYLAND_MODE=direct
+Labwc -> wlroots-anland -> Anland
+```
+
+If a direct regression occurs, remove the ready marker and `auto` immediately returns to nested mode:
+
+```bash
+rm -f /opt/newhome-wayland/wlroots-anland.ready
+```
+
+The existing X11 / Termux:X11 profile remains independent and is not replaced.
+
+## References
+
+1. `lfdevs/weston` Anland backend is authoritative for the Anland 5.13 producer protocol, reconnect behaviour, buffer-ready cadence, consumer DMA-BUF metadata and `trigger_refresh()` semantics.
+2. `Xtr126/wlroots-android-bridge` / `labwc-android` demonstrates that a wlroots GLES/Vulkan compositor can stay GPU-only through Android presentation. Its Android allocator/transport is different, so it is a design reference rather than copied wholesale.
+
+## Performance terminology
+
+For this project:
+
+- **CPU copy path**: framebuffer mapped/read back/copied by CPU — not acceptable.
+- **GPU-only blit**: current Stage3; one GPU copy/composition from wlroots GBM buffer into Anland consumer DMA-BUF — acceptable first direct backend.
+- **direct render into consumer buffer**: future allocator optimization; removes the Stage3 GPU blit.
+- **direct scanout**: only use this term if the resulting buffer can actually bypass compositor copies and be presented directly; current Stage3 must not be described this way.
