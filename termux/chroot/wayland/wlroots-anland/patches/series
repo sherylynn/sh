@@ -1,0 +1,10 @@
+# Direct wlroots 0.18.2 Anland backend patch series.
+#
+# Add patches here only after they build against Debian 13 wlroots 0.18.2-3.
+# build_direct_backend.sh deliberately refuses to install a ready backend until
+# wlr_anland_backend_create and the ANLAND_SOCKET transport contract exist.
+#
+# Planned sequence:
+# 0001-backend-add-anland-transport-and-output.patch
+# 0002-backend-add-anland-input-devices.patch
+# 0003-backend-add-consumer-dmabuf-render-path.patch
