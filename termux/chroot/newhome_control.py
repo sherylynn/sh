@@ -19,9 +19,6 @@ import sys
 
 SOCKET_NAME = os.environ.get("NEWHOME_CONTROL_SOCKET", "newhome_control_v1")
 HELLO = "HELLO NEWHOME_CONTROL 1"
-# First RESTART may display the KernelSU/APatch/Magisk authorization UI for
-# NewHome. Keep PING fast in practice, but do not abort the socket while the
-# user is granting that one-time root permission.
 TIMEOUT = float(os.environ.get("NEWHOME_CONTROL_TIMEOUT", "20"))
 MAX_LINE = 4096
 
@@ -93,15 +90,25 @@ def main() -> int:
             f"NewHome accepted {profile} restart; this chroot session may disconnect now."
         )
         return 0
-    if response == "ERR ROOT_REQUIRED":
-        print(
-            "NewHome needs root authorization from KernelSU/APatch/Magisk before it can restart Termux.",
-            file=sys.stderr,
-        )
-        return 3
 
-    print(f"NewHome rejected restart: {response}", file=sys.stderr)
-    return 2
+    errors = {
+        "ERR ROOT_REQUIRED": (
+            "NewHome needs root authorization from KernelSU/APatch/Magisk "
+            "before it can restart Termux."
+        ),
+        "ERR ADB_LAUNCH_FAILED": (
+            "NewHome internal ADB could not foreground Termux before restart. "
+            "Check NewHome's internal ADB connection/authorization."
+        ),
+        "ERR BUSY": "Another NewHome container restart is already in progress.",
+        "ERR UNKNOWN_PROFILE": "This NewHome build does not recognize the requested display profile.",
+        "ERR START_FAILED": (
+            "NewHome could not start the outer root restart process. "
+            "For Wayland, also confirm termux_wayland_all_in_one.sh exists."
+        ),
+    }
+    print(errors.get(response, f"NewHome rejected restart: {response}"), file=sys.stderr)
+    return 3 if response == "ERR ROOT_REQUIRED" else 2
 
 
 if __name__ == "__main__":
