@@ -25,8 +25,6 @@ mkdir -p "$LOG_DIR" "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 chmod 0700 "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 rm -f "$READY_MARKER" "$SMOKE_LOG"
 
-# Never disturb a live desktop silently. The normal switch-to-Wayland path can
-# run this after stopping nested mode, or the user can invoke it from a shell.
 if pgrep -x labwc >/dev/null 2>&1 || pgrep -x weston >/dev/null 2>&1; then
     fail "检测到现有 Labwc/Weston；请先停止当前 Wayland session 再 smoke test"
 fi
@@ -40,12 +38,16 @@ export QT_QPA_PLATFORM='wayland;xcb'
 export WLR_BACKENDS=anland
 export WLR_RENDERER=gles2
 export ANLAND_SOCKET
+export ANLAND_DRM_DEVICE=${ANLAND_DRM_DEVICE:-/dev/dri/renderD128}
 export MESA_LOADER_DRIVER_OVERRIDE=kgsl
 export TURNIP_KMD=kgsl
 export GALLIUM_DRIVER=freedreno
 export FD_FORCE_KGSL=1
 export XWAYLAND_FORCE_KGSL_SURFACELESS=1
 export LD_LIBRARY_PATH="$PREFIX_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+[ -r "$ANLAND_DRM_DEVICE" ] && [ -w "$ANLAND_DRM_DEVICE" ] || \
+    fail "render node 不可读写: $ANLAND_DRM_DEVICE"
 
 log "启动 direct Labwc stage3 smoke test (${SMOKE_SECONDS}s)"
 log "测试期间 Android Anland Termux Activity 必须处于可见/已连接状态"
@@ -60,14 +62,14 @@ trap cleanup EXIT INT TERM
 
 sleep "$SMOKE_SECONDS"
 kill -0 "$PID" 2>/dev/null || {
-    tail -n 120 "$SMOKE_LOG" >&2 || true
+    tail -n 160 "$SMOKE_LOG" >&2 || true
     fail "Labwc direct backend 在 smoke 窗口内退出"
 }
 
 require_log() {
     local pattern=$1 label=$2
     grep -Eqi "$pattern" "$SMOKE_LOG" || {
-        tail -n 120 "$SMOKE_LOG" >&2 || true
+        tail -n 160 "$SMOKE_LOG" >&2 || true
         fail "未观察到 $label"
     }
 }
@@ -75,30 +77,33 @@ require_log() {
 reject_log() {
     local pattern=$1 label=$2
     if grep -Eqi "$pattern" "$SMOKE_LOG"; then
-        tail -n 160 "$SMOKE_LOG" >&2 || true
+        tail -n 200 "$SMOKE_LOG" >&2 || true
         fail "检测到 $label"
     fi
 }
 
+require_log 'Anland render node:' 'wlroots render node'
 require_log 'Created Anland backend|Starting Anland backend' 'Anland wlroots output 初始化'
 require_log 'Anland Android consumer is ready' 'Android consumer ready'
 require_log 'Anland presenter initialized' 'EGL/GLES DMA-BUF presenter 初始化'
-reject_log 'non-DMA-BUF|DMA-BUF EGL import failed|target DMA-BUF is not GLES-renderable|GPU DMA-BUF presentation failed|Failed reading Anland buffer-ready' 'Stage3 presentation 错误'
+require_log 'Anland first GPU DMA-BUF frame presented successfully' '至少一帧 GPU DMA-BUF presentation'
+reject_log 'non-DMA-BUF|DMA-BUF EGL import failed|target DMA-BUF is not GLES-renderable|GPU DMA-BUF presentation failed|Failed reading Anland buffer-ready|Unable to open Anland render node' 'Stage3 presentation 错误'
 
-log "自动检查通过：backend/consumer/EGL presenter 均保持运行，未发现 DMA-BUF 错误"
+log "自动检查通过：至少一帧已完成 GPU blit -> Anland trigger_refresh"
 log "日志: $SMOKE_LOG"
 
 if [ "${1:-}" != "--accept-visible" ]; then
     cat <<EOF
 
-为了避免把“进程没崩但 Android 仍黑屏/方向错误”误标记为 ready，
-本次不会创建：$READY_MARKER
+自动层已经证明至少一帧真正进入 Anland consumer，但仍不会直接写 ready，
+因为颜色通道、上下方向、Android Surface 实际可见性必须由真机画面确认。
 
-请确认 Anland Android Activity 中已经能看到 Labwc/XFCE 画面且鼠标输入正常，
+请确认 Anland Android Activity 中能看到 Labwc/XFCE 画面、方向正确且鼠标输入正常，
 然后再次运行：
   $0 --accept-visible
 
-第二次仍会重新跑完整 smoke test，通过后才写 ready。
+第二次仍会重新跑完整 smoke test，通过后才写：
+  $READY_MARKER
 EOF
     exit 0
 fi
