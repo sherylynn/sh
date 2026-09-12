@@ -78,20 +78,28 @@ apply_overlays() {
     python3 "$ROOT_DIR/apply_stage2_input.py" "$WORK_DIR/src"
     sed -i '/#include <stdlib.h>/a #include <string.h>' backend/anland/input.c
 
-    grep -Rqs "wlr_anland_backend_create" backend include || \
-        fail "overlay 未提供 wlr_anland_backend_create"
-    grep -Rqs "anland_input_attach" backend/anland || \
-        fail "stage2 input overlay 未生效"
-    grep -Rqs "ANLAND_SOCKET" backend include || \
-        fail "overlay 未绑定 ANLAND_SOCKET"
-
-    # Exact producer implementation is copied after the structural overlays.
+    # Exact producer implementation is copied before stage3 so its public
+    # display_producer API is available to presenter.c.
     mkdir -p backend/anland/vendor
     cp -f "$TRANSPORT_PREFIX/src/display_producer.c" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/src/socket_utils.c" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/include/display_producer.h" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/include/socket_utils.h" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/include/protocol.h" backend/anland/vendor/
+
+    log "应用 stage3 GPU-only DMA-BUF presentation overlay"
+    python3 "$ROOT_DIR/apply_stage3_presentation.py" "$WORK_DIR/src"
+
+    grep -Rqs "wlr_anland_backend_create" backend include || \
+        fail "overlay 未提供 wlr_anland_backend_create"
+    grep -Rqs "anland_input_attach" backend/anland || \
+        fail "stage2 input overlay 未生效"
+    grep -Rqs "anland_presenter_blit" backend/anland || \
+        fail "stage3 presentation overlay 未生效"
+    grep -Rqs "WLR_BUFFER_CAP_DMABUF" backend/anland/backend.c || \
+        fail "stage3 未要求 DMA-BUF output buffer"
+    grep -Rqs "ANLAND_SOCKET" backend include || \
+        fail "overlay 未绑定 ANLAND_SOCKET"
 }
 
 build_install() {
@@ -99,9 +107,6 @@ build_install() {
     mkdir -p "$PREFIX_DIR"
     cd "$WORK_DIR/src"
 
-    # Stages 1-2 deliberately stop before framebuffer presentation. Stage 3
-    # supplies the GPU/DMA-BUF output path. Build success here never means the
-    # direct desktop may be auto-selected.
     meson setup build \
         --prefix="$PREFIX_DIR" \
         --libdir=lib \
@@ -117,9 +122,11 @@ validate_install() {
     lib=$(find "$PREFIX_DIR/lib" -maxdepth 1 \( -type f -o -type l \) -name 'libwlroots-0.18.so*' | head -n 1 || true)
     [ -n "$lib" ] || fail "安装目录没有 libwlroots-0.18"
 
-    log "检查 Anland backend 导出符号"
+    log "检查 Anland backend/presenter 导出与依赖"
     nm -D "$lib" | grep -q 'wlr_anland_backend_create' || \
         fail "生成的 wlroots 库没有导出 wlr_anland_backend_create"
+    ldd "$lib" | grep -Eq 'libEGL|libGLESv2' || \
+        log "提示：EGL/GLES 可能由 wlroots renderer 依赖间接解析；真机 smoke test 会再次确认"
 
     if command -v labwc >/dev/null 2>&1; then
         local linked
@@ -128,9 +135,11 @@ validate_install() {
     fi
 
     cat > "$PREFIX_DIR/BUILD_INFO" <<EOF
-stage=2-output-input
+stage=3-gpu-dmabuf-blit
 runtime_ready=no
-presentation=not-implemented
+presentation=gpu-only-egl-dmabuf-blit
+cpu_framebuffer_copy=no
+synchronization=glFinish
 anland=$ANLAND_VERSION
 labwc_baseline=$NEWHOME_LABWC_BASELINE
 wlroots=$NEWHOME_WLROOTS_BASELINE
@@ -139,12 +148,12 @@ transport_source=$(cat "$TRANSPORT_PREFIX/SOURCE" 2>/dev/null | tr '\n' ' ')
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
-    printf 'stage2 wlroots-anland %s / Anland %s\n' \
+    printf 'stage3-built wlroots-anland %s / Anland %s\n' \
         "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
-    log "stage2 backend 已编译安装: $BUILT_MARKER"
-    log "已覆盖 output discovery/reconnect + pointer/keyboard/touch。"
-    log "DMA-BUF presentation 尚未实现，因此不会写入 $READY_MARKER。"
-    log "auto 模式继续安全使用 Weston bootstrap。"
+    log "stage3 backend 已编译安装: $BUILT_MARKER"
+    log "显示提交已实现 GPU-only DMA-BUF blit；无 CPU framebuffer copy。"
+    log "为避免黑屏，构建成功仍不会自动写 $READY_MARKER。"
+    log "请运行 validate_direct_backend.sh 做 Anland 真机 smoke test；成功后它才会写 .ready。"
 }
 
 main() {
