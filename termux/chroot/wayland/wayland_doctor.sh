@@ -6,9 +6,7 @@ HOME=${HOME:-/data/data/com.termux/files/home}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHROOT_SCRIPT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# shellcheck source=anland_versions.sh
 . "$SCRIPT_DIR/anland_versions.sh"
-# shellcheck source=../cli.sh
 set +e
 . "$CHROOT_SCRIPT_DIR/cli.sh"
 set -e
@@ -42,9 +40,13 @@ check_termux() {
     fi
 
     if [ -e /dev/dri/renderD128 ]; then
-        ok '/dev/dri/renderD128 存在'
+        if [ -r /dev/dri/renderD128 ] && [ -w /dev/dri/renderD128 ]; then
+            ok '/dev/dri/renderD128 可读写（Stage3 get_drm_fd 可用）'
+        else
+            warn '/dev/dri/renderD128 存在，但当前 Termux UID 不可读写'
+        fi
     else
-        warn '/dev/dri/renderD128 不存在；Anland DRM render node 可能需要重新确认'
+        warn '/dev/dri/renderD128 不存在；Stage3 render node 需要重新确认'
     fi
 
     if [ -S "$ANLAND_SOCKET_TERMUX" ]; then
@@ -95,6 +97,12 @@ check_chroot() {
         warn "chroot 当前看不到 $ANLAND_SOCKET_CHROOT"
     fi
 
+    if chroot_exec -u root 'test -r /dev/dri/renderD128 && test -w /dev/dri/renderD128'; then
+        ok 'chroot /dev/dri/renderD128 可读写'
+    else
+        warn 'chroot /dev/dri/renderD128 不可读写；direct GLES/GBM allocator 会失败'
+    fi
+
     if chroot_exec -u root 'command -v weston >/dev/null 2>&1'; then
         if chroot_exec -u root 'strings "$(command -v weston)" 2>/dev/null | grep -q anland'; then
             ok 'Weston-Anland bootstrap 已安装'
@@ -105,18 +113,32 @@ check_chroot() {
         warn 'Weston-Anland bootstrap 未安装'
     fi
 
-    if chroot_exec -u root 'test -f /opt/newhome-wayland/wlroots-anland.ready'; then
-        ok 'direct wlroots-anland ready marker 存在'
+    if chroot_exec -u root 'test -f /opt/newhome-wayland/wlroots-anland.built'; then
+        local build_info
+        build_info=$(chroot_exec -u root 'cat /opt/newhome-wayland/wlroots-anland/BUILD_INFO 2>/dev/null' 2>/dev/null || true)
+        if printf '%s\n' "$build_info" | grep -q 'stage=3-gpu-dmabuf-blit'; then
+            ok 'direct wlroots-anland Stage3 已构建（GPU-only DMA-BUF blit）'
+        else
+            warn 'direct backend 有 built marker，但 BUILD_INFO 不是当前 Stage3'
+        fi
     else
-        warn 'direct wlroots-anland 尚未 ready；auto 模式会使用 Weston bootstrap'
+        warn 'direct wlroots-anland Stage3 尚未构建'
     fi
 
-    if chroot_exec -u root 'command -v glxinfo >/dev/null 2>&1'; then
-        local renderer
-        renderer=$(chroot_exec -u root 'glxinfo -B 2>/dev/null | sed -n "s/^OpenGL renderer string: //p" | head -n1' 2>/dev/null || true)
-        [ -n "$renderer" ] && ok "OpenGL renderer: $renderer" || warn 'glxinfo 未能读取 renderer'
+    if chroot_exec -u root 'test -f /opt/newhome-wayland/wlroots-anland.ready'; then
+        local ready
+        ready=$(chroot_exec -u root 'cat /opt/newhome-wayland/wlroots-anland.ready 2>/dev/null' 2>/dev/null || true)
+        ok "direct wlroots-anland 已真机确认 ready: ${ready:-marker存在}"
     else
-        warn 'glxinfo 未安装；无法检查 OpenGL renderer（可安装 mesa-utils）'
+        warn 'direct Stage3 尚未真机确认；auto 模式继续使用 Weston bootstrap'
+    fi
+
+    if chroot_exec -u root 'test -f /tmp/newhome-wayland/direct-smoke.log'; then
+        if chroot_exec -u root 'grep -q "Anland first GPU DMA-BUF frame presented successfully" /tmp/newhome-wayland/direct-smoke.log'; then
+            ok '最近 direct smoke 已至少成功提交一帧到 Anland consumer'
+        else
+            warn '存在 direct smoke 日志，但尚未看到成功 presentation 标记'
+        fi
     fi
 }
 
