@@ -39,7 +39,7 @@ prepare_transport() {
     if [ ! -f "$TRANSPORT_PREFIX/include/display_producer.h" ] || \
        [ ! -f "$TRANSPORT_PREFIX/src/display_producer.c" ]; then
         log "准备固定 Anland 5.13 producer transport"
-        "$ROOT_DIR/prepare_transport.sh"
+        /bin/bash "$ROOT_DIR/prepare_transport.sh"
     fi
 }
 
