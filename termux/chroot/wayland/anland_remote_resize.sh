@@ -57,7 +57,7 @@ read_int_pref() {
 if [ "$(read_int_pref custom_width)" = "$WIDTH" ] && \
         [ "$(read_int_pref custom_height)" = "$HEIGHT" ] && \
         grep -q "set output mode ${WIDTH}x${HEIGHT}@" /tmp/newhome-wayland/weston.log 2>/dev/null && \
-        pgrep -x labwc >/dev/null 2>&1; then
+        pgrep -x weston >/dev/null 2>&1 && pgrep -x labwc >/dev/null 2>&1; then
     log "Anland resolution already active: $RESOLUTION"
     exit 0
 fi

@@ -95,6 +95,12 @@ start_base_services() {
 # 启动X11服务
 start_x11() {
     log "启动X11服务..."
+
+    # X11 and Anland are alternative display consumers. A surviving Anland
+    # Activity/daemon can otherwise take focus again after the X11 restart.
+    pkill -TERM -x anland-compatible 2>/dev/null || true
+    pkill -TERM -x anland 2>/dev/null || true
+    am force-stop --user 0 com.anland.termux 2>/dev/null || true
     
     # 清理旧的进程
     sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
@@ -142,6 +148,11 @@ stop_all() {
     sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
     sudo pkill -f com.termux.x11 2>/dev/null || true
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
+
+    # Also stop the alternate Wayland display consumer when changing profile.
+    pkill -TERM -x anland-compatible 2>/dev/null || true
+    pkill -TERM -x anland 2>/dev/null || true
+    am force-stop --user 0 com.anland.termux 2>/dev/null || true
     
     # 停止sv服务
     local services=()

@@ -35,6 +35,20 @@ check_requirements() {
     [ -x "$PREFIX/bin/bash" ] || fail "Termux bash 不可用"
 }
 
+# Display profiles are mutually exclusive. Leaving the runit-managed X server
+# alive lets Termux:X11 reclaim the foreground while Anland is connecting.
+quiesce_x11_profile() {
+    log "停止 X11 profile，避免 Termux:X11 抢占 Wayland 前台"
+    for service in x11 tx11 tx11-xfce4; do
+        [ -d "$PREFIX/var/service/$service" ] && sv down "$service" >/dev/null 2>&1 || true
+    done
+    killall -TERM termux-x11 >/dev/null 2>&1 || true
+    sleep 0.2
+    killall -KILL termux-x11 >/dev/null 2>&1 || true
+    am broadcast --user 0 -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1 || true
+    am force-stop --user 0 com.termux.x11 >/dev/null 2>&1 || true
+}
+
 stop_anland() {
     pkill -TERM -x anland-compatible >/dev/null 2>&1 || true
     pkill -TERM -x anland >/dev/null 2>&1 || true
@@ -169,6 +183,7 @@ start_session() {
 
 start_all() {
     check_requirements
+    quiesce_x11_profile
     start_anland
     start_container
     start_session
