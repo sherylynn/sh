@@ -11,7 +11,9 @@ SHARED_DIR="$PREFIX/tmp/newhome-wayland-packages"
 # shellcheck source=anland_versions.sh
 . "$SCRIPT_DIR/anland_versions.sh"
 # shellcheck source=../cli.sh
+set +e
 . "$CHROOT_DIR_SCRIPT/cli.sh"
+set -e
 
 log() { printf '[wayland-install] %s\n' "$*"; }
 fail() { printf '[wayland-install] ERROR: %s\n' "$*" >&2; exit 1; }

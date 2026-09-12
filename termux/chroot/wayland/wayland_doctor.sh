@@ -79,9 +79,9 @@ check_chroot() {
         bad 'Labwc 未安装'
     fi
 
-    if chroot_exec -u root 'dpkg-query -W -f="${Version}" libwlroots-0.18 2>/dev/null' >/tmp/newhome-wlroots-version 2>/dev/null; then
-        local wlr
-        wlr=$(tail -n1 /tmp/newhome-wlroots-version)
+    local wlr
+    wlr=$(chroot_exec -u root 'dpkg-query -W -f="${Version}" libwlroots-0.18 2>/dev/null' 2>/dev/null | tail -n 1)
+    if [ -n "$wlr" ]; then
         case "$wlr" in
             "$NEWHOME_WLROOTS_DEBIAN_BASELINE"*) ok "系统 wlroots: $wlr" ;;
             *) warn "系统 wlroots=$wlr，direct backend 基线=$NEWHOME_WLROOTS_DEBIAN_BASELINE" ;;
@@ -89,8 +89,6 @@ check_chroot() {
     else
         bad 'libwlroots-0.18 未安装'
     fi
-    rm -f /tmp/newhome-wlroots-version
-
     if [ -S "$ANLAND_SOCKET_CHROOT" ]; then
         ok "chroot 可见 Anland socket: $ANLAND_SOCKET_CHROOT"
     else

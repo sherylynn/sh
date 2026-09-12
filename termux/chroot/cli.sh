@@ -42,8 +42,8 @@ MOUNT_CONFIG="$(dirname "${BASH_SOURCE[0]}")/mount_config.conf"
 #user config
 USER_NAME=root
 INIT_LEVEL=3
-[ -n "${INIT_USER}" ] || INIT_USER="root"
-[ -n "${INIT_ASYNC}" ] || INIT_ASYNC="true"
+[ -n "${INIT_USER:-}" ] || INIT_USER="root"
+[ -n "${INIT_ASYNC:-}" ] || INIT_ASYNC="true"
 
 # sysv初始化系统配置
 # INIT_LEVEL: 默认运行级别 (3=多用户文本模式)
