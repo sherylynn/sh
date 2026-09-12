@@ -22,8 +22,8 @@ def main() -> None:
     header = root / "backend/anland.h"
     backend = root / "backend/anland/backend.c"
     output = root / "backend/anland/output.c"
+    meson = root / "backend/anland/meson.build"
 
-    # Direct GLES/GBM allocation needs a real render-node FD.
     replace_once(header,
         '    uint32_t refresh;\n',
         '    uint32_t refresh;\n    int drm_fd;\n')
@@ -58,8 +58,6 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
         '    if (backend->display != NULL) {\n        disconnect(backend->display);\n    }\n'
         '    if (backend->drm_fd >= 0) {\n        close(backend->drm_fd);\n        backend->drm_fd = -1;\n    }\n')
 
-    # Initialize render node before exposing the backend to wlroots renderer
-    # autocreation. Keep it independent of Anland's transport socket.
     replace_once(backend,
         '    wlr_backend_init(&backend->backend, &backend_impl);\n',
         '    wlr_backend_init(&backend->backend, &backend_impl);\n'
@@ -76,7 +74,6 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
         '    }\n'
         '    wlr_log(WLR_INFO, "Anland render node: %s fd=%d", drm_path, backend->drm_fd);\n')
 
-    # Ensure early-create failures also close drm_fd.
     text = backend.read_text()
     text = text.replace(
         '        free(backend);\n        return NULL;\n',
@@ -84,8 +81,6 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
         '        free(backend);\n        return NULL;\n')
     backend.write_text(text)
 
-    # Stage3 output.c was intentionally written independently of older wlroots;
-    # normalize its constructor and mode updates to the 0.18 interface.
     old_init = '''    int32_t refresh = backend->refresh > INT32_MAX ? 0 : (int32_t)backend->refresh;
     struct wlr_output_state state;
     wlr_output_state_init(&state);
@@ -103,8 +98,6 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
 '''
     replace_once(output, old_init, new_init)
 
-    # Apply enabled/mode state and emit a normal wlroots present event once the
-    # synchronous GPU blit has completed and Anland accepted trigger_refresh().
     old_commit = '''    if (state->committed & WLR_OUTPUT_STATE_BUFFER) {
         if (!anland_presenter_blit(output->backend->presenter,
                 output->backend, state->buffer)) {
@@ -138,7 +131,14 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
 '''
     replace_once(output, old_commit, new_commit)
 
-    print("stage3 wlroots 0.18 ABI/render-node fixups applied")
+    # presenter.c calls EGL/GLES directly. Make these explicit wlroots library
+    # dependencies instead of relying on renderer subdir side effects.
+    replace_once(meson,
+        "wlr_files += files(\n",
+        "wlr_deps += [dependency('egl'), dependency('glesv2')]\n\n"
+        "wlr_files += files(\n")
+
+    print("stage3 wlroots 0.18 ABI/render-node/EGL fixups applied")
 
 
 if __name__ == "__main__":
