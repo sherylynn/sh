@@ -132,7 +132,24 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
 '''
     replace_once(output, old_commit, new_commit)
 
-    # Make successful presentation observable without spamming every frame.
+    # Match Weston-Anland exactly: Android buffer-ready drives every real frame.
+    # Consumer connection merely wires the eventfd; it does not race ahead with
+    # a synthetic bootstrap frame into a buffer Android hasn't released yet.
+    replace_once(output,
+        '''void anland_output_consumer_state(struct wlr_anland_output *output, bool ready) {
+    if (ready && output->frame_timer != NULL) {
+        /* One bootstrap frame starts the Android buffer-ready cadence. */
+        wl_event_source_timer_update(output->frame_timer, 1);
+    }
+}
+''',
+        '''void anland_output_consumer_state(struct wlr_anland_output *output, bool ready) {
+    (void)output;
+    (void)ready;
+    /* Frame events are emitted only by presenter.c's buffer-ready eventfd. */
+}
+''')
+
     replace_once(presenter,
         '    return trigger_refresh(backend->display) == 0;\n',
         '    int refresh_status = trigger_refresh(backend->display);\n'
