@@ -61,18 +61,31 @@ fetch_source() {
         fail "下载的 wlroots 源码版本不是 ${NEWHOME_WLROOTS_BASELINE}"
 }
 
-apply_stage1() {
+apply_overlays() {
     cd "$WORK_DIR/src"
 
-    log "应用严格锚点的 stage1 Anland backend overlay"
+    log "应用 stage1 output/reconnect overlay"
     python3 "$ROOT_DIR/apply_stage1_overlay.py" "$WORK_DIR/src"
 
-    grep -Rqs "wlr_anland_backend_create" backend include || \
-        fail "stage1 overlay 未提供 wlr_anland_backend_create"
-    grep -Rqs "ANLAND_SOCKET" backend include || \
-        fail "stage1 overlay 未绑定 ANLAND_SOCKET"
+    # wlroots 0.18 has no standalone wlr_output_finish() helper. The output was
+    # never published on this allocation-failure branch, so remove the stale
+    # stage1 cleanup call before compiling rather than depending on an implicit
+    # symbol.
+    sed -i '/^[[:space:]]*wlr_output_finish(&output->wlr_output);[[:space:]]*$/d' \
+        backend/anland/output.c
 
-    # Exact producer implementation is copied after the structural overlay.
+    log "应用 stage2 pointer/keyboard/touch overlay"
+    python3 "$ROOT_DIR/apply_stage2_input.py" "$WORK_DIR/src"
+    sed -i '/#include <stdlib.h>/a #include <string.h>' backend/anland/input.c
+
+    grep -Rqs "wlr_anland_backend_create" backend include || \
+        fail "overlay 未提供 wlr_anland_backend_create"
+    grep -Rqs "anland_input_attach" backend/anland || \
+        fail "stage2 input overlay 未生效"
+    grep -Rqs "ANLAND_SOCKET" backend include || \
+        fail "overlay 未绑定 ANLAND_SOCKET"
+
+    # Exact producer implementation is copied after the structural overlays.
     mkdir -p backend/anland/vendor
     cp -f "$TRANSPORT_PREFIX/src/display_producer.c" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/src/socket_utils.c" backend/anland/vendor/
@@ -86,9 +99,9 @@ build_install() {
     mkdir -p "$PREFIX_DIR"
     cd "$WORK_DIR/src"
 
-    # Stage 1 deliberately uses a safe CPU-capable wlroots renderer contract.
-    # The final DMABUF/GPU allocator path is stage 3 and is required before
-    # runtime activation. Build success here therefore never creates .ready.
+    # Stages 1-2 deliberately stop before framebuffer presentation. Stage 3
+    # supplies the GPU/DMA-BUF output path. Build success here never means the
+    # direct desktop may be auto-selected.
     meson setup build \
         --prefix="$PREFIX_DIR" \
         --libdir=lib \
@@ -104,7 +117,7 @@ validate_install() {
     lib=$(find "$PREFIX_DIR/lib" -maxdepth 1 \( -type f -o -type l \) -name 'libwlroots-0.18.so*' | head -n 1 || true)
     [ -n "$lib" ] || fail "安装目录没有 libwlroots-0.18"
 
-    log "检查 stage1 backend 导出符号"
+    log "检查 Anland backend 导出符号"
     nm -D "$lib" | grep -q 'wlr_anland_backend_create' || \
         fail "生成的 wlroots 库没有导出 wlr_anland_backend_create"
 
@@ -115,8 +128,9 @@ validate_install() {
     fi
 
     cat > "$PREFIX_DIR/BUILD_INFO" <<EOF
-stage=1-output-discovery
+stage=2-output-input
 runtime_ready=no
+presentation=not-implemented
 anland=$ANLAND_VERSION
 labwc_baseline=$NEWHOME_LABWC_BASELINE
 wlroots=$NEWHOME_WLROOTS_BASELINE
@@ -125,18 +139,19 @@ transport_source=$(cat "$TRANSPORT_PREFIX/SOURCE" 2>/dev/null | tr '\n' ' ')
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
-    printf 'stage1 wlroots-anland %s / Anland %s\n' \
+    printf 'stage2 wlroots-anland %s / Anland %s\n' \
         "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
-    log "stage1 backend 已编译安装: $BUILT_MARKER"
-    log "它只完成 output discovery/reconnect；buffer commit 仍会主动拒绝。"
-    log "不会写入 $READY_MARKER，auto 模式继续安全使用 Weston bootstrap。"
+    log "stage2 backend 已编译安装: $BUILT_MARKER"
+    log "已覆盖 output discovery/reconnect + pointer/keyboard/touch。"
+    log "DMA-BUF presentation 尚未实现，因此不会写入 $READY_MARKER。"
+    log "auto 模式继续安全使用 Weston bootstrap。"
 }
 
 main() {
     install_deps
     prepare_transport
     fetch_source
-    apply_stage1
+    apply_overlays
     build_install
     validate_install
 }
