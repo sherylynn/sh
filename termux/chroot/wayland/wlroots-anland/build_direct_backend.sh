@@ -79,6 +79,12 @@ apply_overlays() {
     cp -f "$TRANSPORT_PREFIX/include/socket_utils.h" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/include/protocol.h" backend/anland/vendor/
 
+    # apply_stage3_presentation.py was originally written on top of the older
+    # stage1 capability line. Normalize only this generated source anchor; the
+    # final Stage3 result is still DMABUF-only and verified below.
+    sed -i 's/return WLR_BUFFER_CAP_DATA_PTR | WLR_BUFFER_CAP_DMABUF | WLR_BUFFER_CAP_SHM;/return WLR_BUFFER_CAP_DATA_PTR | WLR_BUFFER_CAP_SHM;/' \
+        backend/anland/backend.c
+
     log "应用 stage3 GPU-only DMA-BUF presentation overlay"
     python3 "$ROOT_DIR/apply_stage3_presentation.py" "$WORK_DIR/src"
     log "校正 stage3 到 wlroots 0.18 output/render-node ABI"
