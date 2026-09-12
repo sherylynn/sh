@@ -47,7 +47,7 @@ sudo tee -a /etc/init.d/${SCRIPT_NAME}<<EOF
        esac
      fi
      pkill -f '^/bin/bash /root/sh/win-git/server_noVNC\.sh$' 2>/dev/null || true
-	     pkill -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .* 10086 127\\.0\\.0\\.1:5900\$' 2>/dev/null || true
+	     pkill -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 127\\.0\\.0\\.1:5900' 2>/dev/null || true
 	     pkill -x wayvnc 2>/dev/null || true
 	     pkill -x x11vnc 2>/dev/null || true
      rm -f /root/.vnc/server-noVNC-startup.pid /root/.vnc/novnc-proxy.pid

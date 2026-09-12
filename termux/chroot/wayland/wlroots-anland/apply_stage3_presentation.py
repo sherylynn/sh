@@ -454,6 +454,16 @@ bool anland_presenter_blit(struct anland_presenter *p,
         /* presenter 与 wlroots 共用主线程，必须恢复 Labwc 的 EGL context。 */
         eglMakeCurrent(previous_display, previous_draw, previous_read, previous_context);
     }
+    if (source != p->last_source) {
+        /* wlroots 会在 commit 返回后回收 output buffer。锁住最后一帧，
+         * 才能在 Android Surface/软键盘导致 consumer 重建后重新复制。 */
+        struct wlr_buffer *locked = wlr_buffer_lock(source);
+        if (p->last_source) {
+            wlr_buffer_unlock(p->last_source);
+        }
+        p->last_source = locked;
+    }
+    p->present_count++;
     return trigger_refresh(backend->display) == 0;
 
 fail:
@@ -512,6 +522,20 @@ void anland_presenter_consumer_state(struct wlr_anland_backend *backend,
         WL_EVENT_READABLE, handle_buffer_ready, backend);
     if (backend->buf_ready_source == NULL) {
         wlr_log(WLR_ERROR, "Unable to watch Anland buffer-ready eventfd");
+        return;
+    }
+
+    /* Android 在软键盘、旋转或 Activity surface 重建后会交付一组全新的
+     * consumer DMA-BUF。此时桌面可能没有 damage，不能等待下一次鼠标事件。
+     * 先把缓存的最后一帧复制到新缓冲，再主动请求合成器产生后续帧。 */
+    if (backend->presenter->last_source &&
+            !anland_presenter_blit(backend->presenter, backend,
+                backend->presenter->last_source)) {
+        wlr_log(WLR_ERROR, "Anland reconnect cached-frame presentation failed");
+    }
+    struct wlr_anland_output *output;
+    wl_list_for_each(output, &backend->outputs, link) {
+        wlr_output_send_frame(&output->wlr_output);
     }
 }
 '''

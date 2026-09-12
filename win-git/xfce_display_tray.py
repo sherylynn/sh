@@ -12,6 +12,12 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
+try:
+    gi.require_version("AyatanaAppIndicator3", "0.1")
+    from gi.repository import AyatanaAppIndicator3
+except (ValueError, ImportError):
+    AyatanaAppIndicator3 = None
+
 SCALING = "/root/sh/win-git/xfce4-scaling.sh"
 CONTROL_CLIENT = "/root/sh/termux/chroot/newhome_control.py"
 CONFIG_DIR = os.path.expanduser("~/.config/termux-x11-display")
@@ -108,12 +114,26 @@ def request_container_restart(profile="x11"):
 
 class DisplayTray:
     def __init__(self):
-        self.icon = Gtk.StatusIcon.new_from_icon_name("preferences-desktop-display")
-        self.icon.set_title("Termux:X11 显示设置")
-        self.icon.set_tooltip_text("分辨率与界面缩放")
-        self.icon.set_visible(True)
-        self.icon.connect("popup-menu", self.popup)
-        self.icon.connect("activate", self.activate)
+        if AyatanaAppIndicator3 is not None:
+            # Wayland/XFCE 面板通过 StatusNotifier 显示 indicator；
+            # Gtk.StatusIcon 的 XEmbed 图标在 XWayland 与原生面板之间不可见。
+            self.indicator = AyatanaAppIndicator3.Indicator.new(
+                "newhome-display-settings",
+                "video-display",
+                AyatanaAppIndicator3.IndicatorCategory.SYSTEM_SERVICES,
+            )
+            self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
+            self.indicator.set_title("NewHome 显示设置")
+            self.indicator.set_menu(self.build_menu())
+            self.icon = None
+        else:
+            self.indicator = None
+            self.icon = Gtk.StatusIcon.new_from_icon_name("video-display")
+            self.icon.set_title("NewHome 显示设置")
+            self.icon.set_tooltip_text("分辨率与界面缩放")
+            self.icon.set_visible(True)
+            self.icon.connect("popup-menu", self.popup)
+            self.icon.connect("activate", self.activate)
         self._last_remote_event = None
         GLib.timeout_add(500, self.check_remote_event)
 
@@ -335,7 +355,10 @@ class DisplayTray:
 if __name__ == "__main__":
     os.environ.pop("LD_PRELOAD", None)
     os.environ.pop("LD_DEBUG", None)
-    lock = open("/tmp/xfce-display-tray.lock", "w")
+    # chroot 可同时存在 LightDM :0 和 Labwc XWayland :1。按 display
+    # 隔离锁，避免不可见的 :0 托盘抢占 Anland 会话。
+    display_key = re.sub(r"[^A-Za-z0-9_.-]", "_", os.environ.get("DISPLAY", "wayland"))
+    lock = open(f"/tmp/xfce-display-tray-{display_key}.lock", "w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:

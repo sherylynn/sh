@@ -297,17 +297,26 @@ fi
 # novnc_proxy in the foreground makes it inherit the short-lived NewHome
 # restart pipe; when that pipe closes websockify exits, while detached x11vnc
 # remains alive. Give noVNC its own session and log so it survives the launcher.
-if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .* 10086 127\.0\.0\.1:5900$' >/dev/null 2>&1; then
+if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 127\.0\.0\.1:5900' >/dev/null 2>&1; then
   echo "noVNC 已经在 10086 端口运行"
 else
   echo "启动 noVNC HTTPS/WebSocket 服务..."
+  NOVNC_CREDENTIAL_FILE=/root/.vnc/wayvnc.credentials
+  NOVNC_USER=$(sed -n 's/^username=//p' "$NOVNC_CREDENTIAL_FILE" | head -1)
+  NOVNC_PASSWORD=$(sed -n 's/^password=//p' "$NOVNC_CREDENTIAL_FILE" | head -1)
+  [ -n "$NOVNC_USER" ] && [ -n "$NOVNC_PASSWORD" ] || {
+    echo "错误：noVNC 登录凭据不存在或格式错误：$NOVNC_CREDENTIAL_FILE" >&2
+    exit 1
+  }
   nohup setsid "$file_path" --vnc 127.0.0.1:5900 --listen 10086 \
+    --web-auth --auth-plugin BasicHTTPAuth \
+    --auth-source "$NOVNC_USER:$NOVNC_PASSWORD" \
     </dev/null >>"$NOVNC_LOG" 2>&1 &
   NOVNC_PID=$!
   printf '%s\n' "$NOVNC_PID" >"$NOVNC_PID_FILE"
 
   for _novnc_wait in 1 2 3 4 5; do
-    if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .* 10086 127\.0\.0\.1:5900$' >/dev/null 2>&1; then
+    if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 127\.0\.0\.1:5900' >/dev/null 2>&1; then
       echo "noVNC 已成功启动：https://127.0.0.1:10086/vnc.html"
       exit 0
     fi

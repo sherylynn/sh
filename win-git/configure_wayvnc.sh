@@ -38,12 +38,11 @@ umask 077
 cat >"$CONFIG_FILE" <<EOF
 address=127.0.0.1
 port=5900
-# wayvnc 0.9.x 启用认证后只公布 noVNC 不支持的 VeNCrypt TLSPlain 子类型
-# 262（relax_encryption 在该版本上也不会公布兼容类型）。传输加密统一交给
-# 外层 noVNC/websockify 的 HTTPS/WSS；wayvnc 严格只监听本机回环。
+# wayvnc 0.9.1 的认证只向当前 noVNC 公布不兼容的 TLSPlain 子类型 262。
+# 它只监听回环地址；用户名密码认证和 TLS 都由外层 websockify 统一提供。
 enable_auth=false
 EOF
 chmod 0600 "$CONFIG_FILE" "$CREDENTIAL_FILE"
 echo "wayvnc 配置完成：$CONFIG_FILE"
 echo "wayvnc 仅允许本机 noVNC 代理访问；外层连接由 noVNC HTTPS/WSS 加密"
-echo "保留的 wayvnc 凭据文件：$CREDENTIAL_FILE（当前兼容模式不直接使用）"
+echo "noVNC/websockify 登录凭据保存在：$CREDENTIAL_FILE"

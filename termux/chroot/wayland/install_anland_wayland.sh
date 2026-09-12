@@ -98,7 +98,7 @@ install_container_side() {
     chroot_exec -u root 'grep -Eq "^(13|trixie)" /etc/debian_version /etc/os-release 2>/dev/null || { echo "需要 Debian 13/trixie chroot" >&2; exit 20; }'
 
     log "安装 Labwc + XFCE 用户体验层"
-    chroot_exec -u root 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wayvnc wayland-utils labwc xfce4-panel xfce4-terminal xfce4-settings xfce4-notifyd thunar dbus-x11 unzip procps coreutils pipewire-audio python3 python3-gi gir1.2-gtk-3.0 libnotify-bin'
+    chroot_exec -u root 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wayvnc wayland-utils labwc swaybg xfdesktop4 xfce4-panel xfce4-terminal xfce4-settings xfce4-notifyd thunar dbus-x11 x11-xserver-utils unzip procps coreutils pipewire-audio python3 python3-gi gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1 libnotify-bin'
 
     log "安装 Anland 5.13.3 对应 Debian 13 XWayland/Weston bootstrap 包"
     chroot_exec -u root "set -e; cd /tmp/newhome-wayland-packages; apt-get install -y ./$ANLAND_DEBIAN_XWAYLAND_DEB; rm -rf weston-anland-debs; mkdir weston-anland-debs; unzip -oq ./$ANLAND_DEBIAN_WESTON_ZIP -d weston-anland-debs; apt-get install -y ./weston-anland-debs/*.deb"
@@ -106,15 +106,7 @@ install_container_side() {
     # Labwc uses its own config directory so the experiment does not disturb an
     # existing X11/XFCE configuration.
     chroot_exec -u root 'install -d -m 0700 /root/.config/newhome-labwc'
-    chroot_exec -u root 'cat > /root/.config/newhome-labwc/autostart <<"EOF"
-#!/bin/sh
-xfsettingsd --replace >/tmp/newhome-wayland-xfsettings.log 2>&1 &
-xfce4-notifyd >/tmp/newhome-wayland-notify.log 2>&1 &
-thunar --daemon >/tmp/newhome-wayland-thunar.log 2>&1 &
-xfce4-panel >/tmp/newhome-wayland-panel.log 2>&1 &
-python3 /root/sh/win-git/wayland_profile_tray.py >/tmp/newhome-wayland-tray.log 2>&1 &
-EOF
-chmod +x /root/.config/newhome-labwc/autostart'
+    chroot_exec -u root 'install -m 0755 /root/sh/termux/chroot/wayland/labwc-autostart.sh /root/.config/newhome-labwc/autostart'
 
     chroot_exec -u root 'cat > /root/.config/newhome-labwc/environment <<"EOF"
 XDG_CURRENT_DESKTOP=XFCE
