@@ -9,7 +9,6 @@ TRANSPORT_PREFIX=${NEWHOME_ANLAND_TRANSPORT_PREFIX:-/opt/newhome-wayland/anland-
 READY_MARKER=${NEWHOME_WLROOTS_ANLAND_MARKER:-/opt/newhome-wayland/wlroots-anland.ready}
 BUILT_MARKER=${NEWHOME_WLROOTS_ANLAND_BUILT:-/opt/newhome-wayland/wlroots-anland.built}
 
-# shellcheck source=../anland_versions.sh
 . "$WAYLAND_DIR/anland_versions.sh"
 
 log() { printf '[wlroots-anland-build] %s\n' "$*"; }
@@ -64,22 +63,15 @@ fetch_source() {
 apply_overlays() {
     cd "$WORK_DIR/src"
 
-    log "应用 stage1 output/reconnect overlay"
-    python3 "$ROOT_DIR/apply_stage1_overlay.py" "$WORK_DIR/src"
+    log "应用 wlroots 0.18.2 精确 base/output/reconnect overlay"
+    python3 "$ROOT_DIR/apply_stage1_018.py" "$WORK_DIR/src"
 
-    # wlroots 0.18 has no standalone wlr_output_finish() helper. The output was
-    # never published on this allocation-failure branch, so remove the stale
-    # stage1 cleanup call before compiling rather than depending on an implicit
-    # symbol.
-    sed -i '/^[[:space:]]*wlr_output_finish(&output->wlr_output);[[:space:]]*$/d' \
-        backend/anland/output.c
-
-    log "应用 stage2 pointer/keyboard/touch overlay"
+    log "应用 pointer/keyboard/touch overlay"
     python3 "$ROOT_DIR/apply_stage2_input.py" "$WORK_DIR/src"
+    # relative_direction was added after wlroots 0.18; keep the exact 0.18 axis ABI.
+    sed -i '/^[[:space:]]*\.relative_direction[[:space:]]*=/d' backend/anland/input.c
     sed -i '/#include <stdlib.h>/a #include <string.h>' backend/anland/input.c
 
-    # Exact producer implementation is copied before stage3 so its public
-    # display_producer API is available to presenter.c.
     mkdir -p backend/anland/vendor
     cp -f "$TRANSPORT_PREFIX/src/display_producer.c" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/src/socket_utils.c" backend/anland/vendor/
@@ -89,15 +81,19 @@ apply_overlays() {
 
     log "应用 stage3 GPU-only DMA-BUF presentation overlay"
     python3 "$ROOT_DIR/apply_stage3_presentation.py" "$WORK_DIR/src"
+    log "校正 stage3 到 wlroots 0.18 output/render-node ABI"
+    python3 "$ROOT_DIR/apply_stage3_018_fixups.py" "$WORK_DIR/src"
 
     grep -Rqs "wlr_anland_backend_create" backend include || \
         fail "overlay 未提供 wlr_anland_backend_create"
     grep -Rqs "anland_input_attach" backend/anland || \
-        fail "stage2 input overlay 未生效"
+        fail "input overlay 未生效"
     grep -Rqs "anland_presenter_blit" backend/anland || \
         fail "stage3 presentation overlay 未生效"
     grep -Rqs "WLR_BUFFER_CAP_DMABUF" backend/anland/backend.c || \
         fail "stage3 未要求 DMA-BUF output buffer"
+    grep -Rqs "get_drm_fd" backend/anland/backend.c || \
+        fail "stage3 未暴露 render-node fd"
     grep -Rqs "ANLAND_SOCKET" backend include || \
         fail "overlay 未绑定 ANLAND_SOCKET"
 }
@@ -125,8 +121,6 @@ validate_install() {
     log "检查 Anland backend/presenter 导出与依赖"
     nm -D "$lib" | grep -q 'wlr_anland_backend_create' || \
         fail "生成的 wlroots 库没有导出 wlr_anland_backend_create"
-    ldd "$lib" | grep -Eq 'libEGL|libGLESv2' || \
-        log "提示：EGL/GLES 可能由 wlroots renderer 依赖间接解析；真机 smoke test 会再次确认"
 
     if command -v labwc >/dev/null 2>&1; then
         local linked
@@ -151,9 +145,9 @@ EOF
     printf 'stage3-built wlroots-anland %s / Anland %s\n' \
         "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
     log "stage3 backend 已编译安装: $BUILT_MARKER"
-    log "显示提交已实现 GPU-only DMA-BUF blit；无 CPU framebuffer copy。"
-    log "为避免黑屏，构建成功仍不会自动写 $READY_MARKER。"
-    log "请运行 validate_direct_backend.sh 做 Anland 真机 smoke test；成功后它才会写 .ready。"
+    log "显示提交使用 GPU-only EGL DMA-BUF blit；无 CPU framebuffer copy。"
+    log "构建成功不会自动写 $READY_MARKER。"
+    log "运行 validate_direct_backend.sh，并确认 Android 画面后才启用 direct auto mode。"
 }
 
 main() {
