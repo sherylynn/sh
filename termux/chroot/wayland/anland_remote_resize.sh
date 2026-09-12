@@ -106,7 +106,7 @@ PREFIX=/data/data/com.termux/files/usr
 chroot "$HOST_ROOT" "$PREFIX/bin/env" -i \
     HOME=/data/data/com.termux/files/home PREFIX="$PREFIX" TMPDIR="$PREFIX/tmp" \
     PATH="$PREFIX/bin:/system/bin:/system/xbin" "$PREFIX/bin/bash" -lc \
-    'pkill -TERM -x anland 2>/dev/null || true; sleep 0.2; pkill -KILL -x anland 2>/dev/null || true; rm -f "$PREFIX/tmp/anland/display_daemon.sock"; mkdir -p "$PREFIX/tmp/anland"; nohup anland --socket "$PREFIX/tmp/anland/display_daemon.sock" >"$PREFIX/tmp/anland/newhome-anland.log" 2>&1 </dev/null &'
+    'pkill -TERM -x anland 2>/dev/null || true; sleep 0.2; pkill -KILL -x anland 2>/dev/null || true; rm -f "$PREFIX/tmp/anland/display_daemon.sock"; mkdir -p "$PREFIX/tmp/anland"; nohup anland --socket "$PREFIX/tmp/anland/display_daemon.sock" >"$PREFIX/tmp/anland/newhome-anland.log" 2>&1 </dev/null 9>&- &'
 
 for _ in {1..100}; do
     [ -S /tmp/anland/display_daemon.sock ] && break
@@ -115,7 +115,7 @@ done
 [ -S /tmp/anland/display_daemon.sock ] || fail "Anland daemon socket did not return"
 
 nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} \
-    /bin/bash "$SESSION_SCRIPT" >/tmp/newhome-wayland-session-supervisor.log 2>&1 </dev/null &
+    /bin/bash "$SESSION_SCRIPT" >/tmp/newhome-wayland-session-supervisor.log 2>&1 </dev/null 9>&- &
 for _ in {1..120}; do
     if pgrep -x weston >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1; then
         break

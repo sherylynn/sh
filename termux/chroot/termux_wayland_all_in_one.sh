@@ -43,8 +43,10 @@ quiesce_x11_profile() {
         [ -d "$PREFIX/var/service/$service" ] && sv down "$service" >/dev/null 2>&1 || true
     done
     killall -TERM termux-x11 >/dev/null 2>&1 || true
+    pkill -TERM -f 'termux-x11 com\.termux\.x11 :[0-9]+' >/dev/null 2>&1 || true
     sleep 0.2
     killall -KILL termux-x11 >/dev/null 2>&1 || true
+    pkill -KILL -f 'termux-x11 com\.termux\.x11 :[0-9]+' >/dev/null 2>&1 || true
     am broadcast --user 0 -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1 || true
     am force-stop --user 0 com.termux.x11 >/dev/null 2>&1 || true
 }
