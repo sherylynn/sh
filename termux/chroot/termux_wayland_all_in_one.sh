@@ -76,20 +76,34 @@ quiesce_x11_profile() {
 }
 
 stop_anland() {
-    pkill -TERM -x anland-compatible >/dev/null 2>&1 || true
-    pkill -TERM -x anland >/dev/null 2>&1 || true
+    # 正常进程属于 Termux UID；兼容旧版本或 root 调试遗留的 daemon。
+    sudo pkill -TERM -x anland-compatible >/dev/null 2>&1 || true
+    sudo pkill -TERM -x anland >/dev/null 2>&1 || true
     sleep 0.3
-    pkill -KILL -x anland-compatible >/dev/null 2>&1 || true
-    pkill -KILL -x anland >/dev/null 2>&1 || true
-    rm -f "$ANLAND_SOCKET_TERMUX" 2>/dev/null || true
+    sudo pkill -KILL -x anland-compatible >/dev/null 2>&1 || true
+    sudo pkill -KILL -x anland >/dev/null 2>&1 || true
+    sudo rm -f -- "$ANLAND_SOCKET_TERMUX" 2>/dev/null || true
 }
 
 start_anland() {
+    local runtime_dir="${ANLAND_SOCKET_TERMUX%/*}"
+    local expected_runtime="$PREFIX/tmp/anland"
+
     log "启动 Anland $ANLAND_VERSION daemon"
-    mkdir -p "${ANLAND_SOCKET_TERMUX%/*}"
     stop_anland
+
+    # root chroot 与 Termux 共享 tmp。旧会话可能留下 root:root/0644 日志，
+    # 令回落 Termux UID 后的 daemon 在 shell 重定向阶段就启动失败。这里只
+    # 重置固定的 Anland 运行时子目录，绝不接受可变路径或符号链接。
+    if [ "$runtime_dir" != "$expected_runtime" ] || [ -L "$runtime_dir" ]; then
+        fail "拒绝重置异常 Anland runtime 路径: $runtime_dir"
+    fi
+    sudo rm -rf --one-file-system -- "$expected_runtime" || \
+        fail "无法清理旧 Anland runtime: $expected_runtime"
+    install -d -m 0711 "$runtime_dir" || fail "无法创建 Anland runtime: $runtime_dir"
+
     anland --socket "$ANLAND_SOCKET_TERMUX" \
-        >"${ANLAND_SOCKET_TERMUX%/*}/newhome-anland.log" 2>&1 &
+        >"$runtime_dir/newhome-anland.log" 2>&1 &
     local pid=$!
     if ! wait_socket "$ANLAND_SOCKET_TERMUX" 100 || ! kill -0 "$pid" 2>/dev/null; then
         fail "Anland daemon 启动失败；查看 ${ANLAND_SOCKET_TERMUX%/*}/newhome-anland.log"
@@ -102,6 +116,21 @@ start_anland() {
             fail "当前 Termux 需要 compatible APK，但 anland-compatible 不存在"
         fi
     fi
+}
+
+restart_wayland_remote_access() {
+    log "Labwc 已就绪，切换 noVNC 后端到 wayvnc"
+    chroot_exec -u root '
+        # init 服务可能在 Labwc 出现前误走 X11/TigerVNC 分支并占用 5900。
+        /etc/init.d/noVNC stop >/dev/null 2>&1 || true
+        pkill -TERM -x Xtigervnc >/dev/null 2>&1 || true
+        pkill -TERM -x Xvnc >/dev/null 2>&1 || true
+        sleep 0.3
+        pkill -KILL -x Xtigervnc >/dev/null 2>&1 || true
+        pkill -KILL -x Xvnc >/dev/null 2>&1 || true
+        rm -f /tmp/.X*-lock /tmp/.X11-unix/X* >/dev/null 2>&1 || true
+        /etc/init.d/noVNC start
+    ' || fail "noVNC/wayvnc 服务重启失败"
 }
 
 # Verify the bind semantically instead of trusting the root mount alone. Android
@@ -238,6 +267,7 @@ start_all() {
     sleep 1
     start_container
     start_session
+    restart_wayland_remote_access
     log "Wayland 环境启动请求完成"
     log "架构模式: ${NEWHOME_WAYLAND_MODE:-auto} (Stage3 ready 后 auto 会直接使用 wlroots-anland)"
 }
@@ -246,6 +276,9 @@ stop_all() {
     log "停止 Wayland/chroot 环境"
     stop_chroot_container 2>/dev/null || true
     stop_anland
+    # 必须在容器 /tmp bridge 和 Anland socket 均停止后执行；root 创建的
+    # 临时文件若留给 Termux App 自行清理，会阻塞其主线程并导致首次重开退出。
+    clean_tmp || log "警告：共享 tmp 未清理；请检查是否仍有挂载"
     log "Wayland 环境已停止；Termux:X11 未被本脚本触碰"
 }
 

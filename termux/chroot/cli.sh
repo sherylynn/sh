@@ -921,29 +921,55 @@ kill_container_processes() {
   fi
 }
 clean_tmp() {
-  sudo rm -rf $PREFIX/tmp/rime*
-  sudo rm -rf $PREFIX/tmp/tigervnc*
-  sudo rm -rf $PREFIX/tmp/ssh-*
-  sudo rm -rf $PREFIX/tmp/pulse-*
-  sudo rm -rf $PREFIX/tmp/dbus-*
-  sudo rm -rf $PREFIX/tmp/vscode-*
-  sudo rm -rf $PREFIX/tmp/Rtmp*
-  sudo rm -rf $PREFIX/tmp/.X0-lock
-  sudo rm -rf $PREFIX/tmp/.X10-lock
+  # chroot 的 /tmp 绑定到 Termux $PREFIX/tmp，容器内的 root 文件会令
+  # TermuxService 退出时清理失败并在主线程产生大量错误日志。因此在桌面
+  # profile 停止后由 KernelSU/root 统一清空共享 tmp。
+  #
+  # 这里故意不接受调用方传入路径，也不从 chroot 侧删除：只允许清理一个
+  # 编译期固定的宿主目录，并在任何边界校验失败时拒绝执行。
+  local expected_tmp="/data/data/com.termux/files/usr/tmp"
+  local tmp_dir="${PREFIX}/tmp"
+  local resolved_tmp mount_point
 
-  sudo rm -rf $DEBIAN_DIR/tmp/rime*
-  sudo rm -rf $DEBIAN_DIR/tmp/tigervnc*
-  sudo rm -rf $DEBIAN_DIR/tmp/ssh-*
-  sudo rm -rf $DEBIAN_DIR/tmp/pulse-*
-  sudo rm -rf $DEBIAN_DIR/tmp/dbus-*
-  sudo rm -rf $DEBIAN_DIR/tmp/vscode-*
-  sudo rm -rf $DEBIAN_DIR/tmp/Rtmp*
-  sudo rm -rf $DEBIAN_DIR/tmp/.X0-lock*
-  sudo rm -rf $DEBIAN_DIR/tmp/.X10-lock*
+  if [ "$tmp_dir" != "$expected_tmp" ]; then
+    log_warn "拒绝清理非标准 Termux tmp: $tmp_dir"
+    return 1
+  fi
+  if [ ! -d "$tmp_dir" ] || [ -L "$tmp_dir" ]; then
+    log_warn "拒绝清理不存在或为符号链接的 tmp: $tmp_dir"
+    return 1
+  fi
 
-  sudo rm -rf $DEBIAN_DIR/root/tigervnc*
-  #sudo rm -rf $DEBIAN_DIR/etc/xrdp/km-*.ini
-  #default /etc/xrdp/sesman.ini X11DisplayOffset=10
+  resolved_tmp=$(readlink -f -- "$tmp_dir" 2>/dev/null || true)
+  if [ "$resolved_tmp" != "$expected_tmp" ]; then
+    log_warn "拒绝清理解析到其他位置的 tmp: ${resolved_tmp:-未知}"
+    return 1
+  fi
+
+  # 必须先卸载 chroot 的 tmp bridge。否则从宿主侧清理会同时修改一个仍在
+  # 使用的容器 /tmp；若 tmp 内另有挂载，也必须拒绝，避免跨挂载删除。
+  if is_mounted "${CHROOT_DIR}/tmp"; then
+    log_warn "chroot /tmp 仍处于挂载状态，跳过共享 tmp 清理"
+    return 1
+  fi
+  while read -r mount_point; do
+    case "$mount_point" in
+      "$expected_tmp"/*)
+        log_warn "共享 tmp 下仍有子挂载 $mount_point，拒绝清理"
+        return 1
+        ;;
+    esac
+  done < <(sudo awk '{print $2}' /proc/mounts 2>/dev/null)
+
+  log_info "安全清理 chroot/Termux 共享 tmp"
+  # 仅枚举 tmp 的直接子项；固定 -xdev 且让 rm 不跨文件系统。即使内容中有
+  # 符号链接也只会删除链接本身，不会跟随到目标目录。
+  if ! sudo find "$expected_tmp" -xdev -mindepth 1 -maxdepth 1 \
+      -exec rm -rf --one-file-system -- '{}' +; then
+    log_warn "共享 tmp 未能完全清理"
+    return 1
+  fi
+  return 0
 }
 
 #===============================================================================
