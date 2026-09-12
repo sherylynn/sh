@@ -98,7 +98,7 @@ install_container_side() {
     chroot_exec -u root 'grep -Eq "^(13|trixie)" /etc/debian_version /etc/os-release 2>/dev/null || { echo "需要 Debian 13/trixie chroot" >&2; exit 20; }'
 
     log "安装 Labwc + XFCE 用户体验层"
-    chroot_exec -u root 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y labwc xfce4-panel xfce4-terminal xfce4-settings xfce4-notifyd thunar dbus-x11 unzip procps coreutils pipewire-audio python3 python3-gi gir1.2-gtk-3.0 libnotify-bin'
+    chroot_exec -u root 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wayvnc wayland-utils labwc xfce4-panel xfce4-terminal xfce4-settings xfce4-notifyd thunar dbus-x11 unzip procps coreutils pipewire-audio python3 python3-gi gir1.2-gtk-3.0 libnotify-bin'
 
     log "安装 Anland 5.13.3 对应 Debian 13 XWayland/Weston bootstrap 包"
     chroot_exec -u root "set -e; cd /tmp/newhome-wayland-packages; apt-get install -y ./$ANLAND_DEBIAN_XWAYLAND_DEB; rm -rf weston-anland-debs; mkdir weston-anland-debs; unzip -oq ./$ANLAND_DEBIAN_WESTON_ZIP -d weston-anland-debs; apt-get install -y ./weston-anland-debs/*.deb"
@@ -129,10 +129,25 @@ EOF'
     log "注意：Anland 的 Wayland/KGSL 路径要求支持 KGSL Wayland 的 Mesa。若当前 Mesa 较旧，先按 lfdevs/mesa-for-android-container 最新说明升级。"
 }
 
+build_direct_backend() {
+    local builder="/root/sh/termux/chroot/wayland/wlroots-anland/build_direct_backend.sh"
+    ensure_container_started
+    chroot_exec -u root "test -x '$builder'" || \
+        fail "缺少 direct backend 构建脚本: $builder"
+    if chroot_exec -u root 'test -s /opt/newhome-wayland/wlroots-anland.built' && \
+            [ "${NEWHOME_REBUILD_ANLAND_DIRECT:-0}" != 1 ]; then
+        log "wlroots-anland 已构建；跳过重复构建"
+        return 0
+    fi
+    log "构建 wlroots-anland direct backend（只写 built，不自动伪造 ready）"
+    chroot_exec -u root "/bin/bash '$builder'"
+}
+
 main() {
     need_termux_tooling
     install_termux_side
     install_container_side
+    build_direct_backend
     cat <<EOF
 
 Wayland bootstrap 已安装。

@@ -97,6 +97,33 @@ if ! bash ~/sh/debian/termux_chroot_desktop_setup.sh; then
   echo "Termux chroot 桌面集成安装失败，停止系统配置。" >&2
   exit 1
 fi
+
+# 普通服务器也会运行本脚本，因此只在 Android KGSL chroot 中部署
+# Anland/Labwc/wayvnc。wayvnc 是 rootless Wayland 的 RFB 服务端，不能用
+# x11vnc 替代。
+if [ -e /dev/kgsl-3d0 ] && [ -d "$HOME/sh/termux/chroot/wayland" ]; then
+  echo "检测到 Android KGSL chroot，配置 Anland direct 与 wayvnc 依赖"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    wayvnc wayland-utils labwc xwayland xfce4-panel xfce4-terminal xfce4-settings \
+    xfce4-notifyd thunar dbus-x11 procps coreutils python3 python3-gi \
+    gir1.2-gtk-3.0 libnotify-bin
+
+  DIRECT_BUILD="$HOME/sh/termux/chroot/wayland/wlroots-anland/build_direct_backend.sh"
+  [ -x "$DIRECT_BUILD" ] || {
+    echo "缺少 Anland direct 构建脚本：$DIRECT_BUILD" >&2
+    exit 1
+  }
+  if [ ! -s /opt/newhome-wayland/wlroots-anland.built ] || \
+      [ "${NEWHOME_REBUILD_ANLAND_DIRECT:-0}" = 1 ]; then
+    sudo /bin/bash "$DIRECT_BUILD" || exit 1
+  else
+    echo "wlroots-anland 已构建；设置 NEWHOME_REBUILD_ANLAND_DIRECT=1 可强制重建"
+  fi
+
+  command -v wayvnc >/dev/null 2>&1 || exit 1
+  command -v labwc >/dev/null 2>&1 || exit 1
+  sudo /bin/bash "$HOME/sh/win-git/configure_wayvnc.sh" || exit 1
+fi
 zsh ~/sh/win-git/koreader.sh
 zsh ~/sh/debian/firefox.sh
 if [[ $(platform) == *wsl* ]]; then

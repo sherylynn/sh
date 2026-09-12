@@ -1,5 +1,10 @@
 #!/bin/bash
 SCRIPT_NAME="noVNC"
+# SysV/rc3 启动时 HOME 可能继承为 /；本服务始终以 root 运行，固定运行目录，
+# 避免日志、PID 和认证文件被写到错误位置。
+if [ "$(id -u)" -eq 0 ]; then
+  export HOME=/root
+fi
 realpath() {
   local x=$1
   echo $(
@@ -92,7 +97,31 @@ DroidSpaces_path="/run/droidspaces/container.config"
 # chroot: pgrep 可见宿主机进程 (com.termux.x11)
 # proot --isolated: pgrep 看不到 termux 进程, 改用 X socket 文件检测
 #   termux-x11 :1 创建 $TMPDIR/.X11-unix/X1, --shared-tmp 让容器内 /tmp/.X11-unix/X1 可达
-if pgrep -f "com.termux.x11" >/dev/null || [ -S "/tmp/.X11-unix/X1" ]; then
+# Anland/Labwc 是 rootless Wayland。x11vnc 无法抓取它的 Xwayland 根窗口，
+# 必须优先用 wayvnc；不能让残留的 X1 socket 把 profile 误判成 Termux:X11。
+if pgrep -x labwc >/dev/null && [ -S /run/user/0/wayland-0 ]; then
+  echo "检测到 Anland/Labwc，启动 wayvnc"
+  WAYVNC_CONFIG=/root/.config/wayvnc/config
+  [ -s "$WAYVNC_CONFIG" ] || /bin/bash /root/sh/win-git/configure_wayvnc.sh
+  pkill -x x11vnc >/dev/null 2>&1 || true
+  pkill -x wayvnc >/dev/null 2>&1 || true
+  export XDG_RUNTIME_DIR=/run/user/0
+  export WAYLAND_DISPLAY=wayland-0
+  nohup setsid wayvnc -C "$WAYVNC_CONFIG" -r \
+    </dev/null >>/root/.vnc/wayvnc.log 2>&1 &
+  for _wayvnc_wait in 1 2 3 4 5; do
+    if pgrep -x wayvnc >/dev/null 2>&1; then
+      echo "wayvnc 已在 127.0.0.1:5900 启动"
+      break
+    fi
+    sleep 1
+  done
+  pgrep -x wayvnc >/dev/null 2>&1 || {
+    echo "wayvnc 启动失败，最近日志：" >&2
+    tail -40 /root/.vnc/wayvnc.log >&2
+    exit 1
+  }
+elif pgrep -f "com.termux.x11" >/dev/null; then
   DISPLAY_PORT=1
   export DISPLAY=:${DISPLAY_PORT}
   export PULSE_SERVER=tcp:127.0.0.1:4713

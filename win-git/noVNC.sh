@@ -118,7 +118,8 @@ if [[ $(platform) == *linux* ]]; then
 
   sudo apt purge kasmvncserver -y
   sudo apt autoremove -y
-  sudo apt install python3-numpy x11vnc tigervnc-standalone-server tigervnc-tools \
+  # x11vnc 服务 Termux:X11；wayvnc 服务 Anland/Labwc rootless Wayland。
+  sudo apt install python3-numpy x11vnc wayvnc tigervnc-standalone-server tigervnc-tools \
     openssl libnss3-tools -y
 
   # Browser patch and x11vnc receiver form one protocol pair. Rebuild the receiver
@@ -131,6 +132,9 @@ if [[ $(platform) == *linux* ]]; then
   # implementation intact as novnc_proxy.upstream and put our automatic local-CA
   # TLS policy in a wrapper at the original path, which existing startup scripts use.
   install_https_launcher || exit 1
+  if [ -e /dev/kgsl-3d0 ]; then
+    sudo /bin/bash "$HOME/sh/win-git/configure_wayvnc.sh" || exit 1
+  fi
 
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
   echo "noVNC installed from configured repository, NewHome features verified, HTTPS enabled by default"
