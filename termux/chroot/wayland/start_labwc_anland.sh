@@ -7,6 +7,7 @@ XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 HOST_SOCKET=${NEWHOME_WESTON_SOCKET:-wayland-anland-host}
 WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto}
 DIRECT_MARKER=${NEWHOME_WLROOTS_ANLAND_MARKER:-/opt/newhome-wayland/wlroots-anland.ready}
+DIRECT_BUILT_MARKER=${NEWHOME_WLROOTS_ANLAND_BUILT:-/opt/newhome-wayland/wlroots-anland.built}
 DIRECT_LIBDIR=${NEWHOME_WLROOTS_ANLAND_LIBDIR:-/opt/newhome-wayland/wlroots-anland/lib}
 LOG_DIR=${NEWHOME_WAYLAND_LOG_DIR:-/tmp/newhome-wayland}
 
@@ -99,6 +100,15 @@ start_nested() {
     export WAYLAND_DISPLAY="$HOST_SOCKET"
     export WLR_BACKENDS=wayland
     export WLR_WL_OUTPUTS=1
+
+    # The stock wlroots Wayland backend commits a 1280x720 surface before the
+    # kiosk configure arrives, which portrait Anland rejects. Our built 0.18
+    # library starts at 1x1 and then adopts the compositor-provided full size.
+    # This library is safe for nested mode even while direct remains unaccepted.
+    if [ -e "$DIRECT_BUILT_MARKER" ] && [ -d "$DIRECT_LIBDIR" ]; then
+        export LD_LIBRARY_PATH="$DIRECT_LIBDIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+        log "nested 模式使用 wlroots 安全初始尺寸握手"
+    fi
 
     # Labwc's autostart runs after it creates its own Wayland socket, so
     # xfce4-panel/Thunar/xfsettingsd automatically connect to Labwc rather than

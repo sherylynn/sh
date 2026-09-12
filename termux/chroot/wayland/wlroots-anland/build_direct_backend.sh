@@ -18,20 +18,31 @@ fail() { printf '[wlroots-anland-build] ERROR: %s\n' "$*" >&2; exit 1; }
 
 install_deps() {
     export DEBIAN_FRONTEND=noninteractive
-    apt-get -o Acquire::Retries=8 update
-    apt-get -o Acquire::Retries=8 install -y --no-install-recommends \
+    local attempt
+    for attempt in 1 2 3; do
+        apt-get -o Acquire::Retries=8 update && break
+        [ "$attempt" -lt 3 ] || fail "apt update 连续失败 3 次"
+        log "apt update 失败，第 $attempt 次重试"
+        sleep 1
+    done
+    for attempt in 1 2 3; do
+        apt-get -o Acquire::Retries=8 install -y --no-install-recommends \
         ca-certificates curl xz-utils bzip2 patch git python3 \
         build-essential meson ninja-build pkg-config binutils devscripts dpkg-dev \
         libwayland-dev wayland-protocols libdrm-dev libgbm-dev \
         libegl1-mesa-dev libgles2-mesa-dev libpixman-1-dev \
         libxkbcommon-dev libinput-dev libudev-dev libseat-dev \
-        libsystemd-dev libdisplay-info-dev libliftoff-dev \
+        libsystemd-dev libdisplay-info-dev libliftoff-dev hwdata \
         libvulkan-dev libxcb1-dev libxcb-render0-dev \
         libxcb-xfixes0-dev libxcb-errors-dev libxcb-icccm4-dev \
         libxcb-composite0-dev libxcb-res0-dev libxcb-xinput-dev \
         libxcb-ewmh-dev libxcb-dri3-dev libxcb-present-dev \
         libxcb-render-util0-dev libxcb-shm0-dev libxcb-xkb-dev \
-        libx11-xcb-dev
+        libx11-xcb-dev && break
+        [ "$attempt" -lt 3 ] || fail "构建依赖安装连续失败 3 次"
+        log "构建依赖安装失败，第 $attempt 次重试"
+        sleep 1
+    done
 }
 
 prepare_transport() {

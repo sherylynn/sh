@@ -24,6 +24,7 @@ def main() -> None:
     output = root / "backend/anland/output.c"
     presenter = root / "backend/anland/presenter.c"
     meson = root / "backend/anland/meson.build"
+    wayland_output = root / "backend/wayland/output.c"
 
     replace_once(header,
         '    uint32_t refresh;\n',
@@ -92,6 +93,11 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
     return true;
 '''
     new_commit = '''    if (state->committed & WLR_OUTPUT_STATE_BUFFER) {
+        if (!output->backend->consumer_ready || is_fallback(output->backend->display)) {
+            /* Accept the modeset while Android is attaching. The ready edge
+             * schedules a fresh frame, so no CPU fallback or stale buffer is used. */
+            return true;
+        }
         if (!anland_presenter_blit(output->backend->presenter,
                 output->backend, state->buffer)) {
             wlr_log(WLR_ERROR, "Anland GPU DMA-BUF presentation failed");
@@ -107,9 +113,8 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
 '''
     replace_once(output, old_commit, new_commit)
 
-    # Match Weston-Anland exactly: Android buffer-ready drives every real frame.
-    # Consumer connection merely wires the eventfd; it does not race ahead with
-    # a synthetic bootstrap frame into a buffer Android hasn't released yet.
+    # Match Weston-Anland's lockstep: connection only wires the eventfd. The
+    # first and all subsequent frames are requested by buffer-ready events.
     replace_once(output,
         '''void anland_output_consumer_state(struct wlr_anland_output *output, bool ready) {
     if (ready && output->frame_timer != NULL) {
@@ -121,13 +126,26 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
         '''void anland_output_consumer_state(struct wlr_anland_output *output, bool ready) {
     (void)output;
     (void)ready;
-    /* Frame events are emitted only by presenter.c's buffer-ready eventfd. */
+    /* presenter.c emits frames only after Android signals buffer-ready. */
 }
 ''')
 
     replace_once(presenter,
         '#include <wlr/types/wlr_output.h>\n',
         '#include <wlr/interfaces/wlr_output.h>\n#include <wlr/types/wlr_output.h>\n')
+
+    replace_once(output,
+        '''    if (state->committed & WLR_OUTPUT_STATE_BUFFER) {
+        if (state->buffer == NULL || !output->backend->consumer_ready ||
+                is_fallback(output->backend->display)) {
+            return false;
+        }
+    }
+''',
+        '''    if ((state->committed & WLR_OUTPUT_STATE_BUFFER) && state->buffer == NULL) {
+        return false;
+    }
+''')
 
     replace_once(presenter,
         '    return trigger_refresh(backend->display) == 0;\n',
@@ -145,6 +163,14 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
         "wlr_files += files(\n",
         "wlr_deps += [dependency('egl'), dependency('glesv2')]\n\n"
         "wlr_files += files(\n")
+
+    # kiosk-shell configures the real Android output size after the first xdg
+    # handshake. A 1280x720 initial surface is rejected on portrait displays
+    # before that configure can arrive; 1x1 is always valid and immediately
+    # replaced by the compositor-provided size.
+    replace_once(wayland_output,
+        'wlr_output_state_set_custom_mode(&state, 1280, 720, 0);\n',
+        'wlr_output_state_set_custom_mode(&state, 1, 1, 0);\n')
 
     print("stage3 wlroots 0.18 ABI/render-node/EGL fixups applied")
 
