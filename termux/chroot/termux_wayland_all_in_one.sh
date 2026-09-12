@@ -31,7 +31,7 @@ wait_socket() {
 }
 
 check_requirements() {
-    command -v anland >/dev/null 2>&1 || fail "未安装 Anland daemon；先运行 $WAYLAND_DIR/install_anland_wayland.sh"
+    command -v anland >/dev/null 2>&1 || fail "未安装 Anland daemon；先运行 bash $WAYLAND_DIR/install_anland_wayland.sh"
     command -v am >/dev/null 2>&1 || fail "缺少 Android am 命令"
     [ -x "$PREFIX/bin/bash" ] || fail "Termux bash 不可用"
 }
@@ -78,7 +78,7 @@ start_container() {
 
 start_session() {
     log "启动 Labwc + XFCE Wayland session"
-    chroot_exec -u root "pkill -x labwc >/dev/null 2>&1 || true; pkill -x weston >/dev/null 2>&1 || true; nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
+    chroot_exec -u root "pkill -x labwc >/dev/null 2>&1 || true; pkill -x weston >/dev/null 2>&1 || true; nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
     sleep 1
 
     # Manual tstart-wayland should be as convenient as the X11 profile. NewHome
@@ -99,8 +99,6 @@ start_all() {
 
 stop_all() {
     log "停止 Wayland/chroot 环境"
-    # Stop the container first so all Labwc/Weston/XFCE clients disappear in
-    # the same lifecycle as the existing X11 profile.
     stop_chroot_container 2>/dev/null || true
     stop_anland
     log "Wayland 环境已停止；Termux:X11 未被本脚本触碰"
@@ -122,7 +120,11 @@ status_all() {
 }
 
 install_stack() {
-    exec "$WAYLAND_DIR/install_anland_wayland.sh"
+    exec "$PREFIX/bin/bash" "$WAYLAND_DIR/install_anland_wayland.sh"
+}
+
+doctor() {
+    exec "$PREFIX/bin/bash" "$WAYLAND_DIR/wayland_doctor.sh"
 }
 
 show_usage() {
@@ -135,6 +137,7 @@ NewHome Anland Wayland 编排器
   $0 restart     重启到 Wayland profile
   $0 status      查看状态
   $0 install     安装固定版本的 Anland/Labwc/Weston bootstrap
+  $0 doctor      检查 Anland/GPU/Labwc/wlroots 环境
 
 模式:
   NEWHOME_WAYLAND_MODE=auto    默认；优先 direct wlroots-anland，否则 nested Weston bootstrap
@@ -149,6 +152,7 @@ case "${1:-start}" in
     restart) stop_all; sleep 1; start_all ;;
     status) status_all ;;
     install) install_stack ;;
+    doctor) doctor ;;
     -h|--help|help) show_usage ;;
     *) show_usage; exit 2 ;;
 esac
