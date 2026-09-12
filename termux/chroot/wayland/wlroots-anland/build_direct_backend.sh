@@ -8,7 +8,6 @@ PREFIX_DIR=${NEWHOME_WLROOTS_PREFIX:-/opt/newhome-wayland/wlroots-anland}
 TRANSPORT_PREFIX=${NEWHOME_ANLAND_TRANSPORT_PREFIX:-/opt/newhome-wayland/anland-transport}
 READY_MARKER=${NEWHOME_WLROOTS_ANLAND_MARKER:-/opt/newhome-wayland/wlroots-anland.ready}
 BUILT_MARKER=${NEWHOME_WLROOTS_ANLAND_BUILT:-/opt/newhome-wayland/wlroots-anland.built}
-PATCH_DIR="$ROOT_DIR/patches"
 
 # shellcheck source=../anland_versions.sh
 . "$WAYLAND_DIR/anland_versions.sh"
@@ -22,8 +21,8 @@ install_deps() {
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get install -y --no-install-recommends \
-        ca-certificates curl xz-utils bzip2 patch git \
-        build-essential meson ninja-build pkg-config binutils \
+        ca-certificates curl xz-utils bzip2 patch git python3 \
+        build-essential meson ninja-build pkg-config binutils devscripts dpkg-dev \
         libwayland-dev wayland-protocols libdrm-dev libgbm-dev \
         libegl1-mesa-dev libgles2-mesa-dev libpixman-1-dev \
         libxkbcommon-dev libinput-dev libudev-dev libseat-dev \
@@ -49,41 +48,37 @@ fetch_source() {
     mkdir -p "$WORK_DIR"
     cd "$WORK_DIR"
 
-    local orig="wlroots_${NEWHOME_WLROOTS_BASELINE}.orig.tar.bz2"
-    local debian="wlroots_${NEWHOME_WLROOTS_DEBIAN_BASELINE}.debian.tar.xz"
-    local pool="https://deb.debian.org/debian/pool/main/w/wlroots"
+    local dsc="https://deb.debian.org/debian/pool/main/w/wlroots/wlroots_${NEWHOME_WLROOTS_DEBIAN_BASELINE}.dsc"
+    log "通过 Debian .dsc 获取 wlroots ${NEWHOME_WLROOTS_DEBIAN_BASELINE} 精确源码"
+    dget -u "$dsc"
 
-    log "下载 Debian 13 wlroots ${NEWHOME_WLROOTS_DEBIAN_BASELINE} 源码"
-    curl -fL --retry 3 "$pool/$orig" -o "$orig"
-    curl -fL --retry 3 "$pool/$debian" -o "$debian"
+    local src
+    src=$(find "$WORK_DIR" -maxdepth 1 -type d -name "wlroots-${NEWHOME_WLROOTS_BASELINE}*" | head -n1 || true)
+    [ -n "$src" ] || fail "dget/dpkg-source 后未找到 wlroots 源码目录"
+    mv "$src" "$WORK_DIR/src"
 
-    mkdir src
-    tar -xjf "$orig" -C src --strip-components=1
-    tar -xJf "$debian" -C src
-
-    grep -q "version: '${NEWHOME_WLROOTS_BASELINE}'" src/meson.build || \
+    grep -q "version: '${NEWHOME_WLROOTS_BASELINE}'" "$WORK_DIR/src/meson.build" || \
         fail "下载的 wlroots 源码版本不是 ${NEWHOME_WLROOTS_BASELINE}"
 }
 
-apply_patches() {
-    [ -d "$PATCH_DIR" ] || fail "缺少 patch 目录: $PATCH_DIR"
-    local series="$PATCH_DIR/series"
-    [ -f "$series" ] || fail "缺少 patch series: $series"
-
+apply_stage1() {
     cd "$WORK_DIR/src"
-    while IFS= read -r patch_name; do
-        case "$patch_name" in
-            ''|'#'*) continue ;;
-        esac
-        [ -f "$PATCH_DIR/$patch_name" ] || fail "缺少 patch: $patch_name"
-        log "应用 $patch_name"
-        patch -p1 --forward --batch < "$PATCH_DIR/$patch_name"
-    done < "$series"
+
+    log "应用严格锚点的 stage1 Anland backend overlay"
+    python3 "$ROOT_DIR/apply_stage1_overlay.py" "$WORK_DIR/src"
 
     grep -Rqs "wlr_anland_backend_create" backend include || \
-        fail "patchset 尚未提供 wlr_anland_backend_create；direct backend 仍在开发中"
+        fail "stage1 overlay 未提供 wlr_anland_backend_create"
     grep -Rqs "ANLAND_SOCKET" backend include || \
-        fail "patchset 未绑定 ANLAND_SOCKET；拒绝构建"
+        fail "stage1 overlay 未绑定 ANLAND_SOCKET"
+
+    # Exact producer implementation is copied after the structural overlay.
+    mkdir -p backend/anland/vendor
+    cp -f "$TRANSPORT_PREFIX/src/display_producer.c" backend/anland/vendor/
+    cp -f "$TRANSPORT_PREFIX/src/socket_utils.c" backend/anland/vendor/
+    cp -f "$TRANSPORT_PREFIX/include/display_producer.h" backend/anland/vendor/
+    cp -f "$TRANSPORT_PREFIX/include/socket_utils.h" backend/anland/vendor/
+    cp -f "$TRANSPORT_PREFIX/include/protocol.h" backend/anland/vendor/
 }
 
 build_install() {
@@ -91,13 +86,9 @@ build_install() {
     mkdir -p "$PREFIX_DIR"
     cd "$WORK_DIR/src"
 
-    mkdir -p backend/anland/vendor
-    cp -f "$TRANSPORT_PREFIX/src/display_producer.c" backend/anland/vendor/
-    cp -f "$TRANSPORT_PREFIX/src/socket_utils.c" backend/anland/vendor/
-    cp -f "$TRANSPORT_PREFIX/include/display_producer.h" backend/anland/vendor/
-    cp -f "$TRANSPORT_PREFIX/include/socket_utils.h" backend/anland/vendor/
-    cp -f "$TRANSPORT_PREFIX/include/protocol.h" backend/anland/vendor/
-
+    # Stage 1 deliberately uses a safe CPU-capable wlroots renderer contract.
+    # The final DMABUF/GPU allocator path is stage 3 and is required before
+    # runtime activation. Build success here therefore never creates .ready.
     meson setup build \
         --prefix="$PREFIX_DIR" \
         --libdir=lib \
@@ -110,10 +101,10 @@ build_install() {
 
 validate_install() {
     local lib
-    lib=$(find "$PREFIX_DIR/lib" -maxdepth 1 -type f -name 'libwlroots-0.18.so*' | head -n 1 || true)
+    lib=$(find "$PREFIX_DIR/lib" -maxdepth 1 \( -type f -o -type l \) -name 'libwlroots-0.18.so*' | head -n 1 || true)
     [ -n "$lib" ] || fail "安装目录没有 libwlroots-0.18"
 
-    log "检查 direct backend 符号"
+    log "检查 stage1 backend 导出符号"
     nm -D "$lib" | grep -q 'wlr_anland_backend_create' || \
         fail "生成的 wlroots 库没有导出 wlr_anland_backend_create"
 
@@ -124,6 +115,8 @@ validate_install() {
     fi
 
     cat > "$PREFIX_DIR/BUILD_INFO" <<EOF
+stage=1-output-discovery
+runtime_ready=no
 anland=$ANLAND_VERSION
 labwc_baseline=$NEWHOME_LABWC_BASELINE
 wlroots=$NEWHOME_WLROOTS_BASELINE
@@ -132,17 +125,18 @@ transport_source=$(cat "$TRANSPORT_PREFIX/SOURCE" 2>/dev/null | tr '\n' ' ')
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
-    printf 'wlroots-anland %s / Anland %s\n' \
+    printf 'stage1 wlroots-anland %s / Anland %s\n' \
         "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
-    log "direct backend 已编译安装: $BUILT_MARKER"
-    log "尚未写入 $READY_MARKER；必须先完成 SM8750 DMA-BUF/输入真机 smoke test。"
+    log "stage1 backend 已编译安装: $BUILT_MARKER"
+    log "它只完成 output discovery/reconnect；buffer commit 仍会主动拒绝。"
+    log "不会写入 $READY_MARKER，auto 模式继续安全使用 Weston bootstrap。"
 }
 
 main() {
     install_deps
     prepare_transport
     fetch_source
-    apply_patches
+    apply_stage1
     build_install
     validate_install
 }
