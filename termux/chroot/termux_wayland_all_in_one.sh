@@ -9,10 +9,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WAYLAND_DIR="$SCRIPT_DIR/wayland"
 SESSION_SCRIPT="/root/sh/termux/chroot/wayland/start_labwc_anland.sh"
 SESSION_LOG="/tmp/newhome-wayland-session-supervisor.log"
+DIRECT_DIR="/root/sh/termux/chroot/wayland/wlroots-anland"
 
-# shellcheck source=wayland/anland_versions.sh
 . "$WAYLAND_DIR/anland_versions.sh"
-# shellcheck source=cli.sh
 set +e
 . "$SCRIPT_DIR/cli.sh"
 set -e
@@ -56,8 +55,6 @@ start_anland() {
         fail "Anland daemon 启动失败；查看 ${ANLAND_SOCKET_TERMUX%/*}/newhome-anland.log"
     fi
 
-    # F-Droid/variant Termux uses Anland's Binder fd bridge in addition to the
-    # daemon. Official GitHub Termux uses shared UID and does not need it.
     if [ "${TERMUX_APP__APK_RELEASE:-}" = "F_DROID" ]; then
         if command -v anland-compatible >/dev/null 2>&1; then
             anland-compatible >"${ANLAND_SOCKET_TERMUX%/*}/newhome-anland-compatible.log" 2>&1 &
@@ -76,16 +73,18 @@ start_container() {
     fi
 }
 
+foreground_anland() {
+    if ! am start --user 0 -n "$ANLAND_ANDROID_ACTIVITY" >/dev/null 2>&1; then
+        log "警告：无法前置 Anland Termux Activity；请确认 APK 已安装"
+        return 1
+    fi
+}
+
 start_session() {
     log "启动 Labwc + XFCE Wayland session"
     chroot_exec -u root "pkill -x labwc >/dev/null 2>&1 || true; pkill -x weston >/dev/null 2>&1 || true; nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
     sleep 1
-
-    # Manual tstart-wayland should be as convenient as the X11 profile. NewHome
-    # repeats this foreground step after a privileged restart-wayland request.
-    if ! am start --user 0 -n "$ANLAND_ANDROID_ACTIVITY" >/dev/null 2>&1; then
-        log "警告：无法前置 Anland Termux Activity；请确认 APK 已安装"
-    fi
+    foreground_anland || true
 }
 
 start_all() {
@@ -94,7 +93,7 @@ start_all() {
     start_container
     start_session
     log "Wayland 环境启动请求完成"
-    log "架构模式: ${NEWHOME_WAYLAND_MODE:-auto} (direct backend 就绪后 auto 会自动跳过 Weston bootstrap)"
+    log "架构模式: ${NEWHOME_WAYLAND_MODE:-auto} (Stage3 ready 后 auto 会直接使用 wlroots-anland)"
 }
 
 stop_all() {
@@ -116,6 +115,7 @@ status_all() {
     if container_mounted; then
         echo "Wayland processes:"
         chroot_exec -u root "pgrep -a -x labwc; pgrep -a -x weston" 2>/dev/null || true
+        chroot_exec -u root 'echo -n "Stage3 built: "; test -f /opt/newhome-wayland/wlroots-anland.built && cat /opt/newhome-wayland/wlroots-anland.built || echo no; echo -n "Direct ready: "; test -f /opt/newhome-wayland/wlroots-anland.ready && cat /opt/newhome-wayland/wlroots-anland.ready || echo no' 2>/dev/null || true
     fi
 }
 
@@ -127,21 +127,53 @@ doctor() {
     exec "$PREFIX/bin/bash" "$WAYLAND_DIR/wayland_doctor.sh"
 }
 
+build_direct() {
+    check_requirements
+    start_container
+    log "在 Debian chroot 中构建 wlroots-anland Stage3"
+    chroot_exec -u root "/bin/bash $DIRECT_DIR/build_direct_backend.sh"
+}
+
+prepare_direct_smoke() {
+    check_requirements
+    start_anland
+    start_container
+    chroot_exec -u root 'pkill -TERM -x labwc >/dev/null 2>&1 || true; pkill -TERM -x weston >/dev/null 2>&1 || true'
+    sleep 0.5
+    foreground_anland || fail "Anland Android Activity 无法拉起"
+    sleep 0.5
+}
+
+validate_direct() {
+    prepare_direct_smoke
+    log "运行 Stage3 direct smoke（不会写 ready marker）"
+    chroot_exec -u root "/bin/bash $DIRECT_DIR/validate_direct_backend.sh"
+}
+
+activate_direct() {
+    prepare_direct_smoke
+    log "运行 Stage3 direct smoke，并在通过后记录你已确认 Android 画面可见"
+    chroot_exec -u root "/bin/bash $DIRECT_DIR/validate_direct_backend.sh --accept-visible"
+}
+
 show_usage() {
     cat <<EOF
 NewHome Anland Wayland 编排器
 
 用法:
-  $0 start       启动 Anland + chroot + Labwc/XFCE
-  $0 stop        停止 Wayland profile（不触碰 Termux:X11）
-  $0 restart     重启到 Wayland profile
-  $0 status      查看状态
-  $0 install     安装固定版本的 Anland/Labwc/Weston bootstrap
-  $0 doctor      检查 Anland/GPU/Labwc/wlroots 环境
+  $0 start            启动 Anland + chroot + Labwc/XFCE
+  $0 stop             停止 Wayland profile（不触碰 Termux:X11）
+  $0 restart          重启到 Wayland profile
+  $0 status           查看状态
+  $0 install          安装固定版本 Anland/Labwc/Weston bootstrap
+  $0 doctor           检查 Anland/GPU/Labwc/wlroots/Stage3 状态
+  $0 build-direct     构建 wlroots-anland Stage3（不会启用 direct）
+  $0 validate-direct  真机 direct smoke；要求至少成功提交一帧，不写 ready
+  $0 activate-direct  再次 smoke，并在你已确认画面可见后写 ready
 
 模式:
-  NEWHOME_WAYLAND_MODE=auto    默认；优先 direct wlroots-anland，否则 nested Weston bootstrap
-  NEWHOME_WAYLAND_MODE=direct  强制 Labwc -> wlroots-anland -> Anland
+  NEWHOME_WAYLAND_MODE=auto    默认；Stage3 ready 后 direct，否则 nested Weston
+  NEWHOME_WAYLAND_MODE=direct  强制 Labwc -> wlroots-anland -> Anland（仍要求 ready marker）
   NEWHOME_WAYLAND_MODE=nested  强制 Labwc -> Weston-Anland -> Anland
 EOF
 }
@@ -153,6 +185,9 @@ case "${1:-start}" in
     status) status_all ;;
     install) install_stack ;;
     doctor) doctor ;;
+    build-direct) build_direct ;;
+    validate-direct) validate_direct ;;
+    activate-direct) activate_direct ;;
     -h|--help|help) show_usage ;;
     *) show_usage; exit 2 ;;
 esac
