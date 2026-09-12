@@ -121,6 +121,8 @@ struct anland_presenter {
     GLuint program;
     GLint sampler_location;
     bool flip_y;
+    struct wlr_buffer *last_source;
+    uint64_t present_count;
 };
 
 static GLuint compile_shader(GLenum type, const char *source) {
@@ -232,6 +234,10 @@ fail:
 
 void anland_presenter_destroy(struct anland_presenter *p) {
     if (!p) return;
+    if (p->last_source) {
+        wlr_buffer_unlock(p->last_source);
+        p->last_source = NULL;
+    }
     if (p->display != EGL_NO_DISPLAY && p->context != EGL_NO_CONTEXT) {
         eglMakeCurrent(p->display, EGL_NO_SURFACE, EGL_NO_SURFACE, p->context);
         if (p->program) glDeleteProgram(p->program);
@@ -362,6 +368,10 @@ bool anland_presenter_blit(struct anland_presenter *p,
         return false;
     }
 
+    EGLDisplay previous_display = eglGetCurrentDisplay();
+    EGLContext previous_context = eglGetCurrentContext();
+    EGLSurface previous_draw = eglGetCurrentSurface(EGL_DRAW);
+    EGLSurface previous_read = eglGetCurrentSurface(EGL_READ);
     if (!eglMakeCurrent(p->display, EGL_NO_SURFACE, EGL_NO_SURFACE, p->context)) {
         return false;
     }
@@ -373,6 +383,9 @@ bool anland_presenter_blit(struct anland_presenter *p,
             src.format, dst.format, eglGetError());
         if (src_image != EGL_NO_IMAGE_KHR) p->destroy_image(p->display, src_image);
         if (dst_image != EGL_NO_IMAGE_KHR) p->destroy_image(p->display, dst_image);
+        if (previous_display != EGL_NO_DISPLAY) {
+            eglMakeCurrent(previous_display, previous_draw, previous_read, previous_context);
+        }
         return false;
     }
 
@@ -435,6 +448,10 @@ bool anland_presenter_blit(struct anland_presenter *p,
     glDeleteTextures(1, &dst_tex);
     p->destroy_image(p->display, src_image);
     p->destroy_image(p->display, dst_image);
+    if (previous_display != EGL_NO_DISPLAY) {
+        /* presenter 与 wlroots 共用主线程，必须恢复 Labwc 的 EGL context。 */
+        eglMakeCurrent(previous_display, previous_draw, previous_read, previous_context);
+    }
     return trigger_refresh(backend->display) == 0;
 
 fail:
@@ -444,6 +461,9 @@ fail:
     if (dst_tex) glDeleteTextures(1, &dst_tex);
     p->destroy_image(p->display, src_image);
     p->destroy_image(p->display, dst_image);
+    if (previous_display != EGL_NO_DISPLAY) {
+        eglMakeCurrent(previous_display, previous_draw, previous_read, previous_context);
+    }
     return false;
 }
 
@@ -455,9 +475,19 @@ static int handle_buffer_ready(int fd, uint32_t mask, void *data) {
         wlr_log_errno(WLR_ERROR, "Failed reading Anland buffer-ready eventfd");
         return 0;
     }
+    /* 先让合成器处理新 damage；若本轮没有产生新提交，再复制最后一帧。
+     * 这样既能更新窗口/指针，也能维持静态桌面的四缓冲轮转。 */
+    uint64_t before = backend->presenter->present_count;
     struct wlr_anland_output *output;
     wl_list_for_each(output, &backend->outputs, link) {
         wlr_output_send_frame(&output->wlr_output);
+    }
+    if (backend->presenter->present_count == before &&
+            backend->presenter->last_source) {
+        if (!anland_presenter_blit(backend->presenter, backend,
+                backend->presenter->last_source)) {
+            wlr_log(WLR_ERROR, "Anland cached-frame presentation failed");
+        }
     }
     return 0;
 }

@@ -1,5 +1,9 @@
 # wlroots-anland direct backend workspace
 
+> 当前项目的唯一目标路线和已验证基线见
+> [ANLAND_DIRECT_ROUTE.md](../ANLAND_DIRECT_ROUTE.md)。真实 XFCE 已可持续绘制，
+> 但上下颠倒仍待修复，暂不视为最终完成。
+
 Final target:
 
 ```text

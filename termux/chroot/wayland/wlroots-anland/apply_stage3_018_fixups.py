@@ -157,6 +157,17 @@ static uint32_t get_buffer_caps(struct wlr_backend *wlr_backend) {
         '            wlr_log(WLR_INFO, "Anland first GPU DMA-BUF frame presented successfully");\n'
         '        }\n'
         '    }\n'
+        '    if (refresh_status == 0 && p->last_source != source) {\n'
+        '        /* 缓存最近一次合成结果，供 Android 轮转到其余缓冲时重复 GPU 拷贝。 */\n'
+        '        struct wlr_buffer *locked = wlr_buffer_lock(source);\n'
+        '        if (p->last_source) {\n'
+        '            wlr_buffer_unlock(p->last_source);\n'
+        '        }\n'
+        '        p->last_source = locked;\n'
+        '    }\n'
+        '    if (refresh_status == 0) {\n'
+        '        p->present_count++;\n'
+        '    }\n'
         '    return refresh_status == 0;\n')
 
     replace_once(meson,

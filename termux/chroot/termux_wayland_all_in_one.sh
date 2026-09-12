@@ -194,23 +194,48 @@ start_container() {
 }
 
 foreground_anland() {
-    if ! am start --user 0 -n "$ANLAND_ANDROID_ACTIVITY" >/dev/null 2>&1; then
-        log "警告：无法前置 Anland Termux Activity；请确认 APK 已安装"
-        return 1
-    fi
+    su -M -c "am start --user 0 -n '$ANLAND_ANDROID_ACTIVITY'" >/dev/null 2>&1 || \
+        fail "无法启动 Anland Android Activity；请确认 APK 已安装"
+}
+
+reset_anland_activity() {
+    # daemon socket 每次启动都会被替换。已存活的 Activity 再次收到 am start
+    # 不会重新创建 native consumer，因此必须先结束旧 Activity。
+    log "重建 Anland Android Activity，确保 consumer 连接新 daemon"
+    # am force-stop 需要系统级权限；脚本主体仍以 Termux UID 运行，只有这一
+    # 次 Android 生命周期操作通过 KernelSU 执行。
+    su -M -c "am force-stop --user 0 '$ANLAND_ANDROID_PACKAGE'" >/dev/null 2>&1 || \
+        fail "无法停止旧 Anland Activity"
 }
 
 start_session() {
     log "启动 Labwc + XFCE Wayland session"
-    chroot_exec -u root "pkill -x labwc >/dev/null 2>&1 || true; pkill -x weston >/dev/null 2>&1 || true; nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
-    sleep 1
-    foreground_anland || true
+    chroot_exec -u root "for name in labwc weston xfce4-panel xfsettingsd thunar xfconfd xfdesktop Xwayland dbus-run-session; do pkill -x \"\$name\" >/dev/null 2>&1 || true; done; : >$SESSION_LOG; nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
+
+    local attempts=150
+    while [ "$attempts" -gt 0 ]; do
+        if chroot_exec -u root "pgrep -x labwc >/dev/null 2>&1"; then
+            log "Labwc Wayland session 已就绪"
+            return 0
+        fi
+        if grep -qE 'ERROR:|段错误|Segmentation fault' "$CHROOT_DIR$SESSION_LOG" 2>/dev/null; then
+            fail "Wayland session 启动失败；查看 $SESSION_LOG"
+        fi
+        sleep 0.1
+        attempts=$((attempts - 1))
+    done
+    fail "等待 Labwc 启动超时；查看 $SESSION_LOG"
 }
 
 start_all() {
     check_requirements
     quiesce_x11_profile
+    reset_anland_activity
     start_anland
+    # direct backend 创建时就要读取 Android consumer 的尺寸和缓冲区；必须先
+    # 拉起 Activity，再启动 Labwc，不能依赖 session 启动后的补救式前台切换。
+    foreground_anland
+    sleep 1
     start_container
     start_session
     log "Wayland 环境启动请求完成"

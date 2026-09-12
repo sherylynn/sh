@@ -37,6 +37,8 @@ TERMUX_PID=$(ps -eo pid,args | awk \
 [ -n "$TERMUX_PID" ] || fail "cannot locate a host Termux process"
 HOST_ROOT=/proc/$TERMUX_PID/root
 [ -x "$HOST_ROOT/system/bin/am" ] || fail "Android activity manager is unavailable"
+TERMUX_UID=$(stat -c %u "$HOST_ROOT/data/data/com.termux")
+[[ "$TERMUX_UID" =~ ^[0-9]+$ ]] || fail "cannot resolve Termux UID"
 
 android() {
     local command=$1
@@ -103,10 +105,18 @@ pkill -KILL -x labwc >/dev/null 2>&1 || true
 pkill -KILL -x weston >/dev/null 2>&1 || true
 
 PREFIX=/data/data/com.termux/files/usr
-chroot "$HOST_ROOT" "$PREFIX/bin/env" -i \
+# 旧版本可能留下 root daemon；必须在降权前清理，否则 Termux UID 无法杀死它。
+pkill -TERM -x anland >/dev/null 2>&1 || true
+sleep 0.2
+pkill -KILL -x anland >/dev/null 2>&1 || true
+TERMUX_DAEMON_COMMAND='rm -f "$PREFIX/tmp/anland/display_daemon.sock"; mkdir -p "$PREFIX/tmp/anland"; nohup anland --socket "$PREFIX/tmp/anland/display_daemon.sock" >"$PREFIX/tmp/anland/newhome-anland.log" 2>&1 </dev/null 9>&- &'
+# 不使用 login shell；Termux profile 可能按历史配置再次提权。
+chroot "$HOST_ROOT" "$PREFIX/bin/setpriv" \
+    --reuid "$TERMUX_UID" --regid "$TERMUX_UID" --clear-groups \
+    "$PREFIX/bin/env" -i \
     HOME=/data/data/com.termux/files/home PREFIX="$PREFIX" TMPDIR="$PREFIX/tmp" \
-    PATH="$PREFIX/bin:/system/bin:/system/xbin" "$PREFIX/bin/bash" -lc \
-    'pkill -TERM -x anland 2>/dev/null || true; sleep 0.2; pkill -KILL -x anland 2>/dev/null || true; rm -f "$PREFIX/tmp/anland/display_daemon.sock"; mkdir -p "$PREFIX/tmp/anland"; nohup anland --socket "$PREFIX/tmp/anland/display_daemon.sock" >"$PREFIX/tmp/anland/newhome-anland.log" 2>&1 </dev/null 9>&- &'
+    PATH="$PREFIX/bin:/system/bin:/system/xbin" SHELL="$PREFIX/bin/bash" \
+    "$PREFIX/bin/bash" -c "$TERMUX_DAEMON_COMMAND"
 
 for _ in {1..100}; do
     [ -S /tmp/anland/display_daemon.sock ] && break

@@ -52,10 +52,13 @@ export LD_LIBRARY_PATH="$PREFIX_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 log "启动 direct Labwc stage3 smoke test (${SMOKE_SECONDS}s)"
 log "测试期间 Android Anland Termux Activity 必须处于可见/已连接状态"
 
-dbus-run-session -- labwc -C "$CONFIG_DIR" >"$SMOKE_LOG" 2>&1 &
+setsid dbus-run-session -- labwc -d -C "$CONFIG_DIR" >"$SMOKE_LOG" 2>&1 &
 PID=$!
 cleanup() {
-    kill "$PID" >/dev/null 2>&1 || true
+    # 终止整个独立会话，避免只杀 dbus-run-session 后留下 Labwc/XFCE。
+    kill -TERM -- "-$PID" >/dev/null 2>&1 || true
+    sleep 0.2
+    kill -KILL -- "-$PID" >/dev/null 2>&1 || true
     wait "$PID" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
