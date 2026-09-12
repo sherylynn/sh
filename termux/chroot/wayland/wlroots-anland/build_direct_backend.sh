@@ -7,6 +7,7 @@ WORK_DIR=${NEWHOME_WLROOTS_WORK:-/var/tmp/newhome-wlroots-anland}
 PREFIX_DIR=${NEWHOME_WLROOTS_PREFIX:-/opt/newhome-wayland/wlroots-anland}
 TRANSPORT_PREFIX=${NEWHOME_ANLAND_TRANSPORT_PREFIX:-/opt/newhome-wayland/anland-transport}
 READY_MARKER=${NEWHOME_WLROOTS_ANLAND_MARKER:-/opt/newhome-wayland/wlroots-anland.ready}
+BUILT_MARKER=${NEWHOME_WLROOTS_ANLAND_BUILT:-/opt/newhome-wayland/wlroots-anland.built}
 PATCH_DIR="$ROOT_DIR/patches"
 
 # shellcheck source=../anland_versions.sh
@@ -22,7 +23,7 @@ install_deps() {
     apt-get update
     apt-get install -y --no-install-recommends \
         ca-certificates curl xz-utils bzip2 patch git \
-        build-essential meson ninja-build pkg-config \
+        build-essential meson ninja-build pkg-config binutils \
         libwayland-dev wayland-protocols libdrm-dev libgbm-dev \
         libegl1-mesa-dev libgles2-mesa-dev libpixman-1-dev \
         libxkbcommon-dev libinput-dev libudev-dev libseat-dev \
@@ -79,23 +80,17 @@ apply_patches() {
         patch -p1 --forward --batch < "$PATCH_DIR/$patch_name"
     done < "$series"
 
-    # The direct backend is not considered real until the source tree exposes
-    # the explicit Anland backend symbol and transport implementation. This
-    # prevents an empty/scaffold patchset from accidentally creating .ready.
     grep -Rqs "wlr_anland_backend_create" backend include || \
-        fail "patchset 尚未提供 wlr_anland_backend_create；拒绝构建 ready backend"
+        fail "patchset 尚未提供 wlr_anland_backend_create；direct backend 仍在开发中"
     grep -Rqs "ANLAND_SOCKET" backend include || \
         fail "patchset 未绑定 ANLAND_SOCKET；拒绝构建"
 }
 
 build_install() {
-    rm -rf "$PREFIX_DIR" "$READY_MARKER"
+    rm -rf "$PREFIX_DIR" "$READY_MARKER" "$BUILT_MARKER"
     mkdir -p "$PREFIX_DIR"
     cd "$WORK_DIR/src"
 
-    # Anland transport source is intentionally copied into the wlroots source
-    # tree by the patch/build contract rather than dynamically linked against
-    # Weston. wlroots then owns exactly one producer implementation.
     mkdir -p backend/anland/vendor
     cp -f "$TRANSPORT_PREFIX/src/display_producer.c" backend/anland/vendor/
     cp -f "$TRANSPORT_PREFIX/src/socket_utils.c" backend/anland/vendor/
@@ -137,11 +132,10 @@ transport_source=$(cat "$TRANSPORT_PREFIX/SOURCE" 2>/dev/null | tr '\n' ' ')
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
-    # Marker is written last. start_labwc_anland.sh uses it as the only signal
-    # that auto mode may attempt the direct backend.
     printf 'wlroots-anland %s / Anland %s\n' \
-        "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$READY_MARKER"
-    log "direct backend 已安装并标记 ready: $READY_MARKER"
+        "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
+    log "direct backend 已编译安装: $BUILT_MARKER"
+    log "尚未写入 $READY_MARKER；必须先完成 SM8750 DMA-BUF/输入真机 smoke test。"
 }
 
 main() {
