@@ -186,7 +186,9 @@ struct anland_presenter *anland_presenter_create(void) {
     }
     p->display = EGL_NO_DISPLAY;
     p->context = EGL_NO_CONTEXT;
-    p->flip_y = getenv("NEWHOME_ANLAND_FLIP_Y") == NULL ||
+    /* Anland 的 EGLImage 与 wlroots DMA-BUF 在本设备上方向一致；仅在显式
+     * 请求时翻转，避免把正常的 XFCE 输出上下颠倒。 */
+    p->flip_y = getenv("NEWHOME_ANLAND_FLIP_Y") != NULL &&
         strcmp(getenv("NEWHOME_ANLAND_FLIP_Y"), "0") != 0;
 
     p->get_platform_display = (PFNEGLGETPLATFORMDISPLAYEXTPROC)

@@ -50,6 +50,8 @@ prepare_common() {
     export TURNIP_KMD=kgsl
     export GALLIUM_DRIVER=freedreno
     export FD_FORCE_KGSL=1
+    # 实机对照已确认 Anland 与 wlroots 源纹理方向一致，默认不做 Y 翻转。
+    export NEWHOME_ANLAND_FLIP_Y=${NEWHOME_ANLAND_FLIP_Y:-0}
     export XWAYLAND_FORCE_KGSL_SURFACELESS=1
     export ANLAND_DRM_DEVICE=${ANLAND_DRM_DEVICE:-/dev/dri/renderD128}
     export ANLAND_SOCKET

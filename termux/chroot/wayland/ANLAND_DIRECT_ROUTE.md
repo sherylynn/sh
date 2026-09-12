@@ -35,15 +35,15 @@ Weston-Anland 嵌套路线仅保留为历史参考和安装兼容代码，不再
 6. 应用以上两项修复后，真实 XFCE dock、panel 和鼠标在 15 秒后仍持续显示，
    因此 direct 路线已经跨过“只能红屏/黑屏”的阶段。
 
-## 当前未完成问题
+## 方向问题的结论
 
-真实 XFCE 已经显示，但整体画面上下颠倒。当前默认的
-`NEWHOME_ANLAND_FLIP_Y=1` 或源/目标 EGLImage 的坐标约定仍需校正。这个提交只
-记录可工作的直连基线，不把方向问题标记为完成，也暂不创建正式 `.ready` 标记。
+实机 A/B 测试确认：`NEWHOME_ANLAND_FLIP_Y=1` 会使画面上下颠倒，设为 `0`
+后顶部 panel、文字、鼠标和底部 dock 均恢复正常，并持续稳定。因此默认值必须为
+`0`，只允许调试时显式开启翻转。
 
 下一步只对 direct presenter 的纹理坐标或 Labwc output transform 做对照测试：
 
-- 首选切换 `NEWHOME_ANLAND_FLIP_Y=0`，比较截图方向；
+- 保持 `NEWHOME_ANLAND_FLIP_Y=0`；
 - 不修改四缓冲缓存、EGL context 恢复和 daemon/Activity 启动顺序；
 - 方向正确且持续稳定后，再写入正式库并启用 `.ready`。
 
