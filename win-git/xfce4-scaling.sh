@@ -634,6 +634,7 @@ apply_termux_profile() {
         # Wayland 的缩放应由 compositor output 统一完成。GTK/Qt 保持 1x，
         # 避免再与 wl_output scale 叠加；启动脚本会在重连后恢复该 scale。
         local scale_file=/root/.config/newhome-wayland-output-scale scale_tmp
+        local suppress_file=/tmp/anland-remote-resize-suppress-until
         install -d -m 0700 /root/.config
         scale_tmp=$(mktemp /root/.config/newhome-wayland-output-scale.XXXXXX)
         printf '%s\n' "$scale" > "$scale_tmp"
@@ -644,6 +645,10 @@ apply_termux_profile() {
                 WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0} \
                 wlr-randr --output ANLAND-1 --scale "$scale" || true
         fi
+        # 显示链重建和 noVNC 自动回连约需数秒；在这段时间内，手动托盘预设
+        # 优先于浏览器重连时自动重发的旧视口尺寸。
+        printf '%s\n' "$(( $(date +%s) + 12 ))" > "$suppress_file"
+        rm -f /tmp/anland-remote-resize.pending
         if /bin/bash /root/sh/termux/chroot/wayland/anland_remote_resize.sh "$resolution"; then
             echo -e "${GREEN}✓ Anland 已应用：物理分辨率 ${resolution}，Wayland 输出缩放 ${scale}x${NC}"
             return 0

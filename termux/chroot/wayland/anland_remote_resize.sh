@@ -157,8 +157,10 @@ for _ in {1..150}; do
             sleep 0.1
         done
         if [ -x /etc/init.d/noVNC ]; then
-            /etc/init.d/noVNC stop >/dev/null 2>&1 || true
-            /etc/init.d/noVNC start >/dev/null 2>&1 || \
+            # 不能让长期运行的 wayvnc/websockify 继承 display lock，
+            # 否则托盘和下一次浏览器调整都会永久阻塞。
+            /etc/init.d/noVNC stop 9>&- >/dev/null 2>&1 || true
+            /etc/init.d/noVNC start 9>&- >/dev/null 2>&1 || \
                 fail "Anland resized, but noVNC/wayvnc restart failed"
         fi
         log "Anland display chain restarted for $RESOLUTION"
