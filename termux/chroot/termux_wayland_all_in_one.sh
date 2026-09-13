@@ -239,7 +239,8 @@ reset_anland_activity() {
 
 start_session() {
     log "启动 Labwc + XFCE Wayland session"
-    chroot_exec -u root "for name in labwc weston xfce4-panel xfsettingsd thunar xfconfd xfdesktop Xwayland dbus-run-session; do pkill -x \"\$name\" >/dev/null 2>&1 || true; done; : >$SESSION_LOG; nohup env ANLAND_SOCKET=/tmp/anland/display_daemon.sock NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-nested} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
+    chroot_exec -u root "install -d -m 0700 /root/.config; printf '%s\\n' '${NEWHOME_WAYLAND_MODE:-direct}' > /root/.config/newhome-wayland-mode"
+    chroot_exec -u root "for name in labwc weston xfce4-panel xfsettingsd thunar xfconfd xfdesktop Xwayland dbus-run-session; do pkill -x \"\$name\" >/dev/null 2>&1 || true; done; : >$SESSION_LOG; nohup env ANLAND_SOCKET=/tmp/anland/display_daemon.sock NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-direct} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
 
     local attempts=150
     while [ "$attempts" -gt 0 ]; do
@@ -269,7 +270,24 @@ start_all() {
     start_session
     restart_wayland_remote_access
     log "Wayland 环境启动请求完成"
-    log "架构模式: ${NEWHOME_WAYLAND_MODE:-nested} (默认使用功能完整的 Weston-Anland；direct 仅供实验)"
+    log "架构模式: ${NEWHOME_WAYLAND_MODE:-direct}"
+}
+
+select_wayland_mode() {
+    local requested=${1:-} saved
+    if [ -z "$requested" ] && container_mounted; then
+        saved=$(chroot_exec -u root 'head -n 1 /root/.config/newhome-wayland-mode 2>/dev/null || true')
+        requested=$saved
+    fi
+    requested=${requested:-direct}
+    case "$requested" in
+        direct|nested|auto) ;;
+        *) fail "未知 Wayland 模式: $requested（支持 direct/nested/auto）" ;;
+    esac
+    export NEWHOME_WAYLAND_MODE=$requested
+    if container_mounted; then
+        chroot_exec -u root "install -d -m 0700 /root/.config; printf '%s\\n' '$requested' > /root/.config/newhome-wayland-mode"
+    fi
 }
 
 stop_all() {
@@ -370,9 +388,9 @@ show_usage() {
 NewHome Anland Wayland 编排器
 
 用法:
-  $0 start            启动 Anland + chroot + Labwc/XFCE
+  $0 start [模式]     启动 Anland + chroot + Labwc/XFCE
   $0 stop             停止 Wayland profile（不触碰 Termux:X11）
-  $0 restart          重启到 Wayland profile，并重建/校验 Anland /tmp bridge
+  $0 restart [模式]   重启并可切换 direct/nested/auto
   $0 status           查看 host socket / tmp bind / chroot socket 三层状态
   $0 install          安装固定版本 Anland/Labwc/Weston bootstrap
   $0 doctor           检查 Anland/GPU/Labwc/wlroots/Stage3 状态
@@ -381,16 +399,17 @@ NewHome Anland Wayland 编排器
   $0 activate-direct  再次 smoke，并在你已确认画面可见后写 ready
 
 模式:
-  NEWHOME_WAYLAND_MODE=nested  默认；Labwc -> Weston-Anland -> Anland
+  direct（当前默认）            Labwc -> wlroots-anland -> Anland
+  nested                         Labwc -> Weston-Anland -> Anland
   NEWHOME_WAYLAND_MODE=auto    实验；Stage3 ready 后 direct，否则 nested Weston
   NEWHOME_WAYLAND_MODE=direct  强制 Labwc -> wlroots-anland -> Anland（仍要求 ready marker）
 EOF
 }
 
 case "${1:-start}" in
-    start) start_all ;;
+    start) select_wayland_mode "${2:-}"; start_all ;;
     stop) stop_all ;;
-    restart) stop_all; sleep 1; start_all ;;
+    restart) select_wayland_mode "${2:-}"; stop_all; sleep 1; start_all ;;
     status) status_all ;;
     install) install_stack ;;
     doctor) doctor ;;

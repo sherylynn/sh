@@ -15,6 +15,7 @@ ANLAND_ACTIVITY=com.anland.termux/.MainActivity
 ANLAND_SOCKET=/data/data/com.termux/files/usr/tmp/anland/display_daemon.sock
 LOG_FILE=/tmp/newhome-anland-resize.log
 LOCK_FILE=/tmp/anland-display-resize.lock
+MODE_FILE=/root/.config/newhome-wayland-mode
 
 log() {
     printf 'time=%s %s\n' "$(date +%s)" "$*" | tee -a "$LOG_FILE"
@@ -139,8 +140,11 @@ done
 
 # 调整脚本可能由 noVNC worker 启动，并继承 Termux 侧的绝对 socket 路径。
 # chroot 内必须固定使用 /tmp bridge；否则监督器会检查一个不存在的宿主路径。
+SESSION_MODE=${NEWHOME_WAYLAND_MODE:-}
+[ -n "$SESSION_MODE" ] || SESSION_MODE=$(head -n 1 "$MODE_FILE" 2>/dev/null || true)
+SESSION_MODE=${SESSION_MODE:-direct}
 nohup env ANLAND_SOCKET=/tmp/anland/display_daemon.sock \
-    NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-nested} \
+    NEWHOME_WAYLAND_MODE="$SESSION_MODE" \
     /bin/bash "$SESSION_SCRIPT" >/tmp/newhome-wayland-session-supervisor.log 2>&1 </dev/null 9>&- &
 for _ in {1..120}; do
     if pgrep -x weston >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1; then

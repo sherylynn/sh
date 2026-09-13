@@ -4,6 +4,22 @@
 /bin/bash /root/sh/termux/chroot/wayland/anland_resume_watchdog.sh \
     >/dev/null 2>&1 &
 
+# 这里由 Labwc 启动，WAYLAND_DISPLAY 已指向内层 compositor；比会话脚本
+# 提前猜测 socket 就绪时机更可靠，direct/nested 都动态识别实际输出名。
+(
+    scale=$(head -n 1 /root/.config/newhome-wayland-output-scale 2>/dev/null || echo 2)
+    case "$scale" in 1|2|3) ;; *) scale=2 ;; esac
+    for _ in $(seq 1 50); do
+        output=$(wlr-randr 2>/dev/null | awk '/^[^[:space:]]/ {print $1; exit}')
+        if [ -n "$output" ] && wlr-randr --output "$output" --scale "$scale"; then
+            printf '已恢复 %s 输出缩放: %sx\n' "$output" "$scale"
+            exit 0
+        fi
+        sleep 0.1
+    done
+    printf '无法恢复 Wayland 输出缩放: %sx\n' "$scale" >&2
+) >/tmp/newhome-wayland-output-scale.log 2>&1 &
+
 xfsettingsd --replace >/tmp/newhome-wayland-xfsettings.log 2>&1 &
 xfce4-notifyd >/tmp/newhome-wayland-notify.log 2>&1 &
 thunar --daemon >/tmp/newhome-wayland-thunar.log 2>&1 &
