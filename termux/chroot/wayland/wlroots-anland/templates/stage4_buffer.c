@@ -262,6 +262,11 @@ static int handle_buffer_ready(int fd, uint32_t mask, void *data) {
         return 0;
     }
     backend->buffer_writable = true;
+
+    /* The first buffer-ready both publishes the output and requests its first
+     * real frame. new_output listeners run synchronously; continuing below is
+     * important because Android may wait for trigger_refresh before issuing
+     * another buffer-ready event. */
     struct wlr_anland_output *output;
     if (backend->started && !backend->output_published) {
         wl_list_for_each(output, &backend->outputs, link) {
@@ -269,8 +274,8 @@ static int handle_buffer_ready(int fd, uint32_t mask, void *data) {
                 &output->wlr_output);
         }
         backend->output_published = true;
-        return 0;
     }
+
     wl_list_for_each(output, &backend->outputs, link) {
         /* Android rotates the destination buffer outside wlroots. Until we
          * implement Weston's per-buffer accumulated-damage bookkeeping, force
