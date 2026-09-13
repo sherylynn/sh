@@ -92,12 +92,14 @@ static bool output_commit(struct wlr_output *wlr_output,
                 "Anland first zero-copy frame presented: direct consumer DMA-BUF render");
         }
 
+        /* wlroots 0.18 uses a pointer for present_event.when. The callback is
+         * synchronous, so a stack timespec is valid for wlr_output_send_present(). */
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
         struct wlr_output_event_present event = {
             .commit_seq = wlr_output->commit_seq + 1,
             .presented = true,
-            .when = now,
+            .when = &now,
             .refresh = backend->refresh > 0 ? (int)(1000000000000LL / backend->refresh) : 0,
             .flags = WLR_OUTPUT_PRESENT_ZERO_COPY,
         };
@@ -108,6 +110,7 @@ static bool output_commit(struct wlr_output *wlr_output,
 
 static void output_destroy(struct wlr_output *wlr_output) {
     struct wlr_anland_output *output = anland_output_from_output(wlr_output);
+    wlr_output_finish(wlr_output);
     wl_list_remove(&output->link);
     free(output);
 }
