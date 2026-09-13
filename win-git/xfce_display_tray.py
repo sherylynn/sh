@@ -24,6 +24,16 @@ CONFIG_DIR = os.path.expanduser("~/.config/termux-x11-display")
 PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
 REMOTE_EVENT_FILE = "/tmp/xfce-display-remote-event"
 RESTART_LOG = "/tmp/newhome-display-restart.log"
+ACTION_LOG = "/tmp/newhome-wayland-tray-actions.log"
+
+
+def log_action(message):
+    """持久化显示操作结果，避免后台线程的输出只出现在短暂通知中。"""
+    try:
+        with open(ACTION_LOG, "a", encoding="utf-8") as stream:
+            stream.write(f"{GLib.DateTime.new_now_local().format('%F %T')} {message}\n")
+    except OSError:
+        pass
 
 
 def log_restart(message):
@@ -56,6 +66,12 @@ def save_presets(presets):
 
 def current_display():
     try:
+        if os.environ.get("XDG_SESSION_TYPE") == "wayland":
+            out = subprocess.check_output(["wlr-randr"], text=True,
+                                          stderr=subprocess.DEVNULL)
+            match = re.search(r"^\s+(\d+x\d+) px \(current\)$", out, re.MULTILINE)
+            if match:
+                return match.group(1)
         out = subprocess.check_output(["xrandr", "--current"], text=True, stderr=subprocess.DEVNULL)
         marker = "current "
         value = out.split(marker, 1)[1].split(",", 1)[0]
@@ -66,6 +82,12 @@ def current_display():
 
 def current_scale():
     try:
+        if os.environ.get("XDG_SESSION_TYPE") == "wayland":
+            out = subprocess.check_output(["wlr-randr"], text=True,
+                                          stderr=subprocess.DEVNULL)
+            match = re.search(r"^\s+Scale: ([0-9.]+)$", out, re.MULTILINE)
+            if match:
+                return f"{float(match.group(1)):g}"
         return subprocess.check_output([
             "xfconf-query", "-c", "xsettings", "-p", "/Gdk/WindowScalingFactor"
         ], text=True, stderr=subprocess.DEVNULL).strip()
@@ -80,7 +102,11 @@ def notify(title, body, urgency="normal"):
 
 def run_setting(args, label):
     def worker():
+        log_action(f"开始：{label} args={args}")
         result = subprocess.run([SCALING, *args], text=True, capture_output=True)
+        detail = "\n".join(part.strip() for part in (result.stdout, result.stderr)
+                           if part and part.strip())
+        log_action(f"结束：{label} rc={result.returncode}\n{detail}")
         if result.returncode == 0:
             GLib.idle_add(notify, "显示设置", f"已应用：{label}")
         else:

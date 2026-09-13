@@ -493,6 +493,11 @@ static int handle_buffer_ready(int fd, uint32_t mask, void *data) {
     struct wlr_anland_output *output;
     wl_list_for_each(output, &backend->outputs, link) {
         wlr_output_send_frame(&output->wlr_output);
+        /* 前台由 Android buffer-ready 驱动；每次收到事件都把备用帧钟
+         * 推迟 100ms。Activity 进入后台后事件停止，备用帧钟才接管。 */
+        if (output->frame_timer != NULL) {
+            wl_event_source_timer_update(output->frame_timer, 100);
+        }
     }
     if (backend->presenter->present_count == before &&
             backend->presenter->last_source) {
@@ -629,9 +634,12 @@ bool wlr_output_is_anland(struct wlr_output *output) {
 
 static int bootstrap_frame(void *data) {
     struct wlr_anland_output *output = data;
-    if (output->backend->consumer_ready) {
-        wlr_output_send_frame(&output->wlr_output);
-    }
+    /* Android Surface 暂停时仍维持 compositor frame clock，让 wayvnc
+     * 可以继续接收输入并抓取 Labwc 输出。buffer-ready 恢复后，上面的
+     * handler 会持续推迟本定时器，不会与前台刷新形成双倍帧率。 */
+    wlr_output_send_frame(&output->wlr_output);
+    wl_event_source_timer_update(output->frame_timer,
+        output->frame_delay_ms > 0 ? output->frame_delay_ms : 16);
     return 0;
 }
 
@@ -662,6 +670,9 @@ struct wlr_output *anland_backend_add_output(struct wlr_anland_backend *backend)
     wlr_output_set_description(&output->wlr_output,
         "Anland Android display (GPU DMA-BUF direct backend)");
 
+    int refresh_mhz = backend->refresh > 0 ? (int)backend->refresh : 60000;
+    output->frame_delay_ms = 1000000 / refresh_mhz;
+    if (output->frame_delay_ms < 1) output->frame_delay_ms = 1;
     output->frame_timer = wl_event_loop_add_timer(backend->event_loop,
         bootstrap_frame, output);
     if (output->frame_timer == NULL) {

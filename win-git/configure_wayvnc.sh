@@ -13,6 +13,10 @@ command -v wayvnc >/dev/null 2>&1 || {
   echo "缺少 wayvnc，请先运行 server_configure.sh" >&2
   exit 1
 }
+
+# wayvnc 原生只允许 noVNC 调整 headless output；Anland 是固定
+# Android consumer output，需要把 RFB SetDesktopSize 转交给重连脚本。
+/bin/bash /root/sh/win-git/build_wayvnc_anland_resize.sh
 [ -s "$TLS_CERT" ] && [ -s "$TLS_KEY" ] || {
   echo "缺少 noVNC TLS 证书，请先运行 win-git/noVNC.sh" >&2
   exit 1

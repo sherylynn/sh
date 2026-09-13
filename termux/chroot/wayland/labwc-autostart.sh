@@ -1,6 +1,9 @@
 #!/bin/sh
 # Labwc/Anland 会话的 XFCE 用户层。此文件由安装器复制到 Labwc 配置目录。
 
+/bin/bash /root/sh/termux/chroot/wayland/anland_resume_watchdog.sh \
+    >/dev/null 2>&1 &
+
 xfsettingsd --replace >/tmp/newhome-wayland-xfsettings.log 2>&1 &
 xfce4-notifyd >/tmp/newhome-wayland-notify.log 2>&1 &
 thunar --daemon >/tmp/newhome-wayland-thunar.log 2>&1 &

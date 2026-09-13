@@ -106,7 +106,7 @@ if [ -e /dev/kgsl-3d0 ] && [ -d "$HOME/sh/termux/chroot/wayland" ]; then
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     wayvnc wayland-utils labwc xwayland xfce4-panel xfce4-terminal xfce4-settings \
     xfce4-notifyd thunar dbus-x11 procps coreutils python3 python3-gi \
-    gir1.2-gtk-3.0 libnotify-bin
+    gir1.2-gtk-3.0 libnotify-bin gcc wlr-randr
 
   DIRECT_BUILD="$HOME/sh/termux/chroot/wayland/wlroots-anland/build_direct_backend.sh"
   [ -x "$DIRECT_BUILD" ] || {

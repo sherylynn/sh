@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CONFIG_DIR=${NEWHOME_LABWC_CONFIG_DIR:-/root/.config/newhome-labwc}
 ANLAND_SOCKET=${ANLAND_SOCKET:-/tmp/anland/display_daemon.sock}
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
@@ -31,6 +32,8 @@ prepare_common() {
     install -d -m 0700 "$XDG_RUNTIME_DIR"
     install -d -m 0700 "$CONFIG_DIR"
     install -d -m 0755 "$LOG_DIR"
+    # 每次会话启动都加载仓库中的最新版 autostart，git pull 后无需重装。
+    install -m 0755 "$SCRIPT_DIR/labwc-autostart.sh" "$CONFIG_DIR/autostart"
     install -d -m 1777 /tmp/.X11-unix
     chmod 0711 "${ANLAND_SOCKET%/*}" 2>/dev/null || true
     chmod 0666 "$ANLAND_SOCKET" 2>/dev/null || true
@@ -57,6 +60,27 @@ prepare_common() {
     export ANLAND_SOCKET
 }
 
+apply_saved_output_scale() {
+    local scale_file=/root/.config/newhome-wayland-output-scale
+    local scale=2
+    [ -s "$scale_file" ] && scale=$(head -n 1 "$scale_file")
+    case "$scale" in
+        1|2|3) ;;
+        *) scale=2 ;;
+    esac
+    # Labwc 创建 output-management 全局后才能设置；Wayland 客户端、
+    # XWayland、光标和面板随后都会使用同一逻辑坐标系。
+    for _ in {1..30}; do
+        if command -v wlr-randr >/dev/null 2>&1 && \
+                wlr-randr --output ANLAND-1 --scale "$scale" >/dev/null 2>&1; then
+            log "已恢复 ANLAND-1 Wayland 输出缩放: ${scale}x"
+            return 0
+        fi
+        sleep 0.1
+    done
+    log "警告：无法恢复 ANLAND-1 输出缩放 ${scale}x"
+}
+
 cleanup() {
     pkill -x labwc >/dev/null 2>&1 || true
     pkill -x weston >/dev/null 2>&1 || true
@@ -73,6 +97,7 @@ start_direct() {
     export LD_LIBRARY_PATH="$DIRECT_LIBDIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     # Our wlroots backend contract deliberately reuses ANLAND_SOCKET rather than
     # introducing a second display-daemon environment variable.
+    (sleep 0.2; apply_saved_output_scale) &
     exec dbus-run-session -- labwc -C "$CONFIG_DIR"
 }
 
@@ -115,6 +140,7 @@ start_nested() {
     # Labwc's autostart runs after it creates its own Wayland socket, so
     # xfce4-panel/Thunar/xfsettingsd automatically connect to Labwc rather than
     # the outer Weston transport compositor.
+    (sleep 0.2; apply_saved_output_scale) &
     dbus-run-session -- labwc -C "$CONFIG_DIR" >"$LOG_DIR/labwc.log" 2>&1 || STATUS=$?
     STATUS=${STATUS:-0}
     kill "$WESTON_PID" >/dev/null 2>&1 || true

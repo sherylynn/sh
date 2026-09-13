@@ -630,6 +630,28 @@ apply_termux_profile() {
     echo ""
     echo -e "${YELLOW}正在应用显示预设：${resolution} + ${scale}x...${NC}"
 
+    if is_anland_wayland_session; then
+        # Wayland 的缩放应由 compositor output 统一完成。GTK/Qt 保持 1x，
+        # 避免再与 wl_output scale 叠加；启动脚本会在重连后恢复该 scale。
+        local scale_file=/root/.config/newhome-wayland-output-scale scale_tmp
+        install -d -m 0700 /root/.config
+        scale_tmp=$(mktemp /root/.config/newhome-wayland-output-scale.XXXXXX)
+        printf '%s\n' "$scale" > "$scale_tmp"
+        mv -f "$scale_tmp" "$scale_file"
+        apply_gdk_int 1
+        if command -v wlr-randr >/dev/null 2>&1; then
+            XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/0} \
+                WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0} \
+                wlr-randr --output ANLAND-1 --scale "$scale" || true
+        fi
+        if /bin/bash /root/sh/termux/chroot/wayland/anland_remote_resize.sh "$resolution"; then
+            echo -e "${GREEN}✓ Anland 已应用：物理分辨率 ${resolution}，Wayland 输出缩放 ${scale}x${NC}"
+            return 0
+        fi
+        echo -e "${RED}Anland 分辨率调整失败。${NC}"
+        return 1
+    fi
+
     # 与 noVNC 的远程尺寸 worker 串行，避免两条路径同时修改 Termux:X11。
     exec 9>/tmp/xfce-remote-resize.lock
     flock 9
