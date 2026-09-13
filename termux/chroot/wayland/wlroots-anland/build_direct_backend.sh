@@ -8,6 +8,7 @@ PREFIX_DIR=${NEWHOME_WLROOTS_PREFIX:-/opt/newhome-wayland/wlroots-anland}
 TRANSPORT_PREFIX=${NEWHOME_ANLAND_TRANSPORT_PREFIX:-/opt/newhome-wayland/anland-transport}
 READY_MARKER=${NEWHOME_WLROOTS_ANLAND_MARKER:-/opt/newhome-wayland/wlroots-anland.ready}
 BUILT_MARKER=${NEWHOME_WLROOTS_ANLAND_BUILT:-/opt/newhome-wayland/wlroots-anland.built}
+PRESENTATION=${NEWHOME_ANLAND_PRESENTATION:-zero-copy}
 
 . "$WAYLAND_DIR/anland_versions.sh"
 
@@ -15,6 +16,10 @@ log() { printf '[wlroots-anland-build] %s\n' "$*"; }
 fail() { printf '[wlroots-anland-build] ERROR: %s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || fail "请在 chroot root 环境运行"
+case "$PRESENTATION" in
+    zero-copy|stage3) ;;
+    *) fail "未知 NEWHOME_ANLAND_PRESENTATION=$PRESENTATION（支持 zero-copy/stage3）" ;;
+esac
 
 install_deps() {
     export DEBIAN_FRONTEND=noninteractive
@@ -71,7 +76,7 @@ fetch_source() {
         fail "下载的 wlroots 源码版本不是 ${NEWHOME_WLROOTS_BASELINE}"
 }
 
-apply_overlays() {
+apply_common_overlays() {
     cd "$WORK_DIR/src"
 
     log "应用 wlroots 0.18.2 精确 base/output/reconnect overlay"
@@ -93,29 +98,56 @@ apply_overlays() {
     # rejects testing both even though the vendored Android source is portable.
     sed -i 's/errno != EAGAIN && errno != EWOULDBLOCK/errno != EAGAIN/g' \
         backend/anland/vendor/display_producer.c
+}
 
-    # apply_stage3_presentation.py was originally written on top of the older
-    # stage1 capability line. Normalize only this generated source anchor; the
-    # final Stage3 result is still DMABUF-only and verified below.
-    sed -i 's/return WLR_BUFFER_CAP_DATA_PTR | WLR_BUFFER_CAP_DMABUF | WLR_BUFFER_CAP_SHM;/return WLR_BUFFER_CAP_DATA_PTR | WLR_BUFFER_CAP_SHM;/' \
-        backend/anland/backend.c
-
-    log "应用 stage3 GPU-only DMA-BUF presentation overlay"
-    python3 "$ROOT_DIR/apply_stage3_presentation.py" "$WORK_DIR/src"
-    log "校正 stage3 到 wlroots 0.18 output/render-node ABI"
-    python3 "$ROOT_DIR/apply_stage3_018_fixups.py" "$WORK_DIR/src"
+apply_stage4() {
+    cd "$WORK_DIR/src"
+    log "应用 Stage4 ZERO-COPY consumer DMA-BUF render-target overlay"
+    python3 "$ROOT_DIR/apply_stage4_zero_copy.py" "$WORK_DIR/src"
 
     grep -Rqs "wlr_anland_backend_create" backend include || \
-        fail "overlay 未提供 wlr_anland_backend_create"
+        fail "Stage4 未提供 wlr_anland_backend_create"
     grep -Rqs "anland_input_attach" backend/anland || \
-        fail "input overlay 未生效"
-    grep -Rqs "anland_presenter_blit" backend/anland || \
-        fail "stage3 presentation overlay 未生效"
-    grep -Rqs "WLR_BUFFER_CAP_DMABUF" backend/anland/backend.c || \
-        fail "stage3 未要求 DMA-BUF output buffer"
+        fail "Stage4 input overlay 未生效"
+    grep -qs "acquire_render_buffer" include/wlr/interfaces/wlr_output.h || \
+        fail "Stage4 未安装 wlroots render-target hook"
+    grep -qs "output_acquire_render_buffer" types/output/render.c || \
+        fail "Stage4 未接管 wlroots output render pass"
+    grep -Rqs "anland_acquire_selected_buffer" backend/anland || \
+        fail "Stage4 未提供 consumer DMA-BUF render target"
+    grep -Rqs "Anland first zero-copy frame presented" backend/anland/output.c || \
+        fail "Stage4 zero-copy presentation 路径缺失"
     grep -Rqs "get_drm_fd" backend/anland/backend.c || \
-        fail "stage3 未暴露 render-node fd"
-    grep -Rqs "ANLAND_SOCKET" backend include || \
+        fail "Stage4 未暴露 render-node fd"
+    grep -Rqs "WLR_BUFFER_CAP_DMABUF" backend/anland/backend.c || \
+        fail "Stage4 未限制为 DMA-BUF output"
+    if grep -Rqs "anland_presenter_blit\|glFinish" backend/anland; then
+        fail "Stage4 构建树仍包含 Stage3 fullscreen blit/glFinish"
+    fi
+}
+
+apply_stage3_fallback() {
+    cd "$WORK_DIR/src"
+    # Stage3 is retained only as a diagnostic fallback for A/B and rollback.
+    sed -i 's/return WLR_BUFFER_CAP_DATA_PTR | WLR_BUFFER_CAP_DMABUF | WLR_BUFFER_CAP_SHM;/return WLR_BUFFER_CAP_DATA_PTR | WLR_BUFFER_CAP_SHM;/' \
+        backend/anland/backend.c
+    log "应用 Stage3 GPU-only DMA-BUF blit fallback"
+    python3 "$ROOT_DIR/apply_stage3_presentation.py" "$WORK_DIR/src"
+    python3 "$ROOT_DIR/apply_stage3_018_fixups.py" "$WORK_DIR/src"
+
+    grep -Rqs "anland_presenter_blit" backend/anland || \
+        fail "Stage3 fallback presentation overlay 未生效"
+    grep -Rqs "get_drm_fd" backend/anland/backend.c || \
+        fail "Stage3 fallback 未暴露 render-node fd"
+}
+
+apply_overlays() {
+    apply_common_overlays
+    case "$PRESENTATION" in
+        zero-copy) apply_stage4 ;;
+        stage3) apply_stage3_fallback ;;
+    esac
+    grep -Rqs "ANLAND_SOCKET" "$WORK_DIR/src/backend" "$WORK_DIR/src/include" || \
         fail "overlay 未绑定 ANLAND_SOCKET"
 }
 
@@ -139,7 +171,7 @@ validate_install() {
     lib=$(find "$PREFIX_DIR/lib" -maxdepth 1 \( -type f -o -type l \) -name 'libwlroots-0.18.so*' | head -n 1 || true)
     [ -n "$lib" ] || fail "安装目录没有 libwlroots-0.18"
 
-    log "检查 Anland backend/presenter 导出与依赖"
+    log "检查 Anland backend 导出与依赖"
     local symbols
     symbols=$(nm -D "$lib")
     grep -q 'wlr_anland_backend_create' <<<"$symbols" || \
@@ -151,7 +183,27 @@ validate_install() {
         log "系统 Labwc 当前 wlroots: ${linked:-未解析}"
     fi
 
-    cat > "$PREFIX_DIR/BUILD_INFO" <<EOF
+    if [ "$PRESENTATION" = zero-copy ]; then
+        cat > "$PREFIX_DIR/BUILD_INFO" <<EOF
+stage=4-zero-copy
+runtime_ready=no
+presentation=direct-consumer-dmabuf-render-target
+extra_fullscreen_gpu_blit=no
+cpu_framebuffer_copy=no
+synchronization=dma-buf-sync-file-to-anland-fence
+anland=$ANLAND_VERSION
+labwc_baseline=$NEWHOME_LABWC_BASELINE
+wlroots=$NEWHOME_WLROOTS_BASELINE
+wlroots_debian=$NEWHOME_WLROOTS_DEBIAN_BASELINE
+transport_source=$(cat "$TRANSPORT_PREFIX/SOURCE" 2>/dev/null | tr '\n' ' ')
+built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+        printf 'stage4-zero-copy-built wlroots-anland %s / Anland %s\n' \
+            "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
+        log "Stage4 ZERO-COPY backend 已编译安装: $BUILT_MARKER"
+        log "Labwc/wlroots 将直接渲染 Android consumer-selected DMA-BUF；无 Stage3 fullscreen blit/glFinish。"
+    else
+        cat > "$PREFIX_DIR/BUILD_INFO" <<EOF
 stage=3-gpu-dmabuf-blit
 runtime_ready=no
 presentation=gpu-only-egl-dmabuf-blit
@@ -164,11 +216,11 @@ wlroots_debian=$NEWHOME_WLROOTS_DEBIAN_BASELINE
 transport_source=$(cat "$TRANSPORT_PREFIX/SOURCE" 2>/dev/null | tr '\n' ' ')
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
+        printf 'stage3-built wlroots-anland %s / Anland %s\n' \
+            "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
+        log "Stage3 fallback backend 已编译安装: $BUILT_MARKER"
+    fi
 
-    printf 'stage3-built wlroots-anland %s / Anland %s\n' \
-        "$NEWHOME_WLROOTS_BASELINE" "$ANLAND_VERSION" > "$BUILT_MARKER"
-    log "stage3 backend 已编译安装: $BUILT_MARKER"
-    log "显示提交使用 GPU-only EGL DMA-BUF blit；无 CPU framebuffer copy。"
     log "构建成功不会自动写 $READY_MARKER。"
     log "运行 validate_direct_backend.sh，并确认 Android 画面后才启用 direct auto mode。"
 }
