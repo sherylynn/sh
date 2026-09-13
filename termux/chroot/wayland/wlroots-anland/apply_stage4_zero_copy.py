@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Stage 4: render wlroots output directly into Anland consumer DMA-BUFs.
 
-Pinned to wlroots 0.18.2. This removes the Stage3 fullscreen EGL/GLES blit:
-Labwc's normal renderer receives the Android-selected Anland DMA-BUF itself as
-its render target. The Anland transport remains the sole owner of DMA-BUF FDs.
+Pinned to Debian 13 wlroots 0.18.2. This removes the Stage3 fullscreen
+EGL/GLES blit: Labwc's normal renderer receives the Android-selected Anland
+DMA-BUF itself as its render target. The Anland transport remains the owner of
+the original DMA-BUF FDs; Stage4 wrappers duplicate them for safe wlroots
+lifetime management.
 """
 from __future__ import annotations
 
@@ -57,17 +59,19 @@ def main() -> None:
         '''\tconst struct wlr_drm_format_set *(*get_primary_formats)(\n\t\tstruct wlr_output *output, uint32_t buffer_caps);\n''',
         '''\tconst struct wlr_drm_format_set *(*get_primary_formats)(\n\t\tstruct wlr_output *output, uint32_t buffer_caps);\n\t/** Optional externally-owned render target. Returned buffer must be locked. */\n\tstruct wlr_buffer *(*acquire_render_buffer)(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state);\n''')
 
+    # wlroots 0.18 still exposes buffer_age. External Anland targets aren't a
+    # wlroots-owned swapchain, so report age=0 and force conservative repaint.
     replace_once(render,
         '''static struct wlr_buffer *output_acquire_empty_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state) {\n''',
-        '''static struct wlr_buffer *output_acquire_render_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state) {\n\tif (output->impl->acquire_render_buffer != NULL) {\n\t\treturn output->impl->acquire_render_buffer(output, state);\n\t}\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\treturn wlr_swapchain_acquire(output->swapchain);\n}\n\nstatic struct wlr_buffer *output_acquire_empty_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state) {\n''')
+        '''static struct wlr_buffer *output_acquire_render_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state, int *buffer_age) {\n\tif (output->impl->acquire_render_buffer != NULL) {\n\t\tif (buffer_age != NULL) {\n\t\t\t*buffer_age = 0;\n\t\t}\n\t\treturn output->impl->acquire_render_buffer(output, state);\n\t}\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\treturn wlr_swapchain_acquire(output->swapchain, buffer_age);\n}\n\nstatic struct wlr_buffer *output_acquire_empty_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state) {\n''')
 
     replace_once(render,
-        '''\t// wlr_output_configure_primary_swapchain() function will call\n\t// wlr_output_test_state(), which can call us again. This is dangerous: we\n\t// risk infinite recursion. However, a buffer will always be supplied in\n\t// wlr_output_test_state(), which will prevent us from being called.\n\tif (!wlr_output_configure_primary_swapchain(output, state,\n\t\t\t&output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain);\n''',
-        '''\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state);\n''')
+        '''\t// wlr_output_configure_primary_swapchain() function will call\n\t// wlr_output_test_state(), which can call us again. This is dangerous: we\n\t// risk infinite recursion. However, a buffer will always be supplied in\n\t// wlr_output_test_state(), which will prevent us from being called.\n\tif (!wlr_output_configure_primary_swapchain(output, state,\n\t\t\t&output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, NULL);\n''',
+        '''\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state, NULL);\n''')
 
     replace_once(render,
-        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, struct wlr_buffer_pass_options *render_options) {\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain);\n''',
-        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, struct wlr_buffer_pass_options *render_options) {\n\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state);\n''')
+        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age,\n\t\tstruct wlr_buffer_pass_options *render_options) {\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, buffer_age);\n''',
+        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age,\n\t\tstruct wlr_buffer_pass_options *render_options) {\n\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state, buffer_age);\n''')
 
     # Extend generated Anland backend state after Stage2 has inserted input fields.
     replace_once(header,
