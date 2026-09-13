@@ -9,10 +9,22 @@ PENDING=/tmp/anland-remote-resize.pending
 LEADER_DIR=/tmp/anland-remote-resize-leader
 RESIZE_SCRIPT=/root/sh/termux/chroot/wayland/anland_remote_resize.sh
 LOG_FILE=/tmp/anland-remote-resize-queue.log
+BUILT_MARKER=/opt/newhome-wayland/wlroots-anland.built
 SUPPRESS_FILE=/tmp/anland-remote-resize-suppress-until
 STALE_VIEWPORT_FILE=/tmp/anland-remote-resize-stale-viewport
 
 [[ "$RESOLUTION" =~ ^[0-9]+x[0-9]+$ ]] || exit 1
+# Stage4 的渲染目标是 Android 当前连接创建的固定尺寸 DMA-BUF 池。
+# noVNC 的 SetDesktopSize 若重建 Activity，会断开当前 VNC，再由新页面尺寸
+# 触发反向重建，最终在手机尺寸和浏览器尺寸之间无限振荡。远程端只缩放
+# framebuffer；托盘手动请求仍直接调用 anland_remote_resize.sh 并可重建一次。
+if [ "${NEWHOME_ALLOW_STAGE4_REMOTE_RESTART:-0}" != 1 ] && \
+        grep -q '^stage4-zero-copy-built ' "$BUILT_MARKER" 2>/dev/null; then
+    printf 'time=%s ignored=%s reason=stage4-fixed-dmabuf-pool\n' \
+        "$(date +%s)" "$RESOLUTION" >> "$LOG_FILE"
+    exit 0
+fi
+
 # 托盘手动预设重建显示链后，noVNC 会在自动重连时重发浏览器视口。
 # 短暂尊重手动设置，避免它刚应用就被重连请求覆盖。
 now=$(date +%s)

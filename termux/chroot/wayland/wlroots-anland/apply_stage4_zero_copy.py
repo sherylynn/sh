@@ -54,6 +54,7 @@ def main() -> None:
     wayland_output = root / "backend/wayland/output.c"
     swapchain_manager = root / "types/wlr_output_swapchain_manager.c"
     scene = root / "types/scene/wlr_scene.c"
+    screencopy = root / "types/wlr_screencopy_v1.c"
 
     # Generic wlroots hook: by default every backend still uses the existing
     # swapchain. Only Anland supplies an externally-owned render target.
@@ -141,6 +142,51 @@ def main() -> None:
 \t\t\tswapchain = output->swapchain;
 \t\t}
 \t\tbuffer = wlr_swapchain_acquire(swapchain, NULL);
+\t}
+''')
+
+    # screencopy 只需在握手时确定 SHM readback 格式。外部目标没有普通
+    # primary swapchain，实际截图仍会在下一次 output commit 中读取 DMA-BUF。
+    replace_once(screencopy,
+        '''\tif (!wlr_output_configure_primary_swapchain(output, NULL, &output->swapchain)) {
+\t\tgoto error;
+\t}
+
+\tint buffer_age;
+\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, &buffer_age);
+\tif (buffer == NULL) {
+\t\tgoto error;
+\t}
+
+\tstruct wlr_texture *texture = wlr_texture_from_buffer(renderer, buffer);
+\twlr_buffer_unlock(buffer);
+\tif (!texture) {
+\t\tgoto error;
+\t}
+
+\tframe->shm_format = wlr_texture_preferred_read_format(texture);
+\twlr_texture_destroy(texture);
+''',
+        '''\tif (output->impl->acquire_render_buffer != NULL) {
+\t\t/* Anland 的 ABGR8888 DMA-BUF 可直接作为 GLES readback 源；不要为了
+\t\t * 格式探测创建一个后端永远不会提交的普通 GBM swapchain。 */
+\t\tframe->shm_format = output->render_format;
+\t} else {
+\t\tif (!wlr_output_configure_primary_swapchain(output, NULL, &output->swapchain)) {
+\t\t\tgoto error;
+\t\t}
+\t\tint buffer_age;
+\t\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, &buffer_age);
+\t\tif (buffer == NULL) {
+\t\t\tgoto error;
+\t\t}
+\t\tstruct wlr_texture *texture = wlr_texture_from_buffer(renderer, buffer);
+\t\twlr_buffer_unlock(buffer);
+\t\tif (!texture) {
+\t\t\tgoto error;
+\t\t}
+\t\tframe->shm_format = wlr_texture_preferred_read_format(texture);
+\t\twlr_texture_destroy(texture);
 \t}
 ''')
 
@@ -246,7 +292,7 @@ def main() -> None:
     # Sanity assertions: Stage4 must not contain the old fullscreen presenter.
     joined = '\n'.join(p.read_text() for p in [
         header, backend, output, root / 'backend/anland/buffer.c', render,
-        swapchain_manager, scene])
+        swapchain_manager, scene, screencopy])
     for forbidden in ('anland_presenter_blit', 'glFinish()', 'GPU-only EGL DMA-BUF blit'):
         if forbidden in joined:
             raise RuntimeError(f"Stage4 unexpectedly contains Stage3 presenter token: {forbidden}")
@@ -258,6 +304,8 @@ def main() -> None:
         raise RuntimeError('Labwc swapchain-manager bypass not installed')
     if '每个 Android consumer buffer' not in scene.read_text():
         raise RuntimeError('wlroots scene zero-copy path not installed')
+    if '格式探测创建一个后端永远不会提交' not in screencopy.read_text():
+        raise RuntimeError('wlroots screencopy external-target path not installed')
 
     print(f"Stage4 zero-copy Anland overlay applied to {root}")
 
