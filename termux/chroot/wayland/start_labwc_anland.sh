@@ -6,7 +6,7 @@ CONFIG_DIR=${NEWHOME_LABWC_CONFIG_DIR:-/root/.config/newhome-labwc}
 ANLAND_SOCKET=${ANLAND_SOCKET:-/tmp/anland/display_daemon.sock}
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 HOST_SOCKET=${NEWHOME_WESTON_SOCKET:-wayland-anland-host}
-WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto}
+WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-nested}
 DIRECT_MARKER=${NEWHOME_WLROOTS_ANLAND_MARKER:-/opt/newhome-wayland/wlroots-anland.ready}
 DIRECT_BUILT_MARKER=${NEWHOME_WLROOTS_ANLAND_BUILT:-/opt/newhome-wayland/wlroots-anland.built}
 DIRECT_LIBDIR=${NEWHOME_WLROOTS_ANLAND_LIBDIR:-/opt/newhome-wayland/wlroots-anland/lib}
@@ -63,22 +63,31 @@ prepare_common() {
 apply_saved_output_scale() {
     local scale_file=/root/.config/newhome-wayland-output-scale
     local scale=2
+    # nested 时当前进程的 WAYLAND_DISPLAY 指向外层 Weston；output-management
+    # 属于 Labwc 自己创建的 wayland-0，缩放命令必须明确连接内层 compositor。
+    local control_display=${NEWHOME_LABWC_SOCKET:-wayland-0}
     [ -s "$scale_file" ] && scale=$(head -n 1 "$scale_file")
     case "$scale" in
         1|2|3) ;;
         *) scale=2 ;;
     esac
-    # Labwc 创建 output-management 全局后才能设置；Wayland 客户端、
-    # XWayland、光标和面板随后都会使用同一逻辑坐标系。
+    # Labwc 创建 output-management 全局后才能设置。direct 输出通常叫
+    # ANLAND-1，nested 输出通常叫 WL-1，不能写死输出名称。
     for _ in {1..30}; do
-        if command -v wlr-randr >/dev/null 2>&1 && \
-                wlr-randr --output ANLAND-1 --scale "$scale" >/dev/null 2>&1; then
-            log "已恢复 ANLAND-1 Wayland 输出缩放: ${scale}x"
-            return 0
+        if command -v wlr-randr >/dev/null 2>&1; then
+            local output
+            output=$(WAYLAND_DISPLAY="$control_display" wlr-randr 2>/dev/null | \
+                awk '/^[^[:space:]]/ {print $1; exit}')
+            if [ -n "$output" ] && \
+                    WAYLAND_DISPLAY="$control_display" \
+                    wlr-randr --output "$output" --scale "$scale" >/dev/null 2>&1; then
+                log "已恢复 $output Wayland 输出缩放: ${scale}x"
+                return 0
+            fi
         fi
         sleep 0.1
     done
-    log "警告：无法恢复 ANLAND-1 输出缩放 ${scale}x"
+    log "警告：无法识别或调整 Labwc 输出缩放 ${scale}x"
 }
 
 cleanup() {

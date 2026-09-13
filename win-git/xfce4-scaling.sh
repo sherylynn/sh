@@ -635,18 +635,34 @@ apply_termux_profile() {
         # 避免再与 wl_output scale 叠加；启动脚本会在重连后恢复该 scale。
         local scale_file=/root/.config/newhome-wayland-output-scale scale_tmp
         local suppress_file=/tmp/anland-remote-resize-suppress-until
+        local stale_viewport_file=/tmp/anland-remote-resize-stale-viewport
+        local active_resolution
         install -d -m 0700 /root/.config
         scale_tmp=$(mktemp /root/.config/newhome-wayland-output-scale.XXXXXX)
         printf '%s\n' "$scale" > "$scale_tmp"
         mv -f "$scale_tmp" "$scale_file"
         apply_gdk_int 1
         if command -v wlr-randr >/dev/null 2>&1; then
-            XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/0} \
-                WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0} \
-                wlr-randr --output ANLAND-1 --scale "$scale" || true
+            local wayland_output
+            wayland_output=$(XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/0} \
+                WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0} wlr-randr 2>/dev/null | \
+                awk '/^[^[:space:]]/ {print $1; exit}')
+            if [ -n "$wayland_output" ]; then
+                XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/0} \
+                    WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0} \
+                    wlr-randr --output "$wayland_output" --scale "$scale" || true
+            fi
         fi
         # 显示链重建和 noVNC 自动回连约需数秒；在这段时间内，手动托盘预设
         # 优先于浏览器重连时自动重发的旧视口尺寸。
+        active_resolution=$(sed -n 's/.*screen info \([0-9][0-9]*x[0-9][0-9]*\) .*/\1/p' \
+            /tmp/anland/newhome-anland.log 2>/dev/null | tail -n 1)
+        if [[ "$active_resolution" =~ ^[0-9]+x[0-9]+$ ]] && \
+                [ "$active_resolution" != "$resolution" ]; then
+            printf '%s\n' "$active_resolution" > "$stale_viewport_file"
+        else
+            rm -f "$stale_viewport_file"
+        fi
         printf '%s\n' "$(( $(date +%s) + 12 ))" > "$suppress_file"
         rm -f /tmp/anland-remote-resize.pending
         if /bin/bash /root/sh/termux/chroot/wayland/anland_remote_resize.sh "$resolution"; then

@@ -137,7 +137,10 @@ for _ in {1..100}; do
 done
 [ -S /tmp/anland/display_daemon.sock ] || fail "Anland daemon socket did not return"
 
-nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} \
+# 调整脚本可能由 noVNC worker 启动，并继承 Termux 侧的绝对 socket 路径。
+# chroot 内必须固定使用 /tmp bridge；否则监督器会检查一个不存在的宿主路径。
+nohup env ANLAND_SOCKET=/tmp/anland/display_daemon.sock \
+    NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-nested} \
     /bin/bash "$SESSION_SCRIPT" >/tmp/newhome-wayland-session-supervisor.log 2>&1 </dev/null 9>&- &
 for _ in {1..120}; do
     if pgrep -x weston >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1; then

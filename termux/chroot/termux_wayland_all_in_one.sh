@@ -239,7 +239,7 @@ reset_anland_activity() {
 
 start_session() {
     log "启动 Labwc + XFCE Wayland session"
-    chroot_exec -u root "for name in labwc weston xfce4-panel xfsettingsd thunar xfconfd xfdesktop Xwayland dbus-run-session; do pkill -x \"\$name\" >/dev/null 2>&1 || true; done; : >$SESSION_LOG; nohup env NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-auto} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
+    chroot_exec -u root "for name in labwc weston xfce4-panel xfsettingsd thunar xfconfd xfdesktop Xwayland dbus-run-session; do pkill -x \"\$name\" >/dev/null 2>&1 || true; done; : >$SESSION_LOG; nohup env ANLAND_SOCKET=/tmp/anland/display_daemon.sock NEWHOME_WAYLAND_MODE=${NEWHOME_WAYLAND_MODE:-nested} /bin/bash $SESSION_SCRIPT >$SESSION_LOG 2>&1 </dev/null &"
 
     local attempts=150
     while [ "$attempts" -gt 0 ]; do
@@ -269,7 +269,7 @@ start_all() {
     start_session
     restart_wayland_remote_access
     log "Wayland 环境启动请求完成"
-    log "架构模式: ${NEWHOME_WAYLAND_MODE:-auto} (Stage3 ready 后 auto 会直接使用 wlroots-anland)"
+    log "架构模式: ${NEWHOME_WAYLAND_MODE:-nested} (默认使用功能完整的 Weston-Anland；direct 仅供实验)"
 }
 
 stop_all() {
@@ -381,9 +381,9 @@ NewHome Anland Wayland 编排器
   $0 activate-direct  再次 smoke，并在你已确认画面可见后写 ready
 
 模式:
-  NEWHOME_WAYLAND_MODE=auto    默认；Stage3 ready 后 direct，否则 nested Weston
+  NEWHOME_WAYLAND_MODE=nested  默认；Labwc -> Weston-Anland -> Anland
+  NEWHOME_WAYLAND_MODE=auto    实验；Stage3 ready 后 direct，否则 nested Weston
   NEWHOME_WAYLAND_MODE=direct  强制 Labwc -> wlroots-anland -> Anland（仍要求 ready marker）
-  NEWHOME_WAYLAND_MODE=nested  强制 Labwc -> Weston-Anland -> Anland
 EOF
 }
 
