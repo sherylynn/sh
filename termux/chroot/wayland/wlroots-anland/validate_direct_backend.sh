@@ -15,11 +15,17 @@ log() { printf '[wlroots-anland-smoke] %s\n' "$*"; }
 fail() { printf '[wlroots-anland-smoke] ERROR: %s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || fail "请在 chroot root 环境运行"
-[ -f "$BUILT_MARKER" ] || fail "stage3 尚未构建；先运行 build_direct_backend.sh"
-grep -q 'stage3-built' "$BUILT_MARKER" || fail "built marker 不是 stage3"
+[ -f "$BUILT_MARKER" ] || fail "direct backend 尚未构建；先运行 build_direct_backend.sh"
 [ -d "$PREFIX_DIR/lib" ] || fail "缺少 direct wlroots lib 目录"
 [ -S "$ANLAND_SOCKET" ] || fail "Anland daemon socket 不存在: $ANLAND_SOCKET"
 command -v labwc >/dev/null 2>&1 || fail "缺少 labwc"
+
+BUILD_DESC=$(cat "$BUILT_MARKER")
+case "$BUILD_DESC" in
+    stage4-zero-copy-built*) BUILD_STAGE=stage4 ;;
+    stage3-built*) BUILD_STAGE=stage3 ;;
+    *) fail "无法识别 built marker: $BUILD_DESC" ;;
+esac
 
 mkdir -p "$LOG_DIR" "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 chmod 0700 "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -49,13 +55,12 @@ export LD_LIBRARY_PATH="$PREFIX_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 [ -r "$ANLAND_DRM_DEVICE" ] && [ -w "$ANLAND_DRM_DEVICE" ] || \
     fail "render node 不可读写: $ANLAND_DRM_DEVICE"
 
-log "启动 direct Labwc stage3 smoke test (${SMOKE_SECONDS}s)"
+log "启动 direct Labwc ${BUILD_STAGE} smoke test (${SMOKE_SECONDS}s)"
 log "测试期间 Android Anland Termux Activity 必须处于可见/已连接状态"
 
 setsid dbus-run-session -- labwc -d -C "$CONFIG_DIR" >"$SMOKE_LOG" 2>&1 &
 PID=$!
 cleanup() {
-    # 终止整个独立会话，避免只杀 dbus-run-session 后留下 Labwc/XFCE。
     kill -TERM -- "-$PID" >/dev/null 2>&1 || true
     sleep 0.2
     kill -KILL -- "-$PID" >/dev/null 2>&1 || true
@@ -65,14 +70,14 @@ trap cleanup EXIT INT TERM
 
 sleep "$SMOKE_SECONDS"
 kill -0 "$PID" 2>/dev/null || {
-    tail -n 160 "$SMOKE_LOG" >&2 || true
+    tail -n 200 "$SMOKE_LOG" >&2 || true
     fail "Labwc direct backend 在 smoke 窗口内退出"
 }
 
 require_log() {
     local pattern=$1 label=$2
     grep -Eqi "$pattern" "$SMOKE_LOG" || {
-        tail -n 160 "$SMOKE_LOG" >&2 || true
+        tail -n 200 "$SMOKE_LOG" >&2 || true
         fail "未观察到 $label"
     }
 }
@@ -80,36 +85,55 @@ require_log() {
 reject_log() {
     local pattern=$1 label=$2
     if grep -Eqi "$pattern" "$SMOKE_LOG"; then
-        tail -n 200 "$SMOKE_LOG" >&2 || true
+        tail -n 240 "$SMOKE_LOG" >&2 || true
         fail "检测到 $label"
     fi
 }
 
 require_log 'Anland render node:' 'wlroots render node'
-require_log 'Created Anland backend|Starting Anland backend' 'Anland wlroots output 初始化'
+require_log 'Created Anland backend|Starting Anland backend' 'Anland wlroots backend 初始化'
 require_log 'Anland Android consumer is ready' 'Android consumer ready'
-require_log 'Anland presenter initialized' 'EGL/GLES DMA-BUF presenter 初始化'
-require_log 'Anland first GPU DMA-BUF frame presented successfully' '至少一帧 GPU DMA-BUF presentation'
-reject_log 'non-DMA-BUF|DMA-BUF EGL import failed|target DMA-BUF is not GLES-renderable|GPU DMA-BUF presentation failed|Failed reading Anland buffer-ready|Unable to open Anland render node' 'Stage3 presentation 错误'
 
-log "自动检查通过：至少一帧已完成 GPU blit -> Anland trigger_refresh"
+if [ "$BUILD_STAGE" = stage4 ]; then
+    require_log 'Anland zero-copy pool imported:' 'Android consumer DMA-BUF pool 导入'
+    require_log 'Anland first zero-copy frame presented:' '至少一帧真正 zero-copy presentation'
+    reject_log 'anland presenter initialized|GPU-only EGL DMA-BUF blit|glFinish' \
+        'Stage3 presenter 路径意外进入 Stage4 runtime'
+    reject_log 'ZERO-COPY DMA-BUF presentation failed|zero-copy trigger_refresh failed|buffer rotation mismatch|consumer selected invalid buffer|consumer pool import failed|Unable to open Anland render node' \
+        'Stage4 zero-copy presentation 错误'
+    log "自动检查通过：Labwc/wlroots 已直接渲染 consumer-selected Anland DMA-BUF，并完成 trigger_refresh"
+else
+    require_log 'Anland presenter initialized' 'Stage3 EGL/GLES DMA-BUF presenter 初始化'
+    require_log 'Anland first GPU DMA-BUF frame presented successfully' '至少一帧 Stage3 GPU DMA-BUF presentation'
+    reject_log 'non-DMA-BUF|DMA-BUF EGL import failed|target DMA-BUF is not GLES-renderable|GPU DMA-BUF presentation failed|Failed reading Anland buffer-ready|Unable to open Anland render node' \
+        'Stage3 presentation 错误'
+    log "Stage3 fallback 自动检查通过：GPU blit -> Anland trigger_refresh"
+fi
+
 log "日志: $SMOKE_LOG"
 
 if [ "${1:-}" != "--accept-visible" ]; then
     cat <<EOF
 
-自动层已经证明至少一帧真正进入 Anland consumer，但仍不会直接写 ready，
-因为颜色通道、上下方向、Android Surface 实际可见性必须由真机画面确认。
+自动层已经通过，但仍不会直接写 ready。
+请在 Android Anland Activity 中确认：
+  1. Labwc/XFCE 画面可见；
+  2. 方向和颜色正确；
+  3. 鼠标/键盘输入正常；
+  4. 没有明显闪屏/多缓冲旧帧交替。
 
-请确认 Anland Android Activity 中能看到 Labwc/XFCE 画面、方向正确且鼠标输入正常，
-然后再次运行：
+确认后再次运行：
   $0 --accept-visible
 
-第二次仍会重新跑完整 smoke test，通过后才写：
+第二次仍会重新跑完整 smoke，通过后才写：
   $READY_MARKER
 EOF
     exit 0
 fi
 
-printf 'stage3-visible wlroots-anland GPU-blit validated %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$READY_MARKER"
+if [ "$BUILD_STAGE" = stage4 ]; then
+    printf 'stage4-zero-copy-visible wlroots-anland validated %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$READY_MARKER"
+else
+    printf 'stage3-visible wlroots-anland GPU-blit validated %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$READY_MARKER"
+fi
 log "真机可见性已由调用者确认，已启用 direct auto mode: $READY_MARKER"
