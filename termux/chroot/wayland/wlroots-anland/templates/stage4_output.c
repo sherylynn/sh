@@ -91,6 +91,9 @@ static bool output_commit(struct wlr_output *wlr_output,
             wlr_log(WLR_INFO,
                 "Anland first zero-copy frame presented: direct consumer DMA-BUF render");
         }
+        if (backend->present_count == 2) {
+            wlr_log(WLR_INFO, "Anland zero-copy continuous frame loop established");
+        }
 
         /* wlroots 0.18 uses a pointer for present_event.when. The callback is
          * synchronous, so a stack timespec is valid for wlr_output_send_present(). */

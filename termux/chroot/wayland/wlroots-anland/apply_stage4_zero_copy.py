@@ -52,6 +52,8 @@ def main() -> None:
     output_iface = root / "include/wlr/interfaces/wlr_output.h"
     render = root / "types/output/render.c"
     wayland_output = root / "backend/wayland/output.c"
+    swapchain_manager = root / "types/wlr_output_swapchain_manager.c"
+    scene = root / "types/scene/wlr_scene.c"
 
     # Generic wlroots hook: by default every backend still uses the existing
     # swapchain. Only Anland supplies an externally-owned render target.
@@ -76,6 +78,71 @@ def main() -> None:
     replace_once(render,
         '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age,\n\t\tstruct wlr_buffer_pass_options *render_options) {\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, buffer_age);\n''',
         '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age,\n\t\tstruct wlr_buffer_pass_options *render_options) {\n\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state, buffer_age);\n''')
+
+    # Labwc 0.8 通过 scene build 渲染；配置探测和 scene 都要绕开普通 swapchain。
+    replace_once(swapchain_manager,
+        '#include <wlr/backend.h>\n',
+        '#include <wlr/backend.h>\n#include <wlr/interfaces/wlr_output.h>\n')
+    replace_once(swapchain_manager,
+        '''\tstruct wlr_output *output = manager_output->output;
+\tstruct wlr_allocator *allocator = output->allocator;
+\tassert(allocator != NULL);
+''',
+        '''\tstruct wlr_output *output = manager_output->output;
+\tstruct wlr_allocator *allocator = output->allocator;
+\tassert(allocator != NULL);
+
+\t/* Anland 的目标缓冲由 Android 轮转，配置探测阶段不能另建 GBM
+\t * swapchain。真正的可写缓冲会在 scene build 阶段取得。 */
+\tif (output->impl->acquire_render_buffer != NULL) {
+\t\tmanager_output->pending_swapchain = NULL;
+\t\treturn true;
+\t}
+''')
+
+    replace_once(scene,
+        '#include <wlr/backend.h>\n',
+        '#include <wlr/backend.h>\n#include <wlr/interfaces/wlr_output.h>\n')
+    replace_once(scene,
+        '''\tbool scanout = options->color_transform == NULL &&
+\t\tlist_len == 1 && debug_damage != WLR_SCENE_DEBUG_DAMAGE_HIGHLIGHT &&
+\t\tscene_entry_try_direct_scanout(&list_data[0], state, &render_data);
+''',
+        '''\tbool scanout = output->impl->acquire_render_buffer == NULL &&
+\t\toptions->color_transform == NULL && list_len == 1 &&
+\t\tdebug_damage != WLR_SCENE_DEBUG_DAMAGE_HIGHLIGHT &&
+\t\tscene_entry_try_direct_scanout(&list_data[0], state, &render_data);
+''')
+    replace_once(scene,
+        '''\tstruct wlr_swapchain *swapchain = options->swapchain;
+\tif (!swapchain) {
+\t\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {
+\t\t\treturn false;
+\t\t}
+
+\t\tswapchain = output->swapchain;
+\t}
+
+\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(swapchain, NULL);
+''',
+        '''\tstruct wlr_buffer *buffer = NULL;
+\tif (output->impl->acquire_render_buffer != NULL) {
+\t\tbuffer = output->impl->acquire_render_buffer(output, state);
+\t\t/* 每个 Android consumer buffer 都可能隔数帧才再次出现；在有
+\t\t * 独立逐缓冲 damage 历史前，必须把当前目标完整重绘。 */
+\t\twlr_damage_ring_add_whole(&scene_output->damage_ring);
+\t} else {
+\t\tstruct wlr_swapchain *swapchain = options->swapchain;
+\t\tif (!swapchain) {
+\t\t\tif (!wlr_output_configure_primary_swapchain(output, state,
+\t\t\t\t\t&output->swapchain)) {
+\t\t\t\treturn false;
+\t\t\t}
+\t\t\tswapchain = output->swapchain;
+\t\t}
+\t\tbuffer = wlr_swapchain_acquire(swapchain, NULL);
+\t}
+''')
 
     # Extend generated Anland backend state after Stage2 has inserted input fields.
     replace_once(header,
@@ -177,7 +244,9 @@ def main() -> None:
             'wlr_output_state_set_custom_mode(&state, 1, 1, 0);\n')
 
     # Sanity assertions: Stage4 must not contain the old fullscreen presenter.
-    joined = '\n'.join(p.read_text() for p in [header, backend, output, root / 'backend/anland/buffer.c', render])
+    joined = '\n'.join(p.read_text() for p in [
+        header, backend, output, root / 'backend/anland/buffer.c', render,
+        swapchain_manager, scene])
     for forbidden in ('anland_presenter_blit', 'glFinish()', 'GPU-only EGL DMA-BUF blit'):
         if forbidden in joined:
             raise RuntimeError(f"Stage4 unexpectedly contains Stage3 presenter token: {forbidden}")
@@ -185,6 +254,10 @@ def main() -> None:
         raise RuntimeError('wlroots render hook not installed')
     if 'Anland first zero-copy frame presented' not in output.read_text():
         raise RuntimeError('zero-copy presentation log missing')
+    if '真正的可写缓冲会在 scene build 阶段取得' not in swapchain_manager.read_text():
+        raise RuntimeError('Labwc swapchain-manager bypass not installed')
+    if '每个 Android consumer buffer' not in scene.read_text():
+        raise RuntimeError('wlroots scene zero-copy path not installed')
 
     print(f"Stage4 zero-copy Anland overlay applied to {root}")
 

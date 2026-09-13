@@ -97,6 +97,7 @@ require_log 'Anland Android consumer is ready' 'Android consumer ready'
 if [ "$BUILD_STAGE" = stage4 ]; then
     require_log 'Anland zero-copy pool imported:' 'Android consumer DMA-BUF pool 导入'
     require_log 'Anland first zero-copy frame presented:' '至少一帧真正 zero-copy presentation'
+    require_log 'Anland zero-copy continuous frame loop established' '至少两帧连续 zero-copy presentation'
     reject_log 'anland presenter initialized|GPU-only EGL DMA-BUF blit|glFinish' \
         'Stage3 presenter 路径意外进入 Stage4 runtime'
     reject_log 'ZERO-COPY DMA-BUF presentation failed|zero-copy trigger_refresh failed|buffer rotation mismatch|consumer selected invalid buffer|consumer pool import failed|Unable to open Anland render node' \
