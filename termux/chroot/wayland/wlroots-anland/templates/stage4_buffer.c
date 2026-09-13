@@ -44,7 +44,7 @@ static void anland_buffer_destroy(struct wlr_buffer *base) {
             buffer->attrs.fd[i] = -1;
         }
     }
-    wlr_buffer_finish(base);
+    /* wlroots 0.18 的核心会在调用 destroy 回调前完成 signal/addon 清理。 */
     free(buffer);
 }
 
@@ -310,9 +310,15 @@ void anland_zero_copy_consumer_state(struct wlr_anland_backend *backend,
     }
     struct wlr_anland_output *mode_output;
     wl_list_for_each(mode_output, &backend->outputs, link) {
-        wlr_output_update_custom_mode(&mode_output->wlr_output,
+        struct wlr_output_state state;
+        wlr_output_state_init(&state);
+        wlr_output_state_set_custom_mode(&state,
             (int32_t)backend->width, (int32_t)backend->height,
             backend->refresh > INT32_MAX ? 0 : (int32_t)backend->refresh);
+        if (!wlr_output_commit_state(&mode_output->wlr_output, &state)) {
+            wlr_log(WLR_ERROR, "Anland zero-copy: 无法提交 consumer 输出尺寸");
+        }
+        wlr_output_state_finish(&state);
     }
 
     int fd = get_buffer_ready_fd(backend->display);

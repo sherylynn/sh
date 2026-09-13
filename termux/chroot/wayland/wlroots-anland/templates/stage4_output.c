@@ -110,7 +110,7 @@ static bool output_commit(struct wlr_output *wlr_output,
 
 static void output_destroy(struct wlr_output *wlr_output) {
     struct wlr_anland_output *output = anland_output_from_output(wlr_output);
-    wlr_output_finish(wlr_output);
+    /* wlroots 0.18 的 wlr_output_destroy() 负责通用 output 清理。 */
     wl_list_remove(&output->link);
     free(output);
 }
