@@ -34,7 +34,7 @@ static bool newhome_anland_resize(
     snprintf(resolution, sizeof(resolution), "%ux%u", width, height);
     const char *configured_script = getenv("NEWHOME_ANLAND_RESIZE_SCRIPT");
     if (!configured_script || !*configured_script)
-        configured_script = "/root/sh/termux/chroot/wayland/anland_remote_resize.sh";
+        configured_script = "/root/sh/termux/chroot/wayland/anland_remote_resize_queue.sh";
     char script[512];
     snprintf(script, sizeof(script), "%s", configured_script);
 

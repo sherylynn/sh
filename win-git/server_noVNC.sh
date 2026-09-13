@@ -110,7 +110,7 @@ if pgrep -x labwc >/dev/null && [ -S /run/user/0/wayland-0 ]; then
   WAYVNC_RESIZE_HOOK=/root/.local/lib/wayvnc_anland_resize.so
   [ -s "$WAYVNC_RESIZE_HOOK" ] || /bin/bash /root/sh/win-git/build_wayvnc_anland_resize.sh
   nohup setsid env LD_PRELOAD="$WAYVNC_RESIZE_HOOK" \
-    NEWHOME_ANLAND_RESIZE_SCRIPT=/root/sh/termux/chroot/wayland/anland_remote_resize.sh \
+    NEWHOME_ANLAND_RESIZE_SCRIPT=/root/sh/termux/chroot/wayland/anland_remote_resize_queue.sh \
     wayvnc -C "$WAYVNC_CONFIG" -r \
     </dev/null >>/root/.vnc/wayvnc.log 2>&1 &
   for _wayvnc_wait in 1 2 3 4 5; do
