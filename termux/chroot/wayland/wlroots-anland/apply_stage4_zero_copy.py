@@ -59,8 +59,9 @@ def main() -> None:
         '''\tconst struct wlr_drm_format_set *(*get_primary_formats)(\n\t\tstruct wlr_output *output, uint32_t buffer_caps);\n''',
         '''\tconst struct wlr_drm_format_set *(*get_primary_formats)(\n\t\tstruct wlr_output *output, uint32_t buffer_caps);\n\t/** Optional externally-owned render target. Returned buffer must be locked. */\n\tstruct wlr_buffer *(*acquire_render_buffer)(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state);\n''')
 
-    # wlroots 0.18 still exposes buffer_age. External Anland targets aren't a
-    # wlroots-owned swapchain, so report age=0 and force conservative repaint.
+    # Debian wlroots 0.18.2 still exposes buffer_age. External Anland targets
+    # aren't a wlroots-owned swapchain, so report age=0 and force conservative
+    # repaint until Weston-style per-consumer-buffer damage is implemented.
     replace_once(render,
         '''static struct wlr_buffer *output_acquire_empty_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state) {\n''',
         '''static struct wlr_buffer *output_acquire_render_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state, int *buffer_age) {\n\tif (output->impl->acquire_render_buffer != NULL) {\n\t\tif (buffer_age != NULL) {\n\t\t\t*buffer_age = 0;\n\t\t}\n\t\treturn output->impl->acquire_render_buffer(output, state);\n\t}\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\treturn wlr_swapchain_acquire(output->swapchain, buffer_age);\n}\n\nstatic struct wlr_buffer *output_acquire_empty_buffer(struct wlr_output *output,\n\t\tconst struct wlr_output_state *state) {\n''')
@@ -69,11 +70,12 @@ def main() -> None:
         '''\t// wlr_output_configure_primary_swapchain() function will call\n\t// wlr_output_test_state(), which can call us again. This is dangerous: we\n\t// risk infinite recursion. However, a buffer will always be supplied in\n\t// wlr_output_test_state(), which will prevent us from being called.\n\tif (!wlr_output_configure_primary_swapchain(output, state,\n\t\t\t&output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, NULL);\n''',
         '''\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state, NULL);\n''')
 
-    # Exact wlroots 0.18.2 ABI: fourth argument is a render timer. wlroots then
-    # builds wlr_buffer_pass_options internally; Stage4 only replaces acquisition.
+    # Debian 13 libwlroots-0.18-dev ABI: buffer_age plus buffer-pass options.
+    # Stage4 only replaces target acquisition and leaves the renderer pass
+    # options/timer handling to stock wlroots.
     replace_once(render,
-        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age, struct wlr_render_timer *timer) {\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, buffer_age);\n''',
-        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age, struct wlr_render_timer *timer) {\n\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state, buffer_age);\n''')
+        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age,\n\t\tstruct wlr_buffer_pass_options *render_options) {\n\tif (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {\n\t\treturn NULL;\n\t}\n\n\tstruct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, buffer_age);\n''',
+        '''struct wlr_render_pass *wlr_output_begin_render_pass(struct wlr_output *output,\n\t\tstruct wlr_output_state *state, int *buffer_age,\n\t\tstruct wlr_buffer_pass_options *render_options) {\n\tstruct wlr_buffer *buffer = output_acquire_render_buffer(output, state, buffer_age);\n''')
 
     # Extend generated Anland backend state after Stage2 has inserted input fields.
     replace_once(header,
