@@ -7,8 +7,10 @@ This directory is the Linux half of NewHome's phone-camera bridge. It does not u
 Debian/Ubuntu chroot:
 
 ```bash
-apt install build-essential pkg-config libpipewire-0.3-dev pipewire
+apt install build-essential pkg-config libpipewire-0.3-dev pipewire pipewire-bin
 ```
+
+`debian/termux_chroot_desktop_setup.sh` now installs these dependencies and creates an XFCE autostart entry. The helper starts a small PipeWire core only if the current chroot session does not already have one. It deliberately does **not** replace the existing Termux PulseAudio audio path.
 
 The helper builds the bridge on first use and installs it to `/usr/local/bin/newhome-camera-pipewire`.
 
@@ -21,7 +23,7 @@ cd ~/sh/termux/chroot
 ./newhome_camera_bridge.sh start
 ```
 
-The first run opens a short NewHome permission Activity. Grant camera access once. Later starts normally return immediately to Linux.
+The first run opens a short NewHome permission Activity. Grant camera access once. Later starts normally return immediately to Linux. With the desktop setup applied, this helper runs automatically when XFCE starts, so Linux applications can discover the camera before they request frames.
 
 Useful commands:
 
@@ -47,6 +49,8 @@ Android chooses the exact YUV_420_888 size when available, otherwise the nearest
 `Camera2 -> ImageReader -> JNI NV21 pack -> two-slot SharedMemory -> SCM_RIGHTS -> newhome-camera-pipewire -> PipeWire Video/Source`
 
 Only protocol messages travel through the abstract Unix socket. Video pixels remain in shared memory and are copied once into the PipeWire buffer. The Android camera is opened only while PipeWire marks the source `STREAMING`.
+
+The bridge uses the session's existing `XDG_RUNTIME_DIR`; if it is unset it falls back to `/run/user/<uid>` and creates it with mode 0700. The same value must be visible to the PipeWire client application. XFCE autostart normally satisfies this because the bridge and graphical applications share the same login session environment.
 
 ## Validation
 

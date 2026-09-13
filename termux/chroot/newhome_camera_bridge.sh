@@ -12,6 +12,7 @@ PERMISSION_ACTIVITY="$PACKAGE/.camera.CameraBridgePermissionActivity"
 SERVICE="$PACKAGE/.camera.CameraBridgeService"
 PID_FILE=/tmp/newhome-camera-pipewire.pid
 LOG_FILE=/tmp/newhome-camera-pipewire.log
+PIPEWIRE_LOG=/tmp/newhome-pipewire.log
 
 log() { printf '[newhome-camera] %s\n' "$*" >&2; }
 fail() { log "ERROR: $*"; exit 1; }
@@ -32,6 +33,35 @@ android_am() {
     local root
     root=$(find_android_root) || fail "cannot locate Android /system through a Termux host process"
     chroot "$root" /system/bin/am "$@"
+}
+
+ensure_pipewire_runtime() {
+    if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+        export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    fi
+    mkdir -p "$XDG_RUNTIME_DIR"
+    chmod 0700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
+}
+
+ensure_pipewire() {
+    command -v pipewire >/dev/null 2>&1 || fail "install pipewire"
+    command -v pw-cli >/dev/null 2>&1 || fail "install pipewire-bin"
+    ensure_pipewire_runtime
+    if pw-cli info 0 >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "starting PipeWire core in XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"
+    nohup setsid pipewire </dev/null >>"$PIPEWIRE_LOG" 2>&1 &
+    for _ in {1..50}; do
+        if pw-cli info 0 >/dev/null 2>&1; then
+            log "PipeWire core is ready"
+            return 0
+        fi
+        sleep 0.1
+    done
+    tail -40 "$PIPEWIRE_LOG" >&2 2>/dev/null || true
+    fail "PipeWire core did not become ready"
 }
 
 ensure_binary() {
@@ -61,6 +91,7 @@ running_pid() {
 }
 
 start_daemon() {
+    ensure_pipewire
     ensure_binary
     if pid=$(running_pid); then
         log "already running pid=$pid"
@@ -86,6 +117,7 @@ stop_all() {
     rm -f "$PID_FILE"
     pkill -x newhome-camera-pipewire 2>/dev/null || true
     android_am stopservice --user 0 -n "$SERVICE" >/dev/null 2>&1 || true
+    # PipeWire is intentionally left alive: other Linux applications may use it.
 }
 
 case "${1:-start}" in
@@ -99,17 +131,20 @@ case "${1:-start}" in
         start_daemon
         ;;
     foreground|fg)
+        ensure_pipewire
         ensure_binary
         start_android
         log "foreground PipeWire source camera=$CAMERA size=${WIDTH}x${HEIGHT}"
         exec "$BIN" --camera "$CAMERA" --width "$WIDTH" --height "$HEIGHT"
         ;;
     status)
+        ensure_pipewire_runtime
+        printf 'PipeWire: %s\n' "$(pw-cli info 0 >/dev/null 2>&1 && echo running || echo stopped)"
         if pid=$(running_pid); then
-            echo "running pid=$pid"
+            echo "Camera bridge: running pid=$pid"
             command -v pw-cli >/dev/null 2>&1 && pw-cli ls Node 2>/dev/null | grep -A8 -B2 -F 'newhome.camera' || true
         else
-            echo "stopped"
+            echo "Camera bridge: stopped"
             exit 1
         fi
         ;;
