@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <drm_fourcc.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <linux/dma-buf.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -34,8 +35,16 @@ static struct wlr_anland_buffer *buffer_from_wlr(struct wlr_buffer *base) {
 
 static void anland_buffer_destroy(struct wlr_buffer *base) {
     struct wlr_anland_buffer *buffer = buffer_from_wlr(base);
+    /* Stage4 duplicates each transport FD. A buffer can outlive an Anland
+     * reconnect while wlroots/renderer still holds a lock, so it must not
+     * borrow a descriptor which libdisplay_producer is free to close. */
+    for (int i = 0; i < buffer->attrs.n_planes; ++i) {
+        if (buffer->attrs.fd[i] >= 0) {
+            close(buffer->attrs.fd[i]);
+            buffer->attrs.fd[i] = -1;
+        }
+    }
     wlr_buffer_finish(base);
-    /* DMA-BUF FDs are borrowed from libdisplay_producer. Never close them here. */
     free(buffer);
 }
 
@@ -64,6 +73,8 @@ static uint32_t protocol_format_to_drm(uint32_t format) {
 void anland_buffer_pool_finish(struct wlr_anland_backend *backend) {
     for (size_t i = 0; i < MAX_BUFS; ++i) {
         if (backend->buffers[i] != NULL) {
+            /* Producer ownership ends now. If wlroots still has the buffer
+             * locked, destruction (and FD close) is deferred until unlock. */
             wlr_buffer_drop(&backend->buffers[i]->base);
             backend->buffers[i] = NULL;
         }
@@ -96,9 +107,9 @@ bool anland_buffer_pool_rebuild(struct wlr_anland_backend *backend) {
     backend->generation++;
 
     for (int i = 0; i < count; ++i) {
-        int fd = get_dmabuf_fd_at(backend->display, i);
+        int source_fd = get_dmabuf_fd_at(backend->display, i);
         struct buf_info info = {0};
-        if (fd < 0 || get_dmabuf_info_at(backend->display, i, &info) < 0) {
+        if (source_fd < 0 || get_dmabuf_info_at(backend->display, i, &info) < 0) {
             wlr_log(WLR_ERROR, "Anland zero-copy: missing DMA-BUF[%d]", i);
             goto fail;
         }
@@ -107,9 +118,16 @@ bool anland_buffer_pool_rebuild(struct wlr_anland_backend *backend) {
             goto fail;
         }
 
+        int fd = fcntl(source_fd, F_DUPFD_CLOEXEC, 3);
+        if (fd < 0) {
+            wlr_log_errno(WLR_ERROR, "Anland zero-copy: failed to duplicate DMA-BUF[%d]", i);
+            goto fail;
+        }
+
         uint32_t drm_format = protocol_format_to_drm(info.format);
         struct wlr_anland_buffer *buffer = calloc(1, sizeof(*buffer));
         if (buffer == NULL) {
+            close(fd);
             goto fail;
         }
         buffer->backend = backend;
@@ -138,8 +156,8 @@ bool anland_buffer_pool_rebuild(struct wlr_anland_backend *backend) {
         }
 
         wlr_log(WLR_INFO,
-            "Anland zero-copy buffer[%d]: fd=%d %dx%d stride=%u format=0x%x modifier=0x%"PRIx64,
-            i, fd, info.width, info.height, info.stride,
+            "Anland zero-copy buffer[%d]: transport-fd=%d owned-fd=%d %dx%d stride=%u format=0x%x modifier=0x%"PRIx64,
+            i, source_fd, fd, info.width, info.height, info.stride,
             drm_format, (uint64_t)info.modifier);
     }
 
@@ -195,7 +213,9 @@ bool anland_buffer_is_current(struct wlr_anland_backend *backend,
 static int export_dmabuf_render_fence(int fd) {
 #ifdef DMA_BUF_IOCTL_EXPORT_SYNC_FILE
     struct dma_buf_export_sync_file export = {
-        .flags = DMA_BUF_SYNC_WRITE,
+        /* SurfaceFlinger/Anland will read the completed image. READ exports
+         * the latest writer fence; WRITE would unnecessarily wait for readers. */
+        .flags = DMA_BUF_SYNC_READ,
         .fd = -1,
     };
     if (ioctl(fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &export) == 0) {
@@ -219,6 +239,18 @@ int anland_export_render_fence(struct wlr_anland_backend *backend,
     return export_dmabuf_render_fence(backend->buffers[index]->attrs.fd[0]);
 }
 
+static void damage_whole_output(struct wlr_anland_output *output) {
+    pixman_region32_t full;
+    pixman_region32_init_rect(&full, 0, 0,
+        output->wlr_output.width, output->wlr_output.height);
+    struct wlr_output_event_damage event = {
+        .output = &output->wlr_output,
+        .damage = &full,
+    };
+    wl_signal_emit_mutable(&output->wlr_output.events.damage, &event);
+    pixman_region32_fini(&full);
+}
+
 static int handle_buffer_ready(int fd, uint32_t mask, void *data) {
     struct wlr_anland_backend *backend = data;
     if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
@@ -240,16 +272,11 @@ static int handle_buffer_ready(int fd, uint32_t mask, void *data) {
         return 0;
     }
     wl_list_for_each(output, &backend->outputs, link) {
-        if (backend->force_full_repaint) {
-            pixman_region32_t full;
-            pixman_region32_init_rect(&full, 0, 0, backend->width, backend->height);
-            struct wlr_output_event_damage event = {
-                .output = &output->wlr_output,
-                .damage = &full,
-            };
-            wl_signal_emit_mutable(&output->wlr_output.events.damage, &event);
-            pixman_region32_fini(&full);
-        }
+        /* Android rotates the destination buffer outside wlroots. Until we
+         * implement Weston's per-buffer accumulated-damage bookkeeping, force
+         * the currently selected consumer target to be repainted in full.
+         * This is still one compositor render, not Stage3's second GPU blit. */
+        damage_whole_output(output);
         wlr_output_send_frame(&output->wlr_output);
     }
     backend->force_full_repaint = false;
