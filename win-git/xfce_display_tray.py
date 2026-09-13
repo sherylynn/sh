@@ -23,6 +23,16 @@ CONTROL_CLIENT = "/root/sh/termux/chroot/newhome_control.py"
 CONFIG_DIR = os.path.expanduser("~/.config/termux-x11-display")
 PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
 REMOTE_EVENT_FILE = "/tmp/xfce-display-remote-event"
+RESTART_LOG = "/tmp/newhome-display-restart.log"
+
+
+def log_restart(message):
+    """记录托盘重启闭环，因为成功后 chroot 会被卸载，通知可能来不及显示。"""
+    try:
+        with open(RESTART_LOG, "a", encoding="utf-8") as stream:
+            stream.write(f"{GLib.DateTime.new_now_local().format('%F %T')} {message}\n")
+    except OSError:
+        pass
 
 
 def load_presets():
@@ -90,6 +100,7 @@ def request_container_restart(profile="x11"):
         label = "X11 (Termux:X11)"
 
     notify("桌面重启", f"正在请求 NewHome 重启到 {label}…")
+    log_restart(f"request profile={profile} command={command}")
 
     def worker():
         try:
@@ -100,12 +111,16 @@ def request_container_restart(profile="x11"):
                 timeout=25,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
+            log_restart(f"failed profile={profile} error={exc}")
             GLib.idle_add(notify, "桌面重启失败", f"NewHome 控制桥不可用：{exc}", "critical")
             return
 
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "NewHome 拒绝了重启请求").strip()[-500:]
+            log_restart(f"rejected profile={profile} rc={result.returncode} detail={detail}")
             GLib.idle_add(notify, "桌面重启失败", detail, "critical")
+        else:
+            log_restart(f"accepted profile={profile}")
         # On success NewHome stops this chroot, so a success notification here
         # is intentionally unnecessary and may never be rendered.
 

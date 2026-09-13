@@ -7,7 +7,7 @@ LOG_FILE=/tmp/xfce-display-tray.log
 # 该托盘的 GTK 菜单仍需 XWayland；indicator 图标则通过
 # StatusNotifier 交给 Wayland XFCE 面板，避免 GTK 选到不可用的 display。
 export GDK_BACKEND=x11
-export DISPLAY="${DISPLAY:-:1}"
+export DISPLAY="${DISPLAY:-:0}"
 export XAUTHORITY="${XAUTHORITY:-/root/.Xauthority}"
 
 trap 'exit 0' INT TERM

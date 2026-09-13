@@ -24,6 +24,6 @@ xfce4-panel >/tmp/newhome-wayland-panel.log 2>&1 &
 
 # 托盘程序优先使用 Ayatana StatusNotifier，可被原生 Wayland XFCE
 # 面板看见；它会识别 Anland 并调用专用分辨率重连脚本。
-(DISPLAY=:1 xset q >/dev/null 2>&1 || true)
+(DISPLAY="${DISPLAY:-:0}" xset q >/dev/null 2>&1 || true)
 env GDK_BACKEND=x11 python3 /root/sh/win-git/xfce_display_tray.py \
     >/tmp/newhome-wayland-tray.log 2>&1 &
