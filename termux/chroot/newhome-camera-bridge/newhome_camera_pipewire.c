@@ -66,6 +66,7 @@ struct app {
     uint8_t *frame;
     size_t frame_size;
     struct pw_main_loop *loop;
+    struct spa_source *timer;
     struct pw_stream *stream;
     struct spa_hook stream_listener;
     bool pipewire_streaming;
@@ -341,9 +342,22 @@ static void on_stream_state_changed(void *userdata, enum pw_stream_state old,
     a->pipewire_streaming = streaming;
     if (streaming) {
         if (send_start(a) < 0) fprintf(stderr, "NewHome camera: START failed\n");
+        struct timespec first = { .tv_sec = 0, .tv_nsec = 1 };
+        struct timespec interval = { .tv_sec = 0, .tv_nsec = 33333333 };
+        pw_loop_update_timer(pw_main_loop_get_loop(a->loop), a->timer,
+                             &first, &interval, false);
     } else {
+        pw_loop_update_timer(pw_main_loop_get_loop(a->loop), a->timer,
+                             NULL, NULL, false);
         send_stop(a);
     }
+}
+
+static void on_timeout(void *userdata, uint64_t expirations)
+{
+    struct app *a = userdata;
+    (void)expirations;
+    pw_stream_trigger_process(a->stream);
 }
 
 static void on_param_changed(void *userdata, uint32_t id, const struct spa_pod *param)
@@ -397,6 +411,8 @@ static int create_pipewire_source(struct app *a)
 {
     a->loop = pw_main_loop_new(NULL);
     if (!a->loop) return -1;
+    a->timer = pw_loop_add_timer(pw_main_loop_get_loop(a->loop), on_timeout, a);
+    if (!a->timer) return -1;
     struct pw_properties *props = pw_properties_new(
         PW_KEY_MEDIA_CLASS, "Video/Source",
         PW_KEY_MEDIA_TYPE, "Video",
@@ -404,6 +420,7 @@ static int create_pipewire_source(struct app *a)
         PW_KEY_MEDIA_ROLE, "Camera",
         PW_KEY_NODE_NAME, "newhome.camera",
         PW_KEY_NODE_DESCRIPTION, "NewHome Camera",
+        PW_KEY_NODE_SUPPORTS_REQUEST, "1",
         NULL);
     a->stream = pw_stream_new_simple(
         pw_main_loop_get_loop(a->loop), "NewHome Camera", props, &stream_events, a);
@@ -421,7 +438,8 @@ static int create_pipewire_source(struct app *a)
         SPA_FORMAT_VIDEO_size, SPA_POD_Rectangle(&SPA_RECTANGLE(a->width, a->height)),
         SPA_FORMAT_VIDEO_framerate, SPA_POD_Fraction(&SPA_FRACTION(30, 1)));
     int rc = pw_stream_connect(
-        a->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, PW_STREAM_FLAG_MAP_BUFFERS, params, 1);
+        a->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
+        PW_STREAM_FLAG_DRIVER | PW_STREAM_FLAG_MAP_BUFFERS, params, 1);
     if (rc < 0) {
         fprintf(stderr, "NewHome camera: pw_stream_connect: %s\n", spa_strerror(rc));
         return -1;

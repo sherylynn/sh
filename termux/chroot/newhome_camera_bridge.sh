@@ -4,7 +4,14 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SRC_DIR="$SCRIPT_DIR/newhome-camera-bridge"
 BIN=${NEWHOME_CAMERA_BIN:-/usr/local/bin/newhome-camera-pipewire}
-CAMERA=${NEWHOME_CAMERA_INDEX:-0}
+CAMERA_CONFIG=${NEWHOME_CAMERA_CONFIG:-/root/.config/newhome-camera/index}
+if [ -n "${NEWHOME_CAMERA_INDEX:-}" ]; then
+    CAMERA=$NEWHOME_CAMERA_INDEX
+elif [ -r "$CAMERA_CONFIG" ]; then
+    CAMERA=$(cat "$CAMERA_CONFIG")
+else
+    CAMERA=0
+fi
 WIDTH=${NEWHOME_CAMERA_WIDTH:-1280}
 HEIGHT=${NEWHOME_CAMERA_HEIGHT:-720}
 PACKAGE=com.example.customlauncher
@@ -13,6 +20,7 @@ SERVICE="$PACKAGE/.camera.CameraBridgeService"
 PID_FILE=/tmp/newhome-camera-pipewire.pid
 LOG_FILE=/tmp/newhome-camera-pipewire.log
 PIPEWIRE_LOG=/tmp/newhome-pipewire.log
+WIREPLUMBER_LOG=/tmp/newhome-wireplumber.log
 
 log() { printf '[newhome-camera] %s\n' "$*" >&2; }
 fail() { log "ERROR: $*"; exit 1; }
@@ -33,6 +41,43 @@ android_am() {
     local root
     root=$(find_android_root) || fail "cannot locate Android /system through a Termux host process"
     chroot "$root" /system/bin/am "$@"
+}
+
+android_logcat() {
+    local root
+    root=$(find_android_root) || fail "cannot locate Android /system through a Termux host process"
+    chroot "$root" /system/bin/logcat "$@"
+}
+
+android_dumpsys() {
+    local root
+    root=$(find_android_root) || fail "cannot locate Android /system through a Termux host process"
+    chroot "$root" /system/bin/dumpsys "$@"
+}
+
+list_cameras() {
+    local lines
+    lines=$(android_logcat -b all -d -v brief -s NewHomeCameraBridge '*:S' 2>/dev/null |
+        grep 'camera index=' | tail -20 || true)
+    if [ -n "$lines" ]; then
+        printf '%s\n' "$lines" | sed -n 's/.*camera index=/camera index=/p' | sort -u
+    else
+        log "camera index log expired; showing Android cameraId/facing fallback"
+        android_dumpsys media.camera 2>/dev/null | awk '
+            /Camera HAL device .* static information/ {
+                id=$0
+                sub(/^.*vendor_qti\//, "", id)
+                sub(/ .*/, "", id)
+            }
+            /Facing:/ && id != "" {
+                facing=$0
+                sub(/^.*Facing: /, "", facing)
+                printf "camera id=%s facing=%s\n", id, tolower(facing)
+                id=""
+            }
+        '
+    fi
+    printf 'current camera index=%s\n' "$CAMERA"
 }
 
 ensure_pipewire_runtime() {
@@ -64,6 +109,25 @@ ensure_pipewire() {
     fail "PipeWire core did not become ready"
 }
 
+ensure_wireplumber() {
+    command -v wireplumber >/dev/null 2>&1 || fail "install wireplumber"
+    if pgrep -x wireplumber >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # PipeWire core 不负责自动建立摄像头到应用的链接，需要会话管理器处理 target-object。
+    log "starting WirePlumber session manager"
+    nohup setsid wireplumber </dev/null >>"$WIREPLUMBER_LOG" 2>&1 &
+    for _ in {1..50}; do
+        if pgrep -x wireplumber >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    tail -40 "$WIREPLUMBER_LOG" >&2 2>/dev/null || true
+    fail "WirePlumber did not become ready"
+}
+
 ensure_binary() {
     if [ -x "$BIN" ]; then return 0; fi
     command -v pkg-config >/dev/null 2>&1 || fail "install build-essential pkg-config libpipewire-0.3-dev"
@@ -92,6 +156,7 @@ running_pid() {
 
 start_daemon() {
     ensure_pipewire
+    ensure_wireplumber
     ensure_binary
     if pid=$(running_pid); then
         log "already running pid=$pid"
@@ -120,6 +185,17 @@ stop_all() {
     # PipeWire is intentionally left alive: other Linux applications may use it.
 }
 
+switch_camera() {
+    local index=${1:-}
+    [[ "$index" =~ ^[0-9]+$ ]] || fail "camera index must be a non-negative integer"
+    mkdir -p "$(dirname "$CAMERA_CONFIG")"
+    printf '%s\n' "$index" >"$CAMERA_CONFIG"
+    CAMERA=$index
+    stop_all
+    start_daemon
+    log "camera index switched=$CAMERA (saved in $CAMERA_CONFIG)"
+}
+
 case "${1:-start}" in
     build)
         ensure_binary
@@ -132,6 +208,7 @@ case "${1:-start}" in
         ;;
     foreground|fg)
         ensure_pipewire
+        ensure_wireplumber
         ensure_binary
         start_android
         log "foreground PipeWire source camera=$CAMERA size=${WIDTH}x${HEIGHT}"
@@ -148,11 +225,17 @@ case "${1:-start}" in
             exit 1
         fi
         ;;
+    list|cameras)
+        list_cameras
+        ;;
+    switch|camera)
+        switch_camera "${2:-}"
+        ;;
     stop)
         stop_all
         ;;
     *)
-        echo "usage: $0 {start|foreground|stop|status|build|permission}" >&2
+        echo "usage: $0 {start|foreground|stop|status|list|switch INDEX|build|permission}" >&2
         exit 2
         ;;
 esac

@@ -26,7 +26,9 @@ bash /root/sh/debian/newhome_mic_bridge_setup.sh
 apt-get install -y \
     zenity libnotify-bin python3 python3-gi gir1.2-gtk-3.0 \
     x11vnc xclip gcc binutils libvncserver-dev \
-    build-essential pkg-config pipewire pipewire-bin libpipewire-0.3-dev
+    build-essential pkg-config pipewire pipewire-bin wireplumber libpipewire-0.3-dev \
+    gstreamer1.0-tools gstreamer1.0-pipewire \
+    gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 chmod 0755 "$SCALING_SCRIPT" "$TRAY_SCRIPT" "$TRAY_WATCHDOG" "$CLIPBOARD_BRIDGE" "$CAMERA_BRIDGE"
 bash /root/sh/win-git/build_x11vnc_remote_resize.sh
 mkdir -p "$AUTOSTART_DIR"
