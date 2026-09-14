@@ -29,6 +29,10 @@ sudo apt install git vim wget curl sudo jq aria2 -y
 git clone --depth 1 http://github.com/sherylynn/sh ~/sh
 git -C ~/sh pull
 
+# 新系统拿到 sh 仓库后立即部署 apt-fast。apt update 仍由原生 APT 负责，
+# 后续 install/upgrade 可直接使用 apt-fast + aria2 并行下载。
+bash ~/sh/win-git/apt-fast.sh
+
 #. ~/sh/win-git/toolsinit.sh
 #zsh ~/sh/debian/testing_mirror.sh
 #zsh ~/sh/debian/bullseyes_mirror.sh
