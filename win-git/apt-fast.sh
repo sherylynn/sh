@@ -25,9 +25,17 @@ APT_FAST_MAXCONPERSRV=${APT_FAST_MAXCONPERSRV:-4}
 APT_FAST_SPLITCON=${APT_FAST_SPLITCON:-4}
 APT_FAST_MINSPLITSZ=${APT_FAST_MINSPLITSZ:-1M}
 
-$SUDO apt-get update
-$SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  aria2 git ca-certificates
+# server_configure.sh normally installs these dependencies before calling us.
+# Avoid an unconditional apt-get update because metadata refresh is often the
+# slowest part on the phone/proxy network. If package installation really fails,
+# refresh once and retry so this script still works standalone on a fresh rootfs.
+if ! $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  aria2 git ca-certificates; then
+  echo "依赖安装失败，执行 apt-get update 后重试..."
+  $SUDO apt-get update
+  $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    aria2 git ca-certificates
+fi
 
 if [ -d "$APT_FAST_HOME/.git" ]; then
   echo "更新 apt-fast: $APT_FAST_HOME"
