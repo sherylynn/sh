@@ -62,4 +62,19 @@ pw-cli ls Node | grep -A8 -B2 newhome.camera
 
 Then test a PipeWire camera consumer. Check color/orientation, sustained frame delivery, camera switch/index behavior, and that Android's camera privacy indicator turns off when the consumer closes.
 
+For an explicit X11 presentation check, avoid `autovideosink` so the selected sink is known:
+
+```bash
+gst-launch-1.0 pipewiresrc target-object=newhome.camera \
+  stream-properties="props,media.type=Video,media.category=Capture,media.role=Camera" \
+  ! videoconvert ! ximagesink
+```
+
+The PipeWire source must advertise `SPA_META_Header` and fill `pts`, `seq`, and
+`dts_offset` for every queued frame. Without this metadata, file sinks can still
+capture changing NV21 buffers while a clocked X11 video sink remains on the
+initial black frame. A NewHome Activity in the background is not by itself a
+failure: the Android foreground service continues to own Camera2, while the
+Termux:X11 application is expected to be foreground for this test.
+
 The design was informed by Anland's proven camera-resource architecture, but this implementation is independent and does not vendor/copy Anland or Weston GPL source.

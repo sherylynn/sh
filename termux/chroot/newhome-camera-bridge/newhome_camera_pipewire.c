@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include <pipewire/pipewire.h>
+#include <spa/buffer/meta.h>
 #include <spa/param/buffers.h>
 #include <spa/param/video/format-utils.h>
 #include <spa/utils/result.h>
@@ -70,6 +71,10 @@ struct app {
     struct pw_stream *stream;
     struct spa_hook stream_listener;
     bool pipewire_streaming;
+    bool have_frame;
+    uint64_t ready_count;
+    uint64_t process_count;
+    uint32_t sequence;
 };
 
 static struct app *g_app;
@@ -264,6 +269,7 @@ static int adopt_shm(struct app *a, const struct nh_message *m, int fd)
     a->width = m->width;
     a->height = m->height;
     a->generation = m->generation;
+    a->have_frame = false;
     uint8_t *new_frame = realloc(a->frame, expected);
     if (!new_frame) {
         release_shm(a);
@@ -308,6 +314,13 @@ static void *reader_main(void *userdata)
             if (a->shm && m.generation == a->generation && m.value <= a->slot_bytes &&
                 a->frame && a->frame_size <= a->slot_bytes) {
                 memcpy(a->frame, a->shm + (size_t)m.slot * a->slot_bytes, a->frame_size);
+                a->have_frame = true;
+                a->ready_count++;
+                if (a->ready_count == 1 || a->ready_count % 300 == 0) {
+                    fprintf(stderr, "NewHome camera: READY count=%llu generation=%u sample=%u/%u\n",
+                            (unsigned long long)a->ready_count, a->generation,
+                            a->frame[0], a->frame[a->frame_size / 2]);
+                }
             }
             pthread_mutex_unlock(&a->frame_lock);
             send_done(a, m.slot, m.generation);
@@ -338,6 +351,8 @@ static void on_stream_state_changed(void *userdata, enum pw_stream_state old,
         return;
     }
     bool streaming = state == PW_STREAM_STATE_STREAMING;
+    fprintf(stderr, "NewHome camera: PipeWire state %s -> %s\n",
+            pw_stream_state_as_string(old), pw_stream_state_as_string(state));
     if (streaming == a->pipewire_streaming) return;
     a->pipewire_streaming = streaming;
     if (streaming) {
@@ -364,9 +379,9 @@ static void on_param_changed(void *userdata, uint32_t id, const struct spa_pod *
 {
     struct app *a = userdata;
     if (id != SPA_PARAM_Format || !param) return;
-    uint8_t buffer[512];
+    uint8_t buffer[1024];
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
-    const struct spa_pod *params[1];
+    const struct spa_pod *params[2];
     params[0] = spa_pod_builder_add_object(
         &b,
         SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
@@ -375,7 +390,12 @@ static void on_param_changed(void *userdata, uint32_t id, const struct spa_pod *
         SPA_PARAM_BUFFERS_size, SPA_POD_Int((int)a->frame_size),
         SPA_PARAM_BUFFERS_stride, SPA_POD_Int((int)a->width),
         SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemPtr) | (1 << SPA_DATA_MemFd)));
-    pw_stream_update_params(a->stream, params, 1);
+    params[1] = spa_pod_builder_add_object(
+        &b,
+        SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+        SPA_PARAM_META_type, SPA_POD_Id(SPA_META_Header),
+        SPA_PARAM_META_size, SPA_POD_Int(sizeof(struct spa_meta_header)));
+    pw_stream_update_params(a->stream, params, 2);
 }
 
 static void on_process(void *userdata)
@@ -392,11 +412,27 @@ static void on_process(void *userdata)
     size_t n = a->frame_size;
     if (n > buf->datas[0].maxsize) n = buf->datas[0].maxsize;
     if (a->frame && n > 0) memcpy(buf->datas[0].data, a->frame, n);
+    bool have_frame = a->have_frame;
+    a->process_count++;
+    uint64_t process_count = a->process_count;
     pthread_mutex_unlock(&a->frame_lock);
     buf->datas[0].chunk->offset = 0;
     buf->datas[0].chunk->size = (uint32_t)n;
     buf->datas[0].chunk->stride = (int32_t)a->width;
     buf->datas[0].chunk->flags = 0;
+    struct spa_meta_header *header = spa_buffer_find_meta_data(
+        buf, SPA_META_Header, sizeof(struct spa_meta_header));
+    if (header) {
+        header->flags = 0;
+        header->pts = pw_stream_get_nsec(a->stream);
+        header->seq = a->sequence++;
+        header->dts_offset = 0;
+    }
+    if (process_count == 1 || process_count % 300 == 0) {
+        fprintf(stderr, "NewHome camera: PROCESS count=%llu real=%s header=%s bytes=%zu\n",
+                (unsigned long long)process_count, have_frame ? "yes" : "no",
+                header ? "yes" : "no", n);
+    }
     pw_stream_queue_buffer(a->stream, pwb);
 }
 
