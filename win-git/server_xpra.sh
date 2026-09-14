@@ -12,6 +12,7 @@ XPRA_DISPLAY=${XPRA_DISPLAY:-:1}
 XPRA_PASSWORD_FILE=${XPRA_PASSWORD_FILE:-$HOME/.xpra/newhome-password.txt}
 XPRA_LOG_DIR=${XPRA_LOG_DIR:-$HOME/.xpra}
 XPRA_LOG=${XPRA_LOG:-$XPRA_LOG_DIR/newhome-shadow.log}
+XPRA_TLS_HELPER=${XPRA_TLS_HELPER:-$HOME/sh/win-git/noVNC_tls.sh}
 
 mkdir -p "$XPRA_LOG_DIR"
 chmod 700 "$XPRA_LOG_DIR"
@@ -27,6 +28,25 @@ if [ ! -s "$XPRA_PASSWORD_FILE" ]; then
   exit 1
 fi
 chmod 600 "$XPRA_PASSWORD_FILE" 2>/dev/null || true
+
+# Reuse exactly the same NewHome local CA and leaf certificate as noVNC.
+# Controllers that already trust novnc-ca.crt therefore trust Xpra too.
+if [ ! -r "$XPRA_TLS_HELPER" ]; then
+  echo "错误：找不到 noVNC TLS helper：$XPRA_TLS_HELPER" >&2
+  exit 1
+fi
+# shellcheck source=/dev/null
+. "$XPRA_TLS_HELPER"
+novnc_tls_prepare || {
+  echo "错误：无法准备 NewHome/noVNC TLS 证书" >&2
+  exit 1
+}
+XPRA_TLS_CERT=${XPRA_TLS_CERT:-$NOVNC_TLS_CERT}
+XPRA_TLS_KEY=${XPRA_TLS_KEY:-$NOVNC_TLS_KEY}
+[ -s "$XPRA_TLS_CERT" ] && [ -s "$XPRA_TLS_KEY" ] || {
+  echo "错误：Xpra TLS 证书或私钥不存在" >&2
+  exit 1
+}
 
 # Keep the same rendering/input environment as server_noVNC.sh.
 export GTK_IM_MODULE="fcitx"
@@ -82,6 +102,8 @@ COMMON_ARGS=(
   --daemon=no
   --mdns=no
   --sharing=yes
+  "--ssl-cert=${XPRA_TLS_CERT}"
+  "--ssl-key=${XPRA_TLS_KEY}"
 )
 
 # Xpra 6.5 introduced the unambiguous auth=MODULE(option=value) socket syntax.
@@ -89,11 +111,11 @@ COMMON_ARGS=(
 # Debian Bookworm's old Xpra 3.x package or another pre-6.5 build.
 if [ "$XPRA_MAJOR" -gt 6 ] || { [ "$XPRA_MAJOR" -eq 6 ] && [ "$XPRA_MINOR" -ge 5 ]; }; then
   AUTH_BIND="${BIND},auth=file(filename=${XPRA_PASSWORD_FILE})"
-  COMMON_ARGS+=("--bind-tcp=${AUTH_BIND}")
+  COMMON_ARGS+=("--bind-ssl=${AUTH_BIND}")
 else
   COMMON_ARGS+=(
-    "--bind-tcp=${BIND}"
-    --tcp-auth=file
+    "--bind-ssl=${BIND}"
+    --ssl-auth=file
     "--password-file=${XPRA_PASSWORD_FILE}"
   )
 fi
@@ -117,8 +139,10 @@ trap 'rm -f "$XPRA_LOG_DIR/newhome-shadow.pid"' EXIT INT TERM
 
 echo "Xpra: $XPRA_VERSION"
 echo "共享显示：$XPRA_DISPLAY"
-echo "HTML5: http://127.0.0.1:${XPRA_PORT}/"
-echo "监听：$BIND"
+echo "HTML5 HTTPS: https://127.0.0.1:${XPRA_PORT}/"
+echo "监听：$BIND (TLS only)"
+echo "复用 noVNC CA：$NOVNC_TLS_CA_CERT"
+echo "TLS 证书：$XPRA_TLS_CERT"
 echo "日志：$XPRA_LOG"
 
 # Keep this process in the foreground. init_d_xpra.sh is responsible for
