@@ -96,4 +96,6 @@ else
 fi
 echo "运行入口：/root/sh/win-git/server_xpra.sh"
 echo "服务入口：/etc/init.d/xpra start|stop|status"
-echo "HTML5 默认端口：10087"
+echo "HTML5 默认端口：10087（默认仅监听 127.0.0.1，适合 adb forward）"
+echo "密码文件：$XPRA_PASSWORD_FILE"
+echo "若已有 noVNC/wayvnc 凭据，首次安装会复用其中的 password；否则可用 sudo cat $XPRA_PASSWORD_FILE 查看自动生成的密码。"
