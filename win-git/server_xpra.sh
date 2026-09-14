@@ -7,7 +7,7 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 XPRA_PORT=${XPRA_PORT:-10087}
-XPRA_HOST=${XPRA_HOST:-0.0.0.0}
+XPRA_HOST=${XPRA_HOST:-127.0.0.1}
 XPRA_DISPLAY=${XPRA_DISPLAY:-:1}
 XPRA_PASSWORD_FILE=${XPRA_PASSWORD_FILE:-$HOME/.xpra/newhome-password.txt}
 XPRA_LOG_DIR=${XPRA_LOG_DIR:-$HOME/.xpra}
@@ -71,7 +71,9 @@ fi
 
 XPRA_VERSION=$(xpra --version 2>/dev/null | head -1 || true)
 XPRA_MAJOR=$(printf '%s\n' "$XPRA_VERSION" | sed -n 's/.*v\([0-9][0-9]*\).*/\1/p' | head -1)
+XPRA_MINOR=$(printf '%s\n' "$XPRA_VERSION" | sed -n 's/.*v[0-9][0-9]*\.\([0-9][0-9]*\).*/\1/p' | head -1)
 [ -n "$XPRA_MAJOR" ] || XPRA_MAJOR=0
+[ -n "$XPRA_MINOR" ] || XPRA_MINOR=0
 
 BIND="${XPRA_HOST}:${XPRA_PORT}"
 COMMON_ARGS=(
@@ -84,8 +86,8 @@ COMMON_ARGS=(
 
 # Xpra 6.5 introduced the unambiguous auth=MODULE(option=value) socket syntax.
 # Keep a legacy branch so the script still works if installation falls back to
-# Debian Bookworm's old Xpra 3.x package.
-if [ "$XPRA_MAJOR" -ge 6 ]; then
+# Debian Bookworm's old Xpra 3.x package or another pre-6.5 build.
+if [ "$XPRA_MAJOR" -gt 6 ] || { [ "$XPRA_MAJOR" -eq 6 ] && [ "$XPRA_MINOR" -ge 5 ]; }; then
   AUTH_BIND="${BIND},auth=file(filename=${XPRA_PASSWORD_FILE})"
   COMMON_ARGS+=("--bind-tcp=${AUTH_BIND}")
 else
