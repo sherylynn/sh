@@ -29,13 +29,9 @@ case "${1:-start}" in
         "$CHROOT_DIR/root/sh/win-git/server_noVNC.sh"
       chmod 755 "$CHROOT_DIR/root/sh/win-git/server_noVNC.sh"
     fi
-    # 容器可能已经挂载，但此前 noVNC 曾在 X11 就绪前失败；主动补拉服务。
-    if ! pgrep -x x11vnc >/dev/null 2>&1 ||
-      ! pgrep -f 'newhome_websockify.py .*10086 .*5900' >/dev/null 2>&1; then
-      chroot_exec -u root /etc/init.d/noVNC start 2>/dev/null || true
-    fi
-    # rc3 中的桌面和 noVNC 都会异步启动；冷启动时 XFCE 会让 websockify
-    # 晚于 x11vnc 就绪，因此留出 30 秒，避免把正常的慢启动误判为失败。
+    # rc3 已经负责启动桌面和 noVNC。这里只等待服务就绪，绝不再次调用
+    # noVNC init 脚本，否则会与 rc3 的异步启动竞态并产生两套 XFCE 会话。
+    # 冷启动时 websockify 可能晚于 x11vnc，因此最多等待 30 秒。
     for _ in {1..60}; do
       if pgrep -x x11vnc >/dev/null 2>&1 &&
         pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
