@@ -27,9 +27,11 @@ log "加载 toolsinit.sh..."
 # cli.sh 含预期的非零返回 (sudo test -f ... && ..., detect_distro_rootfs return 1)
 # 临时关闭 set -e 避免 source 时误退出
 log "加载 cli.sh..."
+trap - ERR
 set +e
 . "$SCRIPT_DIR/cli.sh"
 set -e
+trap 'log "ERR: 命令失败 行号=$LINENO 命令=\$BASH_COMMAND" >&2' ERR
 log "cli.sh 加载完成, DEBIAN_DIR=$DEBIAN_DIR"
 
 # 检查必要的权限和环境
@@ -56,13 +58,11 @@ check_requirements() {
   fi
   log "root 权限检测通过 (方式: $root_method)"
 
-  # 检查必要的包
-  local required_packages=("termux-x11-nightly" "tsu" "pulseaudio" "virglrenderer-android")
-  for pkg in "${required_packages[@]}"; do
-    if ! pkg list-installed 2>/dev/null | grep -q "^$pkg/"; then
-      log "安装必要的包: $pkg"
-      pkg install "$pkg" -y || error "无法安装 $pkg"
-    fi
+  # 启动阶段只验证关键命令，不执行 pkg；依赖统一由 installer_proot.sh 安装。
+  local required_command
+  for required_command in termux-x11 sv; do
+    command -v "$required_command" >/dev/null 2>&1 ||
+      error "缺少命令 $required_command，请先运行 installer_proot.sh"
   done
 
   log "环境检查完成"
@@ -82,6 +82,12 @@ start_base_services() {
     services=("pulseaudio" "x11")
   else
     services=("virgl" "pulseaudio" "x11")
+  fi
+
+  # GhostLock 用户阶段必须在当前 shell 直接启动真正的 termux-x11。
+  # runit 的 server_x11.sh 依赖 KernelSU sudo，在临时-root路线会立即退出。
+  if [ "${TERMUX_SPLIT_USER_PHASE:-0}" = "1" ]; then
+    services=("pulseaudio")
   fi
 
   for service in "${services[@]}"; do
@@ -107,8 +113,10 @@ start_x11() {
   sudo pkill -f com.termux.x11 2>/dev/null || true
   am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
-  # 清理临时文件
-  clean_tmp
+  # 分阶段启动时，共享 tmp 由 root 阶段处理，用户阶段不得碰 root 文件。
+  if [ "${TERMUX_SPLIT_USER_PHASE:-0}" != "1" ]; then
+    clean_tmp
+  fi
 
   # 启动X11应用
   am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity 2>/dev/null || true
@@ -116,9 +124,19 @@ start_x11() {
   # 启动X11服务器
   export XDG_RUNTIME_DIR="${TMPDIR}"
   termux-x11 :1 -ac +extension DPMS -dpi 100 &
+  local x11_pid=$!
 
-  sleep 2
-  log "X11服务启动完成"
+  # 后台命令启动并不代表成功；必须看到目标进程持续存活。
+  local i
+  for i in {1..10}; do
+    if kill -0 "$x11_pid" 2>/dev/null && pgrep -f 'termux-x11.*:1' >/dev/null 2>&1; then
+      log "Termux:X11 :1 已启动 (pid=$x11_pid)"
+      return 0
+    fi
+    sleep 0.5
+  done
+  wait "$x11_pid" 2>/dev/null || true
+  error "Termux:X11 :1 启动失败"
 }
 
 # 启动chroot linux (调用cli.sh中的函数)
@@ -177,6 +195,25 @@ stop_all() {
   clean_tmp
 
   log "所有服务已停止"
+}
+
+# 只停止属于 Termux 用户的桌面与基础服务；chroot 卸载由 root 阶段负责。
+stop_user_services() {
+  log "停止 Termux 用户服务..."
+  killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+  pkill -f com.termux.x11 2>/dev/null || true
+  am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
+  pkill -TERM -x anland-compatible 2>/dev/null || true
+  pkill -TERM -x anland 2>/dev/null || true
+  am force-stop --user 0 com.anland.termux 2>/dev/null || true
+
+  local service
+  for service in pulseaudio x11 virgl; do
+    if [ -d "$PREFIX/var/service/$service" ]; then
+      sv down "$PREFIX/var/service/$service" 2>/dev/null || true
+    fi
+  done
+  log "Termux 用户服务已停止"
 }
 
 # 检查状态 (整合X11和chroot状态)
