@@ -15,6 +15,8 @@ AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-tray.desktop
 CLIPBOARD_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-clipboard-bridge.desktop
 CAMERA_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-camera-bridge.desktop
 LEGACY_AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-presets-panel.desktop
+DISPLAY_DESKTOP_DIR=/root/Desktop
+DISPLAY_DESKTOP_FILE=$DISPLAY_DESKTOP_DIR/newhome-display-settings.desktop
 
 # Audio/ALSA/PulseAudio integration for all chroot applications.
 bash /root/sh/debian/newhome_mic_bridge_setup.sh
@@ -44,6 +46,20 @@ X-GNOME-Autostart-enabled=true
 OnlyShowIn=XFCE;
 EOF
 chmod 0644 "$AUTOSTART_FILE"
+
+# 通知区域不可用时仍可从 XFCE 桌面打开同一套分辨率/缩放控制。
+mkdir -p "$DISPLAY_DESKTOP_DIR"
+cat >"$DISPLAY_DESKTOP_FILE" <<EOF
+[Desktop Entry]
+Type=Application
+Name=显示设置
+Comment=调整 Termux:X11 分辨率与 Linux 界面缩放
+Exec=$SCALING_SCRIPT --gui
+Icon=video-display
+Terminal=false
+StartupNotify=true
+EOF
+chmod 0755 "$DISPLAY_DESKTOP_FILE"
 
 cat > "$CLIPBOARD_AUTOSTART_FILE" <<EOF
 [Desktop Entry]
