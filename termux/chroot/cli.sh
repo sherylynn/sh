@@ -331,9 +331,20 @@ chroot_exec() {
   fi
   if [ -n "${username}" ]; then
     if [ $# -gt 0 ]; then
-      sudo $busybox chroot "${CHROOT_DIR}" /bin/su - ${username} -c "$*"
+      # GhostLock 临时 root 会继承 Termux PATH；若直接进入 login shell，
+      # /etc/profile 在设置 Linux PATH 前调用 id 就会连基础命令都找不到。
+      # 先用容器内 env 建立纯 Linux 环境，所有 chroot 启动方式都复用它。
+      sudo $busybox chroot "${CHROOT_DIR}" /usr/bin/env -i \
+        HOME="/${username}" USER="${username}" LOGNAME="${username}" \
+        PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+        TERM="${TERM:-xterm-256color}" \
+        /bin/su - ${username} -c "$*"
     else
-      sudo $busybox chroot "${CHROOT_DIR}" /bin/su - ${username}
+      sudo $busybox chroot "${CHROOT_DIR}" /usr/bin/env -i \
+        HOME="/${username}" USER="${username}" LOGNAME="${username}" \
+        PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+        TERM="${TERM:-xterm-256color}" \
+        /bin/su - ${username}
     fi
   else
     PATH="${path}" chroot "${CHROOT_DIR}" $*

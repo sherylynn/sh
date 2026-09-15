@@ -1,5 +1,6 @@
 #!/bin/bash
 SCRIPT_NAME="noVNC"
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # SysV/rc3 启动时 HOME 可能继承为 /；本服务始终以 root 运行，固定运行目录，
 # 避免日志、PID 和认证文件被写到错误位置。
 if [ "$(id -u)" -eq 0 ]; then
@@ -132,7 +133,10 @@ elif pgrep -f "com.termux.x11" >/dev/null; then
   ~/sh/termux/newhome_mic_bridge.sh start >/tmp/newhome-mic-xfce-start.log 2>&1 || true
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
   #source  ~/tools/rc/allToolsrc
-  zsh ~/tools/rc/allToolsrc
+  # SysV/nohup 服务没有交互终端，加载 zplug 会阻塞并产生 broken pipe。
+  if [ -t 0 ] && [ -f "$HOME/tools/rc/allToolsrc" ]; then
+    zsh "$HOME/tools/rc/allToolsrc"
+  fi
   dbus-launch --exit-with-session startxfce4 &
   # 配置项
   VNC_PASSWD_FILE="$HOME/.vnc/passwd"
@@ -146,14 +150,13 @@ elif pgrep -f "com.termux.x11" >/dev/null; then
 
   # 检查并生成密码文件
   if [ ! -f "$VNC_PASSWD_FILE" ]; then
-    echo "未找到 VNC 密码文件，正在创建..."
-    read -s -p "输入 VNC 密码: " vnc_password
-    echo
-    read -s -p "再次确认密码: " vnc_password_confirm
-    echo
-
-    if [ "$vnc_password" != "$vnc_password_confirm" ]; then
-      echo "错误：两次输入的密码不一致！"
+    # 后台服务不能 read /dev/null；优先复用 server_configure 已写入的
+    # wayvnc 密码，使 X11/Wayland 两条 noVNC 路线保持同一凭据。
+    vnc_password=$(sed -n 's/^[[:space:]]*password[[:space:]]*=[[:space:]]*//p' \
+      "$HOME/.config/wayvnc/config" 2>/dev/null | head -1)
+    if [ -z "$vnc_password" ]; then
+      echo "错误：未找到 $VNC_PASSWD_FILE，wayvnc 配置中也没有可复用密码" >&2
+      echo "请先运行 server_configure.sh 配置 VNC 凭据" >&2
       exit 1
     fi
 
@@ -215,7 +218,9 @@ elif [ -e "$DroidSpaces_path" ]; then
   #droidspaces中不需要手动启动xfce4以及加载环境变量
   #当文件本身是bash启动的时候，这里用source就无效，但是本身是zsh启动的时候，再用zsh就无效
   #source  ~/tools/rc/allToolsrc
-  zsh ~/tools/rc/allToolsrc
+  if [ -t 0 ] && [ -f "$HOME/tools/rc/allToolsrc" ]; then
+    zsh "$HOME/tools/rc/allToolsrc"
+  fi
   pgrep -xf "startxfce4" >/dev/null || dbus-launch --exit-with-session startxfce4 &
   # 配置项
   VNC_PASSWD_FILE="$HOME/.vnc/passwd"
