@@ -35,7 +35,7 @@ case "${1:-install}" in
 Type=Application
 Name=DevSpace MCP + Cloudflare Tunnel
 Comment=Start DevSpace MCP service manager
-Exec=/bin/bash -lc '$SERVER_SCRIPT start'
+Exec=/bin/bash $SERVER_SCRIPT start
 Terminal=false
 Hidden=false
 X-GNOME-Autostart-enabled=true
