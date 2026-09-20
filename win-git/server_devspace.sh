@@ -1,39 +1,65 @@
 #!/usr/bin/env bash
-# server_devspace.sh —— DevSpace MCP server + Cloudflare named tunnel service manager
-#
-# Desktop/autostart and init.d may both call "start". start is idempotent and
-# serialized so both startup paths can safely coexist.
+# server_devspace.sh —— DevSpace MCP server + Cloudflare named tunnel service manager.
+# Linux chroot / macOS 共用；start 幂等，所有自启动入口都可以安全调用。
 set -uo pipefail
 
-if [ "$(id -u)" -eq 0 ]; then
-  export HOME=/root
-fi
+SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+OS="$(uname -s)"
 
-NODE_BIN_DIR="$(dirname "$(command -v node 2>/dev/null)" 2>/dev/null || true)"
-if [ ! -x "${NODE_BIN_DIR:-/nonexistent}/node" ]; then
-  for _d in /root/tools/node/node-*/bin; do
-    [ -x "$_d/node" ] && NODE_BIN_DIR="$_d" && break
-  done
+if [ "$(id -u)" -eq 0 ]; then
+  export HOME="${DEVSPACE_HOME:-/root}"
 fi
-export PATH="${NODE_BIN_DIR:-/usr/bin}:/root/tools/node-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
 
 RUN_HOME="${DEVSPACE_HOME:-${HOME:-/root}}"
 CONFIG_DIR="${DEVSPACE_CONFIG_DIR:-$RUN_HOME/.devspace}"
 TOKEN_FILE="$CONFIG_DIR/owner-token"
-SERVE_LOG="${DEVSPACE_SERVE_LOG:-/tmp/devspace-serve.log}"
-TUNNEL_LOG="${DEVSPACE_TUNNEL_LOG:-/tmp/cloudflared-devspace.log}"
-TUNNEL_NAME="${DEVSPACE_TUNNEL_NAME:-devspace}"
+SERVICE_ENV="$CONFIG_DIR/service.env"
+RUN_DIR="${DEVSPACE_RUN_DIR:-$CONFIG_DIR/run}"
+SERVE_PID_FILE="$RUN_DIR/devspace.pid"
+TUNNEL_PID_FILE="$RUN_DIR/cloudflared.pid"
+
+SERVE_LOG="${DEVSPACE_SERVE_LOG:-$CONFIG_DIR/devspace-serve.log}"
+TUNNEL_LOG="${DEVSPACE_TUNNEL_LOG:-$CONFIG_DIR/cloudflared.log}"
+
+read_service_setting() {
+  local key="$1"
+  [ -f "$SERVICE_ENV" ] || return 0
+  grep -E "^${key}=" "$SERVICE_ENV" 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+PERSISTED_TUNNEL_NAME="$(read_service_setting DEVSPACE_TUNNEL_NAME)"
+PERSISTED_PUBLIC_HOST="$(read_service_setting PUBLIC_HOST)"
+
+TUNNEL_NAME="${DEVSPACE_TUNNEL_NAME:-${PERSISTED_TUNNEL_NAME:-devspace}}"
 CLOUDFLARED_CONFIG="${CLOUDFLARED_CONFIG:-$RUN_HOME/.cloudflared/config.yml}"
-WORKDIR="${DEVSPACE_WORKDIR:-$RUN_HOME/sh}"
+WORKDIR="${DEVSPACE_WORKDIR:-$REPO_ROOT}"
+PUBLIC_HOST="${PUBLIC_HOST:-${PERSISTED_PUBLIC_HOST:-devspace.sherylynn.win}}"
+
+export PATH="$RUN_HOME/tools/node-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
+
+if ! command -v node >/dev/null 2>&1; then
+  for _d in "$RUN_HOME"/tools/node/node-*/bin; do
+    [ -x "$_d/node" ] && export PATH="$_d:$PATH" && break
+  done
+fi
+
 DEVSPACE_BIN="${DEVSPACE_BIN:-$(command -v devspace 2>/dev/null || echo "$RUN_HOME/tools/node-global/bin/devspace")}"
-LOCK_FILE="${DEVSPACE_LOCK_FILE:-/tmp/.devspace-service.lock}"
+CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-$(command -v cloudflared 2>/dev/null || echo cloudflared)}"
+
+LOCK_FILE="${DEVSPACE_LOCK_FILE:-${TMPDIR:-/tmp}/.devspace-service-$(id -u).lock}"
 LOCK_DIR="${DEVSPACE_LOCK_DIR:-${LOCK_FILE}.d}"
 
-SERVE_PAT="^node .*bin/devspace serve"
-TUNNEL_PAT="^cloudflared tunnel .*run ${TUNNEL_NAME}"
+SERVE_PAT="(^|/)(node )?.*devspace( |$).*serve"
+TUNNEL_PAT="(^|/)cloudflared .*tunnel .*run ${TUNNEL_NAME}"
+
+ensure_dirs() {
+  mkdir -p "$CONFIG_DIR" "$RUN_DIR"
+  chmod 700 "$CONFIG_DIR" "$RUN_DIR" 2>/dev/null || true
+}
 
 ensure_token() {
-  mkdir -p "$CONFIG_DIR"
+  ensure_dirs
   [ -s "$TOKEN_FILE" ] || openssl rand -base64 32 >"$TOKEN_FILE"
   chmod 600 "$TOKEN_FILE"
   if [ ! -s "$CONFIG_DIR/auth.json" ]; then
@@ -42,97 +68,183 @@ ensure_token() {
   fi
 }
 
+pid_alive() {
+  local file="$1" pid
+  [ -s "$file" ] || return 1
+  pid="$(cat "$file" 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+pid_matches() {
+  local file="$1" pat="$2" pid command_line
+  pid_alive "$file" || return 1
+  pid="$(cat "$file")"
+  command_line="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+  [ -n "$command_line" ] && printf '%s\n' "$command_line" | grep -Eq "$pat"
+}
+
+find_matching_pid() {
+  pgrep -f "$1" 2>/dev/null | head -1
+}
+
+remember_existing_pid() {
+  local pat="$1" file="$2" pid
+  pid_matches "$file" "$pat" && return 0
+  rm -f "$file"
+  pid="$(find_matching_pid "$pat")"
+  if [ -n "$pid" ]; then
+    printf '%s\n' "$pid" >"$file"
+    return 0
+  fi
+  rm -f "$file"
+  return 1
+}
+
+start_background() {
+  local pid_file="$1" log_file="$2"
+  shift 2
+  nohup "$@" </dev/null >>"$log_file" 2>&1 &
+  printf '%s\n' "$!" >"$pid_file"
+}
+
 start_unlocked() {
   ensure_token
   export DEVSPACE_OAUTH_OWNER_TOKEN="$(cat "$TOKEN_FILE")"
 
-  if [ ! -x "$DEVSPACE_BIN" ]; then
-    echo "错误：找不到 devspace 可执行文件（$DEVSPACE_BIN）" >&2
+  [ -x "$DEVSPACE_BIN" ] || { echo "错误：找不到 devspace 可执行文件（$DEVSPACE_BIN）" >&2; return 1; }
+  if ! command -v "$CLOUDFLARED_BIN" >/dev/null 2>&1 && [ ! -x "$CLOUDFLARED_BIN" ]; then
+    echo "错误：找不到 cloudflared（$CLOUDFLARED_BIN）" >&2
     return 1
   fi
+  [ -f "$CLOUDFLARED_CONFIG" ] || { echo "错误：找不到 Cloudflare 配置：$CLOUDFLARED_CONFIG" >&2; return 1; }
+  [ -d "$WORKDIR" ] || { echo "错误：DevSpace 工作目录不存在：$WORKDIR" >&2; return 1; }
 
-  if pgrep -f "$SERVE_PAT" >/dev/null 2>&1; then
-    echo "devspace serve 已在运行，本次不重复启动"
+  if remember_existing_pid "$SERVE_PAT" "$SERVE_PID_FILE"; then
+    echo "devspace serve 已在运行（PID $(cat "$SERVE_PID_FILE")），本次不重复启动"
   else
-    # Close the service-manager lock fd in the daemon. Otherwise the daemon
-    # keeps flock alive after this manager exits and a second startup path can
-    # block forever waiting for a lock that should already have been released.
-    (cd "$WORKDIR" && setsid nohup "$DEVSPACE_BIN" serve </dev/null >"$SERVE_LOG" 2>&1 9>&- &)
-    echo "devspace serve 已启动 -> $SERVE_LOG"
+    (
+      cd "$WORKDIR" || exit 1
+      start_background "$SERVE_PID_FILE" "$SERVE_LOG" "$DEVSPACE_BIN" serve
+    )
+    echo "devspace serve 已启动（PID $(cat "$SERVE_PID_FILE")）-> $SERVE_LOG"
   fi
 
-  if pgrep -f "$TUNNEL_PAT" >/dev/null 2>&1; then
-    echo "cloudflared 隧道已在运行，本次不重复启动"
+  if remember_existing_pid "$TUNNEL_PAT" "$TUNNEL_PID_FILE"; then
+    echo "cloudflared 隧道已在运行（PID $(cat "$TUNNEL_PID_FILE")），本次不重复启动"
   else
-    setsid nohup cloudflared tunnel --config "$CLOUDFLARED_CONFIG" run "$TUNNEL_NAME" </dev/null >"$TUNNEL_LOG" 2>&1 9>&- &
-    echo "cloudflared 隧道已启动 -> $TUNNEL_LOG"
+    start_background "$TUNNEL_PID_FILE" "$TUNNEL_LOG" "$CLOUDFLARED_BIN" tunnel --config "$CLOUDFLARED_CONFIG" run "$TUNNEL_NAME"
+    echo "cloudflared 隧道已启动（PID $(cat "$TUNNEL_PID_FILE")）-> $TUNNEL_LOG"
   fi
 }
 
 with_lock() {
-  # Prefer flock when available. On minimal chroot images without util-linux,
-  # fall back to an atomic mkdir lock so rc3 + desktop cannot race.
+  ensure_dirs
   if command -v flock >/dev/null 2>&1; then
     exec 9>"$LOCK_FILE"
     flock 9
     "$@"
-    return
+    local rc=$?
+    flock -u 9 || true
+    exec 9>&-
+    return "$rc"
   fi
 
   local tries=0
   while ! mkdir "$LOCK_DIR" 2>/dev/null; do
     tries=$((tries + 1))
-    if [ "$tries" -ge 100 ]; then
-      echo "错误：等待 DevSpace 服务锁超时：$LOCK_DIR" >&2
-      return 1
-    fi
+    [ "$tries" -lt 100 ] || { echo "错误：等待 DevSpace 服务锁超时：$LOCK_DIR" >&2; return 1; }
     sleep 0.1
   done
-  trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' RETURN
+
   "$@"
+  local rc=$?
   rmdir "$LOCK_DIR" 2>/dev/null || true
-  trap - RETURN
+  return "$rc"
 }
 
 start() {
-  # rc3 and desktop/autostart may race. Serialize the whole check-and-start
-  # sequence; the second caller then observes the already-running processes.
   with_lock start_unlocked
 }
 
-kill_match() {
-  local pat="$1" pid killed=0
+stop_pid_file() {
+  local name="$1" file="$2" pat="$3" pid tries=0
+  pid_matches "$file" "$pat" || { rm -f "$file"; return 1; }
+
+  pid="$(cat "$file")"
+  kill -TERM "$pid" 2>/dev/null || true
+
+  while kill -0 "$pid" 2>/dev/null && [ "$tries" -lt 30 ]; do
+    tries=$((tries + 1))
+    sleep 0.1
+  done
+
+  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+  rm -f "$file"
+  echo "$name 已停止（PID $pid）"
+}
+
+kill_matching() {
+  local name="$1" pat="$2" found=1 pid
   for pid in $(pgrep -f "$pat" 2>/dev/null); do
     [ "$pid" = "$$" ] && continue
     [ "$pid" = "$PPID" ] && continue
-    kill -TERM "$pid" 2>/dev/null && killed=1
+    kill -TERM "$pid" 2>/dev/null || true
+    found=0
   done
-  [ "$killed" = "1" ]
+  [ "$found" -eq 0 ] && echo "$name 已停止（兼容旧版进程扫描）"
+  return "$found"
 }
 
 stop_unlocked() {
-  kill_match "$SERVE_PAT" && echo "devspace serve 已停止" || echo "devspace serve 未在运行"
-  kill_match "$TUNNEL_PAT" && echo "cloudflared 隧道已停止" || echo "cloudflared 隧道未在运行"
+  local stopped=1
+  stop_pid_file "devspace serve" "$SERVE_PID_FILE" "$SERVE_PAT" && stopped=0 || true
+  stop_pid_file "cloudflared 隧道" "$TUNNEL_PID_FILE" "$TUNNEL_PAT" && stopped=0 || true
+  kill_matching "devspace serve" "$SERVE_PAT" && stopped=0 || true
+  kill_matching "cloudflared 隧道" "$TUNNEL_PAT" && stopped=0 || true
+  [ "$stopped" -eq 0 ] || echo "DevSpace MCP / cloudflared 均未运行"
 }
 
 stop() {
   with_lock stop_unlocked
 }
 
+status_one() {
+  local name="$1" file="$2" pat="$3" pid
+  if pid_matches "$file" "$pat"; then
+    echo "$name: 运行中（PID $(cat "$file")）"
+    return 0
+  fi
+  pid="$(find_matching_pid "$pat")"
+  if [ -n "$pid" ]; then
+    echo "$name: 运行中（兼容检测 PID $pid）"
+    return 0
+  fi
+  echo "$name: 未运行"
+  return 1
+}
+
 status() {
-  echo "--- devspace serve ---"
-  pgrep -af "$SERVE_PAT" || echo "  未运行"
-  echo "--- cloudflared tunnel ---"
-  pgrep -af "$TUNNEL_PAT" || echo "  未运行"
+  echo "--- 进程 ---"
+  status_one "devspace serve" "$SERVE_PID_FILE" "$SERVE_PAT" || true
+  status_one "cloudflared tunnel" "$TUNNEL_PID_FILE" "$TUNNEL_PAT" || true
 
   local code
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:7676/mcp 2>/dev/null || echo 000)"
-  echo "--- 本地 127.0.0.1:7676/mcp ---"
-  [ "$code" = "000" ] && echo "  不可达（serve 未起）" || echo "  HTTP $code（401=正常）"
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:7676/mcp 2>/dev/null || true)"
+  echo "--- 本地 http://127.0.0.1:7676/mcp ---"
+  [ -z "$code" ] && echo "不可达" || echo "HTTP $code（401 也表示服务已到达）"
 
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://${PUBLIC_HOST:-devspace.sherylynn.win}/mcp" 2>/dev/null || echo 000)"
-  echo "--- 公网 https://${PUBLIC_HOST:-devspace.sherylynn.win}/mcp ---"
-  [ "$code" = "000" ] && echo "  不可达（隧道未连上）" || echo "  HTTP $code（401=隧道通）"
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://$PUBLIC_HOST/mcp" 2>/dev/null || true)"
+  echo "--- 公网 https://$PUBLIC_HOST/mcp ---"
+  [ -z "$code" ] && echo "不可达" || echo "HTTP $code（401 也表示隧道已到达）"
+
+  echo "--- 配置 ---"
+  echo "HOME: $RUN_HOME"
+  echo "workdir: $WORKDIR"
+  echo "devspace: $DEVSPACE_BIN"
+  echo "cloudflared: $CLOUDFLARED_BIN"
+  echo "cloudflared config: $CLOUDFLARED_CONFIG"
+  echo "platform: $OS"
 }
 
 case "${1:-start}" in
@@ -141,5 +253,5 @@ case "${1:-start}" in
   restart) stop; sleep 1; start ;;
   status) status ;;
   token) ensure_token; cat "$TOKEN_FILE"; echo ;;
-  *) echo "usage: $0 {start|stop|restart|status|token}"; exit 1 ;;
+  *) echo "usage: $0 {start|stop|restart|status|token}" >&2; exit 1 ;;
 esac
