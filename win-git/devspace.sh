@@ -16,12 +16,14 @@ LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace.plist"
 
 usage() {
   cat <<EOF
-usage: $0 {install|deploy|export [archive]|import <archive>|start|stop|restart|status|token}
+usage: $0 {install|deploy|enable|disable|export [archive]|import <archive>|start|stop|restart|status|token}
 
-  install/deploy       安装当前平台的自动启动入口
+  install/deploy       安装并启用当前平台的自动启动入口
+  enable               启用自动启动，但不强制立即启动服务
+  disable              停止服务并关闭/移除自动启动入口
   export [archive]     导出 DevSpace + Cloudflare Tunnel 的全部持久化配置
   import <archive>     导入配置，并把源机器 HOME 路径迁移到当前 HOME
-  start/stop/...       交给 server_devspace.sh 管理服务
+  start/stop/...       仅管理当前运行状态，不改变自动启动设置
 
 迁移包包含 DevSpace owner token、Cloudflare tunnel credentials/cert.pem 等敏感凭据。
 请像 SSH 私钥一样保管；导出的 tar.gz 会自动设为 600 权限。
@@ -57,6 +59,28 @@ EOF
   echo "desktop autostart: $AUTOSTART_FILE"
 }
 
+disable_linux_autostart() {
+  rm -f "$AUTOSTART_FILE"
+
+  if [ -e /etc/rc3.d/S01devspace ] || [ -L /etc/rc3.d/S01devspace ]; then
+    if [ "$(id -u)" -eq 0 ]; then
+      rm -f /etc/rc3.d/S01devspace
+    else
+      sudo rm -f /etc/rc3.d/S01devspace
+    fi
+  fi
+
+  if [ -e /etc/init.d/devspace ]; then
+    if [ "$(id -u)" -eq 0 ]; then
+      rm -f /etc/init.d/devspace
+    else
+      sudo rm -f /etc/init.d/devspace
+    fi
+  fi
+
+  echo "Linux 自动启动已关闭"
+}
+
 install_macos_autostart() {
   mkdir -p "$LAUNCH_AGENT_DIR" "$RUN_HOME/.devspace"
   cat >"$LAUNCH_AGENT_FILE" <<EOF
@@ -81,6 +105,30 @@ EOF
   launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT_FILE" >/dev/null 2>&1 || true
   launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_FILE"
   echo "macOS LaunchAgent: $LAUNCH_AGENT_FILE"
+}
+
+disable_macos_autostart() {
+  launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT_FILE" >/dev/null 2>&1 || true
+  rm -f "$LAUNCH_AGENT_FILE"
+  echo "macOS 自动启动已关闭"
+}
+
+enable_autostart() {
+  require_runtime
+  case "$OS" in
+    Linux) install_linux_autostart ;;
+    Darwin) install_macos_autostart ;;
+    *) echo "错误：暂不支持平台：$OS" >&2; return 1 ;;
+  esac
+}
+
+disable_autostart() {
+  /bin/bash "$SERVER_SCRIPT" stop || true
+  case "$OS" in
+    Linux) disable_linux_autostart ;;
+    Darwin) disable_macos_autostart ;;
+    *) echo "错误：暂不支持平台：$OS" >&2; return 1 ;;
+  esac
 }
 
 export_config() {
@@ -230,15 +278,18 @@ import_config() {
 
 case "${1:-install}" in
   install|deploy)
-    require_runtime
-    case "$OS" in
-      Linux) install_linux_autostart ;;
-      Darwin) install_macos_autostart ;;
-      *) echo "错误：暂不支持平台：$OS" >&2; exit 1 ;;
-    esac
+    enable_autostart
     echo
-    echo "DevSpace MCP 已部署。"
+    echo "DevSpace MCP 已部署并启用自动启动。"
     echo "服务管理：$SERVER_SCRIPT {start|stop|restart|status|token}"
+    ;;
+  enable)
+    enable_autostart
+    echo "DevSpace MCP 自动启动已启用。"
+    ;;
+  disable)
+    disable_autostart
+    echo "DevSpace MCP 已停止，自动启动已禁用。"
     ;;
   export)
     shift
