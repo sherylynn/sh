@@ -36,7 +36,7 @@ CLOUDFLARED_CONFIG="${CLOUDFLARED_CONFIG:-$RUN_HOME/.cloudflared/config.yml}"
 WORKDIR="${DEVSPACE_WORKDIR:-$REPO_ROOT}"
 PUBLIC_HOST="${PUBLIC_HOST:-${PERSISTED_PUBLIC_HOST:-devspace.sherylynn.win}}"
 
-export PATH="$RUN_HOME/tools/node-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
+export PATH="$RUN_HOME/tools/bin:$RUN_HOME/tools/node-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
 
 if ! command -v node >/dev/null 2>&1; then
   for _d in "$RUN_HOME"/tools/node/node-*/bin; do
@@ -50,8 +50,8 @@ CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-$(command -v cloudflared 2>/dev/null || echo
 LOCK_FILE="${DEVSPACE_LOCK_FILE:-${TMPDIR:-/tmp}/.devspace-service-$(id -u).lock}"
 LOCK_DIR="${DEVSPACE_LOCK_DIR:-${LOCK_FILE}.d}"
 
-SERVE_PAT="(^|/)(node )?.*devspace( |$).*serve"
-TUNNEL_PAT="(^|/)cloudflared .*tunnel .*run ${TUNNEL_NAME}"
+SERVE_PAT="(^|/)([^ ]*/)?node [^ ]*devspace(\.js)? serve( |$)"
+TUNNEL_PAT="(^|/)cloudflared( |$).*tunnel .*run ${TUNNEL_NAME}( |$)"
 
 ensure_dirs() {
   mkdir -p "$CONFIG_DIR" "$RUN_DIR"
@@ -112,9 +112,9 @@ start_unlocked() {
   ensure_token
   export DEVSPACE_OAUTH_OWNER_TOKEN="$(cat "$TOKEN_FILE")"
 
-  [ -x "$DEVSPACE_BIN" ] || { echo "错误：找不到 devspace 可执行文件（$DEVSPACE_BIN）" >&2; return 1; }
+  [ -x "$DEVSPACE_BIN" ] || { echo "错误：找不到 devspace 可执行文件（${DEVSPACE_BIN}）" >&2; return 1; }
   if ! command -v "$CLOUDFLARED_BIN" >/dev/null 2>&1 && [ ! -x "$CLOUDFLARED_BIN" ]; then
-    echo "错误：找不到 cloudflared（$CLOUDFLARED_BIN）" >&2
+    echo "错误：找不到 cloudflared（${CLOUDFLARED_BIN}）" >&2
     return 1
   fi
   [ -f "$CLOUDFLARED_CONFIG" ] || { echo "错误：找不到 Cloudflare 配置：$CLOUDFLARED_CONFIG" >&2; return 1; }
@@ -181,7 +181,7 @@ stop_pid_file() {
 
   kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
   rm -f "$file"
-  echo "$name 已停止（PID $pid）"
+  echo "$name 已停止（PID ${pid}）"
 }
 
 kill_matching() {
@@ -217,7 +217,7 @@ status_one() {
   fi
   pid="$(find_matching_pid "$pat")"
   if [ -n "$pid" ]; then
-    echo "$name: 运行中（兼容检测 PID $pid）"
+    echo "$name: 运行中（兼容检测 PID ${pid}）"
     return 0
   fi
   echo "$name: 未运行"
@@ -232,11 +232,11 @@ status() {
   local code
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:7676/mcp 2>/dev/null || true)"
   echo "--- 本地 http://127.0.0.1:7676/mcp ---"
-  [ -z "$code" ] && echo "不可达" || echo "HTTP $code（401 也表示服务已到达）"
+  [ -z "$code" ] && echo "不可达" || echo "HTTP ${code}（401 也表示服务已到达）"
 
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://$PUBLIC_HOST/mcp" 2>/dev/null || true)"
   echo "--- 公网 https://$PUBLIC_HOST/mcp ---"
-  [ -z "$code" ] && echo "不可达" || echo "HTTP $code（401 也表示隧道已到达）"
+  [ -z "$code" ] && echo "不可达" || echo "HTTP ${code}（401 也表示隧道已到达）"
 
   echo "--- 配置 ---"
   echo "HOME: $RUN_HOME"
