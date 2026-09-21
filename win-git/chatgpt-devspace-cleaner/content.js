@@ -14,20 +14,40 @@
     if (settings.debug) console.debug("[DevSpace Cleaner]", ...args);
   }
 
-  function findComponent(toggle) {
-    // 实测层级：toggle -> div -> button -> div -> span -> span.group/tool-message
-    // -> div.contents（这个 div 同时拥有 MCP connector UI + iframe）。
+  function isDevSpaceIframe(iframe) {
+    if (!iframe) return false;
+    const src = iframe.getAttribute("src") || "";
+    const title = iframe.getAttribute("title") || "";
+    return /web-sandbox\.oaiusercontent\.com/i.test(src)
+      && /^ui:\/\/devspace\//i.test(title);
+  }
+
+  function hasMcpConnector(node) {
+    return [...node.querySelectorAll("button")].some(
+      b => /^mcp$/i.test((b.textContent || "").trim())
+    );
+  }
+
+  function findIframeComponent(iframe) {
+    // 流式响应与历史响应的 DOM 不完全一致。iframe 是更稳定的锚点。
+    let node = iframe;
+    for (let i = 0; node && i < 7; i++, node = node.parentElement) {
+      if (node.matches?.('[data-testid^="conversation-turn"]')) return null;
+      if (!node.matches?.("div.contents")) continue;
+      if (node.querySelectorAll("iframe").length !== 1) continue;
+      if (!hasMcpConnector(node)) continue;
+      return node;
+    }
+    return null;
+  }
+
+  function findToggleComponent(toggle) {
     let node = toggle;
     for (let i = 0; node && i < 9; i++, node = node.parentElement) {
       if (node.matches?.('[data-testid^="conversation-turn"]')) return null;
       if (!node.matches?.("div.contents")) continue;
-
-      const hasToolMessage = !!node.querySelector('span[class*="group/tool-message"]');
-      const iframe = node.querySelector("iframe");
-      const connector = [...node.querySelectorAll("button")].some(
-        b => /^mcp$/i.test((b.textContent || "").trim())
-      );
-      if (hasToolMessage && iframe && connector) return node;
+      const iframe = [...node.querySelectorAll("iframe")].find(isDevSpaceIframe);
+      if (iframe && hasMcpConnector(node)) return node;
     }
     return null;
   }
@@ -47,11 +67,20 @@
 
   function clean() {
     if (settings.mode === "show") return;
-    const toggles = document.querySelectorAll(TOOL_TOGGLE);
     const components = new Set();
-    for (const toggle of toggles) {
+
+    // 主路径：直接反向追踪 DevSpace sandbox iframe。
+    // 流式工具调用即使尚未生成“打开工具调用列表”按钮，也能被及时清理。
+    for (const iframe of document.querySelectorAll("iframe")) {
+      if (!isDevSpaceIframe(iframe)) continue;
+      const component = findIframeComponent(iframe);
+      if (component) components.add(component);
+    }
+
+    // 后备路径：兼容历史工具调用 DOM。
+    for (const toggle of document.querySelectorAll(TOOL_TOGGLE)) {
       if (toggle.closest("[data-dsc]")) continue;
-      const component = findComponent(toggle);
+      const component = findToggleComponent(toggle);
       if (component) components.add(component);
     }
     for (const component of components) {
