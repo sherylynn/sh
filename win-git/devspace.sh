@@ -11,6 +11,9 @@ MIGRATION_VERSION=1
 
 AUTOSTART_DIR="${XDG_CONFIG_HOME:-$RUN_HOME/.config}/autostart"
 AUTOSTART_FILE="$AUTOSTART_DIR/devspace.desktop"
+TRAY_AUTOSTART_FILE="$AUTOSTART_DIR/devspace-tray.desktop"
+TRAY_SCRIPT="$SCRIPT_DIR/devspace_tray.py"
+TRAY_WATCHDOG="$SCRIPT_DIR/devspace_tray_watchdog.sh"
 LAUNCH_AGENT_DIR="$RUN_HOME/Library/LaunchAgents"
 LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace.plist"
 
@@ -18,7 +21,7 @@ usage() {
   cat <<EOF
 usage: $0 {install|deploy|enable|disable|export [archive]|import <archive>|start|stop|restart|status|token}
 
-  install/deploy       安装并启用当前平台的自动启动入口（缺失时自动安装 node/devspace CLI/cloudflared）
+  install/deploy       安装并启用当前平台的自动启动入口（Linux 同时安装 XFCE DevSpace 托盘）
   enable               启用自动启动，但不强制立即启动服务（同样会补齐缺失依赖）
   disable              停止服务并关闭/移除自动启动入口
   export [archive]     导出 DevSpace + Cloudflare Tunnel 的全部持久化配置（含 OAuth 状态库）
@@ -243,11 +246,32 @@ X-GNOME-Autostart-enabled=true
 OnlyShowIn=XFCE;
 EOF
   chmod 644 "$AUTOSTART_FILE"
+
+  # XFCE 托盘只负责交互控制；真正的服务生命周期仍统一走本脚本/server_devspace.sh。
+  # Gtk.StatusIcon 与显示设置托盘保持一致，避免依赖 Ayatana indicator service。
+  if [ -f "$TRAY_SCRIPT" ] && [ -f "$TRAY_WATCHDOG" ]; then
+    chmod 755 "$TRAY_SCRIPT" "$TRAY_WATCHDOG"
+    cat >"$TRAY_AUTOSTART_FILE" <<EOF
+[Desktop Entry]
+Type=Application
+Name=DevSpace MCP Tray
+Comment=Start, stop, import and export DevSpace MCP configuration
+Exec=$TRAY_WATCHDOG
+Icon=network-server
+Terminal=false
+Hidden=false
+X-GNOME-Autostart-enabled=true
+OnlyShowIn=XFCE;
+EOF
+    chmod 644 "$TRAY_AUTOSTART_FILE"
+  fi
   echo "desktop autostart: $AUTOSTART_FILE"
+  echo "DevSpace tray autostart: $TRAY_AUTOSTART_FILE"
 }
 
 disable_linux_autostart() {
-  rm -f "$AUTOSTART_FILE"
+  rm -f "$AUTOSTART_FILE" "$TRAY_AUTOSTART_FILE"
+  pkill -f "^/usr/bin/python3 $TRAY_SCRIPT$" >/dev/null 2>&1 || true
 
   if [ -e /etc/rc3.d/S01devspace ] || [ -L /etc/rc3.d/S01devspace ]; then
     if [ "$(id -u)" -eq 0 ]; then
