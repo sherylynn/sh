@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT DevSpace Card Cleaner",
+  "version": "0.1.0",
+  "description": "折叠或移除 ChatGPT 网页中的 DevSpace/MCP 工具调用卡片，减少长对话 DOM 开销。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://chatgpt.com/*"],
+  "content_scripts": [{
+    "matches": ["https://chatgpt.com/*"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle"
+  }],
+  "action": {
+    "default_title": "DevSpace Card Cleaner",
+    "default_popup": "popup.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "chatgpt-devspace-cleaner@example.invalid",
+      "strict_min_version": "109.0"
+    }
+  }
+}

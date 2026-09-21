@@ -1,0 +1,1 @@
+const API=globalThis.browser??globalThis.chrome;const mode=document.querySelector("#mode"),debug=document.querySelector("#debug");API.storage.local.get({mode:"compact",debug:false},v=>{mode.value=v.mode;debug.checked=v.debug});mode.onchange=()=>API.storage.local.set({mode:mode.value});debug.onchange=()=>API.storage.local.set({debug:debug.checked});

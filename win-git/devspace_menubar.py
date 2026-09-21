@@ -99,6 +99,7 @@ class DevSpaceMenu(rumps.App):
 
         roots = rumps.MenuItem("管理工作目录…", callback=self.manage_roots)
         menu.extend([roots,
+                     rumps.MenuItem("打开 ChatGPT 卡片清理扩展目录", callback=self.open_card_cleaner),
                      rumps.MenuItem("导出配置…", callback=self.export_config),
                      rumps.MenuItem("导入配置…", callback=self.import_config),
                      rumps.MenuItem("查看详细状态…", callback=lambda _: rumps.alert("DevSpace 状态", detail[-3000:])),
@@ -180,6 +181,11 @@ class DevSpaceMenu(rumps.App):
                 action(["restart-devspace"], "应用工作目录", self.refresh)
             else:
                 rumps.alert("添加失败", result.stderr or result.stdout)
+
+    def open_card_cleaner(self, _):
+        # 扩展源码跟随当前仓库管理；Finder 打开后可直接在 Firefox/Chromium 中加载。
+        extension_dir = SCRIPT_DIR / "chatgpt-devspace-cleaner"
+        subprocess.run(["/usr/bin/open", str(extension_dir)], check=False)
 
     def export_config(self, _):
         window = rumps.Window("导出文件路径", "导出 DevSpace 配置", default_text=str(DEFAULT_EXPORT))
