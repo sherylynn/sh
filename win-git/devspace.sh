@@ -527,11 +527,13 @@ export_config() {
 DEVSPACE_TUNNEL_NAME=${DEVSPACE_TUNNEL_NAME:-devspace}
 PUBLIC_HOST=${PUBLIC_HOST:-devspace.sherylynn.win}
 DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}
+DEVSPACE_WIDGETS=${DEVSPACE_WIDGETS:-off}
 DEVSPACE_AUTOSTART=${DEVSPACE_AUTOSTART:-1}
 CLOUDFLARED_AUTOSTART=${CLOUDFLARED_AUTOSTART:-1}
 EOF
   else
     grep -q '^DEVSPACE_ALLOWED_ROOTS=' "$tmp/payload/devspace/service.env" || printf '%s\n' "DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}" >>"$tmp/payload/devspace/service.env"
+    grep -q '^DEVSPACE_WIDGETS=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'DEVSPACE_WIDGETS=off' >>"$tmp/payload/devspace/service.env"
     grep -q '^DEVSPACE_AUTOSTART=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'DEVSPACE_AUTOSTART=1' >>"$tmp/payload/devspace/service.env"
     grep -q '^CLOUDFLARED_AUTOSTART=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'CLOUDFLARED_AUTOSTART=1' >>"$tmp/payload/devspace/service.env"
   fi
