@@ -16,6 +16,9 @@ TRAY_SCRIPT="$SCRIPT_DIR/devspace_tray.py"
 TRAY_WATCHDOG="$SCRIPT_DIR/devspace_tray_watchdog.sh"
 LAUNCH_AGENT_DIR="$RUN_HOME/Library/LaunchAgents"
 LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace.plist"
+MENUBAR_LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace-menubar.plist"
+MENUBAR_SCRIPT="$SCRIPT_DIR/devspace_menubar.py"
+MENUBAR_PYTHON_FILE="$RUN_HOME/.devspace/menubar-python"
 
 usage() {
   cat <<EOF
@@ -298,6 +301,37 @@ disable_linux_autostart() {
   echo "Linux 自动启动已关闭"
 }
 
+ensure_macos_menubar() {
+  [ "$OS" = "Darwin" ] || return 0
+  command -v python3 >/dev/null 2>&1 || { echo "错误：macOS 菜单栏需要 python3" >&2; return 1; }
+  python3 -c 'import rumps' >/dev/null 2>&1 || python3 -m pip install --user rumps
+  command -v python3 >"$MENUBAR_PYTHON_FILE"
+  chmod 600 "$MENUBAR_PYTHON_FILE"
+}
+
+install_macos_menubar() {
+  ensure_macos_menubar
+  local menubar_python
+  menubar_python="$(cat "$MENUBAR_PYTHON_FILE")"
+  mkdir -p "$LAUNCH_AGENT_DIR" "$RUN_HOME/.devspace"
+  cat >"$MENUBAR_LAUNCH_AGENT_FILE" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>win.sherylynn.devspace-menubar</string>
+<key>ProgramArguments</key><array><string>$menubar_python</string><string>$MENUBAR_SCRIPT</string></array>
+<key>RunAtLoad</key><true/>
+<key>KeepAlive</key><true/>
+<key>StandardOutPath</key><string>$RUN_HOME/.devspace/menubar.log</string>
+<key>StandardErrorPath</key><string>$RUN_HOME/.devspace/menubar.log</string>
+</dict></plist>
+EOF
+  chmod 644 "$MENUBAR_LAUNCH_AGENT_FILE"
+  launchctl bootout "gui/$(id -u)" "$MENUBAR_LAUNCH_AGENT_FILE" >/dev/null 2>&1 || true
+  launchctl bootstrap "gui/$(id -u)" "$MENUBAR_LAUNCH_AGENT_FILE"
+  echo "macOS menu bar: $MENUBAR_LAUNCH_AGENT_FILE"
+}
+
 install_macos_autostart() {
   mkdir -p "$LAUNCH_AGENT_DIR" "$RUN_HOME/.devspace"
   cat >"$LAUNCH_AGENT_FILE" <<EOF
@@ -310,7 +344,7 @@ install_macos_autostart() {
   <array>
     <string>/bin/bash</string>
     <string>$SERVER_SCRIPT</string>
-    <string>start</string>
+    <string>autostart-start</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>AbandonProcessGroup</key><true/>
@@ -323,11 +357,13 @@ EOF
   launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT_FILE" >/dev/null 2>&1 || true
   launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_FILE"
   echo "macOS LaunchAgent: $LAUNCH_AGENT_FILE"
+  install_macos_menubar
 }
 
 disable_macos_autostart() {
   launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT_FILE" >/dev/null 2>&1 || true
   rm -f "$LAUNCH_AGENT_FILE"
+  # 菜单栏控制器独立保留，服务关闭自启动后仍可从菜单重新开启。
   echo "macOS 自动启动已关闭"
 }
 
@@ -369,6 +405,51 @@ set_component_autostart() {
   else
     disable_autostart_only
   fi
+}
+
+service_env_set() {
+  local key="$1" value="$2" file="$RUN_HOME/.devspace/service.env" tmp
+  mkdir -p "$RUN_HOME/.devspace"; touch "$file"
+  tmp="${file}.tmp.$$"
+  grep -v -E "^${key}=" "$file" >"$tmp" || true
+  printf '%s=%s\n' "$key" "$value" >>"$tmp"
+  mv "$tmp" "$file"; chmod 600 "$file"
+}
+
+roots_list() {
+  local value=""
+  [ -f "$RUN_HOME/.devspace/service.env" ] && value="$(grep '^DEVSPACE_ALLOWED_ROOTS=' "$RUN_HOME/.devspace/service.env" | tail -1 | cut -d= -f2-)"
+  [ -n "$value" ] || value="$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent"
+  printf '%s\n' "$value" | tr ',' '\n' | awk 'NF && !seen[$0]++'
+}
+
+roots_save_lines() {
+  local joined
+  joined="$(awk 'NF && !seen[$0]++' | paste -sd, -)"
+  service_env_set DEVSPACE_ALLOWED_ROOTS "$joined"
+}
+
+roots_add() {
+  local path="${1:-}"
+  [ -n "$path" ] || { echo "错误：缺少目录" >&2; return 2; }
+  case "$path" in '~'*) path="$RUN_HOME${path#\~}" ;; esac
+  [ -d "$path" ] || { echo "错误：目录不存在：$path" >&2; return 2; }
+  path="$(cd "$path" && pwd -P)"
+  { roots_list; printf '%s\n' "$path"; } | roots_save_lines
+  echo "已允许：$path"
+}
+
+roots_remove() {
+  local path="${1:-}" resolved
+  [ -n "$path" ] || { echo "错误：缺少目录" >&2; return 2; }
+  resolved="$path"; [ ! -d "$path" ] || resolved="$(cd "$path" && pwd -P)"
+  roots_list | awk -v p="$resolved" '$0 != p' | roots_save_lines
+  echo "已移除：$resolved"
+}
+
+roots_scan() {
+  find "$RUN_HOME" -mindepth 1 -maxdepth 3 -type d -name .git -prune -print 2>/dev/null \
+    | sed 's#/.git$##' | sort -u
 }
 
 autostart_enabled() {
@@ -561,7 +642,7 @@ import_oauth_state() {
 }
 
 import_config() {
-  local archive="${1:-}" tmp manifest format version source_home keep_protocol
+  local archive="${1:-}" tmp manifest format version source_home keep_protocol keep_roots
   [ -n "$archive" ] || { echo "错误：import 需要迁移包路径" >&2; return 2; }
   [ -f "$archive" ] || { echo "错误：文件不存在：$archive" >&2; return 2; }
 
@@ -583,7 +664,8 @@ import_config() {
   [ -n "$source_home" ] || { echo "错误：迁移包缺少 source_home" >&2; return 2; }
 
   /bin/bash "$SERVER_SCRIPT" stop >/dev/null 2>&1 || true
-  # 覆盖前记下本机 cloudflared 的传输协议设置（见 restore_local_cloudflared_protocol）
+  # 覆盖前保留本机网络适配和工作目录。工作目录与迁移包里的目录在导入后合并。
+  keep_roots="$(roots_list 2>/dev/null || true)"
   keep_protocol="$(sed -n 's/^[[:space:]]*protocol[[:space:]]*:[[:space:]]*\([^[:space:]#]*\).*/\1/p' \
     "$RUN_HOME/.cloudflared/config.yml" 2>/dev/null | head -1)"
   backup_existing_config
@@ -606,6 +688,11 @@ import_config() {
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/config.json"
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/config.jsonc"
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/service.env"
+  # 合并源机器迁移后的 roots 与本机已有 roots；只保留目标机器实际存在的目录。
+  {
+    roots_list 2>/dev/null || true
+    printf '%s\n' "$keep_roots"
+  } | awk 'NF && !seen[$0]++' | while IFS= read -r root; do [ -d "$root" ] && printf '%s\n' "$root"; done | roots_save_lines
 
   # OAuth 状态：必须在 DevSpace 停止状态下合并（上面已经 stop 过）
   import_oauth_state "$tmp/payload/state/devspace.sqlite"
@@ -658,6 +745,10 @@ case "${1:-install}" in
   cloudflared-autostart-status)
     if component_autostart_enabled CLOUDFLARED_AUTOSTART; then echo enabled; else echo disabled; fi
     ;;
+  roots-list) roots_list ;;
+  roots-scan) roots_scan ;;
+  roots-add) shift; roots_add "${1:-}" ;;
+  roots-remove) shift; roots_remove "${1:-}" ;;
   enable-devspace-autostart) set_component_autostart DEVSPACE_AUTOSTART 1 ;;
   disable-devspace-autostart) set_component_autostart DEVSPACE_AUTOSTART 0 ;;
   enable-cloudflared-autostart) set_component_autostart CLOUDFLARED_AUTOSTART 1 ;;
