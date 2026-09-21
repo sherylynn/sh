@@ -3,6 +3,7 @@
 
 import fcntl
 import os
+import re
 import subprocess
 import threading
 
@@ -11,10 +12,16 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
+try:
+    gi.require_version("AyatanaAppIndicator3", "0.1")
+    from gi.repository import AyatanaAppIndicator3
+except (ValueError, ImportError):
+    AyatanaAppIndicator3 = None
+
 DEVSPACE = "/root/sh/win-git/devspace.sh"
-LOCK_PATH = "/tmp/devspace-tray.lock"
 ACTION_LOG = "/tmp/devspace-tray.log"
-DEFAULT_EXPORT = os.path.expanduser("~/Downloads/devspace-mcp-migration.tar.gz")
+SHARE_DIR = "/sdcard/Download/share"
+DEFAULT_EXPORT = os.path.join(SHARE_DIR, "devspace-mcp-migration.tar.gz")
 
 
 def notify(title, body, urgency="normal"):
@@ -67,17 +74,39 @@ def run_action(args, label, done=None):
 
 class DevSpaceTray:
     def __init__(self):
-        self.icon = Gtk.StatusIcon.new_from_icon_name("network-server")
-        self.icon.set_title("DevSpace MCP")
-        self.icon.set_visible(True)
-        self.icon.connect("popup-menu", self.popup)
-        self.icon.connect("activate", self.activate)
-        self.refresh_tooltip()
-        GLib.timeout_add_seconds(15, self.refresh_tooltip)
+        if AyatanaAppIndicator3 is not None:
+            # 与分辨率托盘保持同一路径。当前 XFCE/Termux:X11 会话由
+            # StatusNotifier 承载托盘菜单，Gtk.StatusIcon 在部分面板组合下
+            # 虽能显示图标但收不到右键 popup-menu 事件。
+            self.indicator = AyatanaAppIndicator3.Indicator.new(
+                "devspace-mcp-controller",
+                "network-server",
+                AyatanaAppIndicator3.IndicatorCategory.SYSTEM_SERVICES,
+            )
+            self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
+            self.indicator.set_title("DevSpace MCP")
+            self.indicator.set_menu(self.build_menu())
+            self.icon = None
+        else:
+            self.indicator = None
+            self.icon = Gtk.StatusIcon.new_from_icon_name("network-server")
+            self.icon.set_title("DevSpace MCP")
+            self.icon.set_tooltip_text("DevSpace MCP")
+            self.icon.set_visible(True)
+            self.icon.connect("popup-menu", self.popup)
+            self.icon.connect("activate", self.activate)
+        GLib.timeout_add_seconds(15, self.refresh_status)
 
-    def refresh_tooltip(self):
+    def refresh_status(self):
         running, _ = service_status()
-        self.icon.set_tooltip_text(f"DevSpace MCP：{'运行中' if running else '已停止'}")
+        title = f"DevSpace MCP：{'运行中' if running else '已停止'}"
+        if self.indicator is not None:
+            self.indicator.set_title(title)
+            # AppIndicator 菜单不能像 Gtk.StatusIcon 那样在点击时动态构建，
+            # 定期替换菜单以刷新“当前/启动/停止”的状态。
+            self.indicator.set_menu(self.build_menu())
+        elif self.icon is not None:
+            self.icon.set_tooltip_text(title)
         return True
 
     @staticmethod
@@ -114,7 +143,7 @@ class DevSpaceTray:
         return menu
 
     def after_action(self, _rc, _detail):
-        self.refresh_tooltip()
+        self.refresh_status()
         return False
 
     def show_status(self):
@@ -128,7 +157,7 @@ class DevSpaceTray:
         dialog.format_secondary_text(detail)
         dialog.run()
         dialog.destroy()
-        self.refresh_tooltip()
+        self.refresh_status()
 
     def export_config(self):
         dialog = Gtk.FileChooserDialog(
@@ -138,9 +167,8 @@ class DevSpaceTray:
         dialog.add_buttons("取消", Gtk.ResponseType.CANCEL, "导出", Gtk.ResponseType.OK)
         dialog.set_do_overwrite_confirmation(True)
         dialog.set_current_name(os.path.basename(DEFAULT_EXPORT))
-        downloads = os.path.dirname(DEFAULT_EXPORT)
-        if os.path.isdir(downloads):
-            dialog.set_current_folder(downloads)
+        os.makedirs(SHARE_DIR, exist_ok=True)
+        dialog.set_current_folder(SHARE_DIR)
         if dialog.run() == Gtk.ResponseType.OK:
             path = dialog.get_filename()
             dialog.destroy()
@@ -154,6 +182,8 @@ class DevSpaceTray:
             action=Gtk.FileChooserAction.OPEN,
         )
         dialog.add_buttons("取消", Gtk.ResponseType.CANCEL, "导入", Gtk.ResponseType.OK)
+        os.makedirs(SHARE_DIR, exist_ok=True)
+        dialog.set_current_folder(SHARE_DIR)
         filt = Gtk.FileFilter()
         filt.set_name("DevSpace 迁移包 (*.tar.gz)")
         filt.add_pattern("*.tar.gz")
@@ -197,7 +227,12 @@ class DevSpaceTray:
 
 
 def main():
-    lock = open(LOCK_PATH, "w", encoding="utf-8")
+    os.environ.pop("LD_PRELOAD", None)
+    os.environ.pop("LD_DEBUG", None)
+    # 与显示托盘一致，按 DISPLAY 隔离锁，避免不可见会话中的托盘实例
+    # 抢占当前会话的 StatusNotifier 项目。
+    display_key = re.sub(r"[^A-Za-z0-9_.-]", "_", os.environ.get("DISPLAY", "wayland"))
+    lock = open(f"/tmp/devspace-tray-{display_key}.lock", "w", encoding="utf-8")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
