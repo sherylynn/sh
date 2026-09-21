@@ -448,8 +448,11 @@ roots_remove() {
 }
 
 roots_scan() {
+  # macOS 的 HOME 里可能包含受 TCC/隐私权限保护的目录。find 即使已经找到
+  # 大量仓库，只要遇到一个不可读目录也会返回非 0，菜单栏就会误判为“扫描失败”。
+  # 工作目录发现是 best-effort：忽略不可访问目录，但保留已经发现的仓库。
   find "$RUN_HOME" -mindepth 1 -maxdepth 3 -type d -name .git -prune -print 2>/dev/null \
-    | sed 's#/.git$##' | sort -u
+    | sed 's#/.git$##' | sort -u || true
 }
 
 autostart_enabled() {
