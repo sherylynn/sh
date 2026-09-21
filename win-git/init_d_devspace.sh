@@ -31,7 +31,7 @@ sudo tee -a /etc/init.d/${SCRIPT_NAME}<<EOF
      else
        # 不做 stop：如果 desktop 已经启动，server_devspace.sh 会直接复用；
        # 如果两个入口同时启动，server_devspace.sh 的 flock 会串行化 check-and-start。
-       nohup setsid /bin/bash '${MANAGER}' start </dev/null >>${INIT_LOG} 2>&1 &
+       nohup setsid /bin/bash '${MANAGER}' autostart-start </dev/null >>${INIT_LOG} 2>&1 &
      fi
      ;;
     stop)

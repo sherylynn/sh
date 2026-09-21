@@ -31,7 +31,11 @@ read_service_setting() {
 PERSISTED_TUNNEL_NAME="$(read_service_setting DEVSPACE_TUNNEL_NAME)"
 PERSISTED_PUBLIC_HOST="$(read_service_setting PUBLIC_HOST)"
 PERSISTED_ALLOWED_ROOTS="$(read_service_setting DEVSPACE_ALLOWED_ROOTS)"
+PERSISTED_DEVSPACE_AUTOSTART="$(read_service_setting DEVSPACE_AUTOSTART)"
+PERSISTED_CLOUDFLARED_AUTOSTART="$(read_service_setting CLOUDFLARED_AUTOSTART)"
 
+DEVSPACE_AUTOSTART="${DEVSPACE_AUTOSTART:-${PERSISTED_DEVSPACE_AUTOSTART:-1}}"
+CLOUDFLARED_AUTOSTART="${CLOUDFLARED_AUTOSTART:-${PERSISTED_CLOUDFLARED_AUTOSTART:-1}}"
 TUNNEL_NAME="${DEVSPACE_TUNNEL_NAME:-${PERSISTED_TUNNEL_NAME:-devspace}}"
 DEVSPACE_ALLOWED_ROOTS="${DEVSPACE_ALLOWED_ROOTS:-${PERSISTED_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}}"
 export DEVSPACE_ALLOWED_ROOTS
@@ -111,18 +115,11 @@ start_background() {
   printf '%s\n' "$!" >"$pid_file"
 }
 
-start_unlocked() {
+start_devspace_unlocked() {
   ensure_token
   export DEVSPACE_OAUTH_OWNER_TOKEN="$(cat "$TOKEN_FILE")"
-
   [ -x "$DEVSPACE_BIN" ] || { echo "错误：找不到 devspace 可执行文件（${DEVSPACE_BIN}）" >&2; return 1; }
-  if ! command -v "$CLOUDFLARED_BIN" >/dev/null 2>&1 && [ ! -x "$CLOUDFLARED_BIN" ]; then
-    echo "错误：找不到 cloudflared（${CLOUDFLARED_BIN}）" >&2
-    return 1
-  fi
-  [ -f "$CLOUDFLARED_CONFIG" ] || { echo "错误：找不到 Cloudflare 配置：$CLOUDFLARED_CONFIG" >&2; return 1; }
   [ -d "$WORKDIR" ] || { echo "错误：DevSpace 工作目录不存在：$WORKDIR" >&2; return 1; }
-
   if remember_existing_pid "$SERVE_PAT" "$SERVE_PID_FILE"; then
     echo "devspace serve 已在运行（PID $(cat "$SERVE_PID_FILE")），本次不重复启动"
   else
@@ -132,13 +129,25 @@ start_unlocked() {
     )
     echo "devspace serve 已启动（PID $(cat "$SERVE_PID_FILE")）-> $SERVE_LOG"
   fi
+}
 
+start_cloudflared_unlocked() {
+  if ! command -v "$CLOUDFLARED_BIN" >/dev/null 2>&1 && [ ! -x "$CLOUDFLARED_BIN" ]; then
+    echo "错误：找不到 cloudflared（${CLOUDFLARED_BIN}）" >&2
+    return 1
+  fi
+  [ -f "$CLOUDFLARED_CONFIG" ] || { echo "错误：找不到 Cloudflare 配置：$CLOUDFLARED_CONFIG" >&2; return 1; }
   if remember_existing_pid "$TUNNEL_PAT" "$TUNNEL_PID_FILE"; then
     echo "cloudflared 隧道已在运行（PID $(cat "$TUNNEL_PID_FILE")），本次不重复启动"
   else
     start_background "$TUNNEL_PID_FILE" "$TUNNEL_LOG" "$CLOUDFLARED_BIN" tunnel --config "$CLOUDFLARED_CONFIG" run "$TUNNEL_NAME"
     echo "cloudflared 隧道已启动（PID $(cat "$TUNNEL_PID_FILE")）-> $TUNNEL_LOG"
   fi
+}
+
+start_unlocked() {
+  start_devspace_unlocked || return $?
+  start_cloudflared_unlocked
 }
 
 with_lock() {
@@ -169,6 +178,24 @@ with_lock() {
 start() {
   with_lock start_unlocked
 }
+
+autostart_start_unlocked() {
+  local started=0
+  if [ "$DEVSPACE_AUTOSTART" = "1" ]; then
+    start_devspace_unlocked || return $?
+    started=1
+  fi
+  if [ "$CLOUDFLARED_AUTOSTART" = "1" ]; then
+    start_cloudflared_unlocked || return $?
+    started=1
+  fi
+  [ "$started" -eq 1 ] || echo "DevSpace 与 cloudflared 的开机自启动均已关闭"
+}
+
+autostart_start() { with_lock autostart_start_unlocked; }
+
+start_devspace() { with_lock start_devspace_unlocked; }
+start_cloudflared() { with_lock start_cloudflared_unlocked; }
 
 stop_pid_file() {
   local name="$1" file="$2" pat="$3" pid tries=0
@@ -208,9 +235,20 @@ stop_unlocked() {
   [ "$stopped" -eq 0 ] || echo "DevSpace MCP / cloudflared 均未运行"
 }
 
+stop_devspace_unlocked() {
+  stop_pid_file "devspace serve" "$SERVE_PID_FILE" "$SERVE_PAT" || kill_matching "devspace serve" "$SERVE_PAT" || echo "devspace serve 未运行"
+}
+
+stop_cloudflared_unlocked() {
+  stop_pid_file "cloudflared 隧道" "$TUNNEL_PID_FILE" "$TUNNEL_PAT" || kill_matching "cloudflared 隧道" "$TUNNEL_PAT" || echo "cloudflared 隧道未运行"
+}
+
 stop() {
   with_lock stop_unlocked
 }
+
+stop_devspace() { with_lock stop_devspace_unlocked; }
+stop_cloudflared() { with_lock stop_cloudflared_unlocked; }
 
 status_one() {
   local name="$1" file="$2" pat="$3" pid
@@ -254,7 +292,14 @@ case "${1:-start}" in
   start) start ;;
   stop) stop ;;
   restart) stop; sleep 1; start ;;
+  start-devspace) start_devspace ;;
+  stop-devspace) stop_devspace ;;
+  restart-devspace) stop_devspace; sleep 1; start_devspace ;;
+  start-cloudflared) start_cloudflared ;;
+  stop-cloudflared) stop_cloudflared ;;
+  restart-cloudflared) stop_cloudflared; sleep 1; start_cloudflared ;;
+  autostart-start) autostart_start ;;
   status) status ;;
   token) ensure_token; cat "$TOKEN_FILE"; echo ;;
-  *) echo "usage: $0 {start|stop|restart|status|token}" >&2; exit 1 ;;
+  *) echo "usage: $0 {start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|autostart-start|status|token}" >&2; exit 1 ;;
 esac

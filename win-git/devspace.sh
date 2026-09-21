@@ -19,7 +19,7 @@ LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace.plist"
 
 usage() {
   cat <<EOF
-usage: $0 {install|deploy|enable|disable|enable-autostart|disable-autostart|autostart-status|export [archive]|import <archive>|start|stop|restart|status|token}
+usage: $0 {install|deploy|enable|disable|enable-autostart|disable-autostart|autostart-status|start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|export [archive]|import <archive>|status|token}
 
   install/deploy       安装并启用当前平台的自动启动入口（Linux 同时安装 XFCE DevSpace 托盘）
   enable               启用自动启动，但不强制立即启动服务（同样会补齐缺失依赖）
@@ -29,7 +29,9 @@ usage: $0 {install|deploy|enable|disable|enable-autostart|disable-autostart|auto
   autostart-status     输出 enabled 或 disabled
   export [archive]     导出 DevSpace + Cloudflare Tunnel 的全部持久化配置（含 OAuth 状态库）
   import <archive>     导入配置，并把源机器 HOME 路径迁移到当前 HOME
-  start/stop/...       仅管理当前运行状态，不改变自动启动设置
+  start/stop/restart   同时管理 DevSpace + cloudflared 当前运行状态
+  *-devspace           只管理 DevSpace serve，不影响 cloudflared
+  *-cloudflared        只管理 Cloudflare Tunnel，不影响 DevSpace
 
 迁移包包含 DevSpace owner token、Cloudflare tunnel credentials/cert.pem、以及 DevSpace
 stateDir 里的 OAuth SQLite（已注册 client 与 access/refresh token）等敏感凭据。
@@ -242,7 +244,7 @@ install_linux_autostart() {
 Type=Application
 Name=DevSpace MCP + Cloudflare Tunnel
 Comment=Start DevSpace MCP service manager
-Exec=/bin/bash $SERVER_SCRIPT start
+Exec=/bin/bash $SERVER_SCRIPT autostart-start
 Terminal=false
 Hidden=false
 X-GNOME-Autostart-enabled=true
@@ -346,6 +348,29 @@ disable_autostart_only() {
   esac
 }
 
+component_autostart_enabled() {
+  local key="$1" value=""
+  [ -f "$RUN_HOME/.devspace/service.env" ] && value="$(grep -E "^${key}=" "$RUN_HOME/.devspace/service.env" 2>/dev/null | tail -1 | cut -d= -f2-)"
+  [ "${value:-1}" = "1" ]
+}
+
+set_component_autostart() {
+  local key="$1" value="$2" file="$RUN_HOME/.devspace/service.env" tmp
+  mkdir -p "$RUN_HOME/.devspace"
+  touch "$file"
+  tmp="${file}.tmp.$$"
+  grep -v -E "^${key}=" "$file" >"$tmp" || true
+  printf '%s=%s\n' "$key" "$value" >>"$tmp"
+  mv "$tmp" "$file"
+  chmod 600 "$file"
+  # 至少一个组件启用时保留系统/XFCE 启动入口；两个都关闭时移除入口。
+  if component_autostart_enabled DEVSPACE_AUTOSTART || component_autostart_enabled CLOUDFLARED_AUTOSTART; then
+    enable_autostart
+  else
+    disable_autostart_only
+  fi
+}
+
 autostart_enabled() {
   case "$OS" in
     Linux)
@@ -404,9 +429,13 @@ export_config() {
 DEVSPACE_TUNNEL_NAME=${DEVSPACE_TUNNEL_NAME:-devspace}
 PUBLIC_HOST=${PUBLIC_HOST:-devspace.sherylynn.win}
 DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}
+DEVSPACE_AUTOSTART=${DEVSPACE_AUTOSTART:-1}
+CLOUDFLARED_AUTOSTART=${CLOUDFLARED_AUTOSTART:-1}
 EOF
-  elif ! grep -q '^DEVSPACE_ALLOWED_ROOTS=' "$tmp/payload/devspace/service.env"; then
-    printf '%s\n' "DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}" >>"$tmp/payload/devspace/service.env"
+  else
+    grep -q '^DEVSPACE_ALLOWED_ROOTS=' "$tmp/payload/devspace/service.env" || printf '%s\n' "DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}" >>"$tmp/payload/devspace/service.env"
+    grep -q '^DEVSPACE_AUTOSTART=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'DEVSPACE_AUTOSTART=1' >>"$tmp/payload/devspace/service.env"
+    grep -q '^CLOUDFLARED_AUTOSTART=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'CLOUDFLARED_AUTOSTART=1' >>"$tmp/payload/devspace/service.env"
   fi
   chmod 600 "$tmp/payload/devspace/service.env"
 
@@ -587,12 +616,18 @@ case "${1:-install}" in
     echo "DevSpace MCP 自动启动已禁用；当前运行状态未改变。"
     ;;
   autostart-status)
-    if autostart_enabled; then
-      echo enabled
-    else
-      echo disabled
-    fi
+    if autostart_enabled; then echo enabled; else echo disabled; fi
     ;;
+  devspace-autostart-status)
+    if component_autostart_enabled DEVSPACE_AUTOSTART; then echo enabled; else echo disabled; fi
+    ;;
+  cloudflared-autostart-status)
+    if component_autostart_enabled CLOUDFLARED_AUTOSTART; then echo enabled; else echo disabled; fi
+    ;;
+  enable-devspace-autostart) set_component_autostart DEVSPACE_AUTOSTART 1 ;;
+  disable-devspace-autostart) set_component_autostart DEVSPACE_AUTOSTART 0 ;;
+  enable-cloudflared-autostart) set_component_autostart CLOUDFLARED_AUTOSTART 1 ;;
+  disable-cloudflared-autostart) set_component_autostart CLOUDFLARED_AUTOSTART 0 ;;
   export)
     shift
     export_config "${1:-}"
@@ -601,7 +636,7 @@ case "${1:-install}" in
     shift
     import_config "${1:-}"
     ;;
-  start|stop|restart|status|token)
+  start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|status|token)
     require_runtime
     exec /bin/bash "$SERVER_SCRIPT" "$@"
     ;;

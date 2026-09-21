@@ -41,10 +41,10 @@ def log(message):
         pass
 
 
-def autostart_enabled():
-    """Match devspace.sh's Linux autostart state without changing it."""
+def autostart_enabled(component):
+    command = f"{component}-autostart-status"
     result = subprocess.run(
-        ["/bin/bash", DEVSPACE, "autostart-status"], text=True, capture_output=True
+        ["/bin/bash", DEVSPACE, command], text=True, capture_output=True
     )
     return result.returncode == 0 and result.stdout.strip() == "enabled"
 
@@ -54,11 +54,9 @@ def service_status():
         ["/bin/bash", DEVSPACE, "status"], text=True, capture_output=True
     )
     text = "\n".join(x.strip() for x in (result.stdout, result.stderr) if x.strip())
-    low = text.lower()
-    running = result.returncode == 0 and (
-        "running" in low or "http 401" in low or "运行" in text
-    )
-    return running, text[-1200:] if text else "无状态信息"
+    devspace_running = bool(re.search(r"^devspace serve: 运行中", text, re.MULTILINE))
+    cloudflared_running = bool(re.search(r"^cloudflared tunnel: 运行中", text, re.MULTILINE))
+    return devspace_running, cloudflared_running, text[-1600:] if text else "无状态信息"
 
 
 def run_action(args, label, done=None):
@@ -106,10 +104,13 @@ class DevSpaceTray:
         GLib.timeout_add_seconds(15, self.refresh_status)
 
     def refresh_status(self):
-        running, _ = service_status()
-        enabled = autostart_enabled()
-        title = (f"DevSpace MCP：{'运行中' if running else '已停止'} / "
-                 f"自启动{'已启用' if enabled else '已禁用'}")
+        devspace_running, cloudflared_running, _ = service_status()
+        devspace_auto = autostart_enabled("devspace")
+        cloudflared_auto = autostart_enabled("cloudflared")
+        title = (f"DevSpace：{'运行' if devspace_running else '停止'}"
+                 f"({'自启' if devspace_auto else '手动'}) / "
+                 f"Cloudflare：{'运行' if cloudflared_running else '停止'}"
+                 f"({'自启' if cloudflared_auto else '手动'})")
         if self.indicator is not None:
             self.indicator.set_title(title)
             # AppIndicator 菜单不能像 Gtk.StatusIcon 那样在点击时动态构建，
@@ -127,32 +128,59 @@ class DevSpaceTray:
 
     def build_menu(self):
         menu = Gtk.Menu()
-        running, detail = service_status()
-        enabled = autostart_enabled()
-        current = Gtk.MenuItem(label=f"服务：{'运行中' if running else '已停止'}")
-        current.set_sensitive(False)
-        menu.append(current)
-        startup = Gtk.MenuItem(label=f"开机自启动：{'已启用' if enabled else '已禁用'}")
-        startup.set_sensitive(False)
-        menu.append(startup)
+        devspace_running, cloudflared_running, detail = service_status()
+        devspace_auto = autostart_enabled("devspace")
+        cloudflared_auto = autostart_enabled("cloudflared")
+        devspace_state = Gtk.MenuItem(label=f"DevSpace：{'运行中' if devspace_running else '已停止'} / 自启动{'开' if devspace_auto else '关'}")
+        devspace_state.set_sensitive(False)
+        menu.append(devspace_state)
+        cloudflare_state = Gtk.MenuItem(label=f"Cloudflare Tunnel：{'运行中' if cloudflared_running else '已停止'} / 自启动{'开' if cloudflared_auto else '关'}")
+        cloudflare_state.set_sensitive(False)
+        menu.append(cloudflare_state)
         menu.append(Gtk.SeparatorMenuItem())
 
-        if running:
-            menu.append(self.item("停止 DevSpace", lambda _i: run_action(["stop"], "停止 DevSpace", self.after_action)))
-            menu.append(self.item("重启 DevSpace", lambda _i: run_action(["restart"], "重启 DevSpace", self.after_action)))
+        devspace_menu = Gtk.MenuItem(label="DevSpace 服务")
+        devspace_submenu = Gtk.Menu()
+        if devspace_running:
+            devspace_submenu.append(self.item("停止", lambda _i: run_action(["stop-devspace"], "停止 DevSpace", self.after_action)))
+            devspace_submenu.append(self.item("重启", lambda _i: run_action(["restart-devspace"], "重启 DevSpace", self.after_action)))
         else:
-            menu.append(self.item("启动 DevSpace", lambda _i: run_action(["start"], "启动 DevSpace", self.after_action)))
+            devspace_submenu.append(self.item("启动", lambda _i: run_action(["start-devspace"], "启动 DevSpace", self.after_action)))
+        devspace_submenu.append(Gtk.SeparatorMenuItem())
+        if devspace_auto:
+            devspace_submenu.append(self.item("关闭开机自启动", lambda _i: run_action(["disable-devspace-autostart"], "关闭 DevSpace 自启动", self.after_action)))
+        else:
+            devspace_submenu.append(self.item("开启开机自启动", lambda _i: run_action(["enable-devspace-autostart"], "开启 DevSpace 自启动", self.after_action)))
+        devspace_menu.set_submenu(devspace_submenu)
+        menu.append(devspace_menu)
+
+        cloudflare_menu = Gtk.MenuItem(label="Cloudflare Tunnel")
+        cloudflare_submenu = Gtk.Menu()
+        if cloudflared_running:
+            cloudflare_submenu.append(self.item("停止", lambda _i: run_action(["stop-cloudflared"], "停止 Cloudflare Tunnel", self.after_action)))
+            cloudflare_submenu.append(self.item("重启", lambda _i: run_action(["restart-cloudflared"], "重启 Cloudflare Tunnel", self.after_action)))
+        else:
+            cloudflare_submenu.append(self.item("启动", lambda _i: run_action(["start-cloudflared"], "启动 Cloudflare Tunnel", self.after_action)))
+        cloudflare_submenu.append(Gtk.SeparatorMenuItem())
+        if cloudflared_auto:
+            cloudflare_submenu.append(self.item("关闭开机自启动", lambda _i: run_action(["disable-cloudflared-autostart"], "关闭 Cloudflare 自启动", self.after_action)))
+        else:
+            cloudflare_submenu.append(self.item("开启开机自启动", lambda _i: run_action(["enable-cloudflared-autostart"], "开启 Cloudflare 自启动", self.after_action)))
+        cloudflare_menu.set_submenu(cloudflare_submenu)
+        menu.append(cloudflare_menu)
+
+        whole_menu = Gtk.MenuItem(label="整套服务")
+        whole_submenu = Gtk.Menu()
+        if devspace_running or cloudflared_running:
+            whole_submenu.append(self.item("全部停止", lambda _i: run_action(["stop"], "停止整套服务", self.after_action)))
+        if not (devspace_running and cloudflared_running):
+            whole_submenu.append(self.item("全部启动", lambda _i: run_action(["start"], "启动整套服务", self.after_action)))
+        if devspace_running or cloudflared_running:
+            whole_submenu.append(self.item("全部重启", lambda _i: run_action(["restart"], "重启整套服务", self.after_action)))
+        whole_menu.set_submenu(whole_submenu)
+        menu.append(whole_menu)
 
         menu.append(Gtk.SeparatorMenuItem())
-        if enabled:
-            menu.append(self.item(
-                "禁用开机自启动",
-                lambda _i: run_action(["disable-autostart"], "禁用开机自启动", self.after_action)))
-        else:
-            menu.append(self.item(
-                "启用开机自启动",
-                lambda _i: run_action(["enable-autostart"], "启用开机自启动", self.after_action)))
-
         menu.append(self.item("刷新状态", lambda _i: self.show_status()))
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(self.item("导出配置…", lambda _i: self.export_config()))
@@ -171,14 +199,17 @@ class DevSpaceTray:
         return False
 
     def show_status(self):
-        running, detail = service_status()
-        enabled = autostart_enabled()
+        devspace_running, cloudflared_running, detail = service_status()
+        devspace_auto = autostart_enabled("devspace")
+        cloudflared_auto = autostart_enabled("cloudflared")
         dialog = Gtk.MessageDialog(
             modal=True,
             message_type=Gtk.MessageType.INFO,
             buttons=Gtk.ButtonsType.OK,
-            text=(f"DevSpace MCP：{'运行中' if running else '已停止'} / "
-                  f"自启动{'已启用' if enabled else '已禁用'}"),
+            text=(f"DevSpace：{'运行中' if devspace_running else '已停止'}\n"
+                  f"Cloudflare Tunnel：{'运行中' if cloudflared_running else '已停止'}\n"
+                  f"DevSpace 自启动：{'已启用' if devspace_auto else '已禁用'}\n"
+                  f"Cloudflare 自启动：{'已启用' if cloudflared_auto else '已禁用'}"),
         )
         dialog.format_secondary_text(detail)
         dialog.run()
