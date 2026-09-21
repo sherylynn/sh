@@ -40,6 +40,11 @@ TUNNEL_NAME="${DEVSPACE_TUNNEL_NAME:-${PERSISTED_TUNNEL_NAME:-devspace}}"
 DEVSPACE_ALLOWED_ROOTS="${DEVSPACE_ALLOWED_ROOTS:-${PERSISTED_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}}"
 export DEVSPACE_ALLOWED_ROOTS
 CLOUDFLARED_CONFIG="${CLOUDFLARED_CONFIG:-$RUN_HOME/.cloudflared/config.yml}"
+# 隧道传输协议：空/auto 交回 cloudflared 自决（默认 quic）。
+# 本机有 fake-IP/TUN 代理时 QUIC(UDP 7844) 会被吞，必须 http2(TCP 443)。
+# 用启动 flag 而不是写进 config.yml —— config.yml 会被 devspace.sh import 整体
+# 替换（导入包来自没有该问题的机器），写成 flag 才能跨迁移保持。
+CLOUDFLARED_PROTOCOL="${CLOUDFLARED_PROTOCOL:-http2}"
 WORKDIR="${DEVSPACE_WORKDIR:-$REPO_ROOT}"
 PUBLIC_HOST="${PUBLIC_HOST:-${PERSISTED_PUBLIC_HOST:-devspace.sherylynn.win}}"
 
@@ -58,7 +63,9 @@ LOCK_FILE="${DEVSPACE_LOCK_FILE:-${TMPDIR:-/tmp}/.devspace-service-$(id -u).lock
 LOCK_DIR="${DEVSPACE_LOCK_DIR:-${LOCK_FILE}.d}"
 
 SERVE_PAT="(^|/)([^ ]*/)?node [^ ]*devspace(\.js)? serve( |$)"
-TUNNEL_PAT="(^|/)cloudflared( |$).*tunnel .*run ${TUNNEL_NAME}( |$)"
+# 启动命令形如：cloudflared tunnel --config CFG run [--protocol http2] devspace
+# 隧道名前面可能还有 --protocol 等 flag，故 run 与隧道名之间允许跨 token。
+TUNNEL_PAT="(^|/)cloudflared( |$).*tunnel( |$).*run( |$).*${TUNNEL_NAME}( |$)"
 
 ensure_dirs() {
   mkdir -p "$CONFIG_DIR" "$RUN_DIR"
@@ -140,8 +147,15 @@ start_cloudflared_unlocked() {
   if remember_existing_pid "$TUNNEL_PAT" "$TUNNEL_PID_FILE"; then
     echo "cloudflared 隧道已在运行（PID $(cat "$TUNNEL_PID_FILE")），本次不重复启动"
   else
-    start_background "$TUNNEL_PID_FILE" "$TUNNEL_LOG" "$CLOUDFLARED_BIN" tunnel --config "$CLOUDFLARED_CONFIG" run "$TUNNEL_NAME"
-    echo "cloudflared 隧道已启动（PID $(cat "$TUNNEL_PID_FILE")）-> $TUNNEL_LOG"
+    local args
+    args=(tunnel --config "$CLOUDFLARED_CONFIG" run)
+    case "$CLOUDFLARED_PROTOCOL" in
+      ""|auto) ;;
+      *) args+=(--protocol "$CLOUDFLARED_PROTOCOL") ;;
+    esac
+    args+=("$TUNNEL_NAME")
+    start_background "$TUNNEL_PID_FILE" "$TUNNEL_LOG" "$CLOUDFLARED_BIN" "${args[@]}"
+    echo "cloudflared 隧道已启动（PID $(cat "$TUNNEL_PID_FILE")${CLOUDFLARED_PROTOCOL:+, protocol=${CLOUDFLARED_PROTOCOL}}）-> $TUNNEL_LOG"
   fi
 }
 
@@ -284,6 +298,7 @@ status() {
   echo "workdir: $WORKDIR"
   echo "devspace: $DEVSPACE_BIN"
   echo "cloudflared: $CLOUDFLARED_BIN"
+  echo "cloudflared protocol: ${CLOUDFLARED_PROTOCOL:-auto}"
   echo "cloudflared config: $CLOUDFLARED_CONFIG"
   echo "platform: $OS"
 }

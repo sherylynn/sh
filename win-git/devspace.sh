@@ -468,6 +468,36 @@ rewrite_home_paths() {
   mv "$tmp" "$file"
 }
 
+# 本机网络适配键（protocol）不属于「可迁移设置」：迁移包来自没有该问题的机器，
+# 覆盖后会让本机隧道回落到 QUIC 而连不上 edge（fake-IP/TUN 代理吞 UDP 7844）。
+# 因此导入前记下本机值，导入后以本机值为准：缺该键则补回，值不同则改回本机值。
+restore_local_cloudflared_protocol() {
+  local want="$1" file="$2" cur tmp
+  [ -n "$want" ] || return 0
+  [ -f "$file" ] || return 0
+
+  cur="$(sed -n 's/^[[:space:]]*protocol[[:space:]]*:[[:space:]]*\([^[:space:]#]*\).*/\1/p' "$file" | head -1)"
+  if [ -n "$cur" ]; then
+    [ "$cur" = "$want" ] && return 0
+    tmp="${file}.tmp.$$"
+    WANT="$want" perl -pe 's{^(\s*protocol\s*:\s*)\S+}{$1$ENV{WANT}}' "$file" >"$tmp" && mv "$tmp" "$file"
+    echo "已把导入配置里的 cloudflared protocol（${cur}）改回本机值：${want}"
+    return 0
+  fi
+
+  tmp="${file}.tmp.$$"
+  awk -v want="$want" '
+    !done && /^ingress:/ {
+      print "# 本机网络适配：fake-IP/TUN 代理下 QUIC(UDP) 被吞，强制走 HTTP2(TCP 443)"
+      print "protocol: " want
+      done = 1
+    }
+    { print }
+    END { if (!done) print "protocol: " want }
+  ' "$file" >"$tmp" && mv "$tmp" "$file"
+  echo "已恢复本机 cloudflared protocol 设置：${want}"
+}
+
 validate_archive() {
   local archive="$1" entry
   while IFS= read -r entry; do
@@ -531,7 +561,7 @@ import_oauth_state() {
 }
 
 import_config() {
-  local archive="${1:-}" tmp manifest format version source_home
+  local archive="${1:-}" tmp manifest format version source_home keep_protocol
   [ -n "$archive" ] || { echo "错误：import 需要迁移包路径" >&2; return 2; }
   [ -f "$archive" ] || { echo "错误：文件不存在：$archive" >&2; return 2; }
 
@@ -553,6 +583,9 @@ import_config() {
   [ -n "$source_home" ] || { echo "错误：迁移包缺少 source_home" >&2; return 2; }
 
   /bin/bash "$SERVER_SCRIPT" stop >/dev/null 2>&1 || true
+  # 覆盖前记下本机 cloudflared 的传输协议设置（见 restore_local_cloudflared_protocol）
+  keep_protocol="$(sed -n 's/^[[:space:]]*protocol[[:space:]]*:[[:space:]]*\([^[:space:]#]*\).*/\1/p' \
+    "$RUN_HOME/.cloudflared/config.yml" 2>/dev/null | head -1)"
   backup_existing_config
 
   # 迁移的目标是完整复现源机器的持久化设置，而不是与目标旧设置混合。
@@ -569,6 +602,7 @@ import_config() {
   fi
 
   rewrite_home_paths "$source_home" "$RUN_HOME/.cloudflared/config.yml"
+  restore_local_cloudflared_protocol "$keep_protocol" "$RUN_HOME/.cloudflared/config.yml"
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/config.json"
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/config.jsonc"
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/service.env"
