@@ -19,11 +19,14 @@ LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace.plist"
 
 usage() {
   cat <<EOF
-usage: $0 {install|deploy|enable|disable|export [archive]|import <archive>|start|stop|restart|status|token}
+usage: $0 {install|deploy|enable|disable|enable-autostart|disable-autostart|autostart-status|export [archive]|import <archive>|start|stop|restart|status|token}
 
   install/deploy       安装并启用当前平台的自动启动入口（Linux 同时安装 XFCE DevSpace 托盘）
   enable               启用自动启动，但不强制立即启动服务（同样会补齐缺失依赖）
-  disable              停止服务并关闭/移除自动启动入口
+  disable              停止服务并关闭 DevSpace 自动启动；Linux 控制托盘仍保留自启动
+  enable-autostart     只开启 DevSpace 开机自启动，不改变当前运行状态
+  disable-autostart    只关闭 DevSpace 开机自启动，不改变当前运行状态
+  autostart-status     输出 enabled 或 disabled
   export [archive]     导出 DevSpace + Cloudflare Tunnel 的全部持久化配置（含 OAuth 状态库）
   import <archive>     导入配置，并把源机器 HOME 路径迁移到当前 HOME
   start/stop/...       仅管理当前运行状态，不改变自动启动设置
@@ -270,8 +273,9 @@ EOF
 }
 
 disable_linux_autostart() {
-  rm -f "$AUTOSTART_FILE" "$TRAY_AUTOSTART_FILE"
-  pkill -f "^/usr/bin/python3 $TRAY_SCRIPT$" >/dev/null 2>&1 || true
+  # 这里只关闭 DevSpace 服务的开机启动。控制托盘本身继续自启动，
+  # 这样用户即使关闭了服务自启动，下次登录仍可从托盘重新开启。
+  rm -f "$AUTOSTART_FILE"
 
   if [ -e /etc/rc3.d/S01devspace ] || [ -L /etc/rc3.d/S01devspace ]; then
     if [ "$(id -u)" -eq 0 ]; then
@@ -334,13 +338,29 @@ enable_autostart() {
   esac
 }
 
-disable_autostart() {
-  /bin/bash "$SERVER_SCRIPT" stop || true
+disable_autostart_only() {
   case "$OS" in
     Linux) disable_linux_autostart ;;
     Darwin) disable_macos_autostart ;;
     *) echo "错误：暂不支持平台：$OS" >&2; return 1 ;;
   esac
+}
+
+autostart_enabled() {
+  case "$OS" in
+    Linux)
+      [ -e /etc/rc3.d/S01devspace ] || [ -L /etc/rc3.d/S01devspace ] || [ -f "$AUTOSTART_FILE" ]
+      ;;
+    Darwin)
+      [ -f "$LAUNCH_AGENT_FILE" ]
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+disable_autostart() {
+  /bin/bash "$SERVER_SCRIPT" stop || true
+  disable_autostart_only
 }
 
 export_config() {
@@ -557,6 +577,21 @@ case "${1:-install}" in
   disable)
     disable_autostart
     echo "DevSpace MCP 已停止，自动启动已禁用。"
+    ;;
+  enable-autostart)
+    enable_autostart
+    echo "DevSpace MCP 自动启动已启用；当前运行状态未改变。"
+    ;;
+  disable-autostart)
+    disable_autostart_only
+    echo "DevSpace MCP 自动启动已禁用；当前运行状态未改变。"
+    ;;
+  autostart-status)
+    if autostart_enabled; then
+      echo enabled
+    else
+      echo disabled
+    fi
     ;;
   export)
     shift

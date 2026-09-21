@@ -41,6 +41,14 @@ def log(message):
         pass
 
 
+def autostart_enabled():
+    """Match devspace.sh's Linux autostart state without changing it."""
+    result = subprocess.run(
+        ["/bin/bash", DEVSPACE, "autostart-status"], text=True, capture_output=True
+    )
+    return result.returncode == 0 and result.stdout.strip() == "enabled"
+
+
 def service_status():
     result = subprocess.run(
         ["/bin/bash", DEVSPACE, "status"], text=True, capture_output=True
@@ -99,7 +107,9 @@ class DevSpaceTray:
 
     def refresh_status(self):
         running, _ = service_status()
-        title = f"DevSpace MCP：{'运行中' if running else '已停止'}"
+        enabled = autostart_enabled()
+        title = (f"DevSpace MCP：{'运行中' if running else '已停止'} / "
+                 f"自启动{'已启用' if enabled else '已禁用'}")
         if self.indicator is not None:
             self.indicator.set_title(title)
             # AppIndicator 菜单不能像 Gtk.StatusIcon 那样在点击时动态构建，
@@ -118,9 +128,13 @@ class DevSpaceTray:
     def build_menu(self):
         menu = Gtk.Menu()
         running, detail = service_status()
-        current = Gtk.MenuItem(label=f"当前：{'运行中' if running else '已停止'}")
+        enabled = autostart_enabled()
+        current = Gtk.MenuItem(label=f"服务：{'运行中' if running else '已停止'}")
         current.set_sensitive(False)
         menu.append(current)
+        startup = Gtk.MenuItem(label=f"开机自启动：{'已启用' if enabled else '已禁用'}")
+        startup.set_sensitive(False)
+        menu.append(startup)
         menu.append(Gtk.SeparatorMenuItem())
 
         if running:
@@ -128,6 +142,16 @@ class DevSpaceTray:
             menu.append(self.item("重启 DevSpace", lambda _i: run_action(["restart"], "重启 DevSpace", self.after_action)))
         else:
             menu.append(self.item("启动 DevSpace", lambda _i: run_action(["start"], "启动 DevSpace", self.after_action)))
+
+        menu.append(Gtk.SeparatorMenuItem())
+        if enabled:
+            menu.append(self.item(
+                "禁用开机自启动",
+                lambda _i: run_action(["disable-autostart"], "禁用开机自启动", self.after_action)))
+        else:
+            menu.append(self.item(
+                "启用开机自启动",
+                lambda _i: run_action(["enable-autostart"], "启用开机自启动", self.after_action)))
 
         menu.append(self.item("刷新状态", lambda _i: self.show_status()))
         menu.append(Gtk.SeparatorMenuItem())
@@ -148,11 +172,13 @@ class DevSpaceTray:
 
     def show_status(self):
         running, detail = service_status()
+        enabled = autostart_enabled()
         dialog = Gtk.MessageDialog(
             modal=True,
             message_type=Gtk.MessageType.INFO,
             buttons=Gtk.ButtonsType.OK,
-            text=f"DevSpace MCP：{'运行中' if running else '已停止'}",
+            text=(f"DevSpace MCP：{'运行中' if running else '已停止'} / "
+                  f"自启动{'已启用' if enabled else '已禁用'}"),
         )
         dialog.format_secondary_text(detail)
         dialog.run()
