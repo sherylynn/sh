@@ -10,6 +10,7 @@ TRAY_SCRIPT=/root/sh/win-git/xfce_display_tray.py
 TRAY_WATCHDOG=/root/sh/win-git/xfce_display_tray_watchdog.sh
 CLIPBOARD_BRIDGE=/root/sh/termux/chroot/newhome_clipboard_bridge.py
 CAMERA_BRIDGE=/root/sh/termux/chroot/newhome_camera_bridge.sh
+DISABLE_AYATANA=/root/sh/win-git/disable_ayatana_xfce_autostart.sh
 AUTOSTART_DIR=/root/.config/autostart
 AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-tray.desktop
 CLIPBOARD_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-clipboard-bridge.desktop
@@ -31,9 +32,10 @@ apt-get install -y \
     build-essential pkg-config pipewire pipewire-bin wireplumber libpipewire-0.3-dev \
     gstreamer1.0-tools gstreamer1.0-pipewire \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good
-chmod 0755 "$SCALING_SCRIPT" "$TRAY_SCRIPT" "$TRAY_WATCHDOG" "$CLIPBOARD_BRIDGE" "$CAMERA_BRIDGE"
+chmod 0755 "$SCALING_SCRIPT" "$TRAY_SCRIPT" "$TRAY_WATCHDOG" "$CLIPBOARD_BRIDGE" "$CAMERA_BRIDGE" "$DISABLE_AYATANA"
 bash /root/sh/win-git/build_x11vnc_remote_resize.sh
 mkdir -p "$AUTOSTART_DIR"
+bash "$DISABLE_AYATANA"
 cat > "$AUTOSTART_FILE" <<EOF
 [Desktop Entry]
 Type=Application

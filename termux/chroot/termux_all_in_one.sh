@@ -155,6 +155,45 @@ start_chroot() {
   log "  tenter 或 cshell"
 }
 
+# 在 rc3 启动 noVNC 服务前，把 Termux checkout 中的运行脚本同步进 rootfs。
+# 这样普通 tstart 和 GhostLock 分阶段入口都会使用同一版本。
+sync_remote_desktop_scripts() {
+  local source_file destination_dir
+  destination_dir="$DEBIAN_DIR/root/sh/win-git"
+  sudo mkdir -p "$destination_dir"
+  for source_file in \
+    "$PROJECT_ROOT/win-git/server_noVNC.sh" \
+    "$PROJECT_ROOT/win-git/configure_xrdp_vnc_proxy.sh"; do
+    if [ -f "$source_file" ]; then
+      sudo cp "$source_file" "$destination_dir/$(basename "$source_file")"
+      sudo chmod 755 "$destination_dir/$(basename "$source_file")"
+    fi
+  done
+}
+
+wait_remote_desktop_services() {
+  local wait_step
+  for wait_step in {1..60}; do
+    if pgrep -x x11vnc >/dev/null 2>&1 &&
+      pgrep -x xrdp >/dev/null 2>&1 &&
+      pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
+      grep -qE ':170C .* 0A ' /proc/net/tcp 2>/dev/null &&
+      grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null &&
+      { grep -qE ':0D3D .* 0A ' /proc/net/tcp 2>/dev/null ||
+        grep -qE ':0D3D .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
+      log "远程桌面健康检查通过: x11vnc=:5900 noVNC=:10086 XRDP=:3389"
+      return 0
+    fi
+    sleep 0.5
+  done
+
+  log "ERROR: 远程桌面健康检查失败" >&2
+  sudo tail -120 "$DEBIAN_DIR/root/.vnc/server-noVNC-startup.log" 2>/dev/null || true
+  sudo tail -80 "$DEBIAN_DIR/root/.vnc/x11vnc.log" 2>/dev/null || true
+  sudo tail -80 "$DEBIAN_DIR/root/.vnc/xrdp.log" 2>/dev/null || true
+  return 1
+}
+
 # 停止所有服务
 stop_all() {
   log "停止所有服务..."
@@ -323,7 +362,9 @@ main() {
       check_requirements
       start_base_services
       start_x11
+      sync_remote_desktop_scripts
       start_chroot
+      wait_remote_desktop_services
       log "所有服务启动完成！"
       log "使用 '$0 enter' 进入Linux环境"
       ;;

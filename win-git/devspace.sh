@@ -359,9 +359,12 @@ export_config() {
     cat >"$tmp/payload/devspace/service.env" <<EOF
 DEVSPACE_TUNNEL_NAME=${DEVSPACE_TUNNEL_NAME:-devspace}
 PUBLIC_HOST=${PUBLIC_HOST:-devspace.sherylynn.win}
+DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}
 EOF
-    chmod 600 "$tmp/payload/devspace/service.env"
+  elif ! grep -q '^DEVSPACE_ALLOWED_ROOTS=' "$tmp/payload/devspace/service.env"; then
+    printf '%s\n' "DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}" >>"$tmp/payload/devspace/service.env"
   fi
+  chmod 600 "$tmp/payload/devspace/service.env"
 
   cat >"$tmp/manifest" <<EOF
 format=devspace-mcp-migration
@@ -495,6 +498,7 @@ import_config() {
   rewrite_home_paths "$source_home" "$RUN_HOME/.cloudflared/config.yml"
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/config.json"
   rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/config.jsonc"
+  rewrite_home_paths "$source_home" "$RUN_HOME/.devspace/service.env"
 
   # OAuth 状态：必须在 DevSpace 停止状态下合并（上面已经 stop 过）
   import_oauth_state "$tmp/payload/state/devspace.sqlite"
