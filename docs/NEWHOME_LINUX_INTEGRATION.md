@@ -92,7 +92,55 @@ x11vnc 的 legacy `ServerCutText` 可能把 UTF-8 原始字节当成 8-bit 字�
 - 解码失败则原样保留，因此真正 Latin-1（例如单字节 `é`）不会被误改。
 - 不修改 RFB 状态机，也不修改 X11 selection 状态机。
 
-## 5. 麦克风开关不得控制基础桥生命周期
+## 5. XRDP：通过 xrdp-chansrv 汇入同一个 X11 剪贴板域
+
+XRDP 当前不是创建独立桌面，而是通过 `libvnc.so` 代理现有的
+`x11vnc :5900` / XFCE X11 会话。经典 RFB clipboard 规范只保证
+ISO-8859-1，xrdp 的 VNC backend 会因此丢弃中文等超出范围的 Unicode
+字符。不要为 XRDP 再创建 Android 专用剪贴板协议，也不要修改 4715。
+
+正确链路是：
+
+```text
+RDP client cliprdr
+  <-> xrdp
+  <-> xrdp-chansrv (DISPLAY=:1)
+  <-> X11 CLIPBOARD
+  <-> newhome_clipboard_bridge.py
+  <-> NewHome ClipboardManager
+  <-> Android system clipboard
+```
+
+`server_noVNC.sh` 在启动共享桌面的 XRDP proxy 前先创建
+`/run/xrdp/sockdir/<uid>` 并启动同 DISPLAY 的 `xrdp-chansrv`，只有确认
+`xrdp_chansrv_socket_<display>` 已实际出现后才继续启动 XRDP。
+`configure_xrdp_vnc_proxy.sh` 直接把该 Unix socket 写入 `chansrvport`。
+不要改回 `DISPLAY(n)` 或 `DISPLAY(n,u)`：实测 Debian xrdp 0.10.1 中，
+前者在外部 VNC 会话无法可靠解析 UID，后者会被判为非法配置并静默回退
+到 libvnc 的 ISO-8859-1 clipboard。direct socket 才能稳定让 RDP 文本
+剪贴板绕过 VNC backend，由 chansrv 与 X11 交换 Unicode 文本。
+
+全新平台从 `win-git/server_configure.sh` 进入即可。该入口安装 XFCE/VNC
+环境并调用 `init_d_noVNC.sh` 与 `noVNC.sh`；后者统一安装 `xrdp`、
+`xrdp-chansrv` 所属组件、`xclip` 和 X11 工具，禁用发行版通用 xrdp daemon，
+并生成共享桌面配置。运行时由 `server_noVNC.sh` 重建 runtime socket 目录，
+不依赖重启前的 `/run` 内容，也不需要任何手工配置。系统包自带的通用
+xrdp daemon 必须保持禁用，避免与共享桌面实例争抢 3389。
+
+诊断时重点检查：
+
+```bash
+pgrep -af 'xrdp-chansrv|xrdp --nodaemon'
+grep -E 'cliprdr|chansrvport' /etc/xrdp/newhome-x11.ini
+cat /root/.vnc/xrdp-chansrv-start.log
+cat /root/.local/share/xrdp/xrdp-chansrv.1.log
+xclip -selection clipboard -out
+```
+
+XRDP、noVNC 和 Android 三端都必须最终汇入 X11 `CLIPBOARD`，不要做三套
+两两同步，否则容易形成回环和来源竞争。
+
+## 6. 麦克风开关不得控制基础桥生命周期
 
 “Linux 麦克风桥”只是 `4714` 的录音功能开关。
 
@@ -106,7 +154,7 @@ NewHome 基础 Linux Integration service 在未录音时不应冒充 microphone 
 
 > 若未来 targetSdk 升到 Android 14 / API 34 或更高，需要重新审视 foreground service type；不要直接继续依赖 `TYPE_NONE`。
 
-## 6. 手工验证
+## 7. 手工验证
 
 安装最新 NewHome、拉取最新 `sh` / `noVNC` 后：
 
@@ -165,7 +213,7 @@ xclip -selection clipboard -out
 
 控制和剪贴板正常，只有 4714 录音被拒绝/关闭。
 
-## 7. 修改前检查清单
+## 8. 修改前检查清单
 
 涉及 Linux 集成的后续改动至少检查：
 

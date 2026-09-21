@@ -119,8 +119,16 @@ if [[ $(platform) == *linux* ]]; then
   sudo apt purge kasmvncserver -y
   sudo apt autoremove -y
   # x11vnc 服务 Termux:X11；wayvnc 服务 Anland/Labwc rootless Wayland。
-  sudo apt install python3-numpy x11vnc wayvnc tigervnc-standalone-server tigervnc-tools \
-    openssl libnss3-tools -y
+  sudo apt install python3-numpy x11vnc wayvnc tigervnc-standalone-server tigervnc-tools xrdp \
+    xclip x11-utils openssl libnss3-tools -y
+
+  # XRDP is managed by the same noVNC SysV service as x11vnc. Disable the
+  # package's generic daemon so it cannot race our shared-screen instance.
+  sudo service xrdp stop >/dev/null 2>&1 || true
+  sudo update-rc.d xrdp disable >/dev/null 2>&1 || true
+  sudo systemctl disable xrdp xrdp-sesman >/dev/null 2>&1 || true
+  sudo XRDP_DISPLAY_NUMBER=1 XRDP_SESSION_UID=0 \
+    /bin/bash "$HOME/sh/win-git/configure_xrdp_vnc_proxy.sh"
 
   # Browser patch and x11vnc receiver form one protocol pair. Rebuild the receiver
   # here as well as during a fresh desktop installation, so a noVNC-only update

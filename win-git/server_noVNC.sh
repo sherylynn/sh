@@ -32,6 +32,142 @@ echo $(whoami)
 #novnc -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
 
+start_xrdp_chansrv() {
+  local display="${1:-:1}"
+  local chansrv_bin=/usr/sbin/xrdp-chansrv
+  local chansrv_pid_file="$HOME/.vnc/xrdp-chansrv.pid"
+  local chansrv_log="$HOME/.vnc/xrdp-chansrv-start.log"
+  local old_pid="" old_display=""
+
+  [ -x "$chansrv_bin" ] || {
+    echo "xrdp-chansrv 未安装；请重新运行 $HOME/sh/win-git/noVNC.sh" >&2
+    return 1
+  }
+
+  if [ -s "$chansrv_pid_file" ]; then
+    old_pid=$(cat "$chansrv_pid_file" 2>/dev/null || true)
+    if [ -n "$old_pid" ] && [ -r "/proc/$old_pid/cmdline" ] &&
+       tr '\0' ' ' <"/proc/$old_pid/cmdline" | grep -Fq '/usr/sbin/xrdp-chansrv'; then
+      old_display=$(tr '\0' '\n' <"/proc/$old_pid/environ" 2>/dev/null |
+        sed -n 's/^DISPLAY=//p' | head -1)
+      if [ "$old_display" = "$display" ]; then
+        echo "xrdp-chansrv 已在 $display 上运行（PID $old_pid）"
+        return 0
+      fi
+      kill -TERM "$old_pid" 2>/dev/null || true
+      sleep 1
+    fi
+  fi
+
+  # Debian 的 /usr/share/xrdp/socksetup 通常由 /etc/init.d/xrdp 调用。
+  # 我们刻意禁用了发行版 xrdp service，并由本脚本直接启动 xrdp，
+  # 因此必须在启动 chansrv 前自行创建这个目录。缺少它时 chansrv
+  # 进程仍会存活，但不会创建 xrdp_chansrv_socket_N，xrdp 最终会
+  # xrdp_mm_chansrv_connect timeout，表现就是双向剪贴板完全失效。
+  if [ -r /usr/share/xrdp/socksetup ]; then
+    # shellcheck disable=SC1091
+    . /usr/share/xrdp/socksetup || return 1
+  else
+    mkdir -p /run/xrdp/sockdir || return 1
+    chmod 3777 /run/xrdp/sockdir || return 1
+  fi
+  # xrdp 0.10.x 把每个用户的 chansrv socket 放在 UID 子目录中。
+  # sesman 正常启动会创建它；我们是手工共享现有 DISPLAY，所以也要补上。
+  local chansrv_uid
+  chansrv_uid=$(id -u)
+  mkdir -p "/run/xrdp/sockdir/$chansrv_uid" || return 1
+  chown "$chansrv_uid:$(id -g)" "/run/xrdp/sockdir/$chansrv_uid" 2>/dev/null || true
+  chmod 700 "/run/xrdp/sockdir/$chansrv_uid" || return 1
+
+  # 本项目只维护一个共享 XFCE/X11 桌面。清理没有被 PID 文件记录的旧
+  # chansrv，避免它继续占用上一轮 DISPLAY 的 channel socket。
+  pkill -TERM -x xrdp-chansrv >/dev/null 2>&1 || true
+  sleep 0.5
+  mkdir -p "$HOME/.vnc" "$HOME/.local/share/xrdp"
+  nohup setsid env DISPLAY="$display" XAUTHORITY="$HOME/.Xauthority" HOME="$HOME" \
+    "$chansrv_bin" </dev/null >>"$chansrv_log" 2>&1 &
+  printf '%s\n' "$!" >"$chansrv_pid_file"
+
+  local wait_step
+  for wait_step in 1 2 3 4 5 6; do
+    if kill -0 "$!" 2>/dev/null; then
+      sleep 0.25
+      if kill -0 "$!" 2>/dev/null; then
+        local chansrv_socket="/run/xrdp/sockdir/$(id -u)/xrdp_chansrv_socket_${display#:}"
+        if [ -S "$chansrv_socket" ]; then
+          echo "xrdp-chansrv 已绑定 $display，用于 Unicode cliprdr/X11 剪贴板"
+          return 0
+        fi
+      fi
+    fi
+    sleep 0.25
+  done
+
+  echo "xrdp-chansrv 启动失败，最近日志：" >&2
+  tail -40 "$chansrv_log" >&2
+  return 1
+}
+
+start_xrdp_vnc_proxy() {
+  local display="${1:-:1}"
+  local display_number="${display#:}"
+  local xrdp_bin=/usr/sbin/xrdp
+  local xrdp_config=/etc/xrdp/newhome-x11.ini
+  local xrdp_pid_file="$HOME/.vnc/xrdp.pid"
+  local xrdp_runtime_pid_file=/run/xrdp/xrdp.pid
+  local xrdp_log="$HOME/.vnc/xrdp-newhome.log"
+  local old_pid="" runtime_pid=""
+
+  [ -x "$xrdp_bin" ] || {
+    echo "XRDP 未安装；请重新运行 $HOME/sh/win-git/noVNC.sh" >&2
+    return 1
+  }
+  # xrdp 的 VNC proxy 自带 clipboard 只按经典 RFB/ISO-8859-1 处理。
+  # 对已有 X11 桌面，Unicode 路径是单独启动 xrdp-chansrv，并让连接项
+  # 直接连接它创建的 Unix socket。不能依赖 DISPLAY(n) 推导 UID；在
+  # Debian xrdp 0.10.1 的外部 VNC 会话中它会连错/超时。
+  start_xrdp_chansrv "$display" || return 1
+  XRDP_DISPLAY_NUMBER="$display_number" XRDP_SESSION_UID="$(id -u)" \
+    /bin/bash "$HOME/sh/win-git/configure_xrdp_vnc_proxy.sh"
+
+  if [ -s "$xrdp_pid_file" ]; then
+    old_pid=$(cat "$xrdp_pid_file" 2>/dev/null || true)
+    if [ -n "$old_pid" ] && [ -r "/proc/$old_pid/cmdline" ] &&
+       tr '\0' ' ' <"/proc/$old_pid/cmdline" | grep -Fq "$xrdp_config"; then
+      echo "XRDP 已经在 3389 端口运行"
+      return 0
+    fi
+  fi
+
+  pkill -TERM -x xrdp >/dev/null 2>&1 || true
+  sleep 1
+  # xrdp refuses to start when its global runtime PID file is stale. Never
+  # remove it while it still names a live xrdp process.
+  if [ -s "$xrdp_runtime_pid_file" ]; then
+    runtime_pid=$(cat "$xrdp_runtime_pid_file" 2>/dev/null || true)
+    if [ -z "$runtime_pid" ] || [ ! -r "/proc/$runtime_pid/cmdline" ] ||
+       ! tr '\0' ' ' <"/proc/$runtime_pid/cmdline" | grep -Fq '/usr/sbin/xrdp'; then
+      rm -f "$xrdp_runtime_pid_file"
+    fi
+  fi
+  mkdir -p /run/xrdp
+  nohup setsid "$xrdp_bin" --nodaemon --config "$xrdp_config" \
+    </dev/null >>"$xrdp_log" 2>&1 &
+  printf '%s\n' "$!" >"$xrdp_pid_file"
+
+  local wait_step
+  for wait_step in 1 2 3 4 5 6 7 8 9 10; do
+    if grep -qE ':0D3D .* 0A ' /proc/net/tcp /proc/net/tcp6 2>/dev/null; then
+      echo "XRDP 已在 3389 端口启动，代理现有 X11 桌面"
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "XRDP 启动失败，最近日志：" >&2
+  tail -40 "$xrdp_log" >&2
+  return 1
+}
+
 #virgl
 #这个需要关掉noVNC的特效的
 #if [ -f "$MESA_FREE_SO" ]; then
@@ -200,6 +336,7 @@ elif pgrep -f "com.termux.x11" >/dev/null; then
   if pgrep -x "x11vnc" >/dev/null; then
     echo "x11vnc 已成功启动！"
     echo "连接命令: vncviewer your_server_ip:$VNC_PORT"
+    start_xrdp_vnc_proxy "$VNC_DISPLAY" || exit 1
   else
     echo "错误：x11vnc 启动失败，请检查日志: $LOG_FILE"
     exit 1
@@ -208,6 +345,7 @@ elif pgrep -f "com.termux.x11" >/dev/null; then
 elif [ -e "$DroidSpaces_path" ]; then
   DISPLAY_PORT=5
   export DISPLAY=:${DISPLAY_PORT}
+  bash "$HOME/sh/win-git/disable_ayatana_xfce_autostart.sh"
 
   # 参照 xfce-start: 读取 container.config，若宿主启用 pulseaudio 则通过 unix socket 连接
   if grep -q 'enable_pulseaudio=1' "$DroidSpaces_path" 2>/dev/null; then
@@ -282,6 +420,7 @@ elif [ -e "$DroidSpaces_path" ]; then
   if pgrep -x "x11vnc" >/dev/null; then
     echo "x11vnc 已成功启动！"
     echo "连接命令: vncviewer your_server_ip:$VNC_PORT"
+    start_xrdp_vnc_proxy "$VNC_DISPLAY" || exit 1
   else
     echo "错误：x11vnc 启动失败，请检查日志: $LOG_FILE"
     exit 1

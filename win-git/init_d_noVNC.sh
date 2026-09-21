@@ -50,7 +50,33 @@ sudo tee -a /etc/init.d/${SCRIPT_NAME}<<EOF
 	     pkill -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 127\\.0\\.0\\.1:5900' 2>/dev/null || true
 	     pkill -x wayvnc 2>/dev/null || true
 	     pkill -x x11vnc 2>/dev/null || true
-     rm -f /root/.vnc/server-noVNC-startup.pid /root/.vnc/novnc-proxy.pid
+     if [ -s /root/.vnc/xrdp.pid ]; then
+       xrdp_pid=\$(cat /root/.vnc/xrdp.pid 2>/dev/null)
+       case "\$xrdp_pid" in
+         *[!0-9]*|'') ;;
+         *)
+           if [ -r "/proc/\$xrdp_pid/cmdline" ] && \
+              tr '\\0' ' ' <"/proc/\$xrdp_pid/cmdline" | grep -Fq '/etc/xrdp/newhome-x11.ini'; then
+             kill -TERM "\$xrdp_pid" 2>/dev/null || true
+           fi
+           ;;
+       esac
+     fi
+     pkill -f '^/usr/sbin/xrdp --nodaemon --config /etc/xrdp/newhome-x11\.ini$' 2>/dev/null || true
+     if [ -s /root/.vnc/xrdp-chansrv.pid ]; then
+       chansrv_pid=\$(cat /root/.vnc/xrdp-chansrv.pid 2>/dev/null)
+       case "\$chansrv_pid" in
+         *[!0-9]*|'') ;;
+         *)
+           if [ -r "/proc/\$chansrv_pid/cmdline" ] && \
+              tr '\\0' ' ' <"/proc/\$chansrv_pid/cmdline" | grep -Fq '/usr/sbin/xrdp-chansrv'; then
+             kill -TERM "\$chansrv_pid" 2>/dev/null || true
+           fi
+           ;;
+       esac
+     fi
+     pkill -x xrdp-chansrv 2>/dev/null || true
+     rm -f /root/.vnc/server-noVNC-startup.pid /root/.vnc/novnc-proxy.pid /root/.vnc/xrdp.pid /root/.vnc/xrdp-chansrv.pid
      ;; 
     *) 
      echo "Usage: ./${SCRIPT_NAME}_init_d.sh start|stop" >&2 

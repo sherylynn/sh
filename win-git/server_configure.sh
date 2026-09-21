@@ -84,13 +84,15 @@ if ! dpkg -s kwin-wayland &>/dev/null; then
   sudo apt install xfce4-terminal -y
   if [[ $SOFT_VNC == *tigervnc* ]]; then
     zsh ~/sh/win-git/mesa.sh
+    # noVNC.sh 是远程桌面统一部署入口：先安装 x11vnc/noVNC/XRDP、生成
+    # XRDP shared-X11 配置并禁用发行版 xrdp daemon，再注册启动服务。
+    # 这样全新 rootfs 只需运行 server_configure.sh，不需要手工补 chansrv。
+    zsh ~/sh/win-git/noVNC.sh || exit 1
     if [ -e "$DroidSpaces_path" ]; then
-      zsh ~/sh/win-git/systemd_noVNC.sh
+      zsh ~/sh/win-git/systemd_noVNC.sh || exit 1
     else
-      zsh ~/sh/win-git/init_d_noVNC.sh
+      zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
     fi
-    # noVNC.sh 拉取官方 novnc/noVNC，并自动应用 sh 仓库维护的 HiDPI patch。
-    zsh ~/sh/win-git/noVNC.sh
   else
     zsh ~/sh/win-git/kasmVNC.sh
   fi
