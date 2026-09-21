@@ -439,6 +439,20 @@ roots_add() {
   echo "已允许：$path"
 }
 
+roots_set() {
+  local path
+  if [ "$#" -eq 0 ]; then
+    service_env_set DEVSPACE_ALLOWED_ROOTS ""
+    echo "已清空工作目录"
+    return 0
+  fi
+  for path in "$@"; do
+    [ -d "$path" ] || { echo "错误：目录不存在：$path" >&2; return 2; }
+    (cd "$path" && pwd -P)
+  done | roots_save_lines
+  echo "已保存 $# 个工作目录"
+}
+
 roots_remove() {
   local path="${1:-}" resolved
   [ -n "$path" ] || { echo "错误：缺少目录" >&2; return 2; }
@@ -751,6 +765,7 @@ case "${1:-install}" in
   roots-list) roots_list ;;
   roots-scan) roots_scan ;;
   roots-add) shift; roots_add "${1:-}" ;;
+  roots-set) shift; roots_set "$@" ;;
   roots-remove) shift; roots_remove "${1:-}" ;;
   enable-devspace-autostart) set_component_autostart DEVSPACE_AUTOSTART 1 ;;
   disable-devspace-autostart) set_component_autostart DEVSPACE_AUTOSTART 0 ;;

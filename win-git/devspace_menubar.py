@@ -53,7 +53,9 @@ def auto(component):
 
 class DevSpaceMenu(rumps.App):
     def __init__(self):
-        super().__init__("DS", quit_button=None)
+        # 刘海屏菜单栏空间有限：只占一个字符宽度。运行状态放在菜单内容里，
+        # 不再把 DevSpace/Cloudflare 两个状态塞进标题。
+        super().__init__("◆", quit_button=None)
         self.timer = rumps.Timer(self.refresh, 15)
         self.timer.start()
         self.refresh()
@@ -61,7 +63,7 @@ class DevSpaceMenu(rumps.App):
     def refresh(self, _=None):
         ds, cf, detail = status()
         da, ca = auto("devspace"), auto("cloudflared")
-        self.title = f"DS {'●' if ds else '○'} CF {'●' if cf else '○'}"
+        self.title = "◆" if (ds and cf) else ("◇" if not (ds or cf) else "◈")
         menu = [
             rumps.MenuItem(f"DevSpace：{'运行中' if ds else '已停止'} / 自启动{'开' if da else '关'}"),
             rumps.MenuItem(f"Cloudflare Tunnel：{'运行中' if cf else '已停止'} / 自启动{'开' if ca else '关'}"),
@@ -108,23 +110,57 @@ class DevSpaceMenu(rumps.App):
     def manage_roots(self, _):
         result = shell("roots-scan")
         if result.returncode != 0:
-            rumps.alert("扫描失败", result.stderr)
+            rumps.alert("扫描失败", result.stderr or result.stdout)
             return
         candidates = [x for x in result.stdout.splitlines() if x.strip()]
         selected = set(shell("roots-list").stdout.splitlines())
+        if not candidates:
+            rumps.alert("管理工作目录", "没有扫描到 Git 仓库。")
+            return
 
-        # Cocoa/rumps has no native multi-checkbox dialog. Present each discovered
-        # repository as a submenu toggle, then persist immediately on click.
-        submenu = rumps.MenuItem("工作目录（点击切换）")
+        # rumps 没有多选列表控件。用一个真正的 Cocoa 窗口显示可滚动 checkbox，
+        # 用户一次勾选后点“保存”，而不是旧版需要再打开菜单才能看到子项。
+        self.show_roots_window(candidates, selected)
+
+    def show_roots_window(self, candidates, selected):
+        from AppKit import (NSAlert, NSButton, NSButtonTypeSwitch, NSMakeRect,
+                            NSModalResponseOK, NSScrollView, NSStackView,
+                            NSUserInterfaceLayoutOrientationVertical, NSView)
+
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("管理 DevSpace 工作目录")
+        alert.setInformativeText_("勾选允许 ChatGPT/DevSpace 打开的目录。保存后会重启 DevSpace。")
+        alert.addButtonWithTitle_("保存")
+        alert.addButtonWithTitle_("取消")
+
+        container = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 620, 420))
+        scroll = NSScrollView.alloc().initWithFrame_(NSMakeRect(0, 0, 620, 420))
+        scroll.setHasVerticalScroller_(True)
+        scroll.setAutohidesScrollers_(True)
+        stack = NSStackView.alloc().initWithFrame_(NSMakeRect(0, 0, 590, max(420, len(candidates) * 28)))
+        stack.setOrientation_(NSUserInterfaceLayoutOrientationVertical)
+        stack.setSpacing_(5)
+        stack.setEdgeInsets_((8, 8, 8, 8))
+        buttons = []
         for path in candidates:
-            mark = "✓ " if path in selected else "   "
-            submenu.add(rumps.MenuItem(mark + path, callback=lambda _, p=path: self.toggle_root(p)))
-        submenu.add(None)
-        submenu.add(rumps.MenuItem("选择其他目录…", callback=self.add_other_root))
-        self.menu["管理工作目录…"].clear()
-        for item in submenu.values():
-            self.menu["管理工作目录…"].add(item)
-        rumps.notification("DevSpace", "工作目录", "扫描完成；再次点击“管理工作目录…”查看并勾选")
+            button = NSButton.alloc().init()
+            button.setButtonType_(NSButtonTypeSwitch)
+            button.setTitle_(path)
+            button.setState_(1 if path in selected else 0)
+            stack.addArrangedSubview_(button)
+            buttons.append((button, path))
+        scroll.setDocumentView_(stack)
+        container.addSubview_(scroll)
+        alert.setAccessoryView_(container)
+
+        if alert.runModal() != NSModalResponseOK:
+            return
+        wanted = [path for button, path in buttons if button.state() == 1]
+        result = shell("roots-set", *wanted)
+        if result.returncode != 0:
+            rumps.alert("保存工作目录失败", result.stderr or result.stdout)
+            return
+        action(["restart-devspace"], "应用工作目录", self.refresh)
 
     def toggle_root(self, path):
         selected = set(shell("roots-list").stdout.splitlines())
