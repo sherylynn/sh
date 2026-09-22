@@ -361,7 +361,15 @@ EOF
   launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT_FILE" >/dev/null 2>&1 || true
   launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_FILE"
   echo "macOS LaunchAgent: $LAUNCH_AGENT_FILE"
-  install_macos_menubar
+  # macOS 交互控制已整合进 NewHome.app。默认清理旧的 Python/rumps 独立托盘，
+  # 避免两个状态栏入口重复；只有显式 DEVSPACE_MENUBAR=legacy 才保留旧实现。
+  if [ "${DEVSPACE_MENUBAR:-newhome}" = "legacy" ]; then
+    install_macos_menubar
+  else
+    launchctl bootout "gui/$(id -u)" "$MENUBAR_LAUNCH_AGENT_FILE" >/dev/null 2>&1 || true
+    rm -f "$MENUBAR_LAUNCH_AGENT_FILE"
+    echo "macOS DevSpace 控制入口：NewHome.app（旧独立菜单栏已关闭）"
+  fi
 }
 
 disable_macos_autostart() {
