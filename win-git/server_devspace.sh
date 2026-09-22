@@ -50,6 +50,14 @@ CLOUDFLARED_CONFIG="${CLOUDFLARED_CONFIG:-$RUN_HOME/.cloudflared/config.yml}"
 # 用启动 flag 而不是写进 config.yml —— config.yml 会被 devspace.sh import 整体
 # 替换（导入包来自没有该问题的机器），写成 flag 才能跨迁移保持。
 CLOUDFLARED_PROTOCOL="${CLOUDFLARED_PROTOCOL:-http2}"
+# cloudflared 本地 metrics 端点：判定隧道有没有真的注册到 Cloudflare edge 的
+# 唯一可靠本地判据。进程存活 != 隧道可用 —— 进程在跑但 0 个边缘连接时，
+# 公网会返回 530，只看 pgrep 永远发现不了。
+# 必须显式绑定：不指定时 cloudflared 会在 20241-20245 里挑一个、都占用就随机，
+# 探测端口漂移会让连通性判定静默失效。
+CLOUDFLARED_METRICS="${CLOUDFLARED_METRICS:-127.0.0.1:20241}"
+METRICS_CANDIDATES="$CLOUDFLARED_METRICS 127.0.0.1:20241 127.0.0.1:20242 127.0.0.1:20243 127.0.0.1:20244 127.0.0.1:20245"
+METRICS_TIMEOUT="${METRICS_TIMEOUT:-3}"
 WORKDIR="${DEVSPACE_WORKDIR:-$REPO_ROOT}"
 PUBLIC_HOST="${PUBLIC_HOST:-${PERSISTED_PUBLIC_HOST:-devspace.sherylynn.win}}"
 
@@ -66,6 +74,12 @@ CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-$(command -v cloudflared 2>/dev/null || echo
 
 LOCK_FILE="${DEVSPACE_LOCK_FILE:-${TMPDIR:-/tmp}/.devspace-service-$(id -u).lock}"
 LOCK_DIR="${DEVSPACE_LOCK_DIR:-${LOCK_FILE}.d}"
+# mkdir 回退锁在 macOS 上没有失效回收：持有者被 kill/Ctrl-C 后目录会永久留下，
+# 之后所有 start/stop/restart 都会等满 10s 后报「等待服务锁超时」。
+# 因此记录持有者 PID，并对无主的目录按年龄判定为僵尸锁。
+LOCK_WAIT_TRIES="${DEVSPACE_LOCK_TRIES:-100}"
+LOCK_STALE_SECONDS="${DEVSPACE_LOCK_STALE:-120}"
+LOCK_HELD=0
 
 SERVE_PAT="(^|/)([^ ]*/)?node [^ ]*devspace(\.js)? serve( |$)"
 # 启动命令形如：cloudflared tunnel --config CFG run [--protocol http2] devspace
@@ -159,8 +173,16 @@ start_cloudflared_unlocked() {
       *) args+=(--protocol "$CLOUDFLARED_PROTOCOL") ;;
     esac
     args+=("$TUNNEL_NAME")
+    # metrics 只能用环境变量传：`--metrics` 是 cloudflared 的全局 flag，
+    # 放在 `tunnel run` 之后会被判为 "flag provided but not defined: -metrics"
+    # 并打印帮助直接退出（哪怕 run --help 里列出了它）。
+    case "$CLOUDFLARED_METRICS" in
+      ""|auto|off) ;;
+      *) export TUNNEL_METRICS="$CLOUDFLARED_METRICS" ;;
+    esac
     start_background "$TUNNEL_PID_FILE" "$TUNNEL_LOG" "$CLOUDFLARED_BIN" "${args[@]}"
-    echo "cloudflared 隧道已启动（PID $(cat "$TUNNEL_PID_FILE")${CLOUDFLARED_PROTOCOL:+, protocol=${CLOUDFLARED_PROTOCOL}}）-> $TUNNEL_LOG"
+    unset TUNNEL_METRICS
+    echo "cloudflared 隧道已启动（PID $(cat "$TUNNEL_PID_FILE")${CLOUDFLARED_PROTOCOL:+, protocol=${CLOUDFLARED_PROTOCOL}}${CLOUDFLARED_METRICS:+, metrics=${CLOUDFLARED_METRICS}}）-> $TUNNEL_LOG"
   fi
 }
 
@@ -181,17 +203,58 @@ with_lock() {
     return "$rc"
   fi
 
-  local tries=0
-  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
-    tries=$((tries + 1))
-    [ "$tries" -lt 100 ] || { echo "错误：等待 DevSpace 服务锁超时：$LOCK_DIR" >&2; return 1; }
-    sleep 0.1
-  done
+  acquire_lock_dir || return 1
+  # 异常中断（Ctrl-C / kill / launchd 收割）时也要把锁交还，否则会留下僵尸锁。
+  trap 'release_lock_dir; exit 1' INT TERM HUP
+  trap 'release_lock_dir' EXIT
 
   "$@"
   local rc=$?
-  rmdir "$LOCK_DIR" 2>/dev/null || true
+  release_lock_dir
+  trap - EXIT INT TERM HUP
   return "$rc"
+}
+
+lock_dir_age_seconds() {
+  local mtime now
+  mtime="$(stat -f %m "$LOCK_DIR" 2>/dev/null || stat -c %Y "$LOCK_DIR" 2>/dev/null || true)"
+  [ -n "$mtime" ] || return 1
+  now="$(date +%s)"
+  printf '%s' "$((now - mtime))"
+}
+
+release_lock_dir() {
+  [ "$LOCK_HELD" = 1 ] || return 0
+  rm -rf "$LOCK_DIR" 2>/dev/null || true
+  LOCK_HELD=0
+}
+
+acquire_lock_dir() {
+  local tries=0 owner age
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [ -n "$owner" ] && ! kill -0 "$owner" 2>/dev/null; then
+      echo "清理失效服务锁（持有进程 ${owner} 已不存在）：$LOCK_DIR" >&2
+      rm -rf "$LOCK_DIR"
+      continue
+    fi
+    if [ -z "$owner" ]; then
+      # 空目录：可能卡在 mkdir 与写 pid 之间。按目录年龄判定，超龄视为僵尸锁。
+      age="$(lock_dir_age_seconds || echo 0)"
+      if [ "$age" -gt "$LOCK_STALE_SECONDS" ]; then
+        echo "清理僵尸服务锁（无持有者且已存在 ${age}s）：$LOCK_DIR" >&2
+        rm -rf "$LOCK_DIR"
+        continue
+      fi
+    fi
+    tries=$((tries + 1))
+    [ "$tries" -lt "$LOCK_WAIT_TRIES" ] || { echo "错误：等待 DevSpace 服务锁超时：$LOCK_DIR" >&2; return 1; }
+    sleep 0.1
+  done
+
+  printf '%s\n' "$$" >"$LOCK_DIR/pid" 2>/dev/null || true
+  LOCK_HELD=1
+  return 0
 }
 
 start() {
@@ -269,6 +332,155 @@ stop() {
 stop_devspace() { with_lock stop_devspace_unlocked; }
 stop_cloudflared() { with_lock stop_cloudflared_unlocked; }
 
+# --- 隧道真实连通性 ---------------------------------------------------------
+# 只看进程存活是不够的。cloudflared 自带的本地 metrics 端点零网络依赖且权威：
+#   GET /ready -> 200 {"status":200,"readyConnections":N}  已注册到 edge
+#              -> 503 {"status":503,"readyConnections":0}  未注册（公网 530）
+metrics_base() {
+  local candidate
+  for candidate in $METRICS_CANDIDATES; do
+    [ -n "$candidate" ] || continue
+    if curl -sS -o /dev/null --max-time 1 "http://$candidate/ready" 2>/dev/null; then
+      printf 'http://%s' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+tunnel_ready_body() {
+  local base
+  base="$(metrics_base)" || return 1
+  curl -sS --max-time "$METRICS_TIMEOUT" "$base/ready" 2>/dev/null
+}
+
+serve_pid() {
+  if pid_matches "$SERVE_PID_FILE" "$SERVE_PAT"; then
+    cat "$SERVE_PID_FILE"
+    return 0
+  fi
+  find_matching_pid "$SERVE_PAT"
+}
+
+tunnel_pid() {
+  if pid_matches "$TUNNEL_PID_FILE" "$TUNNEL_PAT"; then
+    cat "$TUNNEL_PID_FILE"
+    return 0
+  fi
+  find_matching_pid "$TUNNEL_PAT"
+}
+
+# connected | disconnected | stopped | unknown
+tunnel_state() {
+  [ -n "$(tunnel_pid)" ] || { echo stopped; return 0; }
+  local body
+  body="$(tunnel_ready_body)" || { echo unknown; return 0; }
+  case "$body" in
+    *'"readyConnections":0'*) echo disconnected ;;
+    *'"readyConnections":'*)  echo connected ;;
+    *)                        echo unknown ;;
+  esac
+}
+
+tunnel_connections() {
+  local body
+  body="$(tunnel_ready_body)" || { printf '0'; return 0; }
+  printf '%s' "$body" | sed -n 's/.*"readyConnections":\([0-9][0-9]*\).*/\1/p' | head -1
+}
+
+tunnel_log_field() {
+  local key="$1"
+  tail -n 400 "$TUNNEL_LOG" 2>/dev/null \
+    | grep -o "${key}=[A-Za-z0-9._:-]*" | sed "s/^${key}=//" | tail -1
+}
+
+tunnel_edges() {
+  tail -n 400 "$TUNNEL_LOG" 2>/dev/null \
+    | grep -o 'location=[A-Za-z0-9]*' | sed 's/^location=//' | awk '!seen[$0]++' \
+    | tail -2 | tr '\n' ',' | sed 's/,$//'
+}
+
+tunnel_last_error() {
+  tail -n 200 "$TUNNEL_LOG" 2>/dev/null \
+    | grep ' ERR ' | tail -1 \
+    | sed -n 's/.*error="\([^"]*\)".*/\1/p'
+}
+
+tunnel_error_hint() {
+  local err
+  err="$(tunnel_last_error)"
+  [ -n "$err" ] || return 0
+  case "$err" in
+    *quic*) printf '%s' '疑似 QUIC(UDP) 被本机代理/防火墙吞掉，试 CLOUDFLARED_PROTOCOL=http2' ;;
+    *'TLS handshake'*) printf '%s' "edge TLS 握手失败：$(printf '%s' "$err" | cut -c1-80)（常见于 fake-IP/TUN 代理或本地 DNS 缓存过期，重启隧道可重新解析）" ;;
+    *) printf '%s' "$err" ;;
+  esac
+}
+
+# 人类可读的一行连通性描述
+tunnel_info() {
+  local state n edges proto err
+  state="$(tunnel_state)"
+  case "$state" in
+    connected)
+      n="$(tunnel_connections)"
+      edges="$(tunnel_edges)"
+      proto="$(tunnel_log_field protocol)"
+      printf '已连接 Cloudflare edge（%s 个边缘连接' "$n"
+      [ -n "$edges" ] && printf '，%s' "$edges"
+      [ -n "$proto" ] && printf '，%s' "$proto"
+      printf '）\n'
+      ;;
+    disconnected)
+      printf '未连接 Cloudflare edge（进程在运行，但 0 个边缘连接，公网会返回 530）'
+      err="$(tunnel_error_hint)"
+      [ -n "$err" ] && printf '；最近错误：%s' "$err"
+      printf '\n'
+      ;;
+    stopped)
+      printf '未运行\n'
+      ;;
+    *)
+      printf '未知（隧道进程在运行，但 metrics 端点 %s 不可达；若刚启动则可能仍在初始化）\n' "$CLOUDFLARED_METRICS"
+      ;;
+  esac
+}
+
+# 供托盘解析的机器可读状态（无网络请求，毫秒级返回）
+states() {
+  local pid state n
+  pid="$(serve_pid)"
+  if [ -n "$pid" ]; then
+    echo "serve=running"
+    echo "serve_pid=$pid"
+  else
+    echo "serve=stopped"
+    echo "serve_pid="
+  fi
+
+  pid="$(tunnel_pid)"
+  if [ -n "$pid" ]; then
+    echo "tunnel_pid=$pid"
+  else
+    echo "tunnel_pid="
+  fi
+
+  state="$(tunnel_state)"
+  echo "tunnel=$state"
+  if [ "$state" = "connected" ]; then
+    n="$(tunnel_connections)"
+    echo "tunnel_connections=${n:-0}"
+    echo "tunnel_edges=$(tunnel_edges)"
+    echo "tunnel_protocol=$(tunnel_log_field protocol)"
+    echo "tunnel_error="
+  else
+    echo "tunnel_connections=0"
+    echo "tunnel_edges="
+    echo "tunnel_protocol="
+    echo "tunnel_error=$(tunnel_last_error)"
+  fi
+}
+
 status_one() {
   local name="$1" file="$2" pat="$3" pid
   if pid_matches "$file" "$pat"; then
@@ -289,14 +501,26 @@ status() {
   status_one "devspace serve" "$SERVE_PID_FILE" "$SERVE_PAT" || true
   status_one "cloudflared tunnel" "$TUNNEL_PID_FILE" "$TUNNEL_PAT" || true
 
+  echo "--- 隧道连通性 ---"
+  echo "cloudflared -> Cloudflare edge: $(tunnel_info | tr -d '\n')"
+
   local code
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:7676/mcp 2>/dev/null || true)"
   echo "--- 本地 http://127.0.0.1:7676/mcp ---"
-  [ -z "$code" ] && echo "不可达" || echo "HTTP ${code}（401 也表示服务已到达）"
+  case "$code" in
+    ""|000) echo "不可达（devspace serve 未监听）" ;;
+    401|200) echo "HTTP ${code}（服务已到达）" ;;
+    *) echo "HTTP ${code}" ;;
+  esac
 
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://$PUBLIC_HOST/mcp" 2>/dev/null || true)"
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time "${PUBLIC_PROBE_TIMEOUT:-20}" "https://$PUBLIC_HOST/mcp" 2>/dev/null || true)"
   echo "--- 公网 https://$PUBLIC_HOST/mcp ---"
-  [ -z "$code" ] && echo "不可达" || echo "HTTP ${code}（401 也表示隧道已到达）"
+  case "$code" in
+    ""|000) echo "不可达（连接失败或超时）" ;;
+    530) echo "HTTP 530（Cloudflare 侧没有可用隧道连接 —— 隧道未连上 edge）" ;;
+    401|200) echo "HTTP ${code}（隧道已到达，401 是正常的未授权握手）" ;;
+    *) echo "HTTP ${code}" ;;
+  esac
 
   echo "--- 配置 ---"
   echo "HOME: $RUN_HOME"
@@ -304,6 +528,7 @@ status() {
   echo "devspace: $DEVSPACE_BIN"
   echo "cloudflared: $CLOUDFLARED_BIN"
   echo "cloudflared protocol: ${CLOUDFLARED_PROTOCOL:-auto}"
+  echo "cloudflared metrics: ${CLOUDFLARED_METRICS:-off}"
   echo "cloudflared config: $CLOUDFLARED_CONFIG"
   echo "platform: $OS"
 }
@@ -320,6 +545,9 @@ case "${1:-start}" in
   restart-cloudflared) stop_cloudflared; sleep 1; start_cloudflared ;;
   autostart-start) autostart_start ;;
   status) status ;;
+  states) states ;;
+  tunnel-state) tunnel_state ;;
+  tunnel-info) tunnel_info ;;
   token) ensure_token; cat "$TOKEN_FILE"; echo ;;
-  *) echo "usage: $0 {start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|autostart-start|status|token}" >&2; exit 1 ;;
+  *) echo "usage: $0 {start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|autostart-start|status|states|tunnel-state|tunnel-info|token}" >&2; exit 1 ;;
 esac

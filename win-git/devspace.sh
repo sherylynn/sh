@@ -22,7 +22,7 @@ MENUBAR_PYTHON_FILE="$RUN_HOME/.devspace/menubar-python"
 
 usage() {
   cat <<EOF
-usage: $0 {install|deploy|enable|disable|enable-autostart|disable-autostart|autostart-status|start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|export [archive]|import <archive>|status|token}
+usage: $0 {install|deploy|enable|disable|enable-autostart|disable-autostart|autostart-status|start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|export [archive]|import <archive>|status|states|tunnel-state|tunnel-info|token}
 
   install/deploy       安装并启用当前平台的自动启动入口（Linux 同时安装 XFCE DevSpace 托盘）
   enable               启用自动启动，但不强制立即启动服务（同样会补齐缺失依赖）
@@ -35,6 +35,10 @@ usage: $0 {install|deploy|enable|disable|enable-autostart|disable-autostart|auto
   start/stop/restart   同时管理 DevSpace + cloudflared 当前运行状态
   *-devspace           只管理 DevSpace serve，不影响 cloudflared
   *-cloudflared        只管理 Cloudflare Tunnel，不影响 DevSpace
+  status               完整状态（含公网探测，慢）
+  states               机器可读状态（key=value，纯本地无网络请求，供托盘使用）
+  tunnel-state         隧道连通性：connected | disconnected | stopped | unknown
+  tunnel-info          隧道连通性的一行人类可读描述
 
 迁移包包含 DevSpace owner token、Cloudflare tunnel credentials/cert.pem、以及 DevSpace
 stateDir 里的 OAuth SQLite（已注册 client 与 access/refresh token）等敏感凭据。
@@ -781,7 +785,7 @@ case "${1:-install}" in
     shift
     import_config "${1:-}"
     ;;
-  start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|status|token)
+  start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|status|states|tunnel-state|tunnel-info|token)
     require_runtime
     exec /bin/bash "$SERVER_SCRIPT" "$@"
     ;;
