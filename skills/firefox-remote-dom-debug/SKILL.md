@@ -189,6 +189,47 @@ win-git/chatgpt-devspace-cleaner/content.js
 
 当前 Compact 模式精确移除 MCP `div.contents`（含 iframe），替换为轻量 `MCP` 占位；Hide 模式直接 remove；Show 不处理。
 
+## Android Firefox：开发调试与永久安装
+
+### ADB + web-ext 临时调试
+
+Android Firefox 扩展开发不需要每次提交 AMO。开发阶段使用 Mozilla 官方的 `web-ext` + ADB 临时加载：
+
+1. Android 开启 USB 调试，Mac 用 `adb devices` 确认设备可见。
+2. Firefox Android 开启 `Remote debugging via USB`。
+3. 在扩展源码目录运行：
+
+```bash
+web-ext run \
+  --target=firefox-android \
+  --android-device=<设备ID> \
+  --firefox-apk=org.mozilla.firefox
+```
+
+这种方式适合快速迭代：源码变化后可 reload 到手机 Firefox，不需要 bump 版本、AMO 上传和等待签名。但它属于临时安装，Firefox/调试会话结束后不要依赖其永久保留。
+
+### 已签名 unlisted XPI 永久安装
+
+稳定版本不必为了 Android 私人安装而公开上架 AMO。只要 XPI 已经过 Mozilla AMO unlisted 正式签名，可以利用 Firefox Android 隐藏的开发者入口从文件安装：
+
+1. Firefox Android 打开 `设置 -> 关于 Firefox`。
+2. 在“关于 Firefox”页面连续快速点击 Firefox Logo **5 次**，解锁隐藏开发者菜单。
+3. 返回 Firefox `设置`。
+4. 选择新出现的 `Install Extension from File / 从文件安装扩展`。
+5. 选择已经下载到手机的、经过 Mozilla 签名的 `.xpi`。
+6. 确认扩展权限并添加。
+
+这是正式持久安装，不同于 `web-ext run`：安装后的扩展会出现在已安装扩展列表中，关闭 Firefox 或重启手机后仍保留。
+
+因此推荐工作流是：
+
+```text
+开发：修改源码 -> web-ext + ADB 临时加载 -> Android Firefox 实机调试
+稳定：版本 bump -> AMO unlisted 签名 -> 下载 signed XPI -> 从文件安装扩展
+```
+
+对于本仓库 `win-git/chatgpt-devspace-cleaner/`，`sign.sh` 已实现 unlisted 签名流程，签名产物默认保存在仓库外的 `~/my_keys`。不要把私有凭据或签名产物提交到公开源码仓库。
+
 ## 调试经验
 
 - Firefox 的 `--remote-debugging-port` 是 BiDi，不要套用 Chrome CDP HTTP endpoint。
