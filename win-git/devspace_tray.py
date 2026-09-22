@@ -66,6 +66,9 @@ def log(message):
 
 
 def run_devspace(args):
+    """Run devspace.sh with an argv list; also accept one string defensively."""
+    if isinstance(args, str):
+        args = [args]
     return subprocess.run(["/bin/bash", DEVSPACE, *args], text=True, capture_output=True)
 
 
