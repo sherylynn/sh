@@ -10,12 +10,20 @@
    后台线程里直接调 rumps.alert()/notification() 会抛
    NSInternalInconsistencyException（NSWindow drag regions ... Main Thread），
    异常又被线程吞掉 —— 表现为"点了没反应、也看不到报错"。
+3. **渲染必须自己兜异常**：`callAfter` 最终落到 PyObjCMessageRunner.performCall()，
+   那里没有 try/except，异常穿过 ObjC 主循环后只进 os_log，
+   连 launchd 的 StandardErrorPath 都拿不到（实测 menubar.log 恒为 0 字节）。
+   而 render() 一旦抛异常，`menu.clear()/update()` 就没执行过 —— NSStatusItem
+   挂着一个**空 NSMenu**，点图标什么都不弹，且没有任何提示。
+   所以：渲染异常要写盘 + 标题变 ⚠ + 菜单里显示原因；状态跃迁也记一行日志。
 """
 
 import os
 import subprocess
 import sys
 import threading
+import time
+import traceback
 from pathlib import Path
 
 try:
@@ -36,6 +44,69 @@ DEFAULT_EXPORT = HOME / "Downloads" / "devspace-mcp-migration.tar.gz"
 
 REFRESH_SECONDS = int(os.environ.get("DEVSPACE_MENUBAR_REFRESH", "15"))
 
+# 必须与 devspace.sh 里 MENUBAR_LAUNCH_AGENT_FILE 的 Label 保持一致。
+MENUBAR_LABEL = "win.sherylynn.devspace-menubar"
+
+LOG_PATH = Path(os.environ.get("DEVSPACE_MENUBAR_LOG", str(HOME / ".devspace" / "menubar.log")))
+
+_last_logged = {"title": None}
+
+
+def log_line(context, exc=None):
+    """追加一行到 menubar.log。
+
+    不能指望 launchd 的 StandardErrorPath：pyobjc 的 callAfter 走
+    PyObjCMessageRunner.performCall()，那里**没有** try/except，异常穿透 ObjC
+    主循环后只进 os_log —— 现场就是 menubar.log 恒为 0 字节、菜单静默变空。
+    """
+    if exc is not None:
+        detail = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    else:
+        detail = traceback.format_exc() if sys.exc_info()[0] else ""
+    try:
+        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with LOG_PATH.open("a") as handle:
+            handle.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {context}\n")
+            if detail.strip():
+                handle.write(detail if detail.endswith("\n") else detail + "\n")
+    except OSError:
+        pass
+
+
+def safe_render(fn):
+    """渲染异常必须变成"看得见的菜单"，绝不能变成"点了没反应"。
+
+    现场：render() 在构造 Cloudflare 子菜单时抛 NameError，于是
+    `self.menu.clear()` / `self.menu.update()` 从未执行 —— NSStatusItem 上挂着
+    一个空 NSMenu，点图标毫无反应；异常又被 ObjC 主循环吞掉，日志 0 字节。
+    """
+
+    def wrapper(self, *args, **kwargs):
+        try:
+            result = fn(self, *args, **kwargs)
+        except Exception as exc:
+            log_line("render() 失败", exc)
+            # 标题也要能看出坏了：空菜单 + 无提示是最糟的组合。
+            self.title = "⚠"
+            _last_logged["title"] = "⚠"
+            self.menu.clear()
+            self.menu.update([
+                rumps.MenuItem("菜单渲染失败，详情见 ~/.devspace/menubar.log"),
+                rumps.MenuItem(f"  {type(exc).__name__}: {exc}"[:120]),
+                None,
+                rumps.MenuItem("刷新状态", callback=lambda _: self.refresh_async()),
+                rumps.MenuItem("退出菜单栏（关闭此项自启动）", callback=self.quit_controller),
+            ])
+            return None
+        # 状态跃迁记一行：图标停在某个字符不动时，不用点开也知道渲染在跑。
+        if _last_logged["title"] != self.title:
+            log_line(f"状态跃迁 → {self.title}")
+            _last_logged["title"] = self.title
+        return result
+
+    return wrapper
+
+
 TUNNEL_LABEL = {
     "connected": "已连接 Cloudflare",
     "disconnected": "未连接（进程在跑，隧道未注册）",
@@ -51,10 +122,13 @@ def shell(*args):
 
 def ui(fn, *args):
     """把 UI 调用调度回主线程（后台线程直接弹窗会崩）。"""
-    if AppHelper is not None:
-        AppHelper.callAfter(fn, *args)
-    else:
+    if AppHelper is None:  # pyobjc 缺失时兜底直调
         fn(*args)
+        return
+    try:
+        AppHelper.callAfter(fn, *args)
+    except Exception as exc:
+        log_line(f"callAfter({getattr(fn, '__name__', fn)}) 调度失败", exc)
 
 
 def fetch_states():
@@ -123,6 +197,10 @@ class DevSpaceMenu(rumps.App):
         self.lock = threading.Lock()
         self.snapshot = None
         self.fetching = False
+        # 先同步铺一次占位菜单：此时还在主线程，且 run() 还没把 NSMenu 挂到
+        # NSStatusItem 上。这样即使后续 callAfter 调度失败，图标也一定有点得开的
+        # 菜单，而不是一个空 NSMenu（空菜单 = 点了完全没反应）。
+        self.render()
         self.timer = rumps.Timer(self.tick, REFRESH_SECONDS)
         self.timer.start()
         self.refresh_async()
@@ -150,6 +228,7 @@ class DevSpaceMenu(rumps.App):
         self.refresh_async()
 
     # --- 渲染（主线程） -----------------------------------------------------
+    @safe_render
     def render(self, _=None):
         snap = self.snapshot
         if not snap:
@@ -158,7 +237,7 @@ class DevSpaceMenu(rumps.App):
                 rumps.MenuItem("正在读取状态…"),
                 None,
                 rumps.MenuItem("刷新状态", callback=lambda _: self.refresh_async()),
-                rumps.MenuItem("退出菜单栏", callback=lambda _: rumps.quit_application()),
+                rumps.MenuItem("退出菜单栏（关闭此项自启动）", callback=self.quit_controller),
             ]
             self.menu.clear()
             self.menu.update(menu)
@@ -166,7 +245,10 @@ class DevSpaceMenu(rumps.App):
 
         serve = snap.get("serve", "stopped")
         tunnel = snap.get("tunnel", "unknown")
-        da = snap.get("devspace_autostart") == "enabled"
+        # 注意：fetch_states() 往里写的是 auto() 的 bool 返回值，不是 "enabled"
+        # 字符串。这里再比一次字符串会永远得到 False，自启动状态会一直显示"关"。
+        da = bool(snap.get("devspace_autostart"))
+        ca = bool(snap.get("cloudflared_autostart"))
         serve_up = serve == "running"
 
         # 一个字符表达三种状态：正常 / 有问题 / 全停
@@ -221,10 +303,21 @@ class DevSpaceMenu(rumps.App):
             rumps.MenuItem("导入配置…", callback=self.import_config),
             rumps.MenuItem("查看详细状态…", callback=self.show_detail),
             None,
-            rumps.MenuItem("退出菜单栏", callback=lambda _: rumps.quit_application()),
+            rumps.MenuItem("退出菜单栏（关闭此项自启动）", callback=self.quit_controller),
         ])
         self.menu.clear()
         self.menu.update(menu)
+
+    def quit_controller(self, _):
+        """退出 = 连这一项的 LaunchAgent 一起关掉。
+
+        plist 里是 KeepAlive=true：只调 quit_application() 的话 launchd 会立刻把
+        进程拉回来，图标闪一下就恢复 —— 看起来又是"点了没反应"。所以先 bootout
+        自己（手动前台运行时没有这个 job，bootout 失败也无所谓）。
+        """
+        subprocess.Popen(["/bin/launchctl", "bootout", f"gui/{os.getuid()}/{MENUBAR_LABEL}"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        rumps.quit_application()
 
     def show_detail(self, _):
         # 完整 status 含公网探测（最坏 20s+），必须放后台线程。
@@ -311,5 +404,86 @@ class DevSpaceMenu(rumps.App):
             action(["import", response.text.strip()], "导入配置", lambda: action(["install"], "应用导入配置", self.refresh_async))
 
 
+def selftest():
+    """无 GUI 自检：每种隧道状态都必须渲染出非空菜单。
+
+    这是本轮 NameError 的回归网。上一版"跑满两个刷新周期零异常"的结论是错的：
+    异常被 ObjC 主循环吞了，肉眼和日志都看不到，只有把 render() 单独拎出来跑
+    才暴露出来。`devspace.sh install` 之后应能一条命令验证。
+    """
+    import tempfile
+
+    # 自检不要污染真实日志（render 会写"状态跃迁"行）。
+    global LOG_PATH
+    LOG_PATH = Path(tempfile.mkdtemp(prefix="devspace-menubar-selftest-")) / "menubar.log"
+
+    class FakeMenu:
+        def __init__(self):
+            self.items = []
+
+        def clear(self):
+            self.items = []
+
+        def update(self, menu):
+            self.items = [x for x in menu if x is not None]
+
+    class Harness(DevSpaceMenu):
+        """只借真实类的绑定方法，不跑 rumps.App.__init__（那会去建 NSStatusItem）。
+
+        注意 `menu` 是 property，赋值会转调 `self._menu.update()`，所以这里直接
+        塞 `_menu`。
+        """
+
+        def __init__(self, snap):
+            self._menu = FakeMenu()
+            self._title = ""
+            self.snapshot = snap
+            self.refresh_async = lambda: None
+
+    cases = [
+        ("empty", None, "◌"),
+        ("connected", {"serve": "running", "tunnel": "connected",
+                       "devspace_autostart": True, "cloudflared_autostart": True,
+                       "tunnel_connections": "2", "tunnel_edges": "lax05,lax07",
+                       "tunnel_protocol": "http2"}, "◆"),
+        ("disconnected", {"serve": "running", "tunnel": "disconnected",
+                          "devspace_autostart": True, "cloudflared_autostart": False,
+                          "tunnel_error": "no ready connections"}, "◐"),
+        ("stopped", {"serve": "stopped", "tunnel": "stopped",
+                     "devspace_autostart": False, "cloudflared_autostart": False}, "◇"),
+        ("unknown", {"serve": "running", "tunnel": "unknown",
+                     "devspace_autostart": False, "cloudflared_autostart": True}, "◈"),
+    ]
+    failures = 0
+    for label, snap, expected_title in cases:
+        target = Harness(snap)
+        try:
+            DevSpaceMenu.render(target, None)
+        except Exception as exc:
+            failures += 1
+            print(f"FAIL  {label}: {type(exc).__name__}: {exc}")
+            continue
+        if target.title != expected_title:
+            failures += 1
+            print(f"FAIL  {label}: 标题 {target.title!r}，期望 {expected_title!r}")
+            continue
+        if not target.menu.items:
+            failures += 1
+            print(f"FAIL  {label}: 菜单为空（点图标将毫无反应）")
+            continue
+        print(f"ok    {label}: 标题 {target.title} / {len(target.menu.items)} 项")
+    print("selftest:", "FAILED" if failures else "PASSED")
+    return 1 if failures else 0
+
+
+def _thread_excepthook(args):
+    log_line(f"线程 {args.thread.name} 崩溃", args.exc_value)
+
+
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
+    # 后台线程里未捕获的异常同样只进 os_log，统一落盘。
+    if hasattr(threading, "excepthook"):
+        threading.excepthook = _thread_excepthook
     DevSpaceMenu().run()
