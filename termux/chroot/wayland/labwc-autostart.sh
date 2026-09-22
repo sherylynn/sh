@@ -46,3 +46,13 @@ xfce4-panel >/tmp/newhome-wayland-panel.log 2>&1 &
 (DISPLAY="${DISPLAY:-:0}" xset q >/dev/null 2>&1 || true)
 env GDK_BACKEND=x11 python3 /root/sh/win-git/xfce_display_tray.py \
     >/tmp/newhome-wayland-tray.log 2>&1 &
+
+# DevSpace / Cloudflare 控制托盘与显示托盘同样通过 Ayatana
+# StatusNotifier 暴露给 XFCE 面板。状态采集全部走 devspace.sh states：
+# DevSpace 运行状态、cloudflared 进程以及 Tunnel 是否真正连接 Cloudflare
+# 边缘节点分开显示，避免“进程还在但公网已 530”时误报正常。
+if [ -x /root/sh/win-git/devspace_tray_watchdog.sh ]; then
+    env GDK_BACKEND=x11 DISPLAY="${DISPLAY:-:0}" \
+        /root/sh/win-git/devspace_tray_watchdog.sh \
+        >/tmp/newhome-devspace-tray.log 2>&1 &
+fi

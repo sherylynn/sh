@@ -320,6 +320,7 @@ class DevSpaceTray:
 
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(self.item("刷新状态", lambda _i: self.refresh_async()))
+        menu.append(self.item("管理工作目录…", lambda _i: self.manage_roots()))
         menu.append(self.item("查看详细状态…", lambda _i: self.show_status()))
         menu.append(Gtk.SeparatorMenuItem())
         menu.append(self.item("导出配置…", lambda _i: self.export_config()))
@@ -357,6 +358,81 @@ class DevSpaceTray:
         dialog.run()
         dialog.destroy()
         self.refresh_async()
+        return False
+
+    def manage_roots(self):
+        """Linux 端用可滚动复选框管理 DevSpace 允许访问的工作目录。"""
+        def worker():
+            result = run_devspace(["roots-scan"])
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout or "扫描失败").strip()[-800:]
+                GLib.idle_add(notify, "DevSpace 工作目录", detail, "critical")
+                return
+            candidates = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            selected_result = run_devspace(["roots-list"])
+            selected = set(line.strip() for line in selected_result.stdout.splitlines() if line.strip())
+            GLib.idle_add(self.render_roots_dialog, candidates, selected)
+
+        notify("DevSpace", "正在扫描工作目录…")
+        threading.Thread(target=worker, daemon=True).start()
+
+    def render_roots_dialog(self, candidates, selected):
+        dialog = Gtk.Dialog(title="管理 DevSpace 工作目录", modal=True)
+        dialog.add_buttons("取消", Gtk.ResponseType.CANCEL, "保存", Gtk.ResponseType.OK)
+        dialog.set_default_size(700, 480)
+
+        area = dialog.get_content_area()
+        note = Gtk.Label(label="勾选允许 ChatGPT/DevSpace 打开的 Git 工作目录。保存后将重启 DevSpace。")
+        note.set_xalign(0)
+        note.set_margin_start(12)
+        note.set_margin_end(12)
+        note.set_margin_top(12)
+        note.set_margin_bottom(8)
+        area.pack_start(note, False, False, 0)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_margin_start(12)
+        scroll.set_margin_end(12)
+        scroll.set_margin_bottom(12)
+        area.pack_start(scroll, True, True, 0)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        scroll.add(box)
+        checks = []
+        for path in candidates:
+            check = Gtk.CheckButton(label=path)
+            check.set_active(path in selected)
+            box.pack_start(check, False, False, 0)
+            checks.append((check, path))
+
+        if not candidates:
+            empty = Gtk.Label(label="没有扫描到 Git 仓库。")
+            empty.set_xalign(0)
+            box.pack_start(empty, False, False, 0)
+
+        dialog.show_all()
+        response = dialog.run()
+        wanted = [path for check, path in checks if check.get_active()]
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK:
+            return False
+
+        def save_worker():
+            result = run_devspace(["roots-set", *wanted])
+            detail = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+            if result.returncode != 0:
+                GLib.idle_add(notify, "保存工作目录失败", (detail or "未知错误")[-800:], "critical")
+                return
+            restart = run_devspace(["restart-devspace"])
+            restart_detail = "\n".join(part.strip() for part in (restart.stdout, restart.stderr) if part.strip())
+            if restart.returncode == 0:
+                GLib.idle_add(notify, "DevSpace", f"已保存 {len(wanted)} 个工作目录并重启服务")
+            else:
+                GLib.idle_add(notify, "DevSpace 重启失败", (restart_detail or "未知错误")[-800:], "critical")
+            GLib.idle_add(self.refresh_async)
+
+        threading.Thread(target=save_worker, daemon=True).start()
         return False
 
     def export_config(self):
