@@ -35,10 +35,15 @@ DEFAULT_EXPORT = os.path.join(SHARE_DIR, "devspace-mcp-migration.tar.gz")
 REFRESH_SECONDS = int(os.environ.get("DEVSPACE_TRAY_REFRESH", "15"))
 
 TUNNEL_LABEL = {
-    "connected": "已连接 Cloudflare",
-    "disconnected": "未连接（进程在跑，隧道未注册）",
+    "connected": "已连接",
+    "disconnected": "未连接",
     "stopped": "已停止",
     "unknown": "状态未知",
+}
+# 状态本身说不清楚的放到下一行：菜单宽度由最长一行决定，故这里用短句。
+TUNNEL_HINT = {
+    "disconnected": "进程在跑，隧道未注册",
+    "unknown": "读不到隧道状态",
 }
 SERVE_LABEL = {"running": "运行中", "stopped": "已停止"}
 
@@ -105,22 +110,47 @@ def tray_title(snap):
     return "◈"
 
 
-def tunnel_line(snap):
+def short_edges(edges, keep=2):
+    """边缘列表截断：连上多个边缘时那一行会又长又没用。"""
+    items = [x.strip() for x in (edges or "").split(",") if x.strip()]
+    if not items:
+        return ""
+    if len(items) > keep:
+        return "，".join(items[:keep]) + f" 等 {len(items)} 个"
+    return "，".join(items)
+
+
+def tunnel_lines(snap):
+    """Cloudflare 那一段的文案，**按语义拆行**（每个菜单项一行）。
+
+    挤成一行的旧版是
+    `Cloudflare Tunnel：已连接 Cloudflare（2 个边缘连接，lax05,lax07，http2） / 自启动开`
+    —— 70+ 宽，整个菜单都被撑开。
+    """
     tunnel = snap.get("tunnel", "unknown")
-    text = f"Cloudflare Tunnel：{TUNNEL_LABEL.get(tunnel, tunnel)}"
+    auto = f"自启动{'开' if snap.get('cloudflared_autostart') else '关'}"
+    lines = [f"Cloudflare Tunnel：{TUNNEL_LABEL.get(tunnel, tunnel)}"]
+
     if tunnel == "connected":
-        extras = [f"{snap.get('tunnel_connections') or '?'} 个边缘连接"]
-        if snap.get("tunnel_edges"):
-            extras.append(snap["tunnel_edges"])
+        detail = [f"{snap.get('tunnel_connections') or '?'} 连接"]
         if snap.get("tunnel_protocol"):
-            extras.append(snap["tunnel_protocol"])
-        text += f"（{'，'.join(extras)}）"
-    return f"{text} / 自启动{'开' if snap.get('cloudflared_autostart') else '关'}"
+            detail.append(snap["tunnel_protocol"])
+        detail.append(auto)
+        lines.append("  " + " · ".join(detail))
+        edges = short_edges(snap.get("tunnel_edges"))
+        if edges:
+            lines.append(f"  边缘 {edges}")
+    else:
+        hint = TUNNEL_HINT.get(tunnel)
+        if hint:
+            lines.append(f"  {hint}")
+        lines.append(f"  {auto}")
+    return lines
 
 
 def serve_line(snap):
     serve = snap.get("serve", "stopped")
-    return f"DevSpace：{SERVE_LABEL.get(serve, serve)} / 自启动{'开' if snap.get('devspace_autostart') else '关'}"
+    return f"DevSpace：{SERVE_LABEL.get(serve, serve)} · 自启动{'开' if snap.get('devspace_autostart') else '关'}"
 
 
 def run_action(args, label, done=None):
@@ -234,11 +264,13 @@ class DevSpaceTray:
         state = Gtk.MenuItem(label=serve_line(snap))
         state.set_sensitive(False)
         menu.append(state)
-        cloudflare_state = Gtk.MenuItem(label=tunnel_line(snap))
-        cloudflare_state.set_sensitive(False)
-        menu.append(cloudflare_state)
+        # 每个语义一行：挤成一行会把整个菜单撑宽。
+        for line in tunnel_lines(snap):
+            cloudflare_state = Gtk.MenuItem(label=line)
+            cloudflare_state.set_sensitive(False)
+            menu.append(cloudflare_state)
         if tunnel in ("disconnected", "unknown"):
-            warning = Gtk.MenuItem(label=f"⚠ {snap.get('tunnel_error') or '公网访问会失败'}"[:110])
+            warning = Gtk.MenuItem(label=f"⚠ {snap.get('tunnel_error') or '公网访问会失败'}"[:60])
             warning.set_sensitive(False)
             menu.append(warning)
         menu.append(Gtk.SeparatorMenuItem())

@@ -24,6 +24,7 @@ import sys
 import threading
 import time
 import traceback
+import unicodedata
 from pathlib import Path
 
 try:
@@ -95,7 +96,7 @@ def safe_render(fn):
                 rumps.MenuItem(f"  {type(exc).__name__}: {exc}"[:120]),
                 None,
                 rumps.MenuItem("刷新状态", callback=lambda _: self.refresh_async()),
-                rumps.MenuItem("退出菜单栏（关闭此项自启动）", callback=self.quit_controller),
+                rumps.MenuItem("退出菜单栏（关自启动）", callback=self.quit_controller),
             ])
             return None
         # 状态跃迁记一行：图标停在某个字符不动时，不用点开也知道渲染在跑。
@@ -108,12 +109,23 @@ def safe_render(fn):
 
 
 TUNNEL_LABEL = {
-    "connected": "已连接 Cloudflare",
-    "disconnected": "未连接（进程在跑，隧道未注册）",
+    "connected": "已连接",
+    "disconnected": "未连接",
     "stopped": "已停止",
     "unknown": "状态未知",
 }
+# 状态本身说不清楚的部分放到下一行 —— 菜单宽度由最长的一行决定，
+# 所以这里刻意用短句（原来把"进程在跑，隧道未注册"塞在同一个括号里，
+# 一行 70+ 宽）。
+TUNNEL_HINT = {
+    "disconnected": "进程在跑，隧道未注册",
+    "unknown": "读不到隧道状态",
+}
 SERVE_LABEL = {"running": "运行中", "stopped": "已停止"}
+
+# 菜单最长行的显示宽度上限（CJK 记 2）。超了就是"托盘太宽"，selftest 会失败。
+# 拆分前那条 Cloudflare 行是 ~78 格，现在最宽 28 格（「退出菜单栏（关闭此项自启动）」）。
+MAX_MENU_WIDTH = 32
 
 
 def shell(*args):
@@ -163,18 +175,51 @@ def menu_bar_title(serve, tunnel):
     return "◈"              # 其他混合状态
 
 
-def tunnel_line(snap):
-    """Cloudflare 那一行的文案：必须体现"有没有真的连上"。"""
+def display_width(text):
+    """近似显示宽度：CJK/全角记 2，其余记 1。
+
+    菜单宽度由最长的一行决定，而这个"最长"用字符数看不出来 —— 所以用它做
+    selftest 断言（见 MAX_MENU_WIDTH）。
+    """
+    return sum(2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1 for ch in str(text))
+
+
+def short_edges(edges, keep=2):
+    """边缘列表截断：连上多个边缘时那一行会又长又没用。"""
+    items = [x.strip() for x in (edges or "").split(",") if x.strip()]
+    if not items:
+        return ""
+    if len(items) > keep:
+        return "，".join(items[:keep]) + f" 等 {len(items)} 个"
+    return "，".join(items)
+
+
+def tunnel_lines(snap):
+    """Cloudflare 那一段的文案，**按语义拆行**（每个 MenuItem 就是一行）。
+
+    挤成一行的旧版是
+    `Cloudflare Tunnel：已连接 Cloudflare（2 个边缘连接，lax05,lax07，http2） / 自启动开`
+    —— 70+ 宽，整个菜单都被这一行撑开。菜单项不支持可靠换行，所以拆成多行。
+    """
     tunnel = snap.get("tunnel", "unknown")
-    text = f"Cloudflare Tunnel：{TUNNEL_LABEL.get(tunnel, tunnel)}"
+    auto = f"自启动{'开' if snap.get('cloudflared_autostart') else '关'}"
+    lines = [f"Cloudflare Tunnel：{TUNNEL_LABEL.get(tunnel, tunnel)}"]
+
     if tunnel == "connected":
-        extras = [f"{snap.get('tunnel_connections') or '?'} 个边缘连接"]
-        if snap.get("tunnel_edges"):
-            extras.append(snap["tunnel_edges"])
+        detail = [f"{snap.get('tunnel_connections') or '?'} 连接"]
         if snap.get("tunnel_protocol"):
-            extras.append(snap["tunnel_protocol"])
-        text += f"（{'，'.join(extras)}）"
-    return f"{text} / 自启动{'开' if snap.get('cloudflared_autostart') else '关'}"
+            detail.append(snap["tunnel_protocol"])
+        detail.append(auto)
+        lines.append("  " + " · ".join(detail))
+        edges = short_edges(snap.get("tunnel_edges"))
+        if edges:
+            lines.append(f"  边缘 {edges}")
+    else:
+        hint = TUNNEL_HINT.get(tunnel)
+        if hint:
+            lines.append(f"  {hint}")
+        lines.append(f"  {auto}")
+    return lines
 
 
 def action(args, label, callback=None):
@@ -237,7 +282,7 @@ class DevSpaceMenu(rumps.App):
                 rumps.MenuItem("正在读取状态…"),
                 None,
                 rumps.MenuItem("刷新状态", callback=lambda _: self.refresh_async()),
-                rumps.MenuItem("退出菜单栏（关闭此项自启动）", callback=self.quit_controller),
+                rumps.MenuItem("退出菜单栏（关自启动）", callback=self.quit_controller),
             ]
             self.menu.clear()
             self.menu.update(menu)
@@ -254,15 +299,15 @@ class DevSpaceMenu(rumps.App):
         # 一个字符表达三种状态：正常 / 有问题 / 全停
         self.title = menu_bar_title(serve, tunnel)
 
-        tunnel_line_text = tunnel_line(snap)
-
+        # 每个语义一行：挤成一行会把整个菜单撑得很宽。
+        # DevSpace 这一段本身就短（一行 ~24 宽），保持一行不再拆。
         menu = [
-            rumps.MenuItem(f"DevSpace：{SERVE_LABEL.get(serve, serve)} / 自启动{'开' if da else '关'}"),
-            rumps.MenuItem(tunnel_line_text),
+            rumps.MenuItem(f"DevSpace：{SERVE_LABEL.get(serve, serve)} · 自启动{'开' if da else '关'}"),
         ]
+        menu.extend(rumps.MenuItem(line) for line in tunnel_lines(snap))
         if tunnel in ("disconnected", "unknown"):
             err = snap.get("tunnel_error")
-            menu.append(rumps.MenuItem(f"  ⚠ {err[:90]}" if err else "  ⚠ 公网访问会失败"))
+            menu.append(rumps.MenuItem(f"  ⚠ {err[:60]}" if err else "  ⚠ 公网访问会失败"))
         menu.append(None)
 
         dsm = rumps.MenuItem("DevSpace 服务")
@@ -298,12 +343,12 @@ class DevSpaceMenu(rumps.App):
         menu.extend([
             rumps.MenuItem("刷新状态", callback=lambda _: self.refresh_async()),
             rumps.MenuItem("管理工作目录…", callback=self.manage_roots),
-            rumps.MenuItem("打开 ChatGPT 卡片清理扩展目录", callback=self.open_card_cleaner),
+            rumps.MenuItem("打开卡片清理扩展目录", callback=self.open_card_cleaner),
             rumps.MenuItem("导出配置…", callback=self.export_config),
             rumps.MenuItem("导入配置…", callback=self.import_config),
             rumps.MenuItem("查看详细状态…", callback=self.show_detail),
             None,
-            rumps.MenuItem("退出菜单栏（关闭此项自启动）", callback=self.quit_controller),
+            rumps.MenuItem("退出菜单栏（关自启动）", callback=self.quit_controller),
         ])
         self.menu.clear()
         self.menu.update(menu)
@@ -471,7 +516,16 @@ def selftest():
             failures += 1
             print(f"FAIL  {label}: 菜单为空（点图标将毫无反应）")
             continue
-        print(f"ok    {label}: 标题 {target.title} / {len(target.menu.items)} 项")
+        widest, widest_text = 0, ""
+        for item in target.menu.items:
+            width = display_width(str(item.title))
+            if width > widest:
+                widest, widest_text = width, item.title
+        if widest > MAX_MENU_WIDTH:
+            failures += 1
+            print(f"FAIL  {label}: 菜单最宽一行 {widest} 格（上限 {MAX_MENU_WIDTH}）：{widest_text}")
+            continue
+        print(f"ok    {label}: 标题 {target.title} / {len(target.menu.items)} 项 / 最宽 {widest} 格（{widest_text.strip()}）")
     print("selftest:", "FAILED" if failures else "PASSED")
     return 1 if failures else 0
 
