@@ -1,0 +1,10 @@
+{
+  "policies": {
+    "ExtensionSettings": {
+      "chatgpt-devspace-cleaner@sherylynn.win": {
+        "installation_mode": "force_installed",
+        "install_url": "https://intranet.example.com/firefox/chatgpt-devspace-cleaner-0.1.1.xpi"
+      }
+    }
+  }
+}

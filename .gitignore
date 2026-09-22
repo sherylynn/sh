@@ -10,3 +10,9 @@ tmp/
 *.mimo/
 *.cron-lock
 __pycache__
+
+# Firefox 扩展签名产物与凭据（chatgpt-devspace-cleaner）
+web-ext-artifacts/
+*.xpi
+amo*.env
+.amo-upload-uuid
