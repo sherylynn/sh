@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import threading
+import time
 
 import gi
 
@@ -33,6 +34,13 @@ ACTION_LOG = "/tmp/devspace-tray.log"
 SHARE_DIR = "/sdcard/Download/share"
 DEFAULT_EXPORT = os.path.join(SHARE_DIR, "devspace-mcp-migration.tar.gz")
 REFRESH_SECONDS = int(os.environ.get("DEVSPACE_TRAY_REFRESH", "15"))
+# cloudflared 自己负责短时断网/edge 故障的重连。托盘只做最后一层有限守护：
+# 连续 3 分钟没有 edge 才重启；最多尝试 3 次，仍失败就停止自动干预。
+# 一旦恢复连接，整轮故障计数清零。主动点击“停止”也会关闭本轮守护。
+CLOUDFLARED_GUARD_DELAY = int(os.environ.get("DEVSPACE_CLOUDFLARED_GUARD_DELAY", "180"))
+CLOUDFLARED_GUARD_MAX_RESTARTS = int(os.environ.get("DEVSPACE_CLOUDFLARED_GUARD_MAX_RESTARTS", "3"))
+CLOUDFLARED_GUARD_RETRY_DELAY = int(os.environ.get("DEVSPACE_CLOUDFLARED_GUARD_RETRY_DELAY", "180"))
+CLOUDFLARED_GUARD_ENABLED = os.environ.get("DEVSPACE_CLOUDFLARED_GUARD", "1").lower() not in ("0", "false", "off", "no")
 
 TUNNEL_LABEL = {
     "connected": "已连接",
@@ -177,6 +185,10 @@ class DevSpaceTray:
     def __init__(self):
         self.snapshot = None
         self.fetching = False
+        self.tunnel_bad_since = None
+        self.tunnel_guard_restarts = 0
+        self.tunnel_guard_exhausted = False
+        self.tunnel_guard_restarting = False
         if AyatanaAppIndicator3 is not None:
             # 与分辨率托盘保持同一路径。当前 XFCE/Termux:X11 会话由
             # StatusNotifier 承载托盘菜单，Gtk.StatusIcon 在部分面板组合下
@@ -224,6 +236,7 @@ class DevSpaceTray:
         self.fetching = False
         if snap is not None:
             self.snapshot = snap
+            self.guard_cloudflared(snap)
         snap = self.snapshot
         title = "DevSpace MCP"
         if snap:
@@ -239,6 +252,59 @@ class DevSpaceTray:
         elif self.icon is not None:
             self.icon.set_tooltip_text(title)
         return False
+
+    def guard_cloudflared(self, snap):
+        """只在 cloudflared 官方自恢复长期失败后做有限次数的兜底重启。"""
+        if not CLOUDFLARED_GUARD_ENABLED:
+            return
+        tunnel = snap.get("tunnel", "unknown")
+        now = time.monotonic()
+
+        if tunnel == "connected":
+            if self.tunnel_guard_restarts or self.tunnel_guard_exhausted:
+                log("Cloudflare Tunnel 已恢复，守护计数清零")
+            self.tunnel_bad_since = None
+            self.tunnel_guard_restarts = 0
+            self.tunnel_guard_exhausted = False
+            return
+
+        # stopped 表示用户/其他管理入口明确停掉进程；绝不能擅自拉起。
+        if tunnel == "stopped":
+            self.tunnel_bad_since = None
+            self.tunnel_guard_restarts = 0
+            self.tunnel_guard_exhausted = False
+            return
+
+        if self.tunnel_guard_exhausted or self.tunnel_guard_restarting:
+            return
+        if self.tunnel_bad_since is None:
+            self.tunnel_bad_since = now
+            log(f"Cloudflare Tunnel 未连接，先交给 cloudflared 自恢复 {CLOUDFLARED_GUARD_DELAY}s")
+            return
+
+        wait = CLOUDFLARED_GUARD_DELAY if self.tunnel_guard_restarts == 0 else CLOUDFLARED_GUARD_RETRY_DELAY
+        if now - self.tunnel_bad_since < wait:
+            return
+        if self.tunnel_guard_restarts >= CLOUDFLARED_GUARD_MAX_RESTARTS:
+            self.tunnel_guard_exhausted = True
+            log("Cloudflare Tunnel 守护已达最大重启次数，本轮停止自动重试")
+            notify("Cloudflare Tunnel", "多次重连仍失败，已停止自动重试", "critical")
+            return
+
+        self.tunnel_guard_restarting = True
+        self.tunnel_guard_restarts += 1
+        attempt = self.tunnel_guard_restarts
+        self.tunnel_bad_since = now
+        log(f"Cloudflare Tunnel 长期未连接，守护执行第 {attempt}/{CLOUDFLARED_GUARD_MAX_RESTARTS} 次重启")
+
+        def worker():
+            result = run_devspace(["restart-cloudflared"])
+            detail = "\n".join(x.strip() for x in (result.stdout, result.stderr) if x.strip())
+            log(f"Cloudflare 守护重启结束：attempt={attempt} rc={result.returncode}\n{detail}")
+            self.tunnel_guard_restarting = False
+            GLib.idle_add(self.refresh_async)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     @staticmethod
     def item(label, callback):
