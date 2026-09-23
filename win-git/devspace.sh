@@ -259,32 +259,17 @@ OnlyShowIn=XFCE;
 EOF
   chmod 644 "$AUTOSTART_FILE"
 
-  # XFCE 托盘只负责交互控制；真正的服务生命周期仍统一走本脚本/server_devspace.sh。
-  # Gtk.StatusIcon 与显示设置托盘保持一致，避免依赖 Ayatana indicator service。
-  if [ -f "$TRAY_SCRIPT" ] && [ -f "$TRAY_WATCHDOG" ]; then
-    chmod 755 "$TRAY_SCRIPT" "$TRAY_WATCHDOG"
-    cat >"$TRAY_AUTOSTART_FILE" <<EOF
-[Desktop Entry]
-Type=Application
-Name=DevSpace MCP Tray
-Comment=Start, stop, import and export DevSpace MCP configuration
-Exec=$TRAY_WATCHDOG
-Icon=network-server
-Terminal=false
-Hidden=false
-X-GNOME-Autostart-enabled=true
-OnlyShowIn=XFCE;
-EOF
-    chmod 644 "$TRAY_AUTOSTART_FILE"
-  fi
+  # Linux 端交互管理已合并进 NewHome Linux；不再创建独立 DevSpace 托盘。
+  rm -f "$TRAY_AUTOSTART_FILE"
+  pkill -f '^/bin/bash .*/devspace_tray_watchdog.sh$' 2>/dev/null || true
+  pkill -f '^python3 .*/devspace_tray.py$' 2>/dev/null || true
   echo "desktop autostart: $AUTOSTART_FILE"
-  echo "DevSpace tray autostart: $TRAY_AUTOSTART_FILE"
+  echo "DevSpace UI: managed by NewHome Linux"
 }
 
 disable_linux_autostart() {
-  # 这里只关闭 DevSpace 服务的开机启动。控制托盘本身继续自启动，
-  # 这样用户即使关闭了服务自启动，下次登录仍可从托盘重新开启。
-  rm -f "$AUTOSTART_FILE"
+  # 这里只关闭 DevSpace 服务的开机启动；Linux 管理入口由 NewHome Linux 提供。
+  rm -f "$AUTOSTART_FILE" "$TRAY_AUTOSTART_FILE"
 
   if [ -e /etc/rc3.d/S01devspace ] || [ -L /etc/rc3.d/S01devspace ]; then
     if [ "$(id -u)" -eq 0 ]; then
