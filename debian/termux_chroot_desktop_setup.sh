@@ -6,23 +6,19 @@ if (( EUID != 0 )); then
 fi
 
 SCALING_SCRIPT=/root/sh/win-git/xfce4-scaling.sh
-TRAY_SCRIPT=/root/sh/win-git/xfce_display_tray.py
-TRAY_WATCHDOG=/root/sh/win-git/xfce_display_tray_watchdog.sh
 NEWHOME_REPO=${NEWHOME_REPO:-/root/newhome}
-NEWHOME_LINUX_DISPLAY=/usr/lib/newhome-linux/newhome-linux-display
 DEVSPACE_TRAY=/root/sh/win-git/devspace_tray.py
 DEVSPACE_TRAY_WATCHDOG=/root/sh/win-git/devspace_tray_watchdog.sh
 CLIPBOARD_BRIDGE=/root/sh/termux/chroot/newhome_clipboard_bridge.py
 CAMERA_BRIDGE=/root/sh/termux/chroot/newhome_camera_bridge.sh
 DISABLE_AYATANA=/root/sh/win-git/disable_ayatana_xfce_autostart.sh
 AUTOSTART_DIR=/root/.config/autostart
-AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-tray.desktop
+LEGACY_DISPLAY_TRAY_AUTOSTART=$AUTOSTART_DIR/xfce-display-tray.desktop
 DEVSPACE_AUTOSTART_FILE=$AUTOSTART_DIR/devspace-tray.desktop
 CLIPBOARD_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-clipboard-bridge.desktop
 CAMERA_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-camera-bridge.desktop
 LEGACY_AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-presets-panel.desktop
-DISPLAY_DESKTOP_DIR=/root/Desktop
-DISPLAY_DESKTOP_FILE=$DISPLAY_DESKTOP_DIR/newhome-display-settings.desktop
+LEGACY_DISPLAY_DESKTOP_FILE=/root/Desktop/newhome-display-settings.desktop
 
 install_newhome_linux() {
     # NewHome Linux is built from the NewHome repository. Always install it before
@@ -58,13 +54,13 @@ apt-get install -y \
     build-essential pkg-config pipewire pipewire-bin wireplumber libpipewire-0.3-dev \
     gstreamer1.0-tools gstreamer1.0-pipewire \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good
-chmod 0755 "$SCALING_SCRIPT" "$TRAY_SCRIPT" "$TRAY_WATCHDOG" "$DEVSPACE_TRAY" "$DEVSPACE_TRAY_WATCHDOG" "$CLIPBOARD_BRIDGE" "$CAMERA_BRIDGE" "$DISABLE_AYATANA"
+chmod 0755 "$SCALING_SCRIPT" "$DEVSPACE_TRAY" "$DEVSPACE_TRAY_WATCHDOG" "$CLIPBOARD_BRIDGE" "$CAMERA_BRIDGE" "$DISABLE_AYATANA"
 bash /root/sh/win-git/build_x11vnc_remote_resize.sh
 mkdir -p "$AUTOSTART_DIR"
 bash "$DISABLE_AYATANA"
 # Resolution/scaling controls now live inside the persistent NewHome Linux tray.
 # Remove the old independent display tray so there is one owner for this UI.
-rm -f "$AUTOSTART_FILE"
+rm -f "$LEGACY_DISPLAY_TRAY_AUTOSTART" "$LEGACY_DISPLAY_DESKTOP_FILE"
 pkill -f '^/bin/bash /root/sh/win-git/xfce_display_tray_watchdog.sh$' 2>/dev/null || true
 pkill -f '^python3 /root/sh/win-git/xfce_display_tray.py$' 2>/dev/null || true
 
@@ -82,19 +78,8 @@ OnlyShowIn=XFCE;
 EOF
 chmod 0644 "$DEVSPACE_AUTOSTART_FILE"
 
-# 通知区域不可用时仍可从 XFCE 桌面打开同一套分辨率/缩放控制。
-mkdir -p "$DISPLAY_DESKTOP_DIR"
-cat >"$DISPLAY_DESKTOP_FILE" <<EOF
-[Desktop Entry]
-Type=Application
-Name=显示设置
-Comment=调整 Termux:X11 分辨率与 Linux 界面缩放
-Exec=$NEWHOME_LINUX_DISPLAY --gui
-Icon=video-display
-Terminal=false
-StartupNotify=true
-EOF
-chmod 0755 "$DISPLAY_DESKTOP_FILE"
+# 不再创建独立“显示设置”桌面入口；分辨率/缩放统一由 NewHome 托盘提供。
+rm -f "$LEGACY_DISPLAY_DESKTOP_FILE"
 
 cat > "$CLIPBOARD_AUTOSTART_FILE" <<EOF
 [Desktop Entry]
