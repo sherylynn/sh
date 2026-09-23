@@ -8,6 +8,8 @@ fi
 SCALING_SCRIPT=/root/sh/win-git/xfce4-scaling.sh
 TRAY_SCRIPT=/root/sh/win-git/xfce_display_tray.py
 TRAY_WATCHDOG=/root/sh/win-git/xfce_display_tray_watchdog.sh
+NEWHOME_REPO=${NEWHOME_REPO:-/root/newhome}
+NEWHOME_LINUX_DISPLAY=/usr/lib/newhome-linux/newhome-linux-display
 DEVSPACE_TRAY=/root/sh/win-git/devspace_tray.py
 DEVSPACE_TRAY_WATCHDOG=/root/sh/win-git/devspace_tray_watchdog.sh
 CLIPBOARD_BRIDGE=/root/sh/termux/chroot/newhome_clipboard_bridge.py
@@ -21,6 +23,27 @@ CAMERA_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-camera-bridge.desktop
 LEGACY_AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-presets-panel.desktop
 DISPLAY_DESKTOP_DIR=/root/Desktop
 DISPLAY_DESKTOP_FILE=$DISPLAY_DESKTOP_DIR/newhome-display-settings.desktop
+
+install_newhome_linux() {
+    # NewHome Linux is built from the NewHome repository. Always install it before
+    # configuring XFCE so a fresh/redeployed chroot cannot keep running an old tray.
+    if [ -d "$NEWHOME_REPO/.git" ]; then
+        git -C "$NEWHOME_REPO" pull --ff-only || \
+            echo "警告：$NEWHOME_REPO 无法快进更新，将使用当前工作树构建 NewHome Linux。" >&2
+    else
+        rm -rf "$NEWHOME_REPO"
+        git clone https://github.com/sherylynn/newhome.git "$NEWHOME_REPO"
+    fi
+
+    (
+        cd "$NEWHOME_REPO/linux"
+        ./scripts/build-deb.sh
+        latest_deb=$(ls -1t dist/newhome-linux_*_all.deb | head -n 1)
+        apt-get install -y "./$latest_deb"
+    )
+}
+
+install_newhome_linux
 
 # Audio/ALSA/PulseAudio integration for all chroot applications.
 bash /root/sh/debian/newhome_mic_bridge_setup.sh
@@ -39,18 +62,11 @@ chmod 0755 "$SCALING_SCRIPT" "$TRAY_SCRIPT" "$TRAY_WATCHDOG" "$DEVSPACE_TRAY" "$
 bash /root/sh/win-git/build_x11vnc_remote_resize.sh
 mkdir -p "$AUTOSTART_DIR"
 bash "$DISABLE_AYATANA"
-cat > "$AUTOSTART_FILE" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Termux:X11 Display Tray
-Comment=Termux:X11 resolution and Linux UI scaling menu
-Exec=$TRAY_WATCHDOG
-Terminal=false
-Hidden=false
-X-GNOME-Autostart-enabled=true
-OnlyShowIn=XFCE;
-EOF
-chmod 0644 "$AUTOSTART_FILE"
+# Resolution/scaling controls now live inside the persistent NewHome Linux tray.
+# Remove the old independent display tray so there is one owner for this UI.
+rm -f "$AUTOSTART_FILE"
+pkill -f '^/bin/bash /root/sh/win-git/xfce_display_tray_watchdog.sh$' 2>/dev/null || true
+pkill -f '^python3 /root/sh/win-git/xfce_display_tray.py$' 2>/dev/null || true
 
 cat > "$DEVSPACE_AUTOSTART_FILE" <<EOF
 [Desktop Entry]
@@ -73,7 +89,7 @@ cat >"$DISPLAY_DESKTOP_FILE" <<EOF
 Type=Application
 Name=显示设置
 Comment=调整 Termux:X11 分辨率与 Linux 界面缩放
-Exec=$SCALING_SCRIPT --gui
+Exec=$NEWHOME_LINUX_DISPLAY --gui
 Icon=video-display
 Terminal=false
 StartupNotify=true
@@ -114,11 +130,11 @@ DISPLAY=${DISPLAY:-:1.0} "$SCALING_SCRIPT" --remove-panel-launcher || true
 # as installing next-login autostart entries. The clipboard daemon has its own flock lock and
 # the camera helper has a pidfile, so duplicate startup requests are harmless.
 if pgrep -x xfce4-panel >/dev/null 2>&1; then
-    if ! pgrep -f '^/bin/bash /root/sh/win-git/xfce_display_tray_watchdog.sh$' >/dev/null 2>&1 &&
-       ! pgrep -f '^python3 /root/sh/win-git/xfce_display_tray.py$' >/dev/null 2>&1; then
-        nohup setsid env DISPLAY=${DISPLAY:-:1.0} "$TRAY_WATCHDOG" \
-            </dev/null >/tmp/xfce-display-tray.log 2>&1 &
-    fi
+    # NewHome daemon owns the display menu. Restart it after package upgrades so the
+    # running tray always matches the just-installed package.
+    pkill -f '^/usr/bin/python3 /usr/bin/newhome-linux-daemon$' 2>/dev/null || true
+    nohup setsid env DISPLAY=${DISPLAY:-:1.0} /usr/bin/python3 /usr/bin/newhome-linux-daemon \
+        </dev/null >/tmp/newhome-linux-daemon.log 2>&1 &
     if ! pgrep -f '^/usr/bin/python3 /root/sh/win-git/devspace_tray.py$' >/dev/null 2>&1; then
         nohup setsid env DISPLAY=${DISPLAY:-:1.0} "$DEVSPACE_TRAY_WATCHDOG" \
             </dev/null >/tmp/devspace-tray-watchdog.log 2>&1 &
@@ -129,4 +145,4 @@ if pgrep -x xfce4-panel >/dev/null 2>&1; then
         </dev/null >/tmp/newhome-camera-bridge-start.log 2>&1 &
 fi
 
-echo "Termux chroot 桌面集成完成：按需麦克风、Android/X11/VNC 剪贴板、Android Camera2→PipeWire 摄像头、XFCE 显示按钮和 noVNC 远程调整大小已启用。"
+echo "Termux chroot 桌面集成完成：已安装/更新 NewHome Linux，分辨率与缩放已合并进 NewHome 托盘；按需麦克风、Android/X11/VNC 剪贴板、Android Camera2→PipeWire 摄像头和 noVNC 远程调整大小已启用。"
