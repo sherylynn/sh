@@ -1,58 +1,66 @@
 #!/bin/bash
-#sudo apt update
-. $(dirname "$0")/toolsinit.sh
+set -eo pipefail
+
+# Install the current supported .NET LTS SDK using Microsoft's official installer.
+# The SDK is installed per-user under ~/tools/dotnet so the same script works in
+# Linux/macOS/MSYS-style environments without requiring root.
+. "$(dirname "$0")/toolsinit.sh"
+
 TOOLSRC_NAME=dotnetrc
-TOOLSRC=$(toolsRC ${TOOLSRC_NAME})
+TOOLSRC=$(toolsRC "${TOOLSRC_NAME}")
 SOFT_HOME=$(install_path)/dotnet
+SOFT_TOOL_HOME=$HOME/.dotnet/tools
+DOTNET_CHANNEL=${DOTNET_CHANNEL:-10.0}
+DOTNET_QUALITY=${DOTNET_QUALITY:-GA}
+# NewHome Windows deliberately targets net8.0 for a conservative Windows 10
+# runtime surface. Keep the still-supported .NET 8 runtime next to the .NET 10 SDK
+# so the same Linux environment can run/debug the Avalonia app locally.
+DOTNET_COMPAT_RUNTIME_CHANNEL=${DOTNET_COMPAT_RUNTIME_CHANNEL:-8.0}
 
-VERSION=2.1.6
-SOFT_VERSION=release/${VERSION}xx
-
-#SOFT_VERSION=master
-SOFT_ARCH=x64
-
-# uname Linux .bashrc uname Darwin MINGW64 .bash_profile
-case $(platform) in 
-  win) PLATFORM=win;;
-  linux) PLATFORM=linux;;
-  macos) PLATFORM=osx;;
+case $(arch) in
+  amd64) SOFT_ARCH=x64 ;;
+  386) SOFT_ARCH=x86 ;;
+  armhf) SOFT_ARCH=arm ;;
+  aarch64) SOFT_ARCH=arm64 ;;
+  *)
+    echo "Unsupported architecture: $(arch)" >&2
+    exit 1
+    ;;
 esac
 
-case $(arch) in 
-  amd64) SOFT_ARCH=x64;;
-  386) SOFT_ARCH=x86;;
-  armhf) SOFT_ARCH=arm;;
-  aarch64) SOFT_ARCH=arm64;;
-esac
+LIB_FILE_NAME=dotnet-install.sh
+LIB_URL=https://dot.net/v1/dotnet-install.sh
+INSTALLER="$(cache_folder)/${LIB_FILE_NAME}"
 
-SOFT_FILE_NAME=dotnet-sdk-latest-${PLATFORM}-${SOFT_ARCH}
-SOFT_FILE_PACK=$(soft_file_pack $SOFT_FILE_NAME)
-SOFT_URL=https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${SOFT_VERSION}/${SOFT_FILE_PACK}
-# init pwd
-cd ~
+# Always refresh the official installer. Microsoft changes download locations over
+# time, so keeping an old local copy is less reliable than fetching the stable URL.
+curl --fail --location --show-error --retry 5 --retry-delay 1 \
+  --connect-timeout 20 --output "${INSTALLER}.part" "${LIB_URL}"
+mv -f "${INSTALLER}.part" "${INSTALLER}"
+chmod 755 "${INSTALLER}"
 
-#--------------------------------------
-#安装 dotnet
-#--------------------------------------
-if [[ "$(dotnet --version)" != *${VERSION}* ]]; then
+mkdir -p "${SOFT_HOME}" "${SOFT_TOOL_HOME}"
+"${INSTALLER}" \
+  --install-dir "${SOFT_HOME}" \
+  --channel "${DOTNET_CHANNEL}" \
+  --quality "${DOTNET_QUALITY}" \
+  --architecture "${SOFT_ARCH}" \
+  --no-path
 
-  $(cache_downloader $SOFT_FILE_PACK $SOFT_URL)
-  $(cache_unpacker $SOFT_FILE_PACK $SOFT_FILE_NAME)
+"${INSTALLER}" \
+  --install-dir "${SOFT_HOME}" \
+  --channel "${DOTNET_COMPAT_RUNTIME_CHANNEL}" \
+  --runtime dotnet \
+  --architecture "${SOFT_ARCH}" \
+  --no-path
 
-  rm -rf ${SOFT_HOME} && \
-    mv $(cache_folder)/${SOFT_FILE_NAME} ${SOFT_HOME} 
-fi
-#--------------new .toolsrc-----------------------
-export PATH=$PATH:${SOFT_HOME} 
-export DOTNET_ROOT=${SOFT_HOME} 
-echo 'export PATH=$PATH:'${SOFT_HOME} >${TOOLSRC}
-echo 'export DOTNET_ROOT='${SOFT_HOME} >>${TOOLSRC}
+export DOTNET_ROOT="${SOFT_HOME}"
+export PATH="${SOFT_HOME}:${SOFT_TOOL_HOME}:${PATH}"
 
-#  ----windows bat----
-# if [[ $PLATFORM == win ]]; then
-if [[ $PLATFORM == not_win_ ]]; then
-  setx DOTNET_ROOT $(cygpath -w ${SOFT_HOME})
-  winENV="$(echo -e ${PATH//:/;\\n}';' |sort|uniq|cygpath -w -f -|tr -d '\n')"
-  echo $winENV
-  setx Path "$winENV"
-fi
+cat >"${TOOLSRC}" <<EOF
+export DOTNET_ROOT=${SOFT_HOME}
+export PATH=${SOFT_HOME}:${SOFT_TOOL_HOME}:\$PATH
+EOF
+
+echo "Installed .NET SDK:"
+dotnet --info
