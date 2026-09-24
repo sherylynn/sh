@@ -44,8 +44,9 @@ bash /root/sh/debian/newhome_mic_bridge_setup.sh
 
 # Desktop integration dependencies. xclip is the X11 clipboard endpoint shared
 # by local applications, x11vnc/noVNC and the NewHome Android clipboard bridge.
-# PipeWire is used only for the Linux video-source graph; the existing Termux
-# PulseAudio audio path remains unchanged.
+# PipeWire is used only for the Linux video-source graph. Linux applications still
+# use PulseAudio for compatibility, but final speaker playback is now forwarded by
+# Termux to NewHome's Android AudioTrack endpoint on 127.0.0.1:4716.
 apt-get install -y \
     zenity libnotify-bin python3 python3-gi gir1.2-gtk-3.0 \
     x11vnc xclip gcc binutils libvncserver-dev \

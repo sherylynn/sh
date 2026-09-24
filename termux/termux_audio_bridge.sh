@@ -3,6 +3,7 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHROOT_TOOL="$SCRIPT_DIR/chroot/cli.sh"
+NEWHOME_PLAYBACK_BRIDGE="$SCRIPT_DIR/newhome_playback_bridge.sh"
 PULSE_PORT="${PULSE_PORT:-4713}"
 PULSE_SERVER_ADDR="tcp:127.0.0.1:${PULSE_PORT}"
 MODULE_TCP_ARGS="auth-ip-acl=127.0.0.1 auth-anonymous=1 port=${PULSE_PORT}"
@@ -112,7 +113,12 @@ print_audio_state() {
   pactl list short sources 2>&1 || true
   echo
   echo "=== Android audio modules ==="
-  pactl list short modules 2>/dev/null | grep -E 'native-protocol-tcp|aaudio|sles' || true
+  pactl list short modules 2>/dev/null | grep -E 'native-protocol-tcp|pipe-sink|aaudio|sles' || true
+  if [ -f "$NEWHOME_PLAYBACK_BRIDGE" ]; then
+    echo
+    echo "=== NewHome playback ==="
+    PULSE_SERVER="$PULSE_SERVER_ADDR" bash "$NEWHOME_PLAYBACK_BRIDGE" status 2>&1 || true
+  fi
 }
 
 chroot_exec() {
@@ -185,11 +191,12 @@ start_bridge() {
   ensure_pulseaudio
   ensure_tcp_module
 
-  if ! try_load_android_audio sink; then
-    warn "没有可用的 AAudio/OpenSL ES sink。先看 doctor 输出；部分 Termux PulseAudio 构建会自动提供 Android sink。"
-  fi
-  if ! try_load_android_audio source; then
-    warn "没有可用的 AAudio/OpenSL ES source。扬声器仍可能可用；麦克风需后续单独解决。"
+  if [ -f "$NEWHOME_PLAYBACK_BRIDGE" ]; then
+    log "启用 NewHome Android AudioTrack 播放 sink"
+    PULSE_SERVER="$PULSE_SERVER_ADDR" bash "$NEWHOME_PLAYBACK_BRIDGE" start || \
+      warn "NewHome 播放 sink 启动失败；可临时回退 Termux Android sink"
+  elif ! try_load_android_audio sink; then
+    warn "未找到 NewHome 播放桥，也没有可用的 AAudio/OpenSL ES sink"
   fi
 
   log "音频桥已启动；chroot 客户端应使用 PULSE_SERVER=${PULSE_SERVER_ADDR}"
@@ -197,6 +204,10 @@ start_bridge() {
 }
 
 stop_bridge() {
+  if [ -f "$NEWHOME_PLAYBACK_BRIDGE" ]; then
+    PULSE_SERVER="$PULSE_SERVER_ADDR" bash "$NEWHOME_PLAYBACK_BRIDGE" stop >/dev/null 2>&1 || true
+  fi
+
   if ! pulse_running; then
     log "PulseAudio 未运行"
     rm -f "$TCP_MODULE_ID_FILE" 2>/dev/null || true
