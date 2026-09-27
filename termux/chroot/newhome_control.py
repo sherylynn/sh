@@ -13,6 +13,7 @@ Android apps cannot reach the privileged restart operation through localhost.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import socket
 import sys
@@ -20,7 +21,7 @@ import sys
 SOCKET_NAME = os.environ.get("NEWHOME_CONTROL_SOCKET", "newhome_control_v1")
 HELLO = "HELLO NEWHOME_CONTROL 1"
 TIMEOUT = float(os.environ.get("NEWHOME_CONTROL_TIMEOUT", "20"))
-MAX_LINE = 4096
+MAX_LINE = 64 * 1024
 
 
 def read_line(stream) -> str:
@@ -53,8 +54,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="NewHome Linux control client")
     parser.add_argument(
         "command",
-        choices=("ping", "restart", "restart-x11", "restart-wayland"),
-        help="restart remains an alias for restart-x11 for backward compatibility",
+        choices=("ping", "devspace-peers", "restart", "restart-x11", "restart-wayland"),
+        help="query DevSpace relay peers or restart the Android chroot display stack",
     )
     args = parser.parse_args()
 
@@ -67,6 +68,7 @@ def main() -> int:
 
     wire = {
         "ping": "PING",
+        "devspace-peers": "DEVSPACE_PEERS",
         "restart": "RESTART",
         "restart-x11": "RESTART X11",
         "restart-wayland": "RESTART WAYLAND",
@@ -82,6 +84,22 @@ def main() -> int:
             print(f"NewHome rejected ping: {response}", file=sys.stderr)
             return 2
         print("NewHome control bridge: OK")
+        return 0
+
+    if args.command == "devspace-peers":
+        prefix = "OK DEVSPACE_PEERS "
+        if not response.startswith(prefix):
+            print(f"NewHome rejected DevSpace peer query: {response}", file=sys.stderr)
+            return 2
+        try:
+            peers = json.loads(response[len(prefix):])
+        except (TypeError, ValueError) as exc:
+            print(f"Invalid DevSpace peer response: {exc}", file=sys.stderr)
+            return 2
+        if not isinstance(peers, list):
+            print("Invalid DevSpace peer response: expected a list", file=sys.stderr)
+            return 2
+        print(json.dumps(peers, ensure_ascii=False, indent=2))
         return 0
 
     if response == "OK RESTARTING":
