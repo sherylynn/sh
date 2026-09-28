@@ -119,24 +119,40 @@ def source_is_in_use():
         for line in result.stdout.splitlines()
     )
 
+def read_response_line(sock):
+    header = bytearray()
+    while not header.endswith(b"\n") and len(header) < 256:
+        chunk = sock.recv(1)
+        if not chunk:
+            raise RuntimeError("NewHome closed before protocol response")
+        header.extend(chunk)
+    return header.decode("utf-8", "replace").strip()
+
 while True:
     if not source_is_in_use():
         time.sleep(0.25)
         continue
-    # A source-output now exists: a Linux application is actively recording.
-    with open(fifo, "wb", buffering=0) as output:
-        try:
-            with socket.create_connection((host, port), timeout=5) as sock:
-                sock.sendall(b"START\n")
-                header = bytearray()
-                while not header.endswith(b"\n") and len(header) < 256:
-                    chunk = sock.recv(1)
-                    if not chunk:
-                        raise RuntimeError("NewHome closed before protocol response")
-                    header.extend(chunk)
-                response = header.decode("utf-8", "replace").strip()
-                if response != "OK PCM_S16LE 16000 1":
-                    raise RuntimeError(f"NewHome rejected recording: {response}")
+    try:
+        # First ask whether the Android side is actually ready. Do not open the
+        # Pulse FIFO yet: exposing a writer before NewHome is ready makes Linux
+        # applications believe capture is usable while AudioRecord is still
+        # unavailable or starting.
+        with socket.create_connection((host, port), timeout=5) as probe:
+            probe.sendall(b"PROBE\n")
+            probe_response = read_response_line(probe)
+            if probe_response != "OK READY PCM_S16LE 16000 1":
+                raise RuntimeError(f"NewHome microphone not ready: {probe_response}")
+
+        with socket.create_connection((host, port), timeout=5) as sock:
+            sock.sendall(b"START\n")
+            response = read_response_line(sock)
+            if response != "OK PCM_S16LE 16000 1":
+                raise RuntimeError(f"NewHome rejected recording: {response}")
+
+            # START is acknowledged only after AudioRecord is in RECORDING
+            # state. Opening the FIFO now makes the Pulse source usable only
+            # after the real Android capture path is ready.
+            with open(fifo, "wb", buffering=0) as output:
                 sock.settimeout(0.25)
                 while source_is_in_use():
                     try:
@@ -146,11 +162,11 @@ while True:
                     if not chunk:
                         break
                     output.write(chunk)
-        except (BrokenPipeError, ConnectionResetError):
-            pass
-        except Exception as exc:
-            print(f"NewHome microphone session failed: {exc}", file=sys.stderr, flush=True)
-            time.sleep(1)
+    except (BrokenPipeError, ConnectionResetError):
+        pass
+    except Exception as exc:
+        print(f"NewHome microphone session failed: {exc}", file=sys.stderr, flush=True)
+        time.sleep(1)
 PY
     local pid=$!
     printf '%s\n' "$pid" > "$PID_FILE"
