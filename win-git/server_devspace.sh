@@ -34,6 +34,7 @@ PERSISTED_ALLOWED_ROOTS="$(read_service_setting DEVSPACE_ALLOWED_ROOTS)"
 PERSISTED_WIDGETS="$(read_service_setting DEVSPACE_WIDGETS)"
 PERSISTED_DEVSPACE_AUTOSTART="$(read_service_setting DEVSPACE_AUTOSTART)"
 PERSISTED_CLOUDFLARED_AUTOSTART="$(read_service_setting CLOUDFLARED_AUTOSTART)"
+PERSISTED_CLOUDFLARED_CONFIG="$(read_service_setting CLOUDFLARED_CONFIG)"
 
 DEVSPACE_AUTOSTART="${DEVSPACE_AUTOSTART:-${PERSISTED_DEVSPACE_AUTOSTART:-1}}"
 CLOUDFLARED_AUTOSTART="${CLOUDFLARED_AUTOSTART:-${PERSISTED_CLOUDFLARED_AUTOSTART:-1}}"
@@ -44,7 +45,10 @@ export DEVSPACE_ALLOWED_ROOTS
 # off 只关闭网页里的工具 UI，不关闭 MCP 工具本身；默认 off，service.env 可覆盖。
 DEVSPACE_WIDGETS="${DEVSPACE_WIDGETS:-${PERSISTED_WIDGETS:-off}}"
 export DEVSPACE_WIDGETS
-CLOUDFLARED_CONFIG="${CLOUDFLARED_CONFIG:-$RUN_HOME/.cloudflared/config.yml}"
+# 隧道配置文件路径：环境变量 > service.env > 默认。
+# 允许同一套脚本在不同机器上指向各自的隧道配置（macOS: config.mac.yml，
+# chroot Linux: config.yml），避免一方 import 另一方的迁移包后被整体替换。
+CLOUDFLARED_CONFIG="${CLOUDFLARED_CONFIG:-${PERSISTED_CLOUDFLARED_CONFIG:-$RUN_HOME/.cloudflared/config.yml}}"
 # 隧道传输协议：空/auto 交回 cloudflared 自决（默认 quic）。
 # 本机有 fake-IP/TUN 代理时 QUIC(UDP 7844) 会被吞，必须 http2(TCP 443)。
 # 用启动 flag 而不是写进 config.yml —— config.yml 会被 devspace.sh import 整体

@@ -413,6 +413,68 @@ service_env_set() {
   mv "$tmp" "$file"; chmod 600 "$file"
 }
 
+service_env_get() {
+  local key="$1"
+  [ -f "$RUN_HOME/.devspace/service.env" ] || return 0
+  grep -E "^${key}=" "$RUN_HOME/.devspace/service.env" 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+# --- 本机隧道归属（import 时不允许被迁移包改写）-----------------------------
+# 同一个人可能在多台机器上各跑一条独立 Cloudflare tunnel：
+#   macOS        隧道 `mac`      -> ~/.cloudflared/config.mac.yml -> mac.sherylynn.win
+#   chroot Linux 隧道 `devspace` -> ~/.cloudflared/config.yml     -> devspace.sherylynn.win
+# 迁移包只该搬运 DevSpace 身份 / OAuth / 工作目录，不该把目标机器的隧道归属
+# 改成源机器的：一旦两台机器跑起同一条隧道的两个 connector，Cloudflare 会在
+# 它们之间轮询分发请求，表现为「有时打得开项目、有时打不开」。
+LOCAL_TUNNEL_KEYS="DEVSPACE_TUNNEL_NAME PUBLIC_HOST CLOUDFLARED_CONFIG"
+
+# 快照本机隧道归属：service.env 里三个 key + 它们引用的配置文件与凭据文件。
+snapshot_local_tunnel() {
+  local dir="$1" key val cfg src
+  mkdir -p "$dir"
+  : >"$dir/keys"
+  for key in $LOCAL_TUNNEL_KEYS; do
+    val="$(service_env_get "$key")"
+    [ -n "$val" ] && printf '%s=%s\n' "$key" "$val" >>"$dir/keys"
+  done
+  [ -s "$dir/keys" ] || return 0
+  cfg="$(service_env_get CLOUDFLARED_CONFIG)"
+  # 没显式指定时保护默认路径，避免源包的 config.yml 覆盖本机隧道。
+  [ -n "$cfg" ] || cfg="$RUN_HOME/.cloudflared/config.yml"
+  [ -f "$cfg" ] || return 0
+  cp -p "$cfg" "$dir/tunnel-config.yml" 2>/dev/null || true
+  # credentials 文件不随迁移包走，必须一起保留，否则恢复配置后隧道连不上。
+  src="$(sed -n 's/^[[:space:]]*credentials-file[[:space:]]*:[[:space:]]*//p' "$cfg" | head -1)"
+  if [ -n "$src" ] && [ -f "$src" ]; then
+    printf '%s\n' "$src" >"$dir/credentials-path"
+    cp -p "$src" "$dir/credentials.json" 2>/dev/null || true
+  fi
+}
+
+# import 解包完成后把本机隧道归属写回（覆盖源机器带来的值）。
+restore_local_tunnel() {
+  local dir="$1" line cfg dest
+  [ -s "$dir/keys" ] || return 0
+  cfg="$(grep -E '^CLOUDFLARED_CONFIG=' "$dir/keys" | tail -1 | cut -d= -f2-)"
+  if [ -n "$cfg" ] && [ -f "$dir/tunnel-config.yml" ]; then
+    mkdir -p "$(dirname "$cfg")"
+    cp -p "$dir/tunnel-config.yml" "$cfg"
+    if [ -f "$dir/credentials-path" ] && [ -f "$dir/credentials.json" ]; then
+      dest="$(cat "$dir/credentials-path")"
+      mkdir -p "$(dirname "$dest")"
+      cp -p "$dir/credentials.json" "$dest"
+      chmod 600 "$dest" 2>/dev/null || true
+    fi
+    echo "已保留本机隧道配置：$cfg"
+  fi
+  while IFS= read -r line; do
+    case "$line" in
+      *=*) service_env_set "${line%%=*}" "${line#*=}" ;;
+    esac
+  done <"$dir/keys"
+  echo "已保留本机隧道归属：$(tr '\n' ' ' <"$dir/keys")"
+}
+
 roots_list() {
   local value=""
   [ -f "$RUN_HOME/.devspace/service.env" ] && value="$(grep '^DEVSPACE_ALLOWED_ROOTS=' "$RUN_HOME/.devspace/service.env" | tail -1 | cut -d= -f2-)"
@@ -684,6 +746,9 @@ import_config() {
   keep_roots="$(roots_list 2>/dev/null || true)"
   keep_protocol="$(sed -n 's/^[[:space:]]*protocol[[:space:]]*:[[:space:]]*\([^[:space:]#]*\).*/\1/p' \
     "$RUN_HOME/.cloudflared/config.yml" 2>/dev/null | head -1)"
+  # 隧道归属（tunnel 名 / 公网域名 / 配置文件 + 凭据）不在迁移范围内：
+  # 每台机器跑自己的隧道，理由见 LOCAL_TUNNEL_KEYS 处的说明。
+  snapshot_local_tunnel "$tmp/local-tunnel"
   backup_existing_config
 
   # 迁移的目标是完整复现源机器的持久化设置，而不是与目标旧设置混合。
@@ -722,6 +787,9 @@ import_config() {
   chmod 700 "$RUN_HOME/.devspace" "$RUN_HOME/.cloudflared" 2>/dev/null || true
   chmod 600 "$RUN_HOME/.devspace/owner-token" "$RUN_HOME/.devspace/auth.json" 2>/dev/null || true
   chmod 600 "$RUN_HOME/.cloudflared/"*.json "$RUN_HOME/.cloudflared/cert.pem" 2>/dev/null || true
+
+  # 隧道归属以本机为准：迁移包带来的 tunnel 名/域名/配置在这里被写回成本机的。
+  restore_local_tunnel "$tmp/local-tunnel"
 
   echo "已导入：$source_home -> $RUN_HOME"
   echo "Cloudflare named tunnel 与 DevSpace 身份/配置已迁移。"
