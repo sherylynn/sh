@@ -225,23 +225,51 @@ node win-git/firefox_bidi.js eval 'document.title' --url chatgpt.com
 
 必须设置输出长度限制，避免一个长 ChatGPT conversation DOM 产生几十 MB 输出。
 
-## ChatGPT MCP 工具卡：2026-09-22 实测结构
+## ChatGPT MCP 工具卡：2026-09-22 / 2026-09-28 实测结构
 
 不要匹配 `Ran command` / `Opened workspace` 之类正文文字。回复正文也可能包含这些字符串，会误删整条消息。
 
-当前可靠入口：
+### 2026-09-28 桌面版 DOM 变化
+
+旧版稳定入口曾经是：
 
 ```css
 button[aria-label="打开工具调用列表"]
-```
-
-英文 UI 可兼容：
-
-```css
 button[aria-label="Open tool calls"]
 ```
 
-实测向上结构大致为：
+但 2026-09-28 桌面 ChatGPT 已出现新的 MCP app DOM：
+
+- iframe 仍位于 `*.web-sandbox.oaiusercontent.com`；
+- iframe `title` 从旧的 `ui://devspace/...` 变成了单纯的 `mcp`；
+- 单个 MCP 卡片最近的完整容器不再是 `div.contents`；
+- 同一个 `div.contents` 现在可能包含整段回复里的十几个 MCP iframe，不能再把它当单卡边界。
+
+真实父链大致为：
+
+```text
+iframe[title="mcp"]
+  -> div.group/mcp-app
+  -> div.relative
+  -> div                # 最近的完整单卡容器；1 个 iframe，文本以 mcp 开头
+  -> div.block-*
+  -> div.flex...        # 可能已经包含整段回复的多个 MCP iframe
+  -> ...
+  -> div.contents       # 可能包含 10+ iframe，禁止作为单卡删除边界
+```
+
+当前安全识别方式：
+
+1. 先严格确认 iframe host 属于 `*.web-sandbox.oaiusercontent.com`；
+2. title 接受旧 `ui://devspace/...` 或新 `mcp`；
+3. 从 iframe 向上找最近的、`querySelectorAll("iframe").length === 1` 的容器；
+4. 该容器自身 chrome 文本应以 `mcp` 开头，或含“打开应用 / Open app”类控制；
+5. 一旦遇到 conversation turn 边界立即停止；
+6. 绝不因为父级出现 `mcp` 文本就删除包含多个 iframe 的整段回复容器。
+
+2026-09-28 实机验证：同一桌面 ChatGPT 页面中发现 27 个 MCP iframe，新算法精确匹配 27 个唯一单卡容器；替换后 iframe 数量从 27 降为 0，未命中整段回复父容器。
+
+旧结构记录如下，仅作历史兼容参考：
 
 ```text
 button[aria-label="打开工具调用列表"]

@@ -17,37 +17,44 @@
   function isDevSpaceIframe(iframe) {
     if (!iframe) return false;
     const src = iframe.getAttribute("src") || "";
-    const title = iframe.getAttribute("title") || "";
-    return /web-sandbox\.oaiusercontent\.com/i.test(src)
-      && /^ui:\/\/devspace\//i.test(title);
+    const title = (iframe.getAttribute("title") || "").trim();
+    // ChatGPT 2026-09 的桌面版已把 title 从 ui://devspace/... 改成单纯 "mcp"，
+    // 但 sandbox 仍位于 *.web-sandbox.oaiusercontent.com。
+    return /(?:^|\.)web-sandbox\.oaiusercontent\.com/i.test(new URL(src, location.href).hostname)
+      && (/^ui:\/\/devspace\//i.test(title) || /^mcp$/i.test(title));
   }
 
-  function hasMcpConnector(node) {
-    return [...node.querySelectorAll("button")].some(
-      b => /^mcp$/i.test((b.textContent || "").trim())
-    );
+  function hasMcpChrome(node) {
+    const text = (node.innerText || "").trim();
+    if (/^mcp(?:\s|$)/i.test(text)) return true;
+    return [...node.querySelectorAll("button")].some(b => {
+      const aria = (b.getAttribute("aria-label") || "").trim();
+      return /(?:打开.*应用|open.*app)/i.test(aria);
+    });
   }
 
   function findIframeComponent(iframe) {
-    // 流式响应与历史响应的 DOM 不完全一致。iframe 是更稳定的锚点。
-    let node = iframe;
-    for (let i = 0; node && i < 7; i++, node = node.parentElement) {
+    // iframe 是当前最稳定的锚点。不要再依赖 div.contents：
+    // 新桌面 DOM 的 contents 已经可能包住整段回复中的十几个 MCP iframe。
+    // 从 iframe 向上取“最近的、只含一个 iframe 且有严格 mcp connector”的容器，
+    // 能把单次工具卡精确切出来，同时避免误删 conversation turn。
+    let node = iframe.parentElement;
+    for (let i = 0; node && i < 10; i++, node = node.parentElement) {
       if (node.matches?.('[data-testid^="conversation-turn"]')) return null;
-      if (!node.matches?.("div.contents")) continue;
-      if (node.querySelectorAll("iframe").length !== 1) continue;
-      if (!hasMcpConnector(node)) continue;
+      if (node.querySelectorAll?.("iframe").length !== 1) continue;
+      if (!hasMcpChrome(node)) continue;
       return node;
     }
     return null;
   }
 
   function findToggleComponent(toggle) {
-    let node = toggle;
-    for (let i = 0; node && i < 9; i++, node = node.parentElement) {
+    let node = toggle.parentElement;
+    for (let i = 0; node && i < 10; i++, node = node.parentElement) {
       if (node.matches?.('[data-testid^="conversation-turn"]')) return null;
-      if (!node.matches?.("div.contents")) continue;
+      if (node.querySelectorAll?.("iframe").length !== 1) continue;
       const iframe = [...node.querySelectorAll("iframe")].find(isDevSpaceIframe);
-      if (iframe && hasMcpConnector(node)) return node;
+      if (iframe && hasMcpChrome(node)) return node;
     }
     return null;
   }

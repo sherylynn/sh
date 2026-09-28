@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT DevSpace Card Cleaner",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "折叠或移除 ChatGPT 网页中的 DevSpace/MCP 工具调用卡片，减少长对话 DOM 开销。",
   "permissions": ["storage"],
   "host_permissions": ["https://chatgpt.com/*"],
