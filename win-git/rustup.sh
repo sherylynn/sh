@@ -36,13 +36,23 @@ registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
 EOF
 
 if [[ ! -x "$CARGO_HOME/bin/rustup" ]]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain stable
-else
-  "$CARGO_HOME/bin/rustup" toolchain install stable
-  "$CARGO_HOME/bin/rustup" default stable
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+    sh -s -- -y --no-modify-path --profile minimal --default-toolchain stable
 fi
 
+# Always move the local stable toolchain to the newest stable release available
+# from the configured dist server. Disable rustup's own auto-update here: on some
+# chroot/container filesystems replacing the running rustup binary fails with
+# ETXTBSY (Text file busy), while the Rust toolchain itself updates normally.
+"$CARGO_HOME/bin/rustup" set auto-self-update disable
+"$CARGO_HOME/bin/rustup" update stable
+"$CARGO_HOME/bin/rustup" default stable
+"$CARGO_HOME/bin/rustup" component add rustfmt clippy --toolchain stable
+
 source "$CARGO_HOME/env"
-rustc --version
-cargo --version
+printf 'rustup: '; rustup --version
+printf 'rustc:  '; rustc --version
+printf 'cargo:  '; cargo --version
+printf 'clippy: '; cargo clippy --version
+printf 'fmt:    '; rustfmt --version
 
