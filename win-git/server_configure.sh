@@ -103,6 +103,8 @@ if ! bash ~/sh/debian/termux_chroot_desktop_setup.sh; then
   echo "Termux chroot 桌面集成安装失败，停止系统配置。" >&2
   exit 1
 fi
+# Work/Chat 开发共用默认 Rust ADB；不覆盖发行版或 SDK 的原生二进制。
+bash ~/sh/win-git/newhome_rust_adb_setup.sh || exit 1
 
 # 普通服务器也会运行本脚本，因此只在 Android KGSL chroot 中部署
 # Anland/Labwc/wayvnc。wayvnc 是 rootless Wayland 的 RFB 服务端，不能用

@@ -25,15 +25,38 @@ install_newhome_linux() {
         git -C "$NEWHOME_REPO" pull --ff-only || \
             echo "警告：$NEWHOME_REPO 无法快进更新，将使用当前工作树构建 NewHome Linux。" >&2
     else
-        rm -rf "$NEWHOME_REPO"
+        if [ -e "$NEWHOME_REPO" ]; then
+            echo "NewHome 目录已存在但不是 Git 仓库，拒绝删除：$NEWHOME_REPO" >&2
+            exit 1
+        fi
         git clone https://github.com/sherylynn/newhome.git "$NEWHOME_REPO"
     fi
 
     (
         cd "$NEWHOME_REPO/linux"
-        ./scripts/build-deb.sh
-        latest_deb=$(ls -1t dist/newhome-linux_*_all.deb | head -n 1)
-        apt-get install -y "./$latest_deb"
+        # Rust 原生依赖；旧 build-deb.sh 仍是历史 Python 包，不能用于新部署。
+        apt-get install -y build-essential pkg-config libssl-dev libgtk-3-dev libayatana-appindicator3-dev
+        if [ -x /root/tools/cargo/bin/cargo ]; then
+            export CARGO=/root/tools/cargo/bin/cargo
+            export CARGO_HOME=/root/tools/cargo
+            export RUSTUP_HOME=/root/tools/rustup
+        fi
+        minimum_rust=$(sed -n 's/^rust-version = "\([^"]*\)"/\1/p' ../Cargo.toml)
+        rust_command=rustc
+        [ -z "${CARGO_HOME:-}" ] || rust_command="$CARGO_HOME/bin/rustc"
+        installed_rust=$("$rust_command" --version 2>/dev/null | awk '{print $2}' || true)
+        if [ -z "$installed_rust" ] || ! dpkg --compare-versions "$installed_rust" ge "$minimum_rust"; then
+            # 发行版 cargo/rustc 可能低于项目 MSRV，复用统一 rustup 安装入口。
+            bash /root/sh/win-git/rustup.sh
+            export CARGO=/root/tools/cargo/bin/cargo
+            export CARGO_HOME=/root/tools/cargo
+            export RUSTUP_HOME=/root/tools/rustup
+        fi
+        package_output=$(./scripts/build-rust-candidate-deb.sh)
+        # 构建脚本最后一行给出本次精确产物，不能选择旧 dist 包。
+        latest_deb=$(printf '%s\n' "$package_output" | tail -n 1)
+        test -f "$latest_deb"
+        apt-get install -y "$latest_deb"
     )
 }
 
@@ -108,7 +131,8 @@ if pgrep -x xfce4-panel >/dev/null 2>&1; then
     # NewHome daemon owns the display menu. Restart it after package upgrades so the
     # running tray always matches the just-installed package.
     pkill -f '^/usr/bin/python3 /usr/bin/newhome-linux-daemon$' 2>/dev/null || true
-    nohup setsid env DISPLAY=${DISPLAY:-:1.0} /usr/bin/python3 /usr/bin/newhome-linux-daemon \
+    pkill -f '^/usr/bin/newhome-linux-daemon$' 2>/dev/null || true
+    nohup setsid env DISPLAY=${DISPLAY:-:1.0} /usr/bin/newhome-linux-daemon \
         </dev/null >/tmp/newhome-linux-daemon.log 2>&1 &
     nohup setsid env DISPLAY=${DISPLAY:-:1.0} /usr/bin/python3 "$CLIPBOARD_BRIDGE" \
         </dev/null >/tmp/newhome-clipboard-bridge-start.log 2>&1 &
