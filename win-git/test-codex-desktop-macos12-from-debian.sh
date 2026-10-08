@@ -40,6 +40,36 @@ grep -Fq "replaceAll('.isCursorScreenPointSupported()', '.isCursorScreenPointSup
 	exit 1
 }
 
+grep -Fq "getDownloadHistory?.().catch(()=>null)??Promise.resolve(null)" "$builder" || {
+	printf '失败：构建器没有为浏览数据摘要中的 Owl 下载历史接口提供空值降级。\n' >&2
+	exit 1
+}
+
+grep -Fq "getDownloadHistory?.()??[]" "$builder" || {
+	printf '失败：构建器没有为下载管理器中的 Owl 下载历史接口提供空列表降级。\n' >&2
+	exit 1
+}
+
+grep -Fq '"layoutVersion": 1' "$builder" || {
+	printf '失败：构建器没有生成新版插件同步要求的 Codex 包元数据。\n' >&2
+	exit 1
+}
+
+grep -Fq '"entrypoint": "CodexCLI.app/Contents/MacOS/codex"' "$builder" || {
+	printf '失败：Codex 包元数据没有指向实际的 Darwin 应用入口。\n' >&2
+	exit 1
+}
+
+grep -Fq '"$source_resources/codex-cli/bin/codex-code-mode-host"' "$builder" || {
+	printf '失败：新版插件宿主所需的 code-mode helper 没有打入 Codex 包。\n' >&2
+	exit 1
+}
+
+grep -Fq "replaceAll('socketPeerAuthorizer:a=uf()', 'socketPeerAuthorizer:a=()=>({authorized:!0})')" "$builder" || {
+	printf '失败：动态应用工具管道仍要求移植包无法提供的 Owl 签名身份。\n' >&2
+	exit 1
+}
+
 grep -Fq "patchSession(e.session.defaultSession);" "$builder" || {
 	printf '失败：Owl shim 没有补齐默认 Session。\n' >&2
 	exit 1

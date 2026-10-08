@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # 与已在 Monterey 验证的 Darwin seed 组合，再换入支持 macOS 12 的 Electron。
 
 readonly DEFAULT_DEBIAN_REPO="https://persistent.oaistatic.com/codex-app-prod/linux/deb"
-readonly DEFAULT_SEED="${HOME}/Applications/ChatGPT macOS 12.app"
+readonly DEFAULT_SEED="${HOME}/Applications/ChatGPT macOS 12 Debian.app"
 readonly DEFAULT_OUTPUT="${HOME}/Applications/ChatGPT macOS 12 Debian.app"
 readonly DEFAULT_ELECTRON_VERSION="43.2.0"
 readonly DEFAULT_ELECTRON_MIRROR="https://github.com/electron/electron/releases/download"
@@ -39,7 +39,7 @@ usage() {
 
 选项：
   --deb FILE       使用本地官方 .deb；省略时自动下载仓库最新版
-  --seed APP       Darwin seed（默认：~/Applications/ChatGPT macOS 12.app）
+  --seed APP       Darwin 资源来源（默认：~/Applications/ChatGPT macOS 12 Debian.app）
   --output APP     输出 .app（默认：~/Applications/ChatGPT macOS 12 Debian.app）
   --electron VER   Electron 版本（默认：43.2.0）
   --electron-zip   使用本地 Electron darwin-arm64/darwin-x64 ZIP
@@ -52,8 +52,9 @@ usage() {
 也可以通过环境变量设置：CODEX_DEBIAN_REPO、CODEX_DEB_PATH、CODEX_MACOS12_SEED_APP、
 CODEX_MACOS12_DEBIAN_APP、ELECTRON_VERSION、ELECTRON_ZIP、ELECTRON_MIRROR。
 
-默认在 ~/tools/codex-desktop 下构建；结束后自动删除本次临时目录，
+默认在 ~/tools/codex-desktop-from-debian 下构建；结束后自动删除本次临时目录，
 下载的 Electron ZIP 保留在 cache/electron 中供后续构建复用。
+来源与输出可以是同一个应用：构建前先复制来源快照，后续只读取快照。
 EOF
 }
 
@@ -171,6 +172,16 @@ if ((dry_run)); then
 		"${deb_path:-自动下载最新版}" "$seed_app" "$output_app" "$electron_version" "$electron_arch" "$work_dir"
 	exit 0
 fi
+
+# 当前已安装应用也可同时作为输出。先保存完整快照，避免组装输出后再读取
+# seed 时读到新包；原生模块恢复和后期 asar 提取均使用这个固定来源。
+seed_original="$seed_app"
+seed_snapshot="$work_dir/darwin-seed/ChatGPT.app"
+mkdir -p "$(dirname "$seed_snapshot")"
+info "保存 Darwin 资源来源快照"
+ditto "$seed_original" "$seed_snapshot"
+[[ -f "$seed_snapshot/Contents/Resources/app.asar" ]] || die "Darwin 来源快照不完整。"
+seed_app="$seed_snapshot"
 
 electron_zip_path="$work_dir/electron.zip"
 if [[ -n "$electron_zip" ]]; then
@@ -302,8 +313,27 @@ cp "$codex_vendor/bin/codex-code-mode-host" "$source_resources/codex-code-mode-h
 cp "$codex_vendor/codex-path/rg" "$source_resources/rg"
 mkdir -p "$source_resources/codex-cli/CodexCLI.app/Contents/MacOS"
 cp "$codex_vendor/bin/codex" "$source_resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+# 26.1002+ 的插件同步会把整个 codex-cli 包复制给本地原生宿主，并要求包根目录
+# 存在元数据、code-mode helper 和 rg。仅伪造 CodexCLI.app 路径虽能启动主程序，
+# 但会令 bundled plugins 在聚焦窗口时同步失败。
+mkdir -p "$source_resources/codex-cli/bin" "$source_resources/codex-cli/codex-path" \
+	"$source_resources/codex-cli/codex-resources"
+cp "$codex_vendor/bin/codex-code-mode-host" "$source_resources/codex-cli/bin/codex-code-mode-host"
+cp "$codex_vendor/codex-path/rg" "$source_resources/codex-cli/codex-path/rg"
+cat >"$source_resources/codex-cli/codex-package.json" <<EOF
+{
+  "layoutVersion": 1,
+  "version": "$codex_version",
+  "target": "aarch64-apple-darwin",
+  "variant": "codex",
+  "entrypoint": "CodexCLI.app/Contents/MacOS/codex",
+  "resourcesDir": "codex-resources",
+  "pathDir": "codex-path"
+}
+EOF
 chmod +x "$source_resources/codex" "$source_resources/codex-code-mode-host" "$source_resources/rg" \
-	"$source_resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+	"$source_resources/codex-cli/CodexCLI.app/Contents/MacOS/codex" \
+	"$source_resources/codex-cli/bin/codex-code-mode-host" "$source_resources/codex-cli/codex-path/rg"
 
 info "组装 macOS 12 应用"
 rm -rf "$output_app"
@@ -566,7 +596,14 @@ for (const name of fs.readdirSync(process.env.OWL_BUILD_DIR)) {
     .replaceAll('.setPreferredLanguages(', '.setPreferredLanguages?.(')
     // Owl 可查询全局光标能力；stock Electron 没有此探测 API。
     // 可选调用返回 undefined，使上层安全地跳过拖拽浮层宿主。
-    .replaceAll('.isCursorScreenPointSupported()', '.isCursorScreenPointSupported?.()');
+    .replaceAll('.isCursorScreenPointSupported()', '.isCursorScreenPointSupported?.()')
+    // Owl 保存浏览器原生下载历史；stock Electron 仅提供当前下载事件。
+    // 缺失时返回空历史，当前会话里的实时下载仍由原逻辑维护。
+    .replaceAll('getDownloadHistory().catch(()=>null)', 'getDownloadHistory?.().catch(()=>null)??Promise.resolve(null)')
+    .replaceAll('getDownloadHistory()).filter(NW)', 'getDownloadHistory?.()??[]).filter(NW)')
+    // 动态应用工具 socket 已由宿主创建为 0600，消息还带临时 Ed25519 签名。
+    // 移植包无法保留 Owl 的整包 Team ID 链，因此只对此 socket 使用同用户边界。
+    .replaceAll('socketPeerAuthorizer:a=uf()', 'socketPeerAuthorizer:a=()=>({authorized:!0})');
   if(after!==before) fs.writeFileSync(file,after);
 }
 PATCH_JS
@@ -597,7 +634,7 @@ if [[ -f "$source_app/Contents/Info.plist" ]]; then
 source=OpenAI Debian repository
 debian_app_version=$deb_app_version
 debian_declared_electron=$deb_electron_version
-darwin_seed=$seed_app
+darwin_seed=$seed_original
 runtime_electron=$electron_version
 EOF
 fi
