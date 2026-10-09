@@ -5,8 +5,8 @@ set -Eeuo pipefail
 # 与已在 Monterey 验证的 Darwin seed 组合，再换入支持 macOS 12 的 Electron。
 
 readonly DEFAULT_DEBIAN_REPO="https://persistent.oaistatic.com/codex-app-prod/linux/deb"
-readonly DEFAULT_SEED="${HOME}/Applications/ChatGPT macOS 12 Debian.app"
-readonly DEFAULT_OUTPUT="${HOME}/Applications/ChatGPT macOS 12 Debian.app"
+readonly DEFAULT_SEED="${HOME}/Applications/ChatGPT macOS 12 Debian MCPMemory.app"
+readonly DEFAULT_OUTPUT="${HOME}/Applications/ChatGPT macOS 12 Debian MCPMemory.app"
 readonly DEFAULT_ELECTRON_VERSION="43.2.0"
 readonly DEFAULT_ELECTRON_MIRROR="https://github.com/electron/electron/releases/download"
 readonly DEFAULT_WORK_ROOT="${HOME}/tools/codex-desktop-from-debian"
@@ -40,8 +40,8 @@ usage() {
 
 选项：
   --deb FILE       使用本地官方 .deb；省略时自动下载仓库最新版
-  --seed APP       Darwin 资源来源（默认：~/Applications/ChatGPT macOS 12 Debian.app）
-  --output APP     输出 .app（默认：~/Applications/ChatGPT macOS 12 Debian.app）
+  --seed APP       Darwin 资源来源（默认：~/Applications/ChatGPT macOS 12 Debian MCPMemory.app）
+  --output APP     输出 .app（默认：~/Applications/ChatGPT macOS 12 Debian MCPMemory.app）
   --electron VER   Electron 版本（默认：43.2.0）
   --electron-zip   使用本地 Electron darwin-arm64/darwin-x64 ZIP
   --work DIR       指定并保留工作目录，便于排查
