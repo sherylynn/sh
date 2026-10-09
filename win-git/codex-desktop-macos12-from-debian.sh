@@ -10,6 +10,7 @@ readonly DEFAULT_OUTPUT="${HOME}/Applications/ChatGPT macOS 12 Debian.app"
 readonly DEFAULT_ELECTRON_VERSION="43.2.0"
 readonly DEFAULT_ELECTRON_MIRROR="https://github.com/electron/electron/releases/download"
 readonly DEFAULT_WORK_ROOT="${HOME}/tools/codex-desktop-from-debian"
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 debian_repo="${CODEX_DEBIAN_REPO:-$DEFAULT_DEBIAN_REPO}"
 deb_path="${CODEX_DEB_PATH:-}"
@@ -607,6 +608,15 @@ for (const name of fs.readdirSync(process.env.OWL_BUILD_DIR)) {
   if(after!==before) fs.writeFileSync(file,after);
 }
 PATCH_JS
+
+	# 将 Linux 端通过 CDP 实测确认的 MCP 内存修复直接打入 macOS 12 构建产物：
+	# 1. Chat/本地线程不再渲染历史工具 activity 卡；
+	# 2. 普通 Chat 的 ecosystem widget 在进入 mcp-sandbox-element 前返回 null，
+	#    从源头阻止“一张历史 MCP 卡一个 Electron guest renderer”；Work 保留官方 widget；
+	# 3. MCP App 专用 activity header 返回 null，清掉“正在打开/已打开/无法打开 mcp”残留行。
+	# patch 使用当前官方 bundle 的唯一精确锚点；升级后结构不匹配就让构建失败，不猜 offset。
+	node "$SCRIPT_DIR/patch-chatgpt-chat-mcp-activity.mjs" "$asar_tree/webview/assets"
+
 	npx --yes @electron/asar pack "$asar_tree" "$repacked" --unpack "**/*.node"
 	cp "$repacked" "$app_asar"
 }
@@ -655,7 +665,17 @@ fi
 launcher="${output_app%.app}.sh"
 cat >"$launcher" <<EOF
 #!/usr/bin/env bash
-exec "${output_app}/Contents/MacOS/$RUNTIME_EXECUTABLE" --user-data-dir="\${CODEX_MACOS12_DATA:-\$HOME/Library/Application Support/ChatGPT-macOS12}" "\$@"
+set -euo pipefail
+
+# 默认保留 localhost-only CDP 调试入口，便于直接检查 MCP guest WebContents、renderer 和 DOM。
+# CHATGPT_CDP_PORT=0 可关闭；不要把远程调试端口暴露到 LAN/WAN。
+cdp_args=()
+if [[ "\${CHATGPT_CDP_PORT:-9333}" != "0" ]]; then
+	cdp_args+=(--remote-debugging-address=127.0.0.1 --remote-debugging-port="\${CHATGPT_CDP_PORT:-9333}")
+fi
+exec "${output_app}/Contents/MacOS/$RUNTIME_EXECUTABLE" \
+	--user-data-dir="\${CODEX_MACOS12_DATA:-\$HOME/Library/Application Support/ChatGPT-macOS12}" \
+	"\${cdp_args[@]}" "\$@"
 EOF
 chmod +x "$launcher"
 

@@ -75,4 +75,35 @@ grep -Fq "patchSession(e.session.defaultSession);" "$builder" || {
 	exit 1
 }
 
-printf '通过：Owl Session 兼容层覆盖新建和默认 Session。\n'
+grep -Fq 'patch-chatgpt-chat-mcp-activity.mjs' "$builder" || {
+	printf '失败：macOS 12 构建链没有自动打入 ChatGPT MCP 内存补丁。\n' >&2
+	exit 1
+}
+
+grep -Fq 'CHATGPT_CDP_PORT:-9333' "$builder" || {
+	printf '失败：macOS 12 启动器没有保留 localhost CDP 调试入口。\n' >&2
+	exit 1
+}
+
+grep -Fq -- '--remote-debugging-address=127.0.0.1' "$builder" || {
+	printf '失败：CDP 调试入口没有限制在 localhost。\n' >&2
+	exit 1
+}
+
+patcher="$script_dir/patch-chatgpt-chat-mcp-activity.mjs"
+node --check "$patcher" || {
+	printf '失败：MCP patch 脚本存在 JavaScript 语法错误。\n' >&2
+	exit 1
+}
+
+grep -Fq 'data-mcp-app-portal-target' "$patcher" || {
+	printf '失败：MCP patch 缺少 ecosystem widget portal 截断锚点。\n' >&2
+	exit 1
+}
+
+grep -Fq 'function ca(e){return null}' "$patcher" || {
+	printf '失败：MCP patch 缺少 activity header 清理标记。\n' >&2
+	exit 1
+}
+
+printf '通过：Owl Session 兼容层、MCP 内存补丁与 localhost CDP 构建入口均已覆盖。\n'
