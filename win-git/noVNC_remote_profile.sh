@@ -1,7 +1,11 @@
 #!/bin/bash
 set -e
 
-SCALING_SCRIPT=/root/sh/win-git/xfce4-scaling.sh
+if [ -x /usr/lib/newhome-linux/newhome-linux-display ]; then
+  SCALING_SCRIPT=/usr/lib/newhome-linux/newhome-linux-display
+else
+  SCALING_SCRIPT=/root/sh/win-git/xfce4-scaling.sh
+fi
 PENDING=/tmp/xfce-remote-profile.pending
 WORKER_LOCK=/tmp/xfce-remote-profile.worker.lock
 SUPPRESS_FILE=/tmp/xfce-remote-resize.suppress-until

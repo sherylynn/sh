@@ -31,6 +31,8 @@ read_service_setting() {
 PERSISTED_TUNNEL_NAME="$(read_service_setting DEVSPACE_TUNNEL_NAME)"
 PERSISTED_PUBLIC_HOST="$(read_service_setting PUBLIC_HOST)"
 PERSISTED_ALLOWED_ROOTS="$(read_service_setting DEVSPACE_ALLOWED_ROOTS)"
+PERSISTED_SKILL_PATHS="$(read_service_setting DEVSPACE_SKILL_PATHS)"
+PERSISTED_SKILLS="$(read_service_setting DEVSPACE_SKILLS)"
 PERSISTED_WIDGETS="$(read_service_setting DEVSPACE_WIDGETS)"
 PERSISTED_DEVSPACE_AUTOSTART="$(read_service_setting DEVSPACE_AUTOSTART)"
 PERSISTED_CLOUDFLARED_AUTOSTART="$(read_service_setting CLOUDFLARED_AUTOSTART)"
@@ -41,6 +43,12 @@ CLOUDFLARED_AUTOSTART="${CLOUDFLARED_AUTOSTART:-${PERSISTED_CLOUDFLARED_AUTOSTAR
 TUNNEL_NAME="${DEVSPACE_TUNNEL_NAME:-${PERSISTED_TUNNEL_NAME:-devspace}}"
 DEVSPACE_ALLOWED_ROOTS="${DEVSPACE_ALLOWED_ROOTS:-${PERSISTED_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}}"
 export DEVSPACE_ALLOWED_ROOTS
+# Skill discovery is separate from writable workspace roots. DevSpace read
+# advertises these manifests, then permits supporting files only after loading
+# the manifest. Never add ~/.codex to DEVSPACE_ALLOWED_ROOTS for this purpose.
+DEVSPACE_SKILLS="${DEVSPACE_SKILLS:-${PERSISTED_SKILLS:-1}}"
+DEVSPACE_SKILL_PATHS="${DEVSPACE_SKILL_PATHS:-${PERSISTED_SKILL_PATHS:-}}"
+export DEVSPACE_SKILLS DEVSPACE_SKILL_PATHS
 # DevSpace 1.0.x 使用 DEVSPACE_WIDGETS 控制 ChatGPT Apps/UI metadata。
 # off 只关闭网页里的工具 UI，不关闭 MCP 工具本身；默认 off，service.env 可覆盖。
 DEVSPACE_WIDGETS="${DEVSPACE_WIDGETS:-${PERSISTED_WIDGETS:-off}}"
