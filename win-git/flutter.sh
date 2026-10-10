@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # Flutter 官方 SDK 安装/升级工具。
-# - 只跟踪官方 stable channel，不硬编码具体版本号。
+# - Linux/其它平台跟踪官方 stable channel。
+# - macOS 12 ARM64 固定到已实测兼容的 Flutter 3.32.8；后续升级前先验证系统兼容性。
 # - SDK 统一安装到 ~/tools/flutter。
 # - 环境变量统一通过 toolsRC/allToolsrc 管理，不再修改 ~/.bash_profile。
 # - 使用 CFUG Pub/Storage 镜像加速 ARM64 工具链；Git 镜像可通过 FLUTTER_GIT_MIRROR 指定。
@@ -20,6 +21,14 @@ FLUTTER_REPO="https://github.com/flutter/flutter.git"
 FLUTTER_GIT_MIRROR="${FLUTTER_GIT_MIRROR:-}"
 FLUTTER_FETCH_REPO="${FLUTTER_GIT_MIRROR:-$FLUTTER_REPO}"
 FLUTTER_CHANNEL="stable"
+FLUTTER_PINNED_VERSION=""
+
+# 当前 Mac 开发机是 macOS 12.4/ARM64。Flutter 3.47.x 内置 Dart VM
+# 已要求 macOS 14；3.32.8 + Dart 3.8.1 已在该机实际验证可运行。
+# 因此 macOS 暂时固定到最新已验证兼容版本，不跟随 stable HEAD。
+if [ "$(platform)" = "macos" ]; then
+  FLUTTER_PINNED_VERSION="3.32.8"
+fi
 
 ensure_git() {
   if ! command -v git >/dev/null 2>&1; then
@@ -56,8 +65,14 @@ install_or_update_flutter() {
   mkdir -p "$INSTALL_ROOT"
 
   if [ ! -e "$FLUTTER_HOME" ]; then
-    echo "正在从 $FLUTTER_FETCH_REPO 安装 Flutter $FLUTTER_CHANNEL channel..."
-    git -c http.version=HTTP/1.1 clone --depth 1 --no-tags --branch "$FLUTTER_CHANNEL" --single-branch "$FLUTTER_FETCH_REPO" "$FLUTTER_HOME"
+    if [ -n "$FLUTTER_PINNED_VERSION" ]; then
+      echo "正在从 $FLUTTER_FETCH_REPO 安装 Flutter $FLUTTER_PINNED_VERSION（macOS 兼容固定版）..."
+      git -c http.version=HTTP/1.1 clone --depth 1 --branch "$FLUTTER_PINNED_VERSION" --single-branch "$FLUTTER_FETCH_REPO" "$FLUTTER_HOME"
+      git -C "$FLUTTER_HOME" checkout -B "$FLUTTER_CHANNEL" "$FLUTTER_PINNED_VERSION"
+    else
+      echo "正在从 $FLUTTER_FETCH_REPO 安装 Flutter $FLUTTER_CHANNEL channel..."
+      git -c http.version=HTTP/1.1 clone --depth 1 --no-tags --branch "$FLUTTER_CHANNEL" --single-branch "$FLUTTER_FETCH_REPO" "$FLUTTER_HOME"
+    fi
     git -C "$FLUTTER_HOME" remote set-url origin "$FLUTTER_REPO"
     return
   fi
@@ -75,12 +90,17 @@ install_or_update_flutter() {
       echo "错误：Flutter SDK 缺少 HEAD 且目录有其它文件，拒绝自动修复。" >&2
       exit 1
     fi
-    echo "检测到中断的 Flutter 初次克隆，继续拉取 stable 浅历史..."
+    echo "检测到中断的 Flutter 初次克隆，继续拉取浅历史..."
     git -C "$FLUTTER_HOME" config --unset-all remote.origin.promisor 2>/dev/null || true
     git -C "$FLUTTER_HOME" config --unset-all remote.origin.partialclonefilter 2>/dev/null || true
-    git -c http.version=HTTP/1.1 -C "$FLUTTER_HOME" fetch --refetch --depth 1 --no-tags "$FLUTTER_FETCH_REPO" "$FLUTTER_CHANNEL"
-    git -C "$FLUTTER_HOME" checkout -B "$FLUTTER_CHANNEL" FETCH_HEAD
-    git -C "$FLUTTER_HOME" branch --set-upstream-to="origin/$FLUTTER_CHANNEL" "$FLUTTER_CHANNEL" 2>/dev/null || true
+    if [ -n "$FLUTTER_PINNED_VERSION" ]; then
+      git -c http.version=HTTP/1.1 -C "$FLUTTER_HOME" fetch --refetch --depth 1 "$FLUTTER_FETCH_REPO" "refs/tags/$FLUTTER_PINNED_VERSION:refs/tags/$FLUTTER_PINNED_VERSION"
+      git -C "$FLUTTER_HOME" checkout -B "$FLUTTER_CHANNEL" "$FLUTTER_PINNED_VERSION"
+    else
+      git -c http.version=HTTP/1.1 -C "$FLUTTER_HOME" fetch --refetch --depth 1 --no-tags "$FLUTTER_FETCH_REPO" "$FLUTTER_CHANNEL"
+      git -C "$FLUTTER_HOME" checkout -B "$FLUTTER_CHANNEL" FETCH_HEAD
+      git -C "$FLUTTER_HOME" branch --set-upstream-to="origin/$FLUTTER_CHANNEL" "$FLUTTER_CHANNEL" 2>/dev/null || true
+    fi
     return
   fi
 
@@ -97,6 +117,21 @@ install_or_update_flutter() {
     echo "错误：现有 Flutter SDK 的 origin 不是官方仓库：" >&2
     echo "  $remote_url" >&2
     exit 1
+  fi
+
+  if [ -n "$FLUTTER_PINNED_VERSION" ]; then
+    echo "正在核对 macOS 固定版 Flutter $FLUTTER_PINNED_VERSION..."
+    git -c http.version=HTTP/1.1 -C "$FLUTTER_HOME" fetch --depth 1 "$FLUTTER_FETCH_REPO" "refs/tags/$FLUTTER_PINNED_VERSION:refs/tags/$FLUTTER_PINNED_VERSION"
+    local pinned_commit current_commit
+    pinned_commit="$(git -C "$FLUTTER_HOME" rev-list -n 1 "$FLUTTER_PINNED_VERSION")"
+    current_commit="$(git -C "$FLUTTER_HOME" rev-parse HEAD)"
+    if [ "$current_commit" != "$pinned_commit" ]; then
+      local backup_branch="pre-macos-flutter-pin-${current_commit:0:10}"
+      echo "当前 SDK 不是固定版；先保留当前 HEAD 到 $backup_branch，再切换到 $FLUTTER_PINNED_VERSION。"
+      git -C "$FLUTTER_HOME" branch "$backup_branch" "$current_commit" 2>/dev/null || true
+    fi
+    git -C "$FLUTTER_HOME" checkout -B "$FLUTTER_CHANNEL" "$pinned_commit"
+    return
   fi
 
   echo "正在从 $FLUTTER_FETCH_REPO 更新 Flutter $FLUTTER_CHANNEL channel..."
@@ -121,12 +156,24 @@ verify_mirror_commit() {
   if [ "$FLUTTER_FETCH_REPO" = "$FLUTTER_REPO" ]; then
     return
   fi
-  local official_head installed_head
-  official_head="$(git -c http.version=HTTP/1.1 ls-remote --heads "$FLUTTER_REPO" "$FLUTTER_CHANNEL" | cut -f1)"
+
+  local official_commit installed_head
   installed_head="$(git -C "$FLUTTER_HOME" rev-parse HEAD)"
-  if [ -z "$official_head" ] || [ "$installed_head" != "$official_head" ]; then
+  if [ -n "$FLUTTER_PINNED_VERSION" ]; then
+    official_commit="$(git -c http.version=HTTP/1.1 ls-remote --tags "$FLUTTER_REPO" "refs/tags/$FLUTTER_PINNED_VERSION" | cut -f1)"
+    if [ -z "$official_commit" ] || [ "$installed_head" != "$official_commit" ]; then
+      echo "错误：镜像提交与 Flutter 官方 $FLUTTER_PINNED_VERSION tag 不一致，拒绝初始化。" >&2
+      echo "官方：$official_commit；本地：$installed_head" >&2
+      exit 1
+    fi
+    echo "已核对 Flutter 镜像提交与官方 $FLUTTER_PINNED_VERSION tag 一致：$installed_head"
+    return
+  fi
+
+  official_commit="$(git -c http.version=HTTP/1.1 ls-remote --heads "$FLUTTER_REPO" "$FLUTTER_CHANNEL" | cut -f1)"
+  if [ -z "$official_commit" ] || [ "$installed_head" != "$official_commit" ]; then
     echo "错误：镜像提交与 Flutter 官方 stable HEAD 不一致，拒绝初始化。" >&2
-    echo "官方：$official_head；本地：$installed_head" >&2
+    echo "官方：$official_commit；本地：$installed_head" >&2
     exit 1
   fi
   echo "已核对 Flutter 镜像提交与官方 stable HEAD 一致：$installed_head"
