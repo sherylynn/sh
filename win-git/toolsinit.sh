@@ -224,6 +224,19 @@ cache_folder() {
   echo $CACHE_FOLDER
 }
 
+# allToolsrc 中后加载的 Homebrew/SDK rc 可能再次把自己的 bin 放到 PATH 最前。
+# NewHome 自管工具统一放在 ~/tools/bin；每次加载完成后应由它获得最终优先级。
+# 这能保证已部署的 Rust ADB 始终覆盖系统/SDK adb，同时不删除官方二进制，便于救援。
+prefer_managed_tools_bin() {
+  local managed_bin="$HOME/tools/bin"
+  [[ -d "$managed_bin" ]] || return 0
+  local cleaned=":$PATH:"
+  cleaned="${cleaned//:$managed_bin:/:}"
+  cleaned="${cleaned#:}"
+  cleaned="${cleaned%:}"
+  export PATH="$managed_bin:$cleaned"
+}
+
 git_downloader() {
   local soft_file_pack=$1
   local soft_url=$2
