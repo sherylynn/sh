@@ -21,14 +21,10 @@ FLUTTER_REPO="https://github.com/flutter/flutter.git"
 FLUTTER_GIT_MIRROR="${FLUTTER_GIT_MIRROR:-}"
 FLUTTER_FETCH_REPO="${FLUTTER_GIT_MIRROR:-$FLUTTER_REPO}"
 FLUTTER_CHANNEL="stable"
-FLUTTER_PINNED_VERSION=""
-
-# 当前 Mac 开发机是 macOS 12.4/ARM64。Flutter 3.47.x 内置 Dart VM
-# 已要求 macOS 14；3.32.8 + Dart 3.8.1 已在该机实际验证可运行。
-# 因此 macOS 暂时固定到最新已验证兼容版本，不跟随 stable HEAD。
-if [ "$(platform)" = "macos" ]; then
-  FLUTTER_PINNED_VERSION="3.32.8"
-fi
+# NewHome 的 Flutter monitor 在 macOS/Linux 共享 pubspec.lock 与生成资产。
+# 两端统一使用已经实测的 Flutter 3.32.8 / Dart 3.8.1，避免不同 SDK
+# 重写 package_config/pubspec.lock 后把 framework 与另一套 engine 混编。
+FLUTTER_PINNED_VERSION="3.32.8"
 
 ensure_git() {
   if ! command -v git >/dev/null 2>&1; then
@@ -122,14 +118,14 @@ install_or_update_flutter() {
   fi
 
   if [ -n "$FLUTTER_PINNED_VERSION" ]; then
-    echo "正在核对 macOS 固定版 Flutter $FLUTTER_PINNED_VERSION..."
+    echo "正在核对 NewHome 固定版 Flutter $FLUTTER_PINNED_VERSION..."
     git -c http.version=HTTP/1.1 -C "$FLUTTER_HOME" fetch --depth 1 "$FLUTTER_FETCH_REPO" "refs/tags/$FLUTTER_PINNED_VERSION:refs/tags/$FLUTTER_PINNED_VERSION"
     local pinned_commit current_commit
     pinned_commit="$(git -C "$FLUTTER_HOME" rev-list -n 1 "$FLUTTER_PINNED_VERSION")"
     current_commit="$(git -C "$FLUTTER_HOME" rev-parse HEAD)"
     if [ "$current_commit" != "$pinned_commit" ]; then
       local backup_branch="pre-macos-flutter-pin-${current_commit:0:10}"
-      echo "当前 SDK 不是固定版；先保留当前 HEAD 到 $backup_branch，再切换到 $FLUTTER_PINNED_VERSION。"
+      echo "当前 SDK 不是 NewHome 固定版；先保留当前 HEAD 到 $backup_branch，再切换到 $FLUTTER_PINNED_VERSION。"
       git -C "$FLUTTER_HOME" branch "$backup_branch" "$current_commit" 2>/dev/null || true
     fi
     git -C "$FLUTTER_HOME" checkout -B "$FLUTTER_CHANNEL" "$pinned_commit"
