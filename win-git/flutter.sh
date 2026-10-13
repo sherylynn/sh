@@ -46,6 +46,7 @@ configure_toolsrc() {
 # This file is managed by toolsRC. Do not edit manually.
 
 export FLUTTER_HOME="$HOME/tools/flutter"
+export FLUTTER_ROOT="$FLUTTER_HOME"
 export PATH="$FLUTTER_HOME/bin:$PATH"
 export FLUTTER_STORAGE_BASE_URL="https://storage.flutter-io.cn"
 export PUB_HOSTED_URL="https://pub.flutter-io.cn"
@@ -53,6 +54,7 @@ EOF
 
   # 当前脚本进程立即生效；后续 shell 由 allToolsrc 自动加载。
   export FLUTTER_HOME="$FLUTTER_HOME"
+  export FLUTTER_ROOT="$FLUTTER_HOME"
   export PATH="$FLUTTER_HOME/bin:$PATH"
   export FLUTTER_STORAGE_BASE_URL="https://storage.flutter-io.cn"
   export PUB_HOSTED_URL="https://pub.flutter-io.cn"
@@ -194,6 +196,44 @@ ensure_version_tag() {
   fi
 }
 
+ensure_linux_arm64_android_aot() {
+  if [ "$(platform)" != "linux" ]; then
+    return
+  fi
+  case "$(uname -m)" in
+    aarch64|arm64) ;;
+    *) return ;;
+  esac
+
+  if ! command -v box64 >/dev/null 2>&1; then
+    echo "Linux ARM64: box64 not found; Android release/profile AOT gen_snapshot is unavailable." >&2
+    return
+  fi
+
+  # Flutter publishes Android ARM64 AOT gen_snapshot for linux-x64, but not linux-arm64.
+  # Keep the exact SDK/engine version and run that host-side tool through box64.
+  # bin/cache is disposable Flutter cache, so this does not dirty the SDK Git tree.
+  flutter precache --android
+  local mode base source target
+  for mode in profile release; do
+    base="$FLUTTER_HOME/bin/cache/artifacts/engine/android-arm64-$mode"
+    source="$base/linux-x64/gen_snapshot"
+    target="$base/linux-arm64/gen_snapshot"
+    if [ ! -x "$source" ]; then
+      echo "Missing Flutter $mode gen_snapshot: $source" >&2
+      continue
+    fi
+    mkdir -p "$(dirname "$target")"
+    cat > "$target" <<EOF
+#!/bin/sh
+exec "$(command -v box64)" "$source" "\$@"
+EOF
+    chmod 755 "$target"
+  done
+
+  echo "Linux ARM64 Android AOT host wrapper ready (official gen_snapshot via box64)."
+}
+
 verify_flutter() {
   echo
   echo "Flutter SDK：$FLUTTER_HOME"
@@ -208,6 +248,7 @@ main() {
   verify_mirror_commit
   ensure_version_tag
   configure_toolsrc
+  ensure_linux_arm64_android_aot
   verify_flutter
 }
 
