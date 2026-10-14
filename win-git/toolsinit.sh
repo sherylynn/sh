@@ -1124,10 +1124,16 @@ proxy_ip() {
   cat >${TOOLSRC} <<EOF
 export http_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
 export https_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
+# Local development control channels (Flutter tester/DevTools, Gradle, etc.)
+# must not send localhost HTTP/WebSocket traffic through the proxy.
+export NO_PROXY="localhost,127.0.0.1,::1"
+export no_proxy="\$NO_PROXY"
 EOF
 
   export http_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
   export https_proxy=${PROXY_TYPE}://$IP:${PROXY_PORT}
+  export NO_PROXY="localhost,127.0.0.1,::1"
+  export no_proxy="$NO_PROXY"
 
   git config --global http.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
   git config --global https.proxy ${PROXY_TYPE}://$IP:${PROXY_PORT}
@@ -1177,6 +1183,8 @@ unproxy() {
 
   unset http_proxy
   unset https_proxy
+  unset NO_PROXY
+  unset no_proxy
 
   git config --global --unset http.proxy 2>/dev/null || true
   git config --global --unset https.proxy 2>/dev/null || true
