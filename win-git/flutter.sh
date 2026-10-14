@@ -206,8 +206,10 @@ ensure_linux_arm64_android_aot() {
     return
   fi
 
-  # Flutter publishes Android ARM64 AOT gen_snapshot for linux-x64, but not linux-arm64.
-  # Keep the exact SDK/engine version and run that host-side tool through box64.
+  # NewHome Android ships arm64-v8a only. Flutter publishes the matching
+  # android-arm64 AOT gen_snapshot host tool for linux-x64, but not linux-arm64.
+  # Keep the exact SDK/engine version and run that official host tool through box64.
+  # The project pins target-platform=android-arm64, so arm/x64 wrappers are intentionally absent.
   # bin/cache is disposable Flutter cache, so this does not dirty the SDK Git tree.
   flutter precache --android
   local mode base source target
@@ -216,7 +218,7 @@ ensure_linux_arm64_android_aot() {
     source="$base/linux-x64/gen_snapshot"
     target="$base/linux-arm64/gen_snapshot"
     if [ ! -x "$source" ]; then
-      echo "Missing Flutter $mode gen_snapshot: $source" >&2
+      echo "Missing Flutter android-arm64 $mode gen_snapshot: $source" >&2
       continue
     fi
     mkdir -p "$(dirname "$target")"
@@ -227,7 +229,7 @@ EOF
     chmod 755 "$target"
   done
 
-  echo "Linux ARM64 Android AOT host wrapper ready (official gen_snapshot via box64)."
+  echo "Linux ARM64 Android AOT host wrapper ready for arm64 via box64."
 }
 
 verify_flutter() {
