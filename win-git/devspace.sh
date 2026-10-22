@@ -19,6 +19,16 @@ LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace.plist"
 MENUBAR_LAUNCH_AGENT_FILE="$LAUNCH_AGENT_DIR/win.sherylynn.devspace-menubar.plist"
 MENUBAR_SCRIPT="$SCRIPT_DIR/devspace_menubar.py"
 MENUBAR_PYTHON_FILE="$RUN_HOME/.devspace/menubar-python"
+WINDOWS_STARTUP_FILE=""
+
+windows_startup_file() {
+  [ -n "$WINDOWS_STARTUP_FILE" ] && { printf '%s\n' "$WINDOWS_STARTUP_FILE"; return 0; }
+  command -v cygpath >/dev/null 2>&1 || return 1
+  local appdata="${APPDATA:-}"
+  [ -n "$appdata" ] || return 1
+  WINDOWS_STARTUP_FILE="$(cygpath -u "$appdata")/Microsoft/Windows/Start Menu/Programs/Startup/newhome-devspace.cmd"
+  printf '%s\n' "$WINDOWS_STARTUP_FILE"
+}
 
 usage() {
   cat <<EOF
@@ -384,11 +394,33 @@ disable_macos_autostart() {
   echo "macOS 自动启动已关闭"
 }
 
+install_windows_autostart() {
+  ensure_runtime
+  local startup bash_win server_win
+  startup="$(windows_startup_file)" || { echo "错误：无法定位 Windows Startup 目录" >&2; return 1; }
+  mkdir -p "$(dirname "$startup")"
+  bash_win="$(cygpath -w /usr/bin/bash.exe)"
+  server_win="$(cygpath -w "$SERVER_SCRIPT")"
+  cat >"$startup" <<EOF
+@echo off
+"$bash_win" "$server_win" autostart-start
+EOF
+  echo "Windows Startup: $startup"
+}
+
+disable_windows_autostart() {
+  local startup
+  startup="$(windows_startup_file)" || return 0
+  rm -f "$startup"
+  echo "Windows 自动启动已关闭"
+}
+
 enable_autostart() {
   ensure_runtime
   case "$OS" in
     Linux) install_linux_autostart ;;
     Darwin) install_macos_autostart ;;
+    MSYS*|MINGW*|CYGWIN*) install_windows_autostart ;;
     *) echo "错误：暂不支持平台：$OS" >&2; return 1 ;;
   esac
 }
@@ -397,6 +429,7 @@ disable_autostart_only() {
   case "$OS" in
     Linux) disable_linux_autostart ;;
     Darwin) disable_macos_autostart ;;
+    MSYS*|MINGW*|CYGWIN*) disable_windows_autostart ;;
     *) echo "错误：暂不支持平台：$OS" >&2; return 1 ;;
   esac
 }
@@ -555,6 +588,11 @@ autostart_enabled() {
       ;;
     Darwin)
       [ -f "$LAUNCH_AGENT_FILE" ]
+      ;;
+    MSYS*|MINGW*|CYGWIN*)
+      local startup
+      startup="$(windows_startup_file)" || return 1
+      [ -f "$startup" ]
       ;;
     *) return 1 ;;
   esac
