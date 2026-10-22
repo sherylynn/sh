@@ -53,7 +53,8 @@ EOF
 
 TOOLS_BIN="$RUN_HOME/tools/bin"
 NODE_GLOBAL_BIN="$RUN_HOME/tools/node-global/bin"
-DEVSPACE_PKG="${DEVSPACE_PKG:-@waishnav/devspace}"
+DEVSPACE_PKG="${DEVSPACE_PKG:-@waishnav/devspace@1.1.0-beta.4}"
+DEVSPACE_TARGET_VERSION="${DEVSPACE_TARGET_VERSION:-1.1.0-beta.4}"
 CLOUDFLARED_INSTALLER="$SCRIPT_DIR/cloudflared.sh"
 
 # --- DevSpace OAuth 状态库（关键：不在 ~/.devspace 里）---
@@ -183,21 +184,40 @@ ensure_node() {
 }
 
 ensure_devspace_cli() {
-  devspace_available && return 0
-  local npm_bin
+  local npm_bin current_version installed_bin
+  installed_bin="$(command -v devspace 2>/dev/null || true)"
+  if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
+    installed_bin="$NODE_GLOBAL_BIN/devspace"
+  fi
+  if [ -n "$installed_bin" ]; then
+    current_version="$($installed_bin --version 2>/dev/null | head -1 | tr -d '\r' || true)"
+    if [ "$current_version" = "$DEVSPACE_TARGET_VERSION" ]; then
+      return 0
+    fi
+    echo "→ DevSpace 版本需要更新：${current_version:-未知} -> $DEVSPACE_TARGET_VERSION"
+  fi
   npm_bin="$(find_npm_bin || true)"
   if [ -z "$npm_bin" ]; then
     echo "错误：未找到 npm，无法安装 devspace CLI" >&2
     return 1
   fi
-  echo "→ 未找到 devspace CLI，使用 npm 安装 $DEVSPACE_PKG ..."
+  echo "→ 使用 npm 安装 $DEVSPACE_PKG ..."
   "$npm_bin" install -g "$DEVSPACE_PKG" \
     || { echo "错误：$DEVSPACE_PKG 安装失败" >&2; return 1; }
-  if ! devspace_available; then
+  installed_bin="$(command -v devspace 2>/dev/null || true)"
+  if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
+    installed_bin="$NODE_GLOBAL_BIN/devspace"
+  fi
+  if [ -z "$installed_bin" ]; then
     echo "错误：devspace CLI 安装后仍不可用（预期路径：$NODE_GLOBAL_BIN/devspace）" >&2
     return 1
   fi
-  echo "devspace CLI 已安装：$(command -v devspace 2>/dev/null || echo "$NODE_GLOBAL_BIN/devspace")"
+  current_version="$($installed_bin --version 2>/dev/null | head -1 | tr -d '\r' || true)"
+  if [ "$current_version" != "$DEVSPACE_TARGET_VERSION" ]; then
+    echo "错误：DevSpace 安装后版本不符（实际：${current_version:-未知}，预期：$DEVSPACE_TARGET_VERSION）" >&2
+    return 1
+  fi
+  echo "devspace CLI 已就绪：$installed_bin ($current_version)"
 }
 
 # 安装/更新 cloudflared：统一委托给 win-git/cloudflared.sh
