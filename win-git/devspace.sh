@@ -67,6 +67,18 @@ DEVSPACE_PKG="${DEVSPACE_PKG:-@waishnav/devspace@1.1.0-beta.4}"
 DEVSPACE_TARGET_VERSION="${DEVSPACE_TARGET_VERSION:-1.1.0-beta.4}"
 CLOUDFLARED_INSTALLER="$SCRIPT_DIR/cloudflared.sh"
 
+windows_native_devspace_bin() {
+  case "$OS" in MSYS*|MINGW*|CYGWIN*) ;; *) return 1 ;; esac
+  command -v cygpath >/dev/null 2>&1 || return 1
+  local profile="${USERPROFILE:-}" root candidate
+  [ -n "$profile" ] || return 1
+  root="$(cygpath -u "$profile")"
+  for candidate in "$root/.local/devspace/devspace" "$root/.local/devspace/devspace.cmd"; do
+    [ -f "$candidate" ] && { printf '%s\n' "$candidate"; return 0; }
+  done
+  return 1
+}
+
 # --- DevSpace OAuth 状态库（关键：不在 ~/.devspace 里）---
 # DevSpace 把已注册的 OAuth client 与 access/refresh token 存在 stateDir 的 SQLite 中，
 # 默认 stateDir = ~/.local/share/devspace（见包内 dist/config.js 的 defaultStateDir()）。
@@ -137,7 +149,9 @@ find_npm_bin() {
 }
 
 devspace_available() {
-  command -v devspace >/dev/null 2>&1 || [ -x "$NODE_GLOBAL_BIN/devspace" ]
+  command -v devspace >/dev/null 2>&1 \
+    || [ -x "$NODE_GLOBAL_BIN/devspace" ] \
+    || windows_native_devspace_bin >/dev/null 2>&1
 }
 
 # macOS 上判定某个 cloudflared 是否来自 Homebrew（老系统瓶装版本过旧，不接受）
@@ -199,6 +213,9 @@ ensure_devspace_cli() {
   if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
     installed_bin="$NODE_GLOBAL_BIN/devspace"
   fi
+  if [ -z "$installed_bin" ]; then
+    installed_bin="$(windows_native_devspace_bin 2>/dev/null || true)"
+  fi
   if [ -n "$installed_bin" ]; then
     current_version="$($installed_bin --version 2>/dev/null | head -1 | tr -d '\r' || true)"
     if [ "$current_version" = "$DEVSPACE_TARGET_VERSION" ]; then
@@ -217,6 +234,9 @@ ensure_devspace_cli() {
   installed_bin="$(command -v devspace 2>/dev/null || true)"
   if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
     installed_bin="$NODE_GLOBAL_BIN/devspace"
+  fi
+  if [ -z "$installed_bin" ]; then
+    installed_bin="$(windows_native_devspace_bin 2>/dev/null || true)"
   fi
   if [ -z "$installed_bin" ]; then
     echo "错误：devspace CLI 安装后仍不可用（预期路径：$NODE_GLOBAL_BIN/devspace）" >&2

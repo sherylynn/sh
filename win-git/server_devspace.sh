@@ -81,7 +81,34 @@ if ! command -v node >/dev/null 2>&1; then
   done
 fi
 
-DEVSPACE_BIN="${DEVSPACE_BIN:-$(command -v devspace 2>/dev/null || echo "$RUN_HOME/tools/node-global/bin/devspace")}"
+is_windows_shell() {
+  case "$OS" in MSYS*|MINGW*|CYGWIN*) return 0 ;; *) return 1 ;; esac
+}
+
+windows_native_devspace_bin() {
+  is_windows_shell || return 1
+  command -v cygpath >/dev/null 2>&1 || return 1
+  local profile="${USERPROFILE:-}" root candidate
+  [ -n "$profile" ] || return 1
+  root="$(cygpath -u "$profile")"
+  for candidate in "$root/.local/devspace/devspace" "$root/.local/devspace/devspace.cmd"; do
+    [ -f "$candidate" ] && { printf '%s\n' "$candidate"; return 0; }
+  done
+  return 1
+}
+
+resolve_devspace_bin() {
+  local candidate
+  if is_windows_shell; then
+    candidate="$(windows_native_devspace_bin 2>/dev/null || true)"
+    [ -n "$candidate" ] && { printf '%s\n' "$candidate"; return 0; }
+  fi
+  candidate="$(command -v devspace 2>/dev/null || true)"
+  [ -n "$candidate" ] && { printf '%s\n' "$candidate"; return 0; }
+  printf '%s\n' "$RUN_HOME/tools/node-global/bin/devspace"
+}
+
+DEVSPACE_BIN="${DEVSPACE_BIN:-$(resolve_devspace_bin)}"
 CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-$(command -v cloudflared 2>/dev/null || echo cloudflared)}"
 
 LOCK_FILE="${DEVSPACE_LOCK_FILE:-${TMPDIR:-/tmp}/.devspace-service-$(id -u).lock}"
@@ -97,6 +124,14 @@ SERVE_PAT="(^|/)([^ ]*/)?node [^ ]*devspace(\.js)? serve( |$)"
 # 启动命令形如：cloudflared tunnel --config CFG run [--protocol http2] devspace
 # 隧道名前面可能还有 --protocol 等 flag，故 run 与隧道名之间允许跨 token。
 TUNNEL_PAT="(^|/)cloudflared( |$).*tunnel( |$).*run( |$).*${TUNNEL_NAME}( |$)"
+
+windows_devspace_pid() {
+  is_windows_shell || return 1
+  command -v powershell.exe >/dev/null 2>&1 || return 1
+  powershell.exe -NoProfile -Command \
+    '$p = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "node.exe" -and $_.CommandLine -like "*@waishnav*devspace*server.js*" } | Select-Object -First 1; if ($null -ne $p) { [Console]::Out.Write($p.ProcessId) }' \
+    2>/dev/null | tr -d '\r'
+}
 
 ensure_dirs() {
   mkdir -p "$CONFIG_DIR" "$RUN_DIR"
@@ -154,17 +189,36 @@ start_background() {
 }
 
 start_devspace_unlocked() {
+  local pid tries
   ensure_token
   export DEVSPACE_OAUTH_OWNER_TOKEN="$(cat "$TOKEN_FILE")"
   [ -x "$DEVSPACE_BIN" ] || { echo "错误：找不到 devspace 可执行文件（${DEVSPACE_BIN}）" >&2; return 1; }
   [ -d "$WORKDIR" ] || { echo "错误：DevSpace 工作目录不存在：$WORKDIR" >&2; return 1; }
-  if remember_existing_pid "$SERVE_PAT" "$SERVE_PID_FILE"; then
-    echo "devspace serve 已在运行（PID $(cat "$SERVE_PID_FILE")），本次不重复启动"
+  pid="$(serve_pid 2>/dev/null || true)"
+  if [ -n "$pid" ]; then
+    printf '%s\n' "$pid" >"$SERVE_PID_FILE"
+    echo "devspace serve 已在运行（PID $pid），本次不重复启动"
   else
     (
       cd "$WORKDIR" || exit 1
       start_background "$SERVE_PID_FILE" "$SERVE_LOG" "$DEVSPACE_BIN" serve
     )
+    if is_windows_shell; then
+      tries=0
+      while [ "$tries" -lt 50 ]; do
+        pid="$(windows_devspace_pid 2>/dev/null || true)"
+        if [ -n "$pid" ]; then
+          printf '%s\n' "$pid" >"$SERVE_PID_FILE"
+          echo "devspace serve 已启动（PID $pid）-> $SERVE_LOG"
+          return 0
+        fi
+        tries=$((tries + 1))
+        sleep 0.1
+      done
+      rm -f "$SERVE_PID_FILE"
+      echo "错误：DevSpace 启动后未发现 Windows server.js 进程；请查看 $SERVE_LOG" >&2
+      return 1
+    fi
     echo "devspace serve 已启动（PID $(cat "$SERVE_PID_FILE")）-> $SERVE_LOG"
   fi
 }
@@ -330,6 +384,27 @@ stop_unlocked() {
 }
 
 stop_devspace_unlocked() {
+  if is_windows_shell; then
+    local pid tries=0
+    pid="$(windows_devspace_pid 2>/dev/null || true)"
+    if [ -z "$pid" ]; then
+      rm -f "$SERVE_PID_FILE"
+      echo "devspace serve 未运行"
+      return 0
+    fi
+    powershell.exe -NoProfile -Command "Stop-Process -Id $pid -ErrorAction SilentlyContinue" >/dev/null 2>&1 || true
+    while [ "$tries" -lt 30 ] && [ -n "$(windows_devspace_pid 2>/dev/null || true)" ]; do
+      tries=$((tries + 1))
+      sleep 0.1
+    done
+    rm -f "$SERVE_PID_FILE"
+    if [ -n "$(windows_devspace_pid 2>/dev/null || true)" ]; then
+      echo "错误：devspace serve Windows 进程未停止（PID $pid）" >&2
+      return 1
+    fi
+    echo "devspace serve 已停止（PID $pid）"
+    return 0
+  fi
   stop_pid_file "devspace serve" "$SERVE_PID_FILE" "$SERVE_PAT" || kill_matching "devspace serve" "$SERVE_PAT" || echo "devspace serve 未运行"
 }
 
@@ -367,6 +442,10 @@ tunnel_ready_body() {
 }
 
 serve_pid() {
+  if is_windows_shell; then
+    windows_devspace_pid
+    return $?
+  fi
   if pid_matches "$SERVE_PID_FILE" "$SERVE_PAT"; then
     cat "$SERVE_PID_FILE"
     return 0
