@@ -229,9 +229,25 @@ DISPLAY_PORT=0
 cd ../../
 DroidSpaces_path="/run/droidspaces/container.config"
 NEWHOME_RFB_BACKEND=${NEWHOME_RFB_BACKEND:-legacy}
+NOVNC_VNC_TARGET=127.0.0.1:5900
 
-native_rfb_ready() {
-  timeout 1 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5900' >/dev/null 2>&1
+native_rfb_probe_host() {
+  local host=$1
+  timeout 1 bash -c "exec 3<>/dev/tcp/${host}/5900" >/dev/null 2>&1
+}
+
+native_rfb_select_target() {
+  local host
+  # Android app and chroot may be in distinct network namespaces. Probe loopback first,
+  # then only this device's own IPv4 interface addresses. The native RFB server rejects
+  # non-self peers before the RFB handshake, so this does not expose unauthenticated RFB.
+  for host in 127.0.0.1 $(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+(\.[0-9]+){3}$' | sort -u); do
+    if native_rfb_probe_host "$host"; then
+      NOVNC_VNC_TARGET=${host}:5900
+      return 0
+    fi
+  done
+  return 1
 }
 
 # NewHome compositor native RFB owns the desktop directly. In this mode noVNC
@@ -242,14 +258,14 @@ if [ "$NEWHOME_RFB_BACKEND" = "native" ]; then
   pkill -TERM -x x11vnc >/dev/null 2>&1 || true
   pkill -TERM -x wayvnc >/dev/null 2>&1 || true
   for _native_rfb_wait in 1 2 3 4 5 6 7 8 9 10; do
-    if native_rfb_ready; then
-      echo "NewHome native RFB 已在 127.0.0.1:5900 就绪"
+    if native_rfb_select_target; then
+      echo "NewHome native RFB 已在 ${NOVNC_VNC_TARGET} 就绪"
       break
     fi
     sleep 0.5
   done
-  native_rfb_ready || {
-    echo "错误：NEWHOME_RFB_BACKEND=native，但 127.0.0.1:5900 未就绪" >&2
+  native_rfb_select_target || {
+    echo "错误：NEWHOME_RFB_BACKEND=native，但本机接口均无法连接 native RFB 5900" >&2
     exit 1
   }
 
@@ -473,7 +489,7 @@ fi
 # novnc_proxy in the foreground makes it inherit the short-lived NewHome
 # restart pipe; when that pipe closes websockify exits, while detached x11vnc
 # remains alive. Give noVNC its own session and log so it survives the launcher.
-if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 127\.0\.0\.1:5900' >/dev/null 2>&1; then
+if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 .*:5900' >/dev/null 2>&1; then
   echo "noVNC 已经在 10086 端口运行"
 else
   echo "启动 noVNC HTTPS/WebSocket 服务..."
@@ -484,7 +500,7 @@ else
     echo "错误：noVNC 登录凭据不存在或格式错误：$NOVNC_CREDENTIAL_FILE" >&2
     exit 1
   }
-  nohup setsid "$file_path" --vnc 127.0.0.1:5900 --listen 10086 \
+  nohup setsid "$file_path" --vnc "$NOVNC_VNC_TARGET" --listen 10086 \
     --web-auth --auth-plugin BasicHTTPAuth \
     --auth-source "$NOVNC_USER:$NOVNC_PASSWORD" \
     </dev/null >>"$NOVNC_LOG" 2>&1 &
@@ -492,7 +508,7 @@ else
   printf '%s\n' "$NOVNC_PID" >"$NOVNC_PID_FILE"
 
   for _novnc_wait in 1 2 3 4 5; do
-    if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 127\.0\.0\.1:5900' >/dev/null 2>&1; then
+    if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 .*:5900' >/dev/null 2>&1; then
       echo "noVNC 已成功启动：https://127.0.0.1:10086/vnc.html"
       exit 0
     fi
