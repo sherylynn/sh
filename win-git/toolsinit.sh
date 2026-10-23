@@ -86,6 +86,45 @@ arch() {
   echo $ARCH
 }
 
+# 始终让本机开发控制通道绕过 HTTP 代理。
+# Flutter tester/DevTools、Gradle 与本地 DevSpace 都会使用 localhost HTTP/WebSocket；
+# 如果只设置 http_proxy/https_proxy 而没有 NO_PROXY，这些连接会被错误送入代理。
+ensureLocalProxyBypassRC() {
+  [ -n "$BASH_DIR" ] || return 1
+  [ -n "$ALLTOOLSRC_FILE" ] || return 1
+
+  local bypass_rc="$BASH_DIR/localproxyrc"
+  local source_line="test -f ${bypass_rc} && . ${bypass_rc}"
+
+  mkdir -p "$BASH_DIR" || return 1
+  touch "$ALLTOOLSRC_FILE" || return 1
+
+  cat >"$bypass_rc" <<'LOCALPROXYRC'
+# toolsinit.sh 自动维护：本机开发控制通道不得经过 HTTP 代理。
+for _newhome_no_proxy_host in localhost 127.0.0.1 ::1; do
+  case ",${NO_PROXY:-}," in
+    *,${_newhome_no_proxy_host},*) ;;
+    *) NO_PROXY="${NO_PROXY:+${NO_PROXY},}${_newhome_no_proxy_host}" ;;
+  esac
+done
+export NO_PROXY
+export no_proxy="$NO_PROXY"
+unset _newhome_no_proxy_host
+LOCALPROXYRC
+
+  # localproxyrc 必须最后加载，避免后续某个工具 rc 重写 NO_PROXY。
+  if grep -Fq "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
+    local tmp_file="${ALLTOOLSRC_FILE}.localproxy.$$"
+    grep -Fv "$source_line" "$ALLTOOLSRC_FILE" >"$tmp_file" || true
+    cat "$tmp_file" >"$ALLTOOLSRC_FILE"
+    rm -f "$tmp_file"
+  fi
+  echo "$source_line" >>"$ALLTOOLSRC_FILE"
+}
+
+# toolsinit 每次加载都修复一次已有 allToolsrc。
+ensureLocalProxyBypassRC
+
 toolsRC() {
   local toolsrc_name="$1"
 
@@ -121,7 +160,8 @@ toolsRC() {
 
   # 检查是否已存在完全相同的行
   if grep -Fq "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
-    # 已存在完全相同的行，直接返回
+    # 已存在完全相同的行时也要把 localhost bypass 重新移动到最后。
+    ensureLocalProxyBypassRC || return 1
     echo "$toolsrc"
     return 0
   fi
@@ -146,6 +186,9 @@ toolsRC() {
     echo "Error: Failed to add entry to $ALLTOOLSRC_FILE" >&2
     return 1
   fi
+
+  # 新增任何工具 rc 后，都把 localhost bypass 保持在 allToolsrc 最后。
+  ensureLocalProxyBypassRC || return 1
 
   echo "$toolsrc"
 }
