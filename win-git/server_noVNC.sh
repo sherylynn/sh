@@ -228,7 +228,30 @@ fi
 DISPLAY_PORT=0
 cd ../../
 DroidSpaces_path="/run/droidspaces/container.config"
+NEWHOME_RFB_BACKEND=${NEWHOME_RFB_BACKEND:-legacy}
 
+native_rfb_ready() {
+  timeout 1 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5900' >/dev/null 2>&1
+}
+
+# NewHome compositor native RFB owns the desktop directly. In this mode noVNC
+# is only the browser client/WebSocket frontend; do not start a second X11/Wayland
+# capture server or a second desktop session.
+if [ "$NEWHOME_RFB_BACKEND" = "native" ]; then
+  echo "使用 NewHome compositor native RFB backend"
+  pkill -TERM -x x11vnc >/dev/null 2>&1 || true
+  pkill -TERM -x wayvnc >/dev/null 2>&1 || true
+  for _native_rfb_wait in 1 2 3 4 5 6 7 8 9 10; do
+    if native_rfb_ready; then
+      echo "NewHome native RFB 已在 127.0.0.1:5900 就绪"
+      break
+    fi
+    sleep 0.5
+  done
+  native_rfb_ready || {
+    echo "错误：NEWHOME_RFB_BACKEND=native，但 127.0.0.1:5900 未就绪" >&2
+    exit 1
+  }
 
 # 检测 termux-x11 是否在运行
 # chroot: pgrep 可见宿主机进程 (com.termux.x11)
@@ -236,7 +259,7 @@ DroidSpaces_path="/run/droidspaces/container.config"
 #   termux-x11 :1 创建 $TMPDIR/.X11-unix/X1, --shared-tmp 让容器内 /tmp/.X11-unix/X1 可达
 # Anland/Labwc 是 rootless Wayland。x11vnc 无法抓取它的 Xwayland 根窗口，
 # 必须优先用 wayvnc；不能让残留的 X1 socket 把 profile 误判成 Termux:X11。
-if pgrep -x labwc >/dev/null && [ -S /run/user/0/wayland-0 ]; then
+elif pgrep -x labwc >/dev/null && [ -S /run/user/0/wayland-0 ]; then
   echo "检测到 Anland/Labwc，启动 wayvnc"
   WAYVNC_CONFIG=/root/.config/wayvnc/config
   [ -s "$WAYVNC_CONFIG" ] || /bin/bash /root/sh/win-git/configure_wayvnc.sh
@@ -321,6 +344,7 @@ elif pgrep -f "com.termux.x11" >/dev/null; then
     -auth "$HOME/.Xauthority" \
     -rfbauth "$VNC_PASSWD_FILE" \
     -rfbport "$VNC_PORT" \
+    -desktop NewHomeLegacyX11VNC \
     -forever \
     -noshm \
     -shared \
@@ -408,6 +432,7 @@ elif [ -e "$DroidSpaces_path" ]; then
     -auth "$HOME/.Xauthority" \
     -rfbauth "$VNC_PASSWD_FILE" \
     -rfbport "$VNC_PORT" \
+    -desktop NewHomeLegacyX11VNC \
     -forever \
     -noshm \
     -shared \
