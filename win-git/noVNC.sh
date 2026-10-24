@@ -19,6 +19,13 @@ CA_INSTALL_SH=${NOVNC_CA_INSTALL_SH:-$HOME/sh/win-git/install_noVNC_ca.sh}
 CA_INSTALL_PS1=${NOVNC_CA_INSTALL_PS1:-$HOME/sh/win-git/install_noVNC_ca.ps1}
 
 
+FORCE_VNC_PASSWORD_RESET=false
+case "${1:-}" in
+  --set-password) FORCE_VNC_PASSWORD_RESET=true ;;
+  "") ;;
+  *) echo "用法: $0 [--set-password]" >&2; exit 2 ;;
+esac
+
 configure_native_vnc_password() {
   local credentials=/root/.vnc/vnc.credentials
   local password confirm
@@ -32,10 +39,15 @@ configure_native_vnc_password() {
     sudo cp /root/.vnc/novnc.credentials "$credentials"
   fi
 
-  if [ -s "$credentials" ]; then
+  if [ -s "$credentials" ] && [ "$FORCE_VNC_PASSWORD_RESET" != true ]; then
     sudo chmod 0600 "$credentials"
     echo "保留现有 NewHome VNC 密码: $credentials"
+    echo "如需重新设置：$0 --set-password"
     return 0
+  fi
+
+  if [ "$FORCE_VNC_PASSWORD_RESET" = true ]; then
+    echo "重新设置 NewHome VNC 密码。"
   fi
 
   if [ -n "${NEWHOME_VNC_PASSWORD:-}" ]; then
@@ -43,11 +55,13 @@ configure_native_vnc_password() {
   elif [ -t 0 ]; then
     echo "请设置 NewHome VNC 密码。支持任意长度 UTF-8 密码，不再受传统 VNC 8 字节限制。"
     while true; do
-      read -r -s -p "VNC 密码: " password
-      echo
+      printf "VNC 密码: " >&2
+      IFS= read -r -s password
+      echo >&2
       [ -n "$password" ] || { echo "密码不能为空，请重新输入。"; continue; }
-      read -r -s -p "再次输入 VNC 密码: " confirm
-      echo
+      printf "再次输入 VNC 密码: " >&2
+      IFS= read -r -s confirm
+      echo >&2
       [ "$password" = "$confirm" ] || { echo "两次密码不一致，请重新输入。"; continue; }
       break
     done
