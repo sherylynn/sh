@@ -18,6 +18,48 @@ TLS_HELPER=${NOVNC_TLS_HELPER:-$HOME/sh/win-git/noVNC_tls.sh}
 CA_INSTALL_SH=${NOVNC_CA_INSTALL_SH:-$HOME/sh/win-git/install_noVNC_ca.sh}
 CA_INSTALL_PS1=${NOVNC_CA_INSTALL_PS1:-$HOME/sh/win-git/install_noVNC_ca.ps1}
 
+
+configure_native_vnc_password() {
+  local credentials=/root/.vnc/vnc.credentials
+  local password confirm
+
+  sudo install -d -m 0700 /root/.vnc
+
+  if [ -s /root/.vnc/wayvnc.credentials ]; then
+    sudo cp /root/.vnc/wayvnc.credentials "$credentials"
+    sudo rm -f /root/.vnc/wayvnc.credentials
+  elif [ ! -s "$credentials" ] && [ -s /root/.vnc/novnc.credentials ]; then
+    sudo cp /root/.vnc/novnc.credentials "$credentials"
+  fi
+
+  if [ -s "$credentials" ]; then
+    sudo chmod 0600 "$credentials"
+    echo "保留现有 NewHome VNC 密码: $credentials"
+    return 0
+  fi
+
+  if [ -n "${NEWHOME_VNC_PASSWORD:-}" ]; then
+    password=$NEWHOME_VNC_PASSWORD
+  elif [ -t 0 ]; then
+    echo "请设置 NewHome VNC 密码。支持任意长度 UTF-8 密码，不再受传统 VNC 8 字节限制。"
+    while true; do
+      read -r -s -p "VNC 密码: " password
+      echo
+      [ -n "$password" ] || { echo "密码不能为空，请重新输入。"; continue; }
+      read -r -s -p "再次输入 VNC 密码: " confirm
+      echo
+      [ "$password" = "$confirm" ] || { echo "两次密码不一致，请重新输入。"; continue; }
+      break
+    done
+  else
+    password=$(openssl rand -hex 16)
+    echo "非交互安装：已生成随机 NewHome VNC 密码并保存到 $credentials"
+  fi
+
+  printf 'password=%s\n' "$password" | sudo tee "$credentials" >/dev/null
+  sudo chmod 0600 "$credentials"
+}
+
 echo "noVNC upstream: $NOVNC_GIT_URL"
 echo "noVNC branch: $NOVNC_BRANCH"
 echo "HiDPI patch: $HIDPI_PATCH"
@@ -122,23 +164,9 @@ if [[ $(platform) == *linux* ]]; then
   # noVNC only needs browser/websocket runtime plus TLS helpers.
   sudo apt install python3-numpy openssl libnss3-tools -y
 
-  # Native RFB owns VNC authentication. Keep one password file for the compositor
-  # and migrate historical wayvnc/noVNC credentials when available.
-  sudo install -d -m 0700 /root/.vnc
-  if [ -s /root/.vnc/wayvnc.credentials ]; then
-    sudo cp /root/.vnc/wayvnc.credentials /root/.vnc/vnc.credentials
-    sudo rm -f /root/.vnc/wayvnc.credentials
-  elif [ ! -s /root/.vnc/vnc.credentials ]; then
-    if [ -s /root/.vnc/novnc.credentials ]; then
-      sudo cp /root/.vnc/novnc.credentials /root/.vnc/vnc.credentials
-    else
-      VNC_BOOTSTRAP_PASSWORD=$(openssl rand -hex 4)
-      printf 'password=%s\n' "$VNC_BOOTSTRAP_PASSWORD" |
-        sudo tee /root/.vnc/vnc.credentials >/dev/null
-      echo "Generated native VNC password in /root/.vnc/vnc.credentials"
-    fi
-  fi
-  sudo chmod 0600 /root/.vnc/vnc.credentials
+  # Native RFB owns authentication. Fresh interactive installs ask the user for
+  # one full-length password; unattended installs can use NEWHOME_VNC_PASSWORD.
+  configure_native_vnc_password || exit 1
 
   # noVNC's official launcher already supports --cert/--key/--ssl-only. Keep its
   # implementation intact as novnc_proxy.upstream and put our automatic local-CA

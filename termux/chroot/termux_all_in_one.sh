@@ -146,7 +146,7 @@ sync_remote_desktop_scripts() {
       sudo cp "$DEBIAN_DIR/root/.vnc/novnc.credentials" "$DEBIAN_DIR/root/.vnc/vnc.credentials"
     else
       local bootstrap_password
-      bootstrap_password=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' | head -c 8)
+      bootstrap_password=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' | head -c 32)
       [ -n "$bootstrap_password" ] || bootstrap_password="newhome"
       printf 'password=%s\n' "$bootstrap_password" |
         sudo tee "$DEBIAN_DIR/root/.vnc/vnc.credentials" >/dev/null
