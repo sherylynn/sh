@@ -121,10 +121,12 @@ quiesce_legacy_chroot_display() {
 sync_remote_desktop_scripts() {
   local destination_dir="$DEBIAN_DIR/root/sh/win-git"
   sudo mkdir -p "$destination_dir"
-  if [ -f "$PROJECT_ROOT/win-git/server_noVNC.sh" ]; then
-    sudo cp "$PROJECT_ROOT/win-git/server_noVNC.sh" "$destination_dir/server_noVNC.sh"
-    sudo chmod 755 "$destination_dir/server_noVNC.sh"
-  fi
+  for source_name in server_noVNC.sh init_d_noVNC.sh; do
+    if [ -f "$PROJECT_ROOT/win-git/$source_name" ]; then
+      sudo cp "$PROJECT_ROOT/win-git/$source_name" "$destination_dir/$source_name"
+      sudo chmod 755 "$destination_dir/$source_name"
+    fi
+  done
 
   # noVNC 现在自己拥有 Web 登录凭据；旧 wayvnc 文件仅作一次迁移来源。
   sudo mkdir -p "$DEBIAN_DIR/root/.vnc"
@@ -141,6 +143,19 @@ sync_remote_desktop_scripts() {
     fi
     sudo chmod 0600 "$DEBIAN_DIR/root/.vnc/novnc.credentials"
   fi
+}
+
+
+ensure_native_novnc_service() {
+  # Older rootfs images may still have /etc/init.d/noVNC but have lost the rc3
+  # symlink during the legacy-display cleanup. Reinstall the canonical service
+  # definition on every tstart, then start it explicitly after native RFB is ready.
+  chroot_exec -u root '
+    set -eu
+    /bin/bash /root/sh/win-git/init_d_noVNC.sh >/dev/null
+    test -L /etc/rc3.d/S01noVNC
+    /etc/init.d/noVNC start
+  ' || error "无法恢复/启动 native noVNC rc3 服务"
 }
 
 wait_remote_desktop_services() {
@@ -451,6 +466,7 @@ start_rooted_newhome_desktop() {
   mount_newhome_x11_runtime
   wait_newhome_xwayland_ready
   start_xfce_wayland_session
+  ensure_native_novnc_service
   wait_remote_desktop_services
 }
 
