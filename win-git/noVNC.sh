@@ -52,6 +52,8 @@ configure_native_vnc_password() {
 
   if [ -n "${NEWHOME_VNC_PASSWORD:-}" ]; then
     password=$NEWHOME_VNC_PASSWORD
+    password_bytes=$(LC_ALL=C printf '%s' "$password" | wc -c)
+    [ "$password_bytes" -le 1024 ] || { echo "NEWHOME_VNC_PASSWORD 超过 1024 UTF-8 bytes" >&2; return 1; }
   elif [ -t 0 ]; then
     echo "请设置 NewHome VNC 密码。支持任意长度 UTF-8 密码，不再受传统 VNC 8 字节限制。"
     while true; do
@@ -59,6 +61,8 @@ configure_native_vnc_password() {
       IFS= read -r -s password
       echo >&2
       [ -n "$password" ] || { echo "密码不能为空，请重新输入。"; continue; }
+      password_bytes=$(LC_ALL=C printf '%s' "$password" | wc -c)
+      [ "$password_bytes" -le 1024 ] || { echo "密码最多 1024 UTF-8 bytes，请重新输入。"; continue; }
       printf "再次输入 VNC 密码: " >&2
       IFS= read -r -s confirm
       echo >&2
