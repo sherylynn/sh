@@ -40,19 +40,19 @@ find_android_root() {
 android_am() {
     local root
     root=$(find_android_root) || fail "cannot locate Android /system through a Termux host process"
-    chroot "$root" /system/bin/am "$@"
+    env -u LD_PRELOAD -u NEWHOME_WAYLAND_SHM_ALLOCATOR chroot "$root" /system/bin/am "$@"
 }
 
 android_logcat() {
     local root
     root=$(find_android_root) || fail "cannot locate Android /system through a Termux host process"
-    chroot "$root" /system/bin/logcat "$@"
+    env -u LD_PRELOAD -u NEWHOME_WAYLAND_SHM_ALLOCATOR chroot "$root" /system/bin/logcat "$@"
 }
 
 android_dumpsys() {
     local root
     root=$(find_android_root) || fail "cannot locate Android /system through a Termux host process"
-    chroot "$root" /system/bin/dumpsys "$@"
+    env -u LD_PRELOAD -u NEWHOME_WAYLAND_SHM_ALLOCATOR chroot "$root" /system/bin/dumpsys "$@"
 }
 
 list_cameras() {
