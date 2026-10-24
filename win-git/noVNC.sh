@@ -125,10 +125,11 @@ if [[ $(platform) == *linux* ]]; then
   # Native RFB owns VNC authentication. Keep one password file for the compositor
   # and migrate historical wayvnc/noVNC credentials when available.
   sudo install -d -m 0700 /root/.vnc
-  if [ ! -s /root/.vnc/vnc.credentials ]; then
-    if [ -s /root/.vnc/wayvnc.credentials ]; then
-      sudo cp /root/.vnc/wayvnc.credentials /root/.vnc/vnc.credentials
-    elif [ -s /root/.vnc/novnc.credentials ]; then
+  if [ -s /root/.vnc/wayvnc.credentials ]; then
+    sudo cp /root/.vnc/wayvnc.credentials /root/.vnc/vnc.credentials
+    sudo rm -f /root/.vnc/wayvnc.credentials
+  elif [ ! -s /root/.vnc/vnc.credentials ]; then
+    if [ -s /root/.vnc/novnc.credentials ]; then
       sudo cp /root/.vnc/novnc.credentials /root/.vnc/vnc.credentials
     else
       VNC_BOOTSTRAP_PASSWORD=$(openssl rand -hex 4)
