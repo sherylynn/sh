@@ -60,7 +60,7 @@ check_requirements() {
 
   # 启动阶段只验证关键命令，不执行 pkg；依赖统一由 installer_proot.sh 安装。
   local required_command
-  for required_command in termux-x11 sv; do
+  for required_command in sv; do
     command -v "$required_command" >/dev/null 2>&1 ||
       error "缺少命令 $required_command，请先运行 installer_proot.sh"
   done
@@ -76,16 +76,16 @@ start_base_services() {
   local services=()
   if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
     log "检测到强制使用虚拟显卡文件，启动virgl服务"
-    services=("virgl" "pulseaudio" "x11")
+    services=("virgl" "pulseaudio")
   elif lscpu | grep -q "Oryon"; then
     log "Oryon CPU detected, skipping virgl service startup."
-    services=("pulseaudio" "x11")
+    services=("pulseaudio")
   else
-    services=("virgl" "pulseaudio" "x11")
+    services=("virgl" "pulseaudio")
   fi
 
-  # GhostLock 用户阶段必须在当前 shell 直接启动真正的 termux-x11。
-  # runit 的 server_x11.sh 依赖 KernelSU sudo，在临时-root路线会立即退出。
+  # native Wayland compositor 由 NewHome 自身拥有；Termux 用户阶段只维护
+  # 音频等基础服务，不再启动独立 Termux:X11 display server。
   if [ "${TERMUX_SPLIT_USER_PHASE:-0}" = "1" ]; then
     services=("pulseaudio")
   fi
@@ -109,7 +109,7 @@ start_x11() {
   am force-stop --user 0 com.anland.termux 2>/dev/null || true
 
   # 清理旧的进程
-  sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+  sudo killall -9 termux-x11 termux-wake-lock 2>/dev/null || true
   sudo pkill -f com.termux.x11 2>/dev/null || true
   am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
@@ -177,8 +177,9 @@ wait_remote_desktop_services() {
   for wait_step in {1..60}; do
     backend=$(sudo sed -n 's/^backend=//p' "$backend_state" 2>/dev/null | head -1)
 
-    # native compositor 已经拥有 RFB；server_noVNC.sh 在启动 websockify 前会验证
-    # 选中的 :5900 target。native 模式不应再硬性要求 x11vnc/xrdp。
+    # canonical desktop 是 NewHome native Wayland compositor；XWayland 只兼容旧应用。
+    # server_noVNC.sh 在启动 websockify 前会验证 native :5900。正常 tstart 不应
+    # 再依赖 x11vnc/xrdp；legacy 分支仅保留给显式诊断/回滚。
     if [ "$backend" = "native" ]; then
       if pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
         { grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null ||
@@ -214,7 +215,7 @@ stop_all() {
   stop_chroot_container 2>/dev/null || true
 
   # 停止X11
-  sudo killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+  sudo killall -9 termux-x11 termux-wake-lock 2>/dev/null || true
   sudo pkill -f com.termux.x11 2>/dev/null || true
   am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
 
@@ -227,12 +228,12 @@ stop_all() {
   local services=()
   if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
     log "检测到强制使用虚拟显卡文件，停止virgl服务"
-    services=("virgl" "pulseaudio" "x11")
+    services=("virgl" "pulseaudio")
   elif lscpu | grep -q "Oryon"; then
     log "Oryon CPU detected, skipping virgl service shutdown."
-    services=("pulseaudio" "x11")
+    services=("pulseaudio")
   else
-    services=("virgl" "pulseaudio" "x11")
+    services=("virgl" "pulseaudio")
   fi
 
   for service in "${services[@]}"; do
@@ -251,7 +252,7 @@ stop_all() {
 # 只停止属于 Termux 用户的桌面与基础服务；chroot 卸载由 root 阶段负责。
 stop_user_services() {
   log "停止 Termux 用户服务..."
-  killall -9 termux-x11 Xwayland termux-wake-lock 2>/dev/null || true
+  killall -9 termux-x11 termux-wake-lock 2>/dev/null || true
   pkill -f com.termux.x11 2>/dev/null || true
   am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
   pkill -TERM -x anland-compatible 2>/dev/null || true
@@ -259,7 +260,7 @@ stop_user_services() {
   am force-stop --user 0 com.anland.termux 2>/dev/null || true
 
   local service
-  for service in pulseaudio x11 virgl; do
+  for service in pulseaudio virgl; do
     if [ -d "$PREFIX/var/service/$service" ]; then
       sv down "$PREFIX/var/service/$service" 2>/dev/null || true
     fi
@@ -271,7 +272,7 @@ stop_user_services() {
 check_status() {
   echo "=== Termux 整体环境状态 ==="
 
-  echo -n "X11服务: "
+  echo -n "Termux:X11 legacy服务: "
   if pgrep -f "termux-x11" >/dev/null; then
     echo "运行中"
   else
@@ -282,7 +283,7 @@ check_status() {
   check_chroot_status
 
   echo
-  echo "=== X11 进程信息 ==="
+  echo "=== Legacy X11 进程信息 ==="
   echo "X11进程:"
   pgrep -f "termux-x11" | head -5 || echo "  无"
 }
@@ -373,7 +374,8 @@ main() {
     "start")
       check_requirements
       start_base_services
-      start_x11
+      # NewHome native Wayland compositor is the sole desktop owner. XWayland is
+      # spawned/managed by that compositor only when legacy X11 clients need it.
       sync_remote_desktop_scripts
       start_chroot
       wait_remote_desktop_services

@@ -228,7 +228,7 @@ fi
 DISPLAY_PORT=0
 cd ../../
 DroidSpaces_path="/run/droidspaces/container.config"
-NEWHOME_RFB_BACKEND=${NEWHOME_RFB_BACKEND:-auto}
+NEWHOME_RFB_BACKEND=${NEWHOME_RFB_BACKEND:-native}
 NOVNC_VNC_TARGET=127.0.0.1:5900
 NOVNC_BACKEND_STATE="$HOME/.vnc/novnc-backend.env"
 
@@ -251,26 +251,11 @@ native_rfb_select_target() {
   return 1
 }
 
-# rc3 通过 chroot_exec/env -i 启动，因此不能依赖 Termux 外层 export
-# NEWHOME_RFB_BACKEND。rooted tstart 默认自动探测 NewHome native RFB；
-# 若当前没有 native compositor，再安全回退到历史 X11/wayvnc 路径。
-if [ "$NEWHOME_RFB_BACKEND" = "auto" ]; then
-  for _native_auto_wait in 1 2 3 4 5 6 7 8 9 10; do
-    if native_rfb_select_target; then
-      NEWHOME_RFB_BACKEND=native
-      break
-    fi
-    sleep 0.5
-  done
-  if [ "$NEWHOME_RFB_BACKEND" = "auto" ]; then
-    NEWHOME_RFB_BACKEND=legacy
-  fi
-fi
-
+# NewHome 的 canonical desktop 已经迁移到 native Wayland compositor。
+# XWayland 只服务旧 X11 客户端，不再拥有桌面 framebuffer，也不能作为 noVNC
+# 的正常 fallback。rooted rc3 默认且必须绑定 native RFB；只有显式设置
+# NEWHOME_RFB_BACKEND=legacy 时才进入历史诊断/回滚路径。
 mkdir -p "$HOME/.vnc"
-printf 'backend=%s
-target=%s
-' "$NEWHOME_RFB_BACKEND" "$NOVNC_VNC_TARGET" >"$NOVNC_BACKEND_STATE"
 
 # NewHome compositor native RFB owns the desktop directly. In this mode noVNC
 # is only the browser client/WebSocket frontend; do not start a second X11/Wayland
@@ -279,7 +264,7 @@ if [ "$NEWHOME_RFB_BACKEND" = "native" ]; then
   echo "使用 NewHome compositor native RFB backend"
   pkill -TERM -x x11vnc >/dev/null 2>&1 || true
   pkill -TERM -x wayvnc >/dev/null 2>&1 || true
-  for _native_rfb_wait in 1 2 3 4 5 6 7 8 9 10; do
+  for _native_rfb_wait in $(seq 1 30); do
     if native_rfb_select_target; then
       echo "NewHome native RFB 已在 ${NOVNC_VNC_TARGET} 就绪"
       break
@@ -287,9 +272,13 @@ if [ "$NEWHOME_RFB_BACKEND" = "native" ]; then
     sleep 0.5
   done
   native_rfb_select_target || {
-    echo "错误：NEWHOME_RFB_BACKEND=native，但本机接口均无法连接 native RFB 5900" >&2
+    echo "错误：NewHome native compositor RFB :5900 未就绪；不会回退到 x11vnc/wayvnc" >&2
+    echo "XWayland 仅用于旧 X11 应用兼容，不是远程桌面 framebuffer owner" >&2
     exit 1
   }
+  printf 'backend=%s
+target=%s
+' "$NEWHOME_RFB_BACKEND" "$NOVNC_VNC_TARGET" >"$NOVNC_BACKEND_STATE"
 
 # 检测 termux-x11 是否在运行
 # chroot: pgrep 可见宿主机进程 (com.termux.x11)
