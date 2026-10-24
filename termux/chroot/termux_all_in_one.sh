@@ -246,12 +246,33 @@ read_native_vnc_password() {
 
 start_newhome_compositor() {
   log "启动 NewHome Android-side Smithay runtime（headless，不打开 Linux 小窗）..."
-  local rfb_password
-  rfb_password=$(read_native_vnc_password)
+
+  # Password provisioning belongs to NewHome's root-only abstract control socket.
+  # The CLI reads the 0600 credentials file inside chroot and Base64-encodes the
+  # UTF-8 secret for the framed control command, so the password never appears in
+  # am/ps process arguments. Android persists it with AndroidKeyStore AES-GCM.
+  if chroot_exec -u root '/usr/bin/newhome-linux-cli host rfb-password-set --file /root/.vnc/vnc.credentials' \
+      >/dev/null 2>&1; then
+    log "NewHome native RFB 密码已通过 root-only control socket 更新"
+  else
+    # Transitional fallback for rootfs images that have not yet received the new
+    # CLI. Remove once the packaged Linux daemon/CLI baseline is mandatory.
+    local rfb_password
+    rfb_password=$(read_native_vnc_password)
+    warn "当前 rootfs 的 newhome-linux-cli 不支持安全密码注入；临时使用 legacy Intent bootstrap"
+    sudo /system/bin/am start-foreground-service --user 0 \
+      -n com.example.customlauncher/.linux.LinuxDesktopFloatingService \
+      -a com.example.customlauncher.action.LINUX_RUNTIME_ENSURE \
+      --es rfb_password "$rfb_password" >/dev/null 2>&1 || \
+      error "无法启动 NewHome Smithay runtime；请先安装当前 NewHome"
+    unset rfb_password
+    log "NewHome compositor 已常驻；Linux 小窗 presentation 由快捷工具按需 attach"
+    return 0
+  fi
+
   sudo /system/bin/am start-foreground-service --user 0 \
     -n com.example.customlauncher/.linux.LinuxDesktopFloatingService \
-    -a com.example.customlauncher.action.LINUX_RUNTIME_ENSURE \
-    --es rfb_password "$rfb_password" >/dev/null 2>&1 || \
+    -a com.example.customlauncher.action.LINUX_RUNTIME_ENSURE >/dev/null 2>&1 || \
     error "无法启动 NewHome Smithay runtime；请先安装当前 NewHome"
   log "NewHome compositor 已常驻；Linux 小窗 presentation 由快捷工具按需 attach"
 }
