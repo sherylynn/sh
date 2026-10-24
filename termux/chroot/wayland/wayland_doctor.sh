@@ -194,8 +194,8 @@ check_profiles() {
     [ -f "$CHROOT_SCRIPT_DIR/termux_all_in_one.sh" ] && ok 'X11 profile 脚本存在' || bad '缺少 X11 profile'
     [ -f "$CHROOT_SCRIPT_DIR/termux_wayland_all_in_one.sh" ] && ok 'Wayland profile 脚本存在' || bad '缺少 Wayland profile'
 
-    if container_mounted && chroot_exec -u root 'test -f /root/sh/termux/chroot/newhome_control.py'; then
-        ok 'NewHome control client 在 chroot 可见'
+    if container_mounted && chroot_exec -u root 'test -x /usr/bin/newhome-linux-cli'; then
+        ok 'NewHome Rust control client 在 chroot 可见'
     fi
 }
 

@@ -24,7 +24,7 @@ chroot 自己不能可靠地完成“杀掉并重新启动自身”这类生命�
 
 ```text
 root chroot
-  -> /root/sh/termux/chroot/newhome_control.py restart
+  -> /usr/bin/newhome-linux-cli host restart
   -> abstract socket @newhome_control_v1
   -> NewHome LinuxControlBridge
   -> NewHome 自身申请 root
@@ -45,7 +45,7 @@ root chroot
 - 把 `CTRL RESTART` 或任何控制消息塞进 4715 `WATCH` 剪贴板流
 - 由 XFCE 托盘直接写重启文件
 
-XFCE 托盘的“重启 chroot 容器”入口必须调用 `newhome_control.py restart`，不能自己管理容器生命周期。
+XFCE 托盘的“重启 chroot 容器”入口必须调用 `newhome-linux-cli host restart`，不能自己管理容器生命周期。
 
 ## 3. 剪贴板：NewHome ClipboardManager 是 Android 唯一真源
 
@@ -61,11 +61,8 @@ Android 侧已有：
 - 新注册一套独立 Android system clipboard listener/history。
 - 让 Linux/VNC 维护与 NewHome 相互独立的 Android 剪贴板状态。
 
-Linux 侧唯一合并点是 X11 `CLIPBOARD`：
-
-`sh/termux/chroot/newhome_clipboard_bridge.py`
-
-它通过 `xclip` 把 NewHome 4715 与 X11 双向同步。
+Linux 侧唯一合并点是 X11 `CLIPBOARD`。`newhome-linux-session` 启动 Rust daemon
+的 clipboard owner，它通过 `xclip` 把 NewHome 4715 与 X11 双向同步；不再启动独立 Python helper。
 
 ## 4. Unicode / 中文：不要再 hook X11 selection API
 
@@ -106,7 +103,7 @@ RDP client cliprdr
   <-> xrdp
   <-> xrdp-chansrv (DISPLAY=:1)
   <-> X11 CLIPBOARD
-  <-> newhome_clipboard_bridge.py
+  <-> newhome-linux-daemon Rust clipboard owner
   <-> NewHome ClipboardManager
   <-> Android system clipboard
 ```
@@ -148,7 +145,7 @@ XRDP、noVNC 和 Android 三端都必须最终汇入 X11 `CLIPBOARD`，不要做
 
 - 4715 剪贴板仍应运行。
 - `@newhome_control_v1` 控制桥仍应运行。
-- `termux/newhome_mic_bridge.sh stop` 只能停止麦克风 client / PulseAudio source，不得停止 `newhome_clipboard_bridge.py`。
+- `termux/newhome_mic_bridge.sh stop` 只能停止麦克风 client / PulseAudio source，不得停止 `newhome-linux-daemon` 的 clipboard owner。
 
 NewHome 基础 Linux Integration service 在未录音时不应冒充 microphone foreground service；当前 `targetSdk=33` 下使用 `FOREGROUND_SERVICE_TYPE_NONE`，真正开始 AudioRecord 时再切换为 `FOREGROUND_SERVICE_TYPE_MICROPHONE`。
 
@@ -161,7 +158,7 @@ NewHome 基础 Linux Integration service 在未录音时不应冒充 microphone 
 ### 控制桥
 
 ```bash
-python3 /root/sh/termux/chroot/newhome_control.py ping
+newhome-linux-cli host ping
 ```
 
 预期：
@@ -173,7 +170,7 @@ NewHome control bridge: OK
 重启：
 
 ```bash
-python3 /root/sh/termux/chroot/newhome_control.py restart
+newhome-linux-cli host restart
 ```
 
 首次使用时 KernelSU / APatch / Magisk 可能弹出 NewHome root 授权。NewHome 必须直接获得 root 授权，不要改成给 Android shell UID 授权后再绕回 NewHome。
@@ -207,7 +204,7 @@ printf 'Linux中文🙂 UTF-8' | xclip -selection clipboard -in
 关闭 NewHome 的 Linux 麦克风功能后仍应满足：
 
 ```bash
-python3 /root/sh/termux/chroot/newhome_control.py ping
+newhome-linux-cli host ping
 xclip -selection clipboard -out
 ```
 

@@ -17,7 +17,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
-CONTROL_CLIENT = "/root/sh/termux/chroot/newhome_control.py"
+CONTROL_CLIENT = "/usr/bin/newhome-linux-cli"
 WAYLAND_ORCHESTRATOR = "/root/sh/termux/chroot/termux_wayland_all_in_one.sh"
 
 
@@ -30,14 +30,13 @@ def notify(title, body, urgency="normal"):
 
 
 def request_restart(profile):
-    command = "restart-wayland" if profile == "wayland" else "restart-x11"
     label = "Wayland（Anland + Labwc）" if profile == "wayland" else "X11（Termux:X11）"
     notify("桌面切换", f"正在请求 NewHome 重启到 {label}…")
 
     def worker():
         try:
             result = subprocess.run(
-                [sys.executable, CONTROL_CLIENT, command],
+                [CONTROL_CLIENT, "host", "restart"],
                 text=True,
                 capture_output=True,
                 timeout=25,

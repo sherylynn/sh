@@ -25,7 +25,7 @@
 
 ```text
 XFCE 托盘
-  -> /root/sh/termux/chroot/newhome_control.py restart
+  -> /usr/bin/newhome-linux-cli host restart
   -> Android abstract Unix socket @newhome_control_v1
   -> NewHome LinuxControlBridge
   -> NewHome 自身获得 root
@@ -38,7 +38,7 @@ XFCE 托盘
 
 ```text
 /root/newhome/app/src/main/java/com/example/customlauncher/audio/LinuxControlBridge.kt
-/root/sh/termux/chroot/newhome_control.py
+/usr/bin/newhome-linux-cli
 /root/sh/win-git/xfce_display_tray.py
 /root/sh/docs/NEWHOME_LINUX_INTEGRATION.md
 ```
@@ -97,7 +97,7 @@ XFCE 托盘
 
 ```text
 /root/sh/docs/NEWHOME_LINUX_INTEGRATION.md
-/root/sh/docs/handoff_newhome_clipboard_bridge.md
+/root/sh/docs/NEWHOME_LINUX_INTEGRATION.md
 ```
 
 ## 三、当前仓库基线

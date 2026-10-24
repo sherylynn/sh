@@ -2,7 +2,7 @@
 
 `win-git/server_configure.sh` 的实际部署链为：
 
-1. `debian/termux_chroot_desktop_setup.sh` 构建 NewHome 的 `linux/scripts/build-rust-candidate-deb.sh` 并安装本次精确产物，不再构建历史 Python 包。
+1. `debian/termux_chroot_desktop_setup.sh` 构建 NewHome 的正式 `linux/scripts/build-deb.sh` 并安装本次精确产物；仓库不再保留历史 Python Linux 客户端。
 2. Rust 包包含 `newhome-adb`、`newhome-adb-server`，安装脚本自动设置默认入口。
 3. `win-git/newhome_rust_adb_setup.sh` 再次幂等核验，失败则停止系统配置。
 

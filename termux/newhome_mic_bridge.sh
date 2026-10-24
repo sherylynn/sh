@@ -11,8 +11,6 @@ LOG_FILE=$STATE_DIR/client.log
 DEFAULT_SOURCE_FILE=$STATE_DIR/previous-default-source
 PULSE_FIFO=/data/data/com.termux/files/usr/tmp/newhome-mic-bridge.pcm
 CLIENT_FIFO=
-CLIPBOARD_BRIDGE=/root/sh/termux/chroot/newhome_clipboard_bridge.py
-CLIPBOARD_LOG=/tmp/newhome-clipboard-bridge-start.log
 
 log() { printf '[newhome-mic] %s\n' "$*"; }
 die() { printf '[newhome-mic] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -29,29 +27,6 @@ client_running() {
     kill -0 "$pid" 2>/dev/null
 }
 
-clipboard_running() {
-    pgrep -f '^python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' >/dev/null 2>&1 ||
-        pgrep -f '^/usr/bin/python3 /root/sh/termux/chroot/newhome_clipboard_bridge.py$' >/dev/null 2>&1
-}
-
-start_clipboard_bridge() {
-    # Clipboard sync is a base Linux integration and is deliberately independent
-    # from the optional microphone client below. XFCE autostart also covers a
-    # later graphical login when this helper runs before DISPLAY exists.
-    [ -n "${DISPLAY:-}" ] || { log "剪贴板桥未启动：DISPLAY 未设置"; return 0; }
-    [ -f "$CLIPBOARD_BRIDGE" ] || { log "剪贴板桥未启动：缺少 $CLIPBOARD_BRIDGE"; return 0; }
-    command -v python3 >/dev/null 2>&1 || { log "剪贴板桥未启动：缺少 python3"; return 0; }
-    command -v xclip >/dev/null 2>&1 || {
-        log "剪贴板桥未启动：缺少 xclip；请运行 bash /root/sh/debian/termux_chroot_desktop_setup.sh"
-        return 0
-    }
-    if clipboard_running; then
-        return 0
-    fi
-    nohup python3 "$CLIPBOARD_BRIDGE" </dev/null >"$CLIPBOARD_LOG" 2>&1 &
-    log "已请求启动 Android/X11/VNC 剪贴板桥 (DISPLAY=$DISPLAY)"
-}
-
 resolve_client_fifo() {
     local pulse_pid
     pulse_pid=$(ps -eo pid,args | awk '$2=="pulseaudio" {print $1; exit}')
@@ -60,7 +35,6 @@ resolve_client_fifo() {
 }
 
 start_bridge() {
-    start_clipboard_bridge || true
     command -v pactl >/dev/null 2>&1 || die "未找到 pactl"
     command -v python3 >/dev/null 2>&1 || die "未找到 python3"
     [ -n "${PULSE_SERVER:-}" ] || export PULSE_SERVER=tcp:127.0.0.1:4713

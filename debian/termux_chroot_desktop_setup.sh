@@ -7,13 +7,12 @@ fi
 
 SCALING_SCRIPT=/root/sh/win-git/xfce4-scaling.sh
 NEWHOME_REPO=${NEWHOME_REPO:-/root/newhome}
-CLIPBOARD_BRIDGE=/root/sh/termux/chroot/newhome_clipboard_bridge.py
 CAMERA_BRIDGE=/root/sh/termux/chroot/newhome_camera_bridge.sh
 DISABLE_AYATANA=/root/sh/win-git/disable_ayatana_xfce_autostart.sh
 AUTOSTART_DIR=/root/.config/autostart
 LEGACY_DISPLAY_TRAY_AUTOSTART=$AUTOSTART_DIR/xfce-display-tray.desktop
 LEGACY_DEVSPACE_AUTOSTART=$AUTOSTART_DIR/devspace-tray.desktop
-CLIPBOARD_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-clipboard-bridge.desktop
+LEGACY_CLIPBOARD_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-clipboard-bridge.desktop
 CAMERA_AUTOSTART_FILE=$AUTOSTART_DIR/newhome-camera-bridge.desktop
 LEGACY_AUTOSTART_FILE=$AUTOSTART_DIR/xfce-display-presets-panel.desktop
 LEGACY_DISPLAY_DESKTOP_FILE=/root/Desktop/newhome-display-settings.desktop
@@ -34,7 +33,7 @@ install_newhome_linux() {
 
     (
         cd "$NEWHOME_REPO/linux"
-        # Rust 原生依赖；旧 build-deb.sh 仍是历史 Python 包，不能用于新部署。
+        # NewHome Linux 只有 Rust + Flutter 正式包，不再存在 Python 兼容包。
         apt-get install -y build-essential pkg-config libssl-dev libgtk-3-dev libayatana-appindicator3-dev
         if [ -x /root/tools/cargo/bin/cargo ]; then
             export CARGO=/root/tools/cargo/bin/cargo
@@ -52,7 +51,7 @@ install_newhome_linux() {
             export CARGO_HOME=/root/tools/cargo
             export RUSTUP_HOME=/root/tools/rustup
         fi
-        package_output=$(./scripts/build-rust-candidate-deb.sh)
+        package_output=$(./scripts/build-deb.sh)
         # 构建脚本最后一行给出本次精确产物，不能选择旧 dist 包。
         latest_deb=$(printf '%s\n' "$package_output" | tail -n 1)
         test -f "$latest_deb"
@@ -77,7 +76,7 @@ apt-get install -y \
     build-essential pkg-config pipewire pipewire-bin wireplumber libpipewire-0.3-dev \
     gstreamer1.0-tools gstreamer1.0-pipewire \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good
-chmod 0755 "$SCALING_SCRIPT" "$CLIPBOARD_BRIDGE" "$CAMERA_BRIDGE" "$DISABLE_AYATANA"
+chmod 0755 "$SCALING_SCRIPT" "$CAMERA_BRIDGE" "$DISABLE_AYATANA"
 mkdir -p "$AUTOSTART_DIR"
 bash "$DISABLE_AYATANA"
 # Resolution/scaling controls now live inside the persistent NewHome Linux tray.
@@ -94,18 +93,9 @@ pkill -f '^python3 /root/sh/win-git/devspace_tray.py$' 2>/dev/null || true
 # 不再创建独立“显示设置”桌面入口；分辨率/缩放统一由 NewHome 托盘提供。
 rm -f "$LEGACY_DISPLAY_DESKTOP_FILE"
 
-cat > "$CLIPBOARD_AUTOSTART_FILE" <<EOF
-[Desktop Entry]
-Type=Application
-Name=NewHome Clipboard Bridge
-Comment=Synchronize Android and chroot application text clipboards
-Exec=/usr/bin/python3 $CLIPBOARD_BRIDGE
-Terminal=false
-Hidden=false
-X-GNOME-Autostart-enabled=true
-OnlyShowIn=XFCE;
-EOF
-chmod 0644 "$CLIPBOARD_AUTOSTART_FILE"
+# 剪贴板生命周期已归属 newhome-linux-session/Rust daemon，清理旧 Python autostart。
+rm -f "$LEGACY_CLIPBOARD_AUTOSTART_FILE"
+pkill -f 'newhome_clipboard_bridge.py' 2>/dev/null || true
 
 cat > "$CAMERA_AUTOSTART_FILE" <<EOF
 [Desktop Entry]
@@ -125,19 +115,17 @@ rm -f "$LEGACY_AUTOSTART_FILE"
 DISPLAY=${DISPLAY:-:1.0} "$SCALING_SCRIPT" --remove-panel-launcher || true
 
 # server_configure may run while XFCE is already open. Start integrations immediately as well
-# as installing next-login autostart entries. The clipboard daemon has its own flock lock and
-# the camera helper has a pidfile, so duplicate startup requests are harmless.
+# as installing next-login autostart entries. Camera helper has a pidfile, so duplicate startup
+# requests are harmless.
 if pgrep -x xfce4-panel >/dev/null 2>&1; then
     # NewHome daemon owns the display menu. Restart it after package upgrades so the
     # running tray always matches the just-installed package.
-    pkill -f '^/usr/bin/python3 /usr/bin/newhome-linux-daemon$' 2>/dev/null || true
     pkill -f '^/usr/bin/newhome-linux-daemon$' 2>/dev/null || true
-    nohup setsid env DISPLAY=${DISPLAY:-:1.0} /usr/bin/newhome-linux-daemon \
+    pkill -f '^/usr/bin/newhome-linux-tray$' 2>/dev/null || true
+    nohup setsid env DISPLAY=${DISPLAY:-:1.0} /usr/bin/newhome-linux-session \
         </dev/null >/tmp/newhome-linux-daemon.log 2>&1 &
-    nohup setsid env DISPLAY=${DISPLAY:-:1.0} /usr/bin/python3 "$CLIPBOARD_BRIDGE" \
-        </dev/null >/tmp/newhome-clipboard-bridge-start.log 2>&1 &
     nohup setsid /bin/bash "$CAMERA_BRIDGE" start \
         </dev/null >/tmp/newhome-camera-bridge-start.log 2>&1 &
 fi
 
-echo "Termux chroot 桌面集成完成：NewHome compositor 为唯一显示服务端；保留桌面客户端、按需麦克风、剪贴板兼容层与 Android Camera2→PipeWire 摄像头。"
+echo "Termux chroot 桌面集成完成：NewHome compositor 为唯一显示服务端；Rust runtime 统一管理显示与剪贴板，保留按需麦克风和 Android Camera2→PipeWire 摄像头。"

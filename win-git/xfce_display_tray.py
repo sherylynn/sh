@@ -19,7 +19,7 @@ except (ValueError, ImportError):
     AyatanaAppIndicator3 = None
 
 SCALING = "/root/sh/win-git/xfce4-scaling.sh"
-CONTROL_CLIENT = "/root/sh/termux/chroot/newhome_control.py"
+CONTROL_CLIENT = "/usr/bin/newhome-linux-cli"
 CONFIG_DIR = os.path.expanduser("~/.config/termux-x11-display")
 PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
 REMOTE_EVENT_FILE = "/tmp/xfce-display-remote-event"
@@ -131,7 +131,7 @@ def request_container_restart(profile="x11"):
     def worker():
         try:
             result = subprocess.run(
-                [sys.executable, CONTROL_CLIENT, command],
+                [CONTROL_CLIENT, "host", "restart"],
                 text=True,
                 capture_output=True,
                 timeout=25,
