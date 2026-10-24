@@ -1,7 +1,6 @@
 #!/bin/bash
 SCRIPT_NAME="configure"
 #SOFT_VNC=kasmvnc
-SOFT_VNC=tigervnc
 realpath() {
   local x=$1
   echo $(
@@ -77,25 +76,14 @@ zsh ~/sh/raspberry/chinese.sh
 zsh ~/sh/lynn.sh work
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
-#如果没有安装kwin-wayland，则安装xfce+vnc环境
+# 如果没有安装 kwin-wayland，则安装 NewHome native Wayland 所需的 XFCE 用户环境。
 if ! dpkg -s kwin-wayland &>/dev/null; then
-  DroidSpaces_path="/run/droidspaces/container.config"
   sudo apt install dbus-x11 xfce4 openssh-server -y
   sudo apt install xfce4-terminal -y
-  if [[ $SOFT_VNC == *tigervnc* ]]; then
-    zsh ~/sh/win-git/mesa.sh
-    # noVNC.sh 是远程桌面统一部署入口：先安装 x11vnc/noVNC/XRDP、生成
-    # XRDP shared-X11 配置并禁用发行版 xrdp daemon，再注册启动服务。
-    # 这样全新 rootfs 只需运行 server_configure.sh，不需要手工补 chansrv。
-    zsh ~/sh/win-git/noVNC.sh || exit 1
-    if [ -e "$DroidSpaces_path" ]; then
-      zsh ~/sh/win-git/systemd_noVNC.sh || exit 1
-    else
-      zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
-    fi
-  else
-    zsh ~/sh/win-git/kasmVNC.sh
-  fi
+  # NewHome native compositor is the only production display/RFB owner.
+  # noVNC.sh installs only its browser frontend; SysV rc3 keeps that frontend alive.
+  zsh ~/sh/win-git/noVNC.sh || exit 1
+  zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
 fi
 # install_proot -> installer_proot.sh 会进入新 rootfs 调用本脚本；这里统一安装
 # 麦克风桥和 XFCE 顶栏显示预设按钮。脚本幂等，可用于全新安装和升级。
@@ -106,32 +94,8 @@ fi
 # Work/Chat 开发共用默认 Rust ADB；不覆盖发行版或 SDK 的原生二进制。
 bash ~/sh/win-git/newhome_rust_adb_setup.sh || exit 1
 
-# 普通服务器也会运行本脚本，因此只在 Android KGSL chroot 中部署
-# Anland/Labwc/wayvnc。wayvnc 是 rootless Wayland 的 RFB 服务端，不能用
-# x11vnc 替代。
-if [ -e /dev/kgsl-3d0 ] && [ -d "$HOME/sh/termux/chroot/wayland" ]; then
-  echo "检测到 Android KGSL chroot，配置 Anland direct 与 wayvnc 依赖"
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    wayvnc wayland-utils labwc xwayland xfce4-panel xfce4-terminal xfce4-settings \
-    xfce4-notifyd thunar dbus-x11 procps coreutils python3 python3-gi \
-    gir1.2-gtk-3.0 libnotify-bin gcc wlr-randr glmark2-wayland
-
-  DIRECT_BUILD="$HOME/sh/termux/chroot/wayland/wlroots-anland/build_direct_backend.sh"
-  [ -x "$DIRECT_BUILD" ] || {
-    echo "缺少 Anland direct 构建脚本：$DIRECT_BUILD" >&2
-    exit 1
-  }
-  if [ ! -s /opt/newhome-wayland/wlroots-anland.built ] || \
-      [ "${NEWHOME_REBUILD_ANLAND_DIRECT:-0}" = 1 ]; then
-    sudo /bin/bash "$DIRECT_BUILD" || exit 1
-  else
-    echo "wlroots-anland 已构建；设置 NEWHOME_REBUILD_ANLAND_DIRECT=1 可强制重建"
-  fi
-
-  command -v wayvnc >/dev/null 2>&1 || exit 1
-  command -v labwc >/dev/null 2>&1 || exit 1
-  sudo /bin/bash "$HOME/sh/win-git/configure_wayvnc.sh" || exit 1
-fi
+# Android KGSL chroot 使用 NewHome native compositor 作为唯一生产 Wayland/RFB owner。
+# 历史 Anland/Labwc/wayvnc 实验脚本仅归档，不再由安装入口调用。
 zsh ~/sh/win-git/koreader.sh
 zsh ~/sh/debian/firefox.sh
 if [[ $(platform) == *wsl* ]]; then

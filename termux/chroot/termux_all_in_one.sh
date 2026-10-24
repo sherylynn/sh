@@ -98,46 +98,9 @@ start_base_services() {
   done
 }
 
-# 启动X11服务
-start_x11() {
-  log "启动X11服务..."
-
-  # X11 and Anland are alternative display consumers. A surviving Anland
-  # Activity/daemon can otherwise take focus again after the X11 restart.
-  pkill -TERM -x anland-compatible 2>/dev/null || true
-  pkill -TERM -x anland 2>/dev/null || true
-  am force-stop --user 0 com.anland.termux 2>/dev/null || true
-
-  # 清理旧的进程
-  sudo killall -9 termux-x11 termux-wake-lock 2>/dev/null || true
-  sudo pkill -f com.termux.x11 2>/dev/null || true
-  am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
-
-  # 分阶段启动时，共享 tmp 由 root 阶段处理，用户阶段不得碰 root 文件。
-  if [ "${TERMUX_SPLIT_USER_PHASE:-0}" != "1" ]; then
-    clean_tmp
-  fi
-
-  # 启动X11应用
-  am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity 2>/dev/null || true
-
-  # 启动X11服务器
-  export XDG_RUNTIME_DIR="${TMPDIR}"
-  termux-x11 :1 -ac +extension DPMS -dpi 100 &
-  local x11_pid=$!
-
-  # 后台命令启动并不代表成功；必须看到目标进程持续存活。
-  local i
-  for i in {1..10}; do
-    if kill -0 "$x11_pid" 2>/dev/null && pgrep -f 'termux-x11.*:1' >/dev/null 2>&1; then
-      log "Termux:X11 :1 已启动 (pid=$x11_pid)"
-      return 0
-    fi
-    sleep 0.5
-  done
-  wait "$x11_pid" 2>/dev/null || true
-  error "Termux:X11 :1 启动失败"
-}
+# NewHome native Wayland compositor owns display lifecycle.
+# XWayland is compositor-internal compatibility for legacy X11 clients and is not
+# started/stopped by Termux orchestration.
 
 # 启动chroot linux (调用cli.sh中的函数)
 start_chroot() {
@@ -158,17 +121,13 @@ start_chroot() {
 # 在 rc3 启动 noVNC 服务前，把 Termux checkout 中的运行脚本同步进 rootfs。
 # 这样普通 tstart 和 GhostLock 分阶段入口都会使用同一版本。
 sync_remote_desktop_scripts() {
-  local source_file destination_dir
+  local destination_dir
   destination_dir="$DEBIAN_DIR/root/sh/win-git"
   sudo mkdir -p "$destination_dir"
-  for source_file in \
-    "$PROJECT_ROOT/win-git/server_noVNC.sh" \
-    "$PROJECT_ROOT/win-git/configure_xrdp_vnc_proxy.sh"; do
-    if [ -f "$source_file" ]; then
-      sudo cp "$source_file" "$destination_dir/$(basename "$source_file")"
-      sudo chmod 755 "$destination_dir/$(basename "$source_file")"
-    fi
-  done
+  if [ -f "$PROJECT_ROOT/win-git/server_noVNC.sh" ]; then
+    sudo cp "$PROJECT_ROOT/win-git/server_noVNC.sh" "$destination_dir/server_noVNC.sh"
+    sudo chmod 755 "$destination_dir/server_noVNC.sh"
+  fi
 }
 
 wait_remote_desktop_services() {
@@ -176,34 +135,19 @@ wait_remote_desktop_services() {
   backend_state="$DEBIAN_DIR/root/.vnc/novnc-backend.env"
   for wait_step in {1..60}; do
     backend=$(sudo sed -n 's/^backend=//p' "$backend_state" 2>/dev/null | head -1)
-
-    # canonical desktop 是 NewHome native Wayland compositor；XWayland 只兼容旧应用。
-    # server_noVNC.sh 在启动 websockify 前会验证 native :5900。正常 tstart 不应
-    # 再依赖 x11vnc/xrdp；legacy 分支仅保留给显式诊断/回滚。
-    if [ "$backend" = "native" ]; then
-      if pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
-        { grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null ||
-          grep -qE ':2766 .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
-        log "远程桌面健康检查通过: NewHome native RFB -> noVNC=:10086"
-        return 0
-      fi
-    elif pgrep -x x11vnc >/dev/null 2>&1 &&
-      pgrep -x xrdp >/dev/null 2>&1 &&
+    if [ "$backend" = "native" ] &&
       pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
-      grep -qE ':170C .* 0A ' /proc/net/tcp 2>/dev/null &&
-      grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null &&
-      { grep -qE ':0D3D .* 0A ' /proc/net/tcp 2>/dev/null ||
-        grep -qE ':0D3D .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
-      log "远程桌面健康检查通过: x11vnc=:5900 noVNC=:10086 XRDP=:3389"
+      { grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null ||
+        grep -qE ':2766 .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
+      log "远程桌面健康检查通过: NewHome native RFB -> noVNC=:10086"
       return 0
     fi
     sleep 0.5
   done
 
-  log "ERROR: 远程桌面健康检查失败 (backend=${backend:-unknown})" >&2
+  log "ERROR: NewHome native RFB/noVNC 健康检查失败 (backend=${backend:-unknown})" >&2
   sudo tail -120 "$DEBIAN_DIR/root/.vnc/server-noVNC-startup.log" 2>/dev/null || true
-  sudo tail -80 "$DEBIAN_DIR/root/.vnc/x11vnc.log" 2>/dev/null || true
-  sudo tail -80 "$DEBIAN_DIR/root/.vnc/xrdp.log" 2>/dev/null || true
+  sudo tail -80 "$DEBIAN_DIR/root/.vnc/novnc-proxy.log" 2>/dev/null || true
   return 1
 }
 
@@ -213,16 +157,6 @@ stop_all() {
 
   # 停止chroot容器 (调用cli.sh中的完整实现)
   stop_chroot_container 2>/dev/null || true
-
-  # 停止X11
-  sudo killall -9 termux-x11 termux-wake-lock 2>/dev/null || true
-  sudo pkill -f com.termux.x11 2>/dev/null || true
-  am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
-
-  # Also stop the alternate Wayland display consumer when changing profile.
-  pkill -TERM -x anland-compatible 2>/dev/null || true
-  pkill -TERM -x anland 2>/dev/null || true
-  am force-stop --user 0 com.anland.termux 2>/dev/null || true
 
   # 停止sv服务
   local services=()
@@ -249,15 +183,9 @@ stop_all() {
   log "所有服务已停止"
 }
 
-# 只停止属于 Termux 用户的桌面与基础服务；chroot 卸载由 root 阶段负责。
+# 只停止属于 Termux 用户的基础服务；显示生命周期由 NewHome compositor 管理。
 stop_user_services() {
-  log "停止 Termux 用户服务..."
-  killall -9 termux-x11 termux-wake-lock 2>/dev/null || true
-  pkill -f com.termux.x11 2>/dev/null || true
-  am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 2>/dev/null || true
-  pkill -TERM -x anland-compatible 2>/dev/null || true
-  pkill -TERM -x anland 2>/dev/null || true
-  am force-stop --user 0 com.anland.termux 2>/dev/null || true
+  log "停止 Termux 用户基础服务..."
 
   local service
   for service in pulseaudio virgl; do
@@ -268,24 +196,14 @@ stop_user_services() {
   log "Termux 用户服务已停止"
 }
 
-# 检查状态 (整合X11和chroot状态)
+# 检查状态
 check_status() {
   echo "=== Termux 整体环境状态 ==="
-
-  echo -n "Termux:X11 legacy服务: "
-  if pgrep -f "termux-x11" >/dev/null; then
-    echo "运行中"
-  else
-    echo "已停止"
-  fi
+  echo "显示服务: NewHome native Wayland compositor（Android 侧持有）"
+  echo "XWayland: 仅由 compositor 按需管理，不由本脚本启停"
 
   # 调用cli.sh中的详细chroot状态检查
   check_chroot_status
-
-  echo
-  echo "=== Legacy X11 进程信息 ==="
-  echo "X11进程:"
-  pgrep -f "termux-x11" | head -5 || echo "  无"
 }
 
 # 进入chroot环境 (调用cli.sh中的函数)

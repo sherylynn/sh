@@ -116,33 +116,33 @@ if [[ $(platform) == *linux* ]]; then
   apply_hidpi_patch || exit 1
   apply_clipboard_patch || exit 1
 
-  sudo apt purge kasmvncserver -y
+  sudo apt purge kasmvncserver x11vnc wayvnc tigervnc-standalone-server tigervnc-tools xrdp -y || true
   sudo apt autoremove -y
-  # x11vnc 服务 Termux:X11；wayvnc 服务 Anland/Labwc rootless Wayland。
-  sudo apt install python3-numpy x11vnc wayvnc tigervnc-standalone-server tigervnc-tools xrdp \
-    xclip x11-utils openssl libnss3-tools -y
+  # NewHome native compositor owns RFB, clipboard, resize and XWayland.
+  # noVNC only needs browser/websocket runtime plus TLS helpers.
+  sudo apt install python3-numpy openssl libnss3-tools -y
 
-  # XRDP is managed by the same noVNC SysV service as x11vnc. Disable the
-  # package's generic daemon so it cannot race our shared-screen instance.
-  sudo service xrdp stop >/dev/null 2>&1 || true
-  sudo update-rc.d xrdp disable >/dev/null 2>&1 || true
-  sudo systemctl disable xrdp xrdp-sesman >/dev/null 2>&1 || true
-  sudo XRDP_DISPLAY_NUMBER=1 XRDP_SESSION_UID=0 \
-    /bin/bash "$HOME/sh/win-git/configure_xrdp_vnc_proxy.sh"
-
-  # Browser patch and x11vnc receiver form one protocol pair. Rebuild the receiver
-  # here as well as during a fresh desktop installation, so a noVNC-only update
-  # cannot leave an older library that silently drops Retina DPI flags.
-  sudo apt install gcc binutils libvncserver-dev -y
-  bash "$HOME/sh/win-git/build_x11vnc_remote_resize.sh"
+  # noVNC owns its own Web authentication credentials. Migrate the historical
+  # wayvnc credential file once when present; fresh installs generate a dedicated secret.
+  sudo install -d -m 0700 /root/.vnc
+  if [ ! -s /root/.vnc/novnc.credentials ]; then
+    if [ -s /root/.vnc/wayvnc.credentials ]; then
+      sudo cp /root/.vnc/wayvnc.credentials /root/.vnc/novnc.credentials
+    else
+      NOVNC_BOOTSTRAP_PASSWORD=$(openssl rand -hex 16)
+      printf 'username=newhome
+password=%s
+' "$NOVNC_BOOTSTRAP_PASSWORD" |
+        sudo tee /root/.vnc/novnc.credentials >/dev/null
+      echo "Generated noVNC Web credentials in /root/.vnc/novnc.credentials"
+    fi
+  fi
+  sudo chmod 0600 /root/.vnc/novnc.credentials
 
   # noVNC's official launcher already supports --cert/--key/--ssl-only. Keep its
   # implementation intact as novnc_proxy.upstream and put our automatic local-CA
   # TLS policy in a wrapper at the original path, which existing startup scripts use.
   install_https_launcher || exit 1
-  if [ -e /dev/kgsl-3d0 ]; then
-    sudo /bin/bash "$HOME/sh/win-git/configure_wayvnc.sh" || exit 1
-  fi
 
   echo "export PATH=$SOFT_HOME:"'$PATH' >${TOOLSRC}
   echo "noVNC installed from configured repository, NewHome features verified, HTTPS enabled by default"
