@@ -131,11 +131,16 @@ sync_remote_desktop_scripts() {
   # Native RFB owns authentication. Preserve the historical VNC password when
   # upgrading old rootfs images; noVNC/websockify itself has no HTTP Basic Auth.
   sudo mkdir -p "$DEBIAN_DIR/root/.vnc"
-  if [ -s "$DEBIAN_DIR/root/.vnc/wayvnc.credentials" ]; then
+  local legacy_vnc_credentials="$DEBIAN_DIR/root/.vnc/wayvnc.credentials"
+  if [ ! -s "$legacy_vnc_credentials" ] && container_mounted &&
+     [ -s "$CHROOT_DIR/root/.vnc/wayvnc.credentials" ]; then
+    legacy_vnc_credentials="$CHROOT_DIR/root/.vnc/wayvnc.credentials"
+  fi
+  if [ -s "$legacy_vnc_credentials" ]; then
     # One-time migration: prefer the user's historical VNC password even if an
     # earlier migration attempt already generated a temporary native password.
-    sudo cp "$DEBIAN_DIR/root/.vnc/wayvnc.credentials" "$DEBIAN_DIR/root/.vnc/vnc.credentials"
-    sudo rm -f "$DEBIAN_DIR/root/.vnc/wayvnc.credentials"
+    sudo cp "$legacy_vnc_credentials" "$DEBIAN_DIR/root/.vnc/vnc.credentials"
+    sudo rm -f "$legacy_vnc_credentials"
   elif [ ! -s "$DEBIAN_DIR/root/.vnc/vnc.credentials" ]; then
     if [ -s "$DEBIAN_DIR/root/.vnc/novnc.credentials" ]; then
       sudo cp "$DEBIAN_DIR/root/.vnc/novnc.credentials" "$DEBIAN_DIR/root/.vnc/vnc.credentials"
