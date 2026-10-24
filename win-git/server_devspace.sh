@@ -34,6 +34,7 @@ PERSISTED_ALLOWED_ROOTS="$(read_service_setting DEVSPACE_ALLOWED_ROOTS)"
 PERSISTED_SKILL_PATHS="$(read_service_setting DEVSPACE_SKILL_PATHS)"
 PERSISTED_SKILLS="$(read_service_setting DEVSPACE_SKILLS)"
 PERSISTED_WIDGETS="$(read_service_setting DEVSPACE_WIDGETS)"
+PERSISTED_TOOL_MODE="$(read_service_setting DEVSPACE_TOOL_MODE)"
 PERSISTED_DEVSPACE_AUTOSTART="$(read_service_setting DEVSPACE_AUTOSTART)"
 PERSISTED_CLOUDFLARED_AUTOSTART="$(read_service_setting CLOUDFLARED_AUTOSTART)"
 PERSISTED_CLOUDFLARED_CONFIG="$(read_service_setting CLOUDFLARED_CONFIG)"
@@ -42,6 +43,8 @@ DEVSPACE_AUTOSTART="${DEVSPACE_AUTOSTART:-${PERSISTED_DEVSPACE_AUTOSTART:-1}}"
 CLOUDFLARED_AUTOSTART="${CLOUDFLARED_AUTOSTART:-${PERSISTED_CLOUDFLARED_AUTOSTART:-1}}"
 TUNNEL_NAME="${DEVSPACE_TUNNEL_NAME:-${PERSISTED_TUNNEL_NAME:-devspace}}"
 DEVSPACE_ALLOWED_ROOTS="${DEVSPACE_ALLOWED_ROOTS:-${PERSISTED_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}}"
+# 1.0.x 从这些环境变量读运行设置；1.1+ 改为 config.jsonc。保留环境变量兼容
+# 旧版，同时在启动 1.1+ 前由 sync_devspace_config_v1() 写入等价的新配置。
 export DEVSPACE_ALLOWED_ROOTS
 # Skill discovery is separate from writable workspace roots. DevSpace read
 # advertises these manifests, then permits supporting files only after loading
@@ -49,10 +52,10 @@ export DEVSPACE_ALLOWED_ROOTS
 DEVSPACE_SKILLS="${DEVSPACE_SKILLS:-${PERSISTED_SKILLS:-1}}"
 DEVSPACE_SKILL_PATHS="${DEVSPACE_SKILL_PATHS:-${PERSISTED_SKILL_PATHS:-}}"
 export DEVSPACE_SKILLS DEVSPACE_SKILL_PATHS
-# DevSpace 1.0.x 使用 DEVSPACE_WIDGETS 控制 ChatGPT Apps/UI metadata。
-# off 只关闭网页里的工具 UI，不关闭 MCP 工具本身；默认 off，service.env 可覆盖。
+# 1.0.x 使用 DEVSPACE_WIDGETS 控制 ChatGPT Apps/UI metadata；1.1+ 映射到 ui.enabled。
 DEVSPACE_WIDGETS="${DEVSPACE_WIDGETS:-${PERSISTED_WIDGETS:-off}}"
-export DEVSPACE_WIDGETS
+DEVSPACE_TOOL_MODE="${DEVSPACE_TOOL_MODE:-${PERSISTED_TOOL_MODE:-codex}}"
+export DEVSPACE_WIDGETS DEVSPACE_TOOL_MODE
 # 隧道配置文件路径：环境变量 > service.env > 默认。
 # 允许同一套脚本在不同机器上指向各自的隧道配置（macOS: config.mac.yml，
 # chroot Linux: config.yml），避免一方 import 另一方的迁移包后被整体替换。
@@ -148,6 +151,66 @@ ensure_token() {
   fi
 }
 
+sync_devspace_config_v1() {
+  local version config_json tmp
+  version="$("$DEVSPACE_BIN" --version 2>/dev/null || true)"
+  case "$version" in
+    1.0.*|"") return 0 ;;
+  esac
+
+  config_json="$("$DEVSPACE_BIN" config get 2>/dev/null)" || {
+    echo "错误：无法读取 DevSpace $version 配置；请先运行 devspace config get 完成迁移" >&2
+    return 1
+  }
+
+  tmp="$CONFIG_DIR/.config.jsonc.sync.$$"
+  if ! printf '%s\n' "$config_json" | \
+    PUBLIC_HOST="$PUBLIC_HOST" \
+    DEVSPACE_ALLOWED_ROOTS="$DEVSPACE_ALLOWED_ROOTS" \
+    DEVSPACE_SKILLS="$DEVSPACE_SKILLS" \
+    DEVSPACE_SKILL_PATHS="$DEVSPACE_SKILL_PATHS" \
+    DEVSPACE_WIDGETS="$DEVSPACE_WIDGETS" \
+    DEVSPACE_TOOL_MODE="$DEVSPACE_TOOL_MODE" \
+    node -e '
+      let source = "";
+      process.stdin.setEncoding("utf8");
+      process.stdin.on("data", (chunk) => { source += chunk; });
+      process.stdin.on("end", () => {
+        const config = JSON.parse(source);
+        const split = (value) => (value || "").split(",").map((v) => v.trim()).filter(Boolean);
+        const enabled = (value) => !["0", "false", "off", "no"].includes(String(value || "").toLowerCase());
+
+        config.server ??= {};
+        if (process.env.PUBLIC_HOST) {
+          config.server.publicBaseUrl = "https://" + process.env.PUBLIC_HOST;
+          config.server.allowedHosts = [process.env.PUBLIC_HOST];
+        }
+
+        config.workspaces ??= {};
+        config.workspaces.allowedRoots = split(process.env.DEVSPACE_ALLOWED_ROOTS);
+
+        config.tools ??= {};
+        config.tools.mode = process.env.DEVSPACE_TOOL_MODE === "claude" ? "claude" : "codex";
+
+        config.ui ??= {};
+        config.ui.enabled = enabled(process.env.DEVSPACE_WIDGETS);
+
+        config.skills ??= {};
+        config.skills.enabled = enabled(process.env.DEVSPACE_SKILLS);
+        config.skills.paths = split(process.env.DEVSPACE_SKILL_PATHS);
+
+        process.stdout.write(JSON.stringify(config, null, 2) + "\n");
+      });
+    ' >"$tmp"; then
+    rm -f "$tmp"
+    echo "错误：生成 DevSpace 1.1+ 配置失败" >&2
+    return 1
+  fi
+
+  chmod 600 "$tmp"
+  mv "$tmp" "$CONFIG_DIR/config.jsonc"
+}
+
 pid_alive() {
   local file="$1" pid
   [ -s "$file" ] || return 1
@@ -193,6 +256,7 @@ start_devspace_unlocked() {
   ensure_token
   export DEVSPACE_OAUTH_OWNER_TOKEN="$(cat "$TOKEN_FILE")"
   [ -x "$DEVSPACE_BIN" ] || { echo "错误：找不到 devspace 可执行文件（${DEVSPACE_BIN}）" >&2; return 1; }
+  sync_devspace_config_v1 || return $?
   [ -d "$WORKDIR" ] || { echo "错误：DevSpace 工作目录不存在：$WORKDIR" >&2; return 1; }
   pid="$(serve_pid 2>/dev/null || true)"
   if [ -n "$pid" ]; then

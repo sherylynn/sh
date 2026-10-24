@@ -63,6 +63,8 @@ EOF
 
 TOOLS_BIN="$RUN_HOME/tools/bin"
 NODE_GLOBAL_BIN="$RUN_HOME/tools/node-global/bin"
+# 1.1 beta introduces the Codex tool surface (apply_patch/exec_command/write_stdin)
+# and becomes the baseline for new deployments. Override DEVSPACE_PKG to pin another build.
 DEVSPACE_PKG="${DEVSPACE_PKG:-@waishnav/devspace@1.1.0-beta.4}"
 DEVSPACE_TARGET_VERSION="${DEVSPACE_TARGET_VERSION:-1.1.0-beta.4}"
 CLOUDFLARED_INSTALLER="$SCRIPT_DIR/cloudflared.sh"
@@ -87,10 +89,13 @@ windows_native_devspace_bin() {
 OAUTH_TABLES="oauth_clients oauth_access_tokens oauth_refresh_tokens"
 
 resolve_state_dir() {
-  local d="${DEVSPACE_STATE_DIR:-}"
-  if [ -z "$d" ] && [ -f "$RUN_HOME/.devspace/config.json" ]; then
-    d="$(sed -n 's/.*"stateDir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-      "$RUN_HOME/.devspace/config.json" 2>/dev/null | head -1)"
+  local d="${DEVSPACE_STATE_DIR:-}" cfg
+  if [ -z "$d" ]; then
+    for cfg in "$RUN_HOME/.devspace/config.jsonc" "$RUN_HOME/.devspace/config.json"; do
+      [ -f "$cfg" ] || continue
+      d="$(sed -n 's/.*"stateDir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$cfg" 2>/dev/null | head -1)"
+      [ -n "$d" ] && break
+    done
     case "$d" in
       "~"*) d="$RUN_HOME${d#\~}" ;;
     esac
@@ -208,7 +213,7 @@ ensure_node() {
 }
 
 ensure_devspace_cli() {
-  local npm_bin current_version installed_bin
+  local npm_bin current_version="" installed_bin
   installed_bin="$(command -v devspace 2>/dev/null || true)"
   if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
     installed_bin="$NODE_GLOBAL_BIN/devspace"
@@ -218,19 +223,25 @@ ensure_devspace_cli() {
   fi
   if [ -n "$installed_bin" ]; then
     current_version="$($installed_bin --version 2>/dev/null | head -1 | tr -d '\r' || true)"
-    if [ "$current_version" = "$DEVSPACE_TARGET_VERSION" ]; then
+    if [ -n "$current_version" ] && [ "$current_version" = "$DEVSPACE_TARGET_VERSION" ]; then
       return 0
     fi
     echo "→ DevSpace 版本需要更新：${current_version:-未知} -> $DEVSPACE_TARGET_VERSION"
   fi
+
   npm_bin="$(find_npm_bin || true)"
   if [ -z "$npm_bin" ]; then
-    echo "错误：未找到 npm，无法安装 devspace CLI" >&2
+    echo "错误：未找到 npm，无法安装/升级 devspace CLI" >&2
     return 1
   fi
-  echo "→ 使用 npm 安装 $DEVSPACE_PKG ..."
+  if [ -n "$current_version" ]; then
+    echo "→ DevSpace $current_version -> $DEVSPACE_TARGET_VERSION"
+  else
+    echo "→ 安装 DevSpace $DEVSPACE_TARGET_VERSION"
+  fi
   "$npm_bin" install -g "$DEVSPACE_PKG" \
     || { echo "错误：$DEVSPACE_PKG 安装失败" >&2; return 1; }
+
   installed_bin="$(command -v devspace 2>/dev/null || true)"
   if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
     installed_bin="$NODE_GLOBAL_BIN/devspace"
@@ -243,13 +254,10 @@ ensure_devspace_cli() {
     return 1
   fi
   current_version="$($installed_bin --version 2>/dev/null | head -1 | tr -d '\r' || true)"
-  if [ "$current_version" != "$DEVSPACE_TARGET_VERSION" ]; then
-    echo "错误：DevSpace 安装后版本不符（实际：${current_version:-未知}，预期：$DEVSPACE_TARGET_VERSION）" >&2
-    return 1
-  fi
-  echo "devspace CLI 已就绪：$installed_bin ($current_version)"
+  [ "$current_version" = "$DEVSPACE_TARGET_VERSION" ] \
+    || { echo "错误：DevSpace 版本不符合预期：$current_version（需要 $DEVSPACE_TARGET_VERSION）" >&2; return 1; }
+  echo "DevSpace CLI 已就绪：$installed_bin ($current_version)"
 }
-
 # 安装/更新 cloudflared：统一委托给 win-git/cloudflared.sh
 # （只从 GitHub 官方 release 取独立二进制到 ~/tools/bin，macLinux 都不碰 brew/apt）
 install_cloudflared_binary() {
@@ -665,12 +673,14 @@ DEVSPACE_TUNNEL_NAME=${DEVSPACE_TUNNEL_NAME:-devspace}
 PUBLIC_HOST=${PUBLIC_HOST:-devspace.sherylynn.win}
 DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}
 DEVSPACE_WIDGETS=${DEVSPACE_WIDGETS:-off}
+DEVSPACE_TOOL_MODE=${DEVSPACE_TOOL_MODE:-codex}
 DEVSPACE_AUTOSTART=${DEVSPACE_AUTOSTART:-1}
 CLOUDFLARED_AUTOSTART=${CLOUDFLARED_AUTOSTART:-1}
 EOF
   else
     grep -q '^DEVSPACE_ALLOWED_ROOTS=' "$tmp/payload/devspace/service.env" || printf '%s\n' "DEVSPACE_ALLOWED_ROOTS=${DEVSPACE_ALLOWED_ROOTS:-$RUN_HOME/sh,$RUN_HOME/newhome,$RUN_HOME/plan,$RUN_HOME/ghostlock-app,$RUN_HOME/note_agent}" >>"$tmp/payload/devspace/service.env"
     grep -q '^DEVSPACE_WIDGETS=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'DEVSPACE_WIDGETS=off' >>"$tmp/payload/devspace/service.env"
+    grep -q '^DEVSPACE_TOOL_MODE=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'DEVSPACE_TOOL_MODE=codex' >>"$tmp/payload/devspace/service.env"
     grep -q '^DEVSPACE_AUTOSTART=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'DEVSPACE_AUTOSTART=1' >>"$tmp/payload/devspace/service.env"
     grep -q '^CLOUDFLARED_AUTOSTART=' "$tmp/payload/devspace/service.env" || printf '%s\n' 'CLOUDFLARED_AUTOSTART=1' >>"$tmp/payload/devspace/service.env"
   fi
