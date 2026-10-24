@@ -167,9 +167,11 @@ wait_remote_desktop_services() {
   for wait_step in {1..80}; do
     backend=$(sudo sed -n 's/^backend=//p' "$backend_state" 2>/dev/null | head -1)
     if [ "$backend" = "native" ] &&
-      pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
-      { grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null ||
-        grep -qE ':2766 .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
+      chroot_exec -u root '
+        pgrep -f "newhome_websockify.py.*10086" >/dev/null 2>&1 &&
+        { grep -qE ":2766 .* 0A " /proc/net/tcp 2>/dev/null ||
+          grep -qE ":2766 .* 0A " /proc/net/tcp6 2>/dev/null; }
+      ' >/dev/null 2>&1; then
       log "远程桌面健康检查通过: NewHome native RFB -> noVNC=:10086"
       return 0
     fi
