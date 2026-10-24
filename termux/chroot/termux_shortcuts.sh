@@ -4,7 +4,7 @@
 _newhome_termux_root=${HOME}/sh/termux/chroot
 [ -d "$_newhome_termux_root" ] || return 0 2>/dev/null || exit 0
 
-# 默认桌面：chroot + Termux:X11。
+# 默认桌面：chroot + NewHome Android-side Wayland compositor + XFCE。
 alias tstart='bash ~/sh/termux/chroot/termux_all_in_one.sh start'
 alias tstop='bash ~/sh/termux/chroot/termux_all_in_one.sh stop'
 alias trestart='bash ~/sh/termux/chroot/termux_all_in_one.sh restart'

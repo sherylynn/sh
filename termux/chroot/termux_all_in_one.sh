@@ -58,9 +58,10 @@ check_requirements() {
   fi
   log "root 权限检测通过 (方式: $root_method)"
 
-  # 启动阶段只验证关键命令，不执行 pkg；依赖统一由 installer_proot.sh 安装。
+  # NewHome 自己拥有本地 compositor；Termux:X11 不再是运行依赖。
+  # 启动阶段只验证基础服务/Android activity manager。
   local required_command
-  for required_command in sv; do
+  for required_command in sv am; do
     command -v "$required_command" >/dev/null 2>&1 ||
       error "缺少命令 $required_command，请先运行 installer_proot.sh"
   done
@@ -70,37 +71,413 @@ check_requirements() {
 
 # 启动基础服务
 start_base_services() {
-  log "启动基础服务..."
+  log "启动基础服务（显示与音频主链由 NewHome 管理）..."
 
-  # 启动必要的sv服务
   local services=()
   if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
-    log "检测到强制使用虚拟显卡文件，启动virgl服务"
-    services=("virgl" "pulseaudio")
+    log "虚拟显卡模式：启用 virgl；音频由 NewHome 管理"
+    services=("virgl")
   elif lscpu | grep -q "Oryon"; then
     log "Oryon CPU detected, skipping virgl service startup."
-    services=("pulseaudio")
+    services=()
   else
-    services=("virgl" "pulseaudio")
+    services=("virgl")
   fi
 
-  # native Wayland compositor 由 NewHome 自身拥有；Termux 用户阶段只维护
-  # 音频等基础服务，不再启动独立 Termux:X11 display server。
-  if [ "${TERMUX_SPLIT_USER_PHASE:-0}" = "1" ]; then
-    services=("pulseaudio")
-  fi
-
+  local service
   for service in "${services[@]}"; do
     if [ -d "$PREFIX/var/service/$service" ]; then
       log "启动服务: $service"
       sv up "$PREFIX/var/service/$service" 2>/dev/null || true
     fi
   done
+
+  # Termux Pulse 已退出主播放链；NewHome Android AudioTrack 是唯一 speaker owner。
+  if [ -d "$PREFIX/var/service/pulseaudio" ]; then
+    sv down "$PREFIX/var/service/pulseaudio" 2>/dev/null || true
+  fi
 }
 
-# NewHome native Wayland compositor owns display lifecycle.
-# XWayland is compositor-internal compatibility for legacy X11 clients and is not
-# started/stopped by Termux orchestration.
+disable_legacy_display_autostart() {
+  # noVNC is now only the Web frontend for NewHome native RFB and remains an rc3 service.
+  # Remove only obsolete display owners from existing rootfs images.
+  sudo rm -f \
+    "$DEBIAN_DIR"/etc/rc*.d/S??lightdm \
+    "$DEBIAN_DIR"/etc/rc*.d/S??xrdp 2>/dev/null || true
+}
+
+quiesce_legacy_chroot_display() {
+  chroot_exec -u root '
+    pkill -TERM -x x11vnc >/dev/null 2>&1 || true
+    pkill -TERM -x wayvnc >/dev/null 2>&1 || true
+    pkill -TERM -x xrdp >/dev/null 2>&1 || true
+    pkill -TERM -x Xvnc >/dev/null 2>&1 || true
+    pkill -TERM -x Xtigervnc >/dev/null 2>&1 || true
+  ' >/dev/null 2>&1 || true
+}
+
+# rc3 starts /etc/init.d/noVNC from the rootfs, so always copy the checkout's
+# native-RFB frontend before start_chroot/start_init runs.
+sync_remote_desktop_scripts() {
+  local destination_dir="$DEBIAN_DIR/root/sh/win-git"
+  sudo mkdir -p "$destination_dir"
+  if [ -f "$PROJECT_ROOT/win-git/server_noVNC.sh" ]; then
+    sudo cp "$PROJECT_ROOT/win-git/server_noVNC.sh" "$destination_dir/server_noVNC.sh"
+    sudo chmod 755 "$destination_dir/server_noVNC.sh"
+  fi
+
+  # noVNC 现在自己拥有 Web 登录凭据；旧 wayvnc 文件仅作一次迁移来源。
+  sudo mkdir -p "$DEBIAN_DIR/root/.vnc"
+  if [ ! -s "$DEBIAN_DIR/root/.vnc/novnc.credentials" ]; then
+    if [ -s "$DEBIAN_DIR/root/.vnc/wayvnc.credentials" ]; then
+      sudo cp "$DEBIAN_DIR/root/.vnc/wayvnc.credentials" "$DEBIAN_DIR/root/.vnc/novnc.credentials"
+    else
+      local bootstrap_password
+      bootstrap_password=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' | head -c 32)
+      [ -n "$bootstrap_password" ] || bootstrap_password="newhome-$(date +%s)"
+      printf 'username=newhome\npassword=%s\n' "$bootstrap_password" |
+        sudo tee "$DEBIAN_DIR/root/.vnc/novnc.credentials" >/dev/null
+      log "已生成 noVNC Web 凭据: /root/.vnc/novnc.credentials"
+    fi
+    sudo chmod 0600 "$DEBIAN_DIR/root/.vnc/novnc.credentials"
+  fi
+}
+
+wait_remote_desktop_services() {
+  local wait_step backend_state backend
+  backend_state="$DEBIAN_DIR/root/.vnc/novnc-backend.env"
+  for wait_step in {1..80}; do
+    backend=$(sudo sed -n 's/^backend=//p' "$backend_state" 2>/dev/null | head -1)
+    if [ "$backend" = "native" ] &&
+      pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
+      { grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null ||
+        grep -qE ':2766 .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
+      log "远程桌面健康检查通过: NewHome native RFB -> noVNC=:10086"
+      return 0
+    fi
+    sleep 0.5
+  done
+  log "ERROR: NewHome native RFB/noVNC 健康检查失败 (backend=${backend:-unknown})" >&2
+  sudo tail -120 "$DEBIAN_DIR/root/.vnc/server-noVNC-startup.log" 2>/dev/null || true
+  sudo tail -80 "$DEBIAN_DIR/root/.vnc/novnc-proxy.log" 2>/dev/null || true
+  return 1
+}
+
+prepare_newhome_wayland_runtime() {
+  # connected-FD transport means Android never needs the client-visible Wayland
+  # socket path. Keep it entirely inside the chroot; only accepted socket FDs
+  # cross into the Android-side Smithay compositor.
+  chroot_exec -u root '
+    set -eu
+    install -d -m 0755 /run/newhome-compositor
+    cat > /etc/profile.d/newhome-wayland.sh <<"EOF"
+export WAYLAND_DISPLAY=/run/newhome-compositor/wayland-0
+if [ -r /run/newhome-compositor/xdisplay ]; then
+  export DISPLAY="$(cat /run/newhome-compositor/xdisplay)"
+else
+  unset DISPLAY
+fi
+_newhome_uid=$(/usr/bin/id -u 2>/dev/null || echo 0)
+export XDG_RUNTIME_DIR="/tmp/newhome-runtime-${_newhome_uid}"
+/bin/mkdir -p "$XDG_RUNTIME_DIR"
+/bin/chmod 0700 "$XDG_RUNTIME_DIR"
+unset _newhome_uid
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=XFCE
+export XDG_SESSION_DESKTOP=xfce
+# Prefer native Wayland, but retain Xwayland fallback for X11-only apps/plugins.
+export GDK_BACKEND=wayland,x11
+export QT_QPA_PLATFORM="wayland;xcb"
+unset SDL_VIDEODRIVER
+export ELECTRON_OZONE_PLATFORM_HINT=auto
+export MOZ_ENABLE_WAYLAND=1
+unset PULSE_SERVER # obsolete Termux Pulse endpoint; NewHome uses authenticated dynamic endpoint
+EOF
+    chmod 0644 /etc/profile.d/newhome-wayland.sh
+  ' || error "Unable to prepare NewHome Wayland runtime"
+  log "Wayland runtime prepared inside chroot: /run/newhome-compositor"
+}
+
+unmount_newhome_wayland_runtime() {
+  # No Android app-data bind mount exists in Compositor Bridge V2.
+  # The chroot stop path tears down remaining processes; only remove stale files.
+  chroot_exec -u root '
+    if ! grep -Fq " /run/newhome-compositor/wayland-0" /proc/net/unix 2>/dev/null; then
+      rm -f /run/newhome-compositor/wayland-0
+    fi
+  ' >/dev/null 2>&1 || true
+}
+
+start_newhome_compositor() {
+  log "启动 NewHome Android-side Smithay runtime（headless，不打开 Linux 小窗）..."
+  sudo /system/bin/am start-foreground-service --user 0 \
+    -n com.example.customlauncher/.linux.LinuxDesktopFloatingService \
+    -a com.example.customlauncher.action.LINUX_RUNTIME_ENSURE >/dev/null 2>&1 || \
+    error "无法启动 NewHome Smithay runtime；请先安装当前 NewHome"
+  log "NewHome compositor 已常驻；Linux 小窗 presentation 由快捷工具按需 attach"
+}
+
+wait_newhome_xwayland_ready() {
+  log "验证 managed Xwayland/XWM..."
+  chroot_exec -u root '
+    set -eu
+    command -v xprop >/dev/null 2>&1 || {
+      echo "缺少 xprop，无法验证 Xwayland/XWM；请安装 x11-utils" >&2
+      exit 1
+    }
+    [ -r /run/newhome-compositor/xdisplay ] || {
+      echo "缺少 /run/newhome-compositor/xdisplay" >&2
+      exit 1
+    }
+    display=$(cat /run/newhome-compositor/xdisplay)
+    i=0
+    while [ "$i" -lt 100 ]; do
+      if DISPLAY="$display" xprop -root _NET_SUPPORTING_WM_CHECK >/tmp/newhome-xwayland-xwm-check.log 2>&1; then
+        exit 0
+      fi
+      i=$((i + 1))
+      sleep 0.1
+    done
+    cat /tmp/newhome-xwayland-xwm-check.log >&2 2>/dev/null || true
+    exit 1
+  ' || {
+    sudo /system/bin/cat /data/user/0/com.example.customlauncher/files/linux-runtime/xwayland.log 2>/dev/null | tail -80 >&2 || true
+    error "Xwayland/XWM 未能接受当前 DISPLAY 连接；为保证 X11-only 应用可用，本次不进入残缺桌面会话"
+  }
+  local display
+  display=$(chroot_exec -u root 'cat /run/newhome-compositor/xdisplay')
+  log "managed Xwayland/XWM 已就绪: $display"
+}
+
+mount_newhome_x11_runtime() {
+  # Smithay/Xwayland chooses the first free X display dynamically. Do not assume :0:
+  # stale locks/sockets can legitimately make a cold runtime become :1/:2/etc.
+  local source=/data/user/0/com.example.customlauncher/files/linux-runtime/.X11-unix
+  local target="$CHROOT_DIR/tmp/.X11-unix"
+  local display="" socket="" i source_sig target_sig
+
+  for i in {1..150}; do
+    display=$(sudo /system/bin/ps -A -o ARGS 2>/dev/null | awk '
+      /\/usr\/bin\/Xwayland :[0-9]+/ {
+        for (i = 1; i <= NF; i++) if ($i ~ /^:[0-9]+$/) { print $i; exit }
+      }
+    ')
+    if [ -n "$display" ]; then
+      socket="X${display#:}"
+      if sudo /system/bin/ls "$source/$socket" >/dev/null 2>&1; then
+        break
+      fi
+    fi
+    display=""
+    socket=""
+    sleep 0.1
+  done
+
+  [ -n "$display" ] && [ -n "$socket" ] || error "managed Xwayland 未公布当前 DISPLAY/socket"
+  sudo /system/bin/ls "$source/$socket" >/dev/null 2>&1 ||
+    error "managed Xwayland 未创建当前 app runtime socket: $source/$socket"
+
+  source_sig=$(sudo /system/bin/stat -Lc '%d:%i' "$source/$socket" 2>/dev/null || true)
+  target_sig=$(chroot_exec -u root "stat -Lc '%d:%i' /tmp/.X11-unix/$socket 2>/dev/null" || true)
+  if [ -z "$source_sig" ] || [ "$source_sig" != "$target_sig" ]; then
+    sudo mkdir -p "$target"
+    sudo mount -o bind "$source" "$target" || error "无法挂载当前 NewHome Xwayland socket runtime"
+    target_sig=$(chroot_exec -u root "stat -Lc '%d:%i' /tmp/.X11-unix/$socket 2>/dev/null" || true)
+    [ -n "$source_sig" ] && [ "$source_sig" = "$target_sig" ] ||
+      error "Xwayland socket bind 后仍不是当前 runtime: source=${source_sig:-?} target=${target_sig:-?}"
+    log "当前 Xwayland socket runtime 已映射: $display ($source_sig)"
+  else
+    log "复用当前 Xwayland socket 映射: $display ($source_sig)"
+  fi
+
+  chroot_exec -u root "printf '%s\n' '$display' > /run/newhome-compositor/xdisplay"
+}
+
+stop_newhome_compositor() {
+  sudo /system/bin/am start-foreground-service --user 0 \
+    -n com.example.customlauncher/.linux.LinuxDesktopFloatingService \
+    -a com.example.customlauncher.action.LINUX_RUNTIME_STOP >/dev/null 2>&1 || true
+  sleep 0.2
+  sudo /system/bin/am stopservice --user 0 \
+    -n com.example.customlauncher/.linux.LinuxDesktopFloatingService >/dev/null 2>&1 || true
+}
+
+start_newhome_wayland_acceptor() {
+  log "启动 chroot -> Android Smithay Wayland transport..."
+
+  chroot_exec -u root '
+    set -eu
+    socket=/run/newhome-compositor/wayland-0
+    endpoint=@newhome_compositor_bridge_v2
+    acceptor=/usr/bin/newhome-wayland-acceptor
+    log_file=/tmp/newhome-wayland-acceptor.log
+
+    [ -x "$acceptor" ] || { echo "缺少 $acceptor；请先安装当前 NewHome Linux 包" >&2; exit 1; }
+    [ -x /usr/bin/newhome-wayland-run ] || { echo "缺少 /usr/bin/newhome-wayland-run" >&2; exit 1; }
+    [ -f /usr/lib/newhome-container/libnewhome-wayland-shm-allocator.so ] || {
+      echo "缺少 Android-owned SHM allocator" >&2
+      exit 1
+    }
+
+    mkdir -p /run/newhome-compositor
+    chmod 0755 /run/newhome-compositor
+
+    socket_listening() {
+      [ -S "$socket" ] || return 1
+      awk -v socket="$socket" "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == socket { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null
+    }
+
+    if socket_listening; then
+      exit 0
+    fi
+
+    rm -f "$socket"
+    pkill -TERM -f "^/usr/bin/newhome-wayland-acceptor $socket " 2>/dev/null || true
+
+    attempt=0
+    while [ "$attempt" -lt 30 ]; do
+      attempt=$((attempt + 1))
+      nohup setsid "$acceptor" "$socket" "$endpoint" >"$log_file" 2>&1 </dev/null &
+      pid=$!
+
+      i=0
+      while [ "$i" -lt 20 ]; do
+        if socket_listening; then
+          printf "%s\n" "$pid" > /run/newhome-compositor/wayland-acceptor.pid
+          exit 0
+        fi
+        kill -0 "$pid" 2>/dev/null || break
+        i=$((i + 1))
+        sleep 0.1
+      done
+      wait "$pid" 2>/dev/null || true
+      sleep 0.1
+    done
+
+    echo "NewHome Wayland acceptor 未能连接 Android compositor" >&2
+    tail -40 "$log_file" >&2 2>/dev/null || true
+    exit 1
+  ' || error "NewHome Wayland transport 启动失败"
+
+  log "Wayland transport 已就绪: /run/newhome-compositor/wayland-0"
+}
+
+start_xfce_wayland_session() {
+  log "启动 XFCE Wayland 会话（NewHome 是唯一 compositor）..."
+
+  chroot_exec -u root '
+    set -eu
+    socket=/run/newhome-compositor/wayland-0
+    log_file=/tmp/newhome-xfce-wayland.log
+
+    awk -v socket="$socket" "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == socket { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null || {
+      echo "Wayland transport 未监听: $socket" >&2
+      exit 1
+    }
+    command -v xfce4-session >/dev/null 2>&1 || { echo "缺少 xfce4-session" >&2; exit 1; }
+    command -v dbus-run-session >/dev/null 2>&1 || { echo "缺少 dbus-run-session" >&2; exit 1; }
+
+    pkill -TERM -x xfce4-session 2>/dev/null || true
+    pkill -TERM -x xfce4-panel 2>/dev/null || true
+    pkill -TERM -x xfdesktop 2>/dev/null || true
+    pkill -TERM -x xfwm4 2>/dev/null || true
+    sleep 0.3
+
+    runtime=/tmp/newhome-runtime-0
+    mkdir -p "$runtime"
+    chmod 0700 "$runtime"
+
+    export WAYLAND_DISPLAY="$socket"
+    [ -r /run/newhome-compositor/xdisplay ] || { echo "managed Xwayland display file missing" >&2; exit 1; }
+    export DISPLAY="$(cat /run/newhome-compositor/xdisplay)"
+    x11_socket="/tmp/.X11-unix/X${DISPLAY#:}"
+    [ -S "$x11_socket" ] || { echo "managed Xwayland socket missing: $x11_socket" >&2; exit 1; }
+    export XDG_RUNTIME_DIR="$runtime"
+    export XDG_SESSION_TYPE=wayland
+    export XDG_CURRENT_DESKTOP=XFCE
+    export XDG_SESSION_DESKTOP=xfce
+    export GDK_BACKEND=wayland,x11
+    export QT_QPA_PLATFORM="wayland;xcb"
+    unset SDL_VIDEODRIVER
+    export ELECTRON_OZONE_PLATFORM_HINT=auto
+    export MOZ_ENABLE_WAYLAND=1
+    unset PULSE_SERVER # obsolete Termux Pulse endpoint; NewHome uses authenticated dynamic endpoint
+
+    # startxfce4 --wayland 会额外启动 labwc；这里必须直接进入 xfce4-session。
+    nohup setsid /usr/bin/dbus-run-session --       /usr/bin/newhome-wayland-run /usr/bin/xfce4-session       >"$log_file" 2>&1 </dev/null &
+    session_pid=$!
+    printf "%s\n" "$session_pid" > /run/newhome-compositor/xfce-session.pid
+
+    i=0
+    while [ "$i" -lt 80 ]; do
+      if pgrep -x xfce4-session >/dev/null 2>&1 &&
+         pgrep -x xfce4-panel >/dev/null 2>&1; then
+        exit 0
+      fi
+      kill -0 "$session_pid" 2>/dev/null || {
+        echo "XFCE Wayland session 提前退出" >&2
+        tail -80 "$log_file" >&2 2>/dev/null || true
+        exit 1
+      }
+      i=$((i + 1))
+      sleep 0.1
+    done
+
+    echo "XFCE Wayland session 启动超时" >&2
+    tail -80 "$log_file" >&2 2>/dev/null || true
+    exit 1
+  ' || error "XFCE Wayland 会话启动失败"
+
+  log "XFCE Wayland 桌面已启动"
+}
+
+start_rooted_newhome_desktop() {
+  # server_noVNC is an rc3 frontend and may begin waiting for native :5900 as soon
+  # as start_chroot runs. Bring up the canonical compositor stack immediately after.
+  sync_remote_desktop_scripts
+  disable_legacy_display_autostart
+  start_chroot
+  quiesce_legacy_chroot_display
+  prepare_newhome_wayland_runtime
+  start_newhome_wayland_acceptor
+  start_newhome_compositor
+
+  # NewHome owns speaker output; graphical startup remains independent if audio is unavailable.
+  if ! chroot_exec -u root 'newhome-linux-cli audio status' 2>/dev/null | grep -q '"available": true'; then
+    chroot_exec -u root 'newhome-linux-cli audio restart' >/dev/null 2>&1 ||
+      log "NewHome audio unavailable (newhome-linux-cli audio status)"
+  fi
+
+  mount_newhome_x11_runtime
+  wait_newhome_xwayland_ready
+  start_xfce_wayland_session
+  wait_remote_desktop_services
+}
+
+stop_newhome_wayland_desktop() {
+  chroot_exec -u root '
+    pkill -TERM -x xfce4-session 2>/dev/null || true
+    pkill -TERM -x xfce4-panel 2>/dev/null || true
+    pkill -TERM -x xfdesktop 2>/dev/null || true
+    pkill -TERM -x xfwm4 2>/dev/null || true
+    pkill -TERM -f "^/usr/bin/newhome-wayland-acceptor /run/newhome-compositor/wayland-0 " 2>/dev/null || true
+    # Do not let restart race the retiring acceptor. Only a real LISTEN entry counts;
+    # connected sockets can keep the pathname visible after the listener is gone.
+    i=0
+    while [ "$i" -lt 50 ] && awk "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == \"/run/newhome-compositor/wayland-0\" { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null; do
+      i=$((i + 1))
+      sleep 0.05
+    done
+    pkill -KILL -f "^/usr/bin/newhome-wayland-acceptor /run/newhome-compositor/wayland-0 " 2>/dev/null || true
+    rm -f /run/newhome-compositor/xfce-session.pid /run/newhome-compositor/wayland-acceptor.pid
+    if ! awk "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == \"/run/newhome-compositor/wayland-0\" { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null; then
+      rm -f /run/newhome-compositor/wayland-0
+    fi
+  ' >/dev/null 2>&1 || true
+  if mountpoint -q "$DEBIAN_DIR/tmp/.X11-unix" 2>/dev/null; then
+    sudo umount "$DEBIAN_DIR/tmp/.X11-unix" >/dev/null 2>&1 || true
+  fi
+}
 
 # 启动chroot linux (调用cli.sh中的函数)
 start_chroot() {
@@ -118,92 +495,61 @@ start_chroot() {
   log "  tenter 或 cshell"
 }
 
-# 在 rc3 启动 noVNC 服务前，把 Termux checkout 中的运行脚本同步进 rootfs。
-# 这样普通 tstart 和 GhostLock 分阶段入口都会使用同一版本。
-sync_remote_desktop_scripts() {
-  local destination_dir
-  destination_dir="$DEBIAN_DIR/root/sh/win-git"
-  sudo mkdir -p "$destination_dir"
-  if [ -f "$PROJECT_ROOT/win-git/server_noVNC.sh" ]; then
-    sudo cp "$PROJECT_ROOT/win-git/server_noVNC.sh" "$destination_dir/server_noVNC.sh"
-    sudo chmod 755 "$destination_dir/server_noVNC.sh"
-  fi
-}
-
-wait_remote_desktop_services() {
-  local wait_step backend_state backend
-  backend_state="$DEBIAN_DIR/root/.vnc/novnc-backend.env"
-  for wait_step in {1..60}; do
-    backend=$(sudo sed -n 's/^backend=//p' "$backend_state" 2>/dev/null | head -1)
-    if [ "$backend" = "native" ] &&
-      pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
-      { grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null ||
-        grep -qE ':2766 .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
-      log "远程桌面健康检查通过: NewHome native RFB -> noVNC=:10086"
-      return 0
-    fi
-    sleep 0.5
-  done
-
-  log "ERROR: NewHome native RFB/noVNC 健康检查失败 (backend=${backend:-unknown})" >&2
-  sudo tail -120 "$DEBIAN_DIR/root/.vnc/server-noVNC-startup.log" 2>/dev/null || true
-  sudo tail -80 "$DEBIAN_DIR/root/.vnc/novnc-proxy.log" 2>/dev/null || true
-  return 1
-}
-
 # 停止所有服务
 stop_all() {
   log "停止所有服务..."
-
-  # 停止chroot容器 (调用cli.sh中的完整实现)
+  stop_newhome_wayland_desktop
+  stop_newhome_compositor
+  unmount_newhome_wayland_runtime
   stop_chroot_container 2>/dev/null || true
 
-  # 停止sv服务
-  local services=()
-  if [ -f "/sdcard/Download/使用虚拟显卡.txt" ]; then
-    log "检测到强制使用虚拟显卡文件，停止virgl服务"
-    services=("virgl" "pulseaudio")
-  elif lscpu | grep -q "Oryon"; then
-    log "Oryon CPU detected, skipping virgl service shutdown."
-    services=("pulseaudio")
-  else
-    services=("virgl" "pulseaudio")
+  if [ -d "$PREFIX/var/service/virgl" ]; then
+    sv down "$PREFIX/var/service/virgl" 2>/dev/null || true
   fi
-
-  for service in "${services[@]}"; do
-    if [ -d "$PREFIX/var/service/$service" ]; then
-      sv down "$PREFIX/var/service/$service" 2>/dev/null || true
-    fi
-  done
-
-  # 清理进程
   kill_need 2>/dev/null || true
   clean_tmp
-
   log "所有服务已停止"
 }
 
-# 只停止属于 Termux 用户的基础服务；显示生命周期由 NewHome compositor 管理。
+# 分阶段 user stop 只处理无需 rootfs mount owner 的服务。compositor 由 Android service
+# 自身关闭；XWayland 由 compositor 一并管理，绝不从 Termux 外部 kill。
 stop_user_services() {
   log "停止 Termux 用户基础服务..."
-
-  local service
-  for service in pulseaudio virgl; do
-    if [ -d "$PREFIX/var/service/$service" ]; then
-      sv down "$PREFIX/var/service/$service" 2>/dev/null || true
-    fi
-  done
-  log "Termux 用户服务已停止"
+  stop_newhome_compositor
+  if [ -d "$PREFIX/var/service/virgl" ]; then
+    sv down "$PREFIX/var/service/virgl" 2>/dev/null || true
+  fi
+  log "Termux 用户基础服务已停止"
 }
 
-# 检查状态
 check_status() {
-  echo "=== Termux 整体环境状态 ==="
-  echo "显示服务: NewHome native Wayland compositor（Android 侧持有）"
-  echo "XWayland: 仅由 compositor 按需管理，不由本脚本启停"
-
-  # 调用cli.sh中的详细chroot状态检查
+  echo "=== NewHome Linux 环境状态 ==="
+  echo "本地显示: NewHome native Wayland compositor"
+  local current_display
+  current_display=$(chroot_exec -u root 'cat /run/newhome-compositor/xdisplay 2>/dev/null || true')
+  if [ -n "$current_display" ] &&
+     chroot_exec -u root "test -S /tmp/.X11-unix/X${current_display#:}" >/dev/null 2>&1; then
+    echo "兼容 X11: compositor-managed XWayland DISPLAY=$current_display"
+  else
+    echo "兼容 X11: managed XWayland socket not ready"
+  fi
+  if sudo /system/bin/dumpsys activity services com.example.customlauncher 2>/dev/null | grep -q 'LinuxDesktopFloatingService'; then
+    echo "NewHome Smithay runtime service: running"
+  else
+    echo "NewHome Smithay runtime service: down"
+  fi
   check_chroot_status
+  echo
+  echo "NewHome Wayland transport:"
+  chroot_exec -u root 'if grep -Fq " /run/newhome-compositor/wayland-0" /proc/net/unix 2>/dev/null; then echo "  wayland-0: listening"; else echo "  wayland-0: down"; fi' 2>/dev/null || echo "  wayland-0: unavailable"
+  echo "XFCE Wayland:"
+  chroot_exec -u root 'if pgrep -x xfce4-session >/dev/null 2>&1; then echo "  xfce4-session: running"; else echo "  xfce4-session: down"; fi; if pgrep -x xfce4-panel >/dev/null 2>&1; then echo "  xfce4-panel: running"; else echo "  xfce4-panel: down"; fi' 2>/dev/null || echo "  unavailable"
+  echo "noVNC frontend:"
+  if pgrep -f 'newhome_websockify.py' >/dev/null 2>&1; then
+    echo "  websockify: running (:10086 -> native RFB)"
+  else
+    echo "  websockify: down"
+  fi
 }
 
 # 进入chroot环境 (调用cli.sh中的函数)
@@ -255,10 +601,10 @@ Termux 一键启动脚本 - 整体服务编排器
   $0 [命令]
 
 可用命令:
-  start         启动所有服务 (X11 + chroot Linux + sysv初始化系统)
+  start         启动基础服务 + chroot Linux + NewHome compositor + XFCE Wayland
   stop          停止所有服务
   restart       重启所有服务
-  status        查看整体服务状态 (X11 + chroot 详细信息)
+  status        查看 NewHome compositor + chroot 状态
   enter         进入chroot Linux环境
   exec <命令>   在chroot中执行命令
   install       安装Debian环境
@@ -279,7 +625,7 @@ Termux 一键启动脚本 - 整体服务编排器
   别名: cstart, cstop, cshell, cexec, cforce
 
 职责分工:
-  - termux_all_in_one.sh: 整体服务编排 (X11 + 基础服务 + chroot)
+  - termux_all_in_one.sh: 整体服务编排 (基础服务 + chroot + NewHome Wayland + XFCE)
   - cli.sh: 专业chroot容器管理 (挂载、进程、sysv、配置等)
 EOF
 }
@@ -292,12 +638,8 @@ main() {
     "start")
       check_requirements
       start_base_services
-      # NewHome native Wayland compositor is the sole desktop owner. XWayland is
-      # spawned/managed by that compositor only when legacy X11 clients need it.
-      sync_remote_desktop_scripts
-      start_chroot
-      wait_remote_desktop_services
-      log "所有服务启动完成！"
+      start_rooted_newhome_desktop
+      log "所有服务启动完成：chroot + NewHome Wayland + XFCE"
       log "使用 '$0 enter' 进入Linux环境"
       ;;
     "stop")

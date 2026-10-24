@@ -1,6 +1,5 @@
 #!/bin/bash
 SCRIPT_NAME="configure"
-#SOFT_VNC=kasmvnc
 realpath() {
   local x=$1
   echo $(
@@ -76,14 +75,17 @@ zsh ~/sh/raspberry/chinese.sh
 zsh ~/sh/lynn.sh work
 zsh ~/sh/win-git/move2zsh.sh
 zsh ~/sh/win-git/zlua_new.sh
-# 如果没有安装 kwin-wayland，则安装 NewHome native Wayland 所需的 XFCE 用户环境。
+# 如果没有安装 kwin-wayland，则安装 XFCE 用户环境。Android KGSL chroot 的
+# display/RFB owner 固定为 NewHome native compositor，不再选择第二套 VNC server。
 if ! dpkg -s kwin-wayland &>/dev/null; then
-  sudo apt install dbus-x11 xfce4 openssh-server -y
-  sudo apt install xfce4-terminal -y
-  # NewHome native compositor is the only production display/RFB owner.
-  # noVNC.sh installs only its browser frontend; SysV rc3 keeps that frontend alive.
-  zsh ~/sh/win-git/noVNC.sh || exit 1
-  zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
+  sudo apt install dbus-x11 xfce4 openssh-server xfce4-terminal -y
+  if [ -e /dev/kgsl-3d0 ]; then
+    zsh ~/sh/win-git/mesa.sh
+    zsh ~/sh/win-git/noVNC.sh || exit 1
+    zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
+  else
+    echo "非 Android KGSL 主机不由本脚本自动部署历史 VNC/X11 desktop server"
+  fi
 fi
 # install_proot -> installer_proot.sh 会进入新 rootfs 调用本脚本；这里统一安装
 # 麦克风桥和 XFCE 顶栏显示预设按钮。脚本幂等，可用于全新安装和升级。
@@ -94,8 +96,25 @@ fi
 # Work/Chat 开发共用默认 Rust ADB；不覆盖发行版或 SDK 的原生二进制。
 bash ~/sh/win-git/newhome_rust_adb_setup.sh || exit 1
 
-# Android KGSL chroot 使用 NewHome native compositor 作为唯一生产 Wayland/RFB owner。
-# 历史 Anland/Labwc/wayvnc 实验脚本仅归档，不再由安装入口调用。
+# Android KGSL chroot 的显示服务端由 NewHome APK 自己提供。
+# chroot 只安装 Wayland/XWayland 客户端、XFCE 和 native-RFB 的 noVNC frontend。
+if [ -e /dev/kgsl-3d0 ]; then
+  echo "检测到 Android KGSL chroot，安装 NewHome compositor 客户端依赖"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    wayland-utils xwayland xfce4-panel xfce4-terminal xfce4-settings \
+    xfce4-notifyd thunar dbus-x11 procps coreutils python3 python3-gi \
+    gir1.2-gtk-3.0 libnotify-bin glmark2-wayland
+
+  # 清理旧 framebuffer owners；noVNC 已经只是 native RFB 的 Web frontend，
+  # 必须保留 /etc/init.d/noVNC 与 rc3 链接。
+  sudo service xrdp stop >/dev/null 2>&1 || true
+  sudo update-rc.d xrdp disable >/dev/null 2>&1 || true
+  sudo pkill -TERM -x x11vnc >/dev/null 2>&1 || true
+  sudo pkill -TERM -x wayvnc >/dev/null 2>&1 || true
+  sudo pkill -TERM -x xrdp >/dev/null 2>&1 || true
+  zsh ~/sh/win-git/noVNC.sh || exit 1
+  zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
+fi
 zsh ~/sh/win-git/koreader.sh
 zsh ~/sh/debian/firefox.sh
 if [[ $(platform) == *wsl* ]]; then

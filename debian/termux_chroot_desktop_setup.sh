@@ -65,19 +65,19 @@ install_newhome_linux
 # Audio/ALSA/PulseAudio integration for all chroot applications.
 bash /root/sh/debian/newhome_mic_bridge_setup.sh
 
-# Desktop integration dependencies. xclip is the X11 clipboard endpoint shared
-# by local applications, x11vnc/noVNC and the NewHome Android clipboard bridge.
-# PipeWire is used only for the Linux video-source graph. Linux applications still
+# Desktop integration dependencies. NewHome owns the compositor and remote-output server;
+# this setup must not install x11vnc/wayvnc/xrdp or rebuild legacy VNC resize hooks.
+# xclip remains temporarily for Xwayland clipboard compatibility until the compositor-owned
+# Wayland selection bridge replaces it. PipeWire is used only for the Linux video-source graph.
 # use PulseAudio for compatibility, but final speaker playback is now forwarded by
 # Termux to NewHome's Android AudioTrack endpoint on 127.0.0.1:4716.
 apt-get install -y \
     zenity libnotify-bin python3 python3-gi gir1.2-gtk-3.0 \
-    x11vnc xclip gcc binutils libvncserver-dev \
+    xclip gcc binutils \
     build-essential pkg-config pipewire pipewire-bin wireplumber libpipewire-0.3-dev \
     gstreamer1.0-tools gstreamer1.0-pipewire \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 chmod 0755 "$SCALING_SCRIPT" "$CLIPBOARD_BRIDGE" "$CAMERA_BRIDGE" "$DISABLE_AYATANA"
-bash /root/sh/win-git/build_x11vnc_remote_resize.sh
 mkdir -p "$AUTOSTART_DIR"
 bash "$DISABLE_AYATANA"
 # Resolution/scaling controls now live inside the persistent NewHome Linux tray.
@@ -98,7 +98,7 @@ cat > "$CLIPBOARD_AUTOSTART_FILE" <<EOF
 [Desktop Entry]
 Type=Application
 Name=NewHome Clipboard Bridge
-Comment=Synchronize Android, chroot X11 and VNC text clipboards
+Comment=Synchronize Android and chroot application text clipboards
 Exec=/usr/bin/python3 $CLIPBOARD_BRIDGE
 Terminal=false
 Hidden=false
@@ -140,4 +140,4 @@ if pgrep -x xfce4-panel >/dev/null 2>&1; then
         </dev/null >/tmp/newhome-camera-bridge-start.log 2>&1 &
 fi
 
-echo "Termux chroot 桌面集成完成：已安装/更新 NewHome Linux，分辨率与缩放已合并进 NewHome 托盘；按需麦克风、Android/X11/VNC 剪贴板、Android Camera2→PipeWire 摄像头和 noVNC 远程调整大小已启用。"
+echo "Termux chroot 桌面集成完成：NewHome compositor 为唯一显示服务端；保留桌面客户端、按需麦克风、剪贴板兼容层与 Android Camera2→PipeWire 摄像头。"

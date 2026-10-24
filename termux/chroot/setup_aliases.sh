@@ -15,4 +15,4 @@ fi
 
 . "$PROJECT_ROOT/win-git/toolsinit.sh"
 echo "Termux 快捷命令已从当前 Git 仓库加载。"
-echo "tstart=Termux:X11，pstart=proot，wstart/wstop/wrestart=Anland Wayland。"
+echo "tstart=NewHome Wayland + XFCE，pstart=proot；Termux:X11/Anland 已退出生产启动链。"
