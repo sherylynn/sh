@@ -1017,10 +1017,13 @@ start_chroot_container() {
   log_info "rootfs 路径: $DEBIAN_DIR"
   log_info "挂载点路径: $CHROOT_DIR"
 
-  # 检查是否已经挂载
+  # 检查是否已经挂载。挂载存在 != rc3 服务仍存活：Android/Termux 重启、
+  # GhostLock 分阶段恢复或单独杀服务后，都可能留下 mount 但 noVNC/devspace 等
+  # 已经退出。tstart 的语义是“确保整套环境可用”，因此已挂载时仍重跑 rc3。
   if container_mounted; then
-    log_warn "容器已经在运行中"
-    return 0
+    log_warn "容器已经挂载，重新确保 rc${INIT_LEVEL} 服务"
+    start_init
+    return $?
   fi
 
   # 检查环境安装状态

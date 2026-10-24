@@ -172,9 +172,21 @@ sync_remote_desktop_scripts() {
 }
 
 wait_remote_desktop_services() {
-  local wait_step
+  local wait_step backend_state backend
+  backend_state="$DEBIAN_DIR/root/.vnc/novnc-backend.env"
   for wait_step in {1..60}; do
-    if pgrep -x x11vnc >/dev/null 2>&1 &&
+    backend=$(sudo sed -n 's/^backend=//p' "$backend_state" 2>/dev/null | head -1)
+
+    # native compositor 已经拥有 RFB；server_noVNC.sh 在启动 websockify 前会验证
+    # 选中的 :5900 target。native 模式不应再硬性要求 x11vnc/xrdp。
+    if [ "$backend" = "native" ]; then
+      if pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
+        { grep -qE ':2766 .* 0A ' /proc/net/tcp 2>/dev/null ||
+          grep -qE ':2766 .* 0A ' /proc/net/tcp6 2>/dev/null; }; then
+        log "远程桌面健康检查通过: NewHome native RFB -> noVNC=:10086"
+        return 0
+      fi
+    elif pgrep -x x11vnc >/dev/null 2>&1 &&
       pgrep -x xrdp >/dev/null 2>&1 &&
       pgrep -f 'newhome_websockify.py' >/dev/null 2>&1 &&
       grep -qE ':170C .* 0A ' /proc/net/tcp 2>/dev/null &&
@@ -187,7 +199,7 @@ wait_remote_desktop_services() {
     sleep 0.5
   done
 
-  log "ERROR: 远程桌面健康检查失败" >&2
+  log "ERROR: 远程桌面健康检查失败 (backend=${backend:-unknown})" >&2
   sudo tail -120 "$DEBIAN_DIR/root/.vnc/server-noVNC-startup.log" 2>/dev/null || true
   sudo tail -80 "$DEBIAN_DIR/root/.vnc/x11vnc.log" 2>/dev/null || true
   sudo tail -80 "$DEBIAN_DIR/root/.vnc/xrdp.log" 2>/dev/null || true

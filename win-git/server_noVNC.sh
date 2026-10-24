@@ -228,8 +228,9 @@ fi
 DISPLAY_PORT=0
 cd ../../
 DroidSpaces_path="/run/droidspaces/container.config"
-NEWHOME_RFB_BACKEND=${NEWHOME_RFB_BACKEND:-legacy}
+NEWHOME_RFB_BACKEND=${NEWHOME_RFB_BACKEND:-auto}
 NOVNC_VNC_TARGET=127.0.0.1:5900
+NOVNC_BACKEND_STATE="$HOME/.vnc/novnc-backend.env"
 
 native_rfb_probe_host() {
   local host=$1
@@ -249,6 +250,27 @@ native_rfb_select_target() {
   done
   return 1
 }
+
+# rc3 通过 chroot_exec/env -i 启动，因此不能依赖 Termux 外层 export
+# NEWHOME_RFB_BACKEND。rooted tstart 默认自动探测 NewHome native RFB；
+# 若当前没有 native compositor，再安全回退到历史 X11/wayvnc 路径。
+if [ "$NEWHOME_RFB_BACKEND" = "auto" ]; then
+  for _native_auto_wait in 1 2 3 4 5 6 7 8 9 10; do
+    if native_rfb_select_target; then
+      NEWHOME_RFB_BACKEND=native
+      break
+    fi
+    sleep 0.5
+  done
+  if [ "$NEWHOME_RFB_BACKEND" = "auto" ]; then
+    NEWHOME_RFB_BACKEND=legacy
+  fi
+fi
+
+mkdir -p "$HOME/.vnc"
+printf 'backend=%s
+target=%s
+' "$NEWHOME_RFB_BACKEND" "$NOVNC_VNC_TARGET" >"$NOVNC_BACKEND_STATE"
 
 # NewHome compositor native RFB owns the desktop directly. In this mode noVNC
 # is only the browser client/WebSocket frontend; do not start a second X11/Wayland
