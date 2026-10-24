@@ -155,16 +155,7 @@ if pgrep -f '^python3 /root/tools/noVNC/utils/newhome_websockify.py .*10086 .*:5
   echo "noVNC 已经在 10086 端口运行"
 else
   echo "启动 noVNC HTTPS/WebSocket 服务..."
-  NOVNC_CREDENTIAL_FILE=/root/.vnc/novnc.credentials
-  NOVNC_USER=$(sed -n 's/^username=//p' "$NOVNC_CREDENTIAL_FILE" | head -1)
-  NOVNC_PASSWORD=$(sed -n 's/^password=//p' "$NOVNC_CREDENTIAL_FILE" | head -1)
-  [ -n "$NOVNC_USER" ] && [ -n "$NOVNC_PASSWORD" ] || {
-    echo "错误：noVNC 登录凭据不存在或格式错误：$NOVNC_CREDENTIAL_FILE" >&2
-    exit 1
-  }
   nohup setsid "$file_path" --vnc "$NOVNC_VNC_TARGET" --listen 10086 \
-    --web-auth --auth-plugin BasicHTTPAuth \
-    --auth-source "$NOVNC_USER:$NOVNC_PASSWORD" \
     </dev/null >>"$NOVNC_LOG" 2>&1 &
   NOVNC_PID=$!
   printf '%s\n' "$NOVNC_PID" >"$NOVNC_PID_FILE"

@@ -122,22 +122,22 @@ if [[ $(platform) == *linux* ]]; then
   # noVNC only needs browser/websocket runtime plus TLS helpers.
   sudo apt install python3-numpy openssl libnss3-tools -y
 
-  # noVNC owns its own Web authentication credentials. Migrate the historical
-  # wayvnc credential file once when present; fresh installs generate a dedicated secret.
+  # Native RFB owns VNC authentication. Keep one password file for the compositor
+  # and migrate historical wayvnc/noVNC credentials when available.
   sudo install -d -m 0700 /root/.vnc
-  if [ ! -s /root/.vnc/novnc.credentials ]; then
+  if [ ! -s /root/.vnc/vnc.credentials ]; then
     if [ -s /root/.vnc/wayvnc.credentials ]; then
-      sudo cp /root/.vnc/wayvnc.credentials /root/.vnc/novnc.credentials
+      sudo cp /root/.vnc/wayvnc.credentials /root/.vnc/vnc.credentials
+    elif [ -s /root/.vnc/novnc.credentials ]; then
+      sudo cp /root/.vnc/novnc.credentials /root/.vnc/vnc.credentials
     else
-      NOVNC_BOOTSTRAP_PASSWORD=$(openssl rand -hex 16)
-      printf 'username=newhome
-password=%s
-' "$NOVNC_BOOTSTRAP_PASSWORD" |
-        sudo tee /root/.vnc/novnc.credentials >/dev/null
-      echo "Generated noVNC Web credentials in /root/.vnc/novnc.credentials"
+      VNC_BOOTSTRAP_PASSWORD=$(openssl rand -hex 4)
+      printf 'password=%s\n' "$VNC_BOOTSTRAP_PASSWORD" |
+        sudo tee /root/.vnc/vnc.credentials >/dev/null
+      echo "Generated native VNC password in /root/.vnc/vnc.credentials"
     fi
   fi
-  sudo chmod 0600 /root/.vnc/novnc.credentials
+  sudo chmod 0600 /root/.vnc/vnc.credentials
 
   # noVNC's official launcher already supports --cert/--key/--ssl-only. Keep its
   # implementation intact as novnc_proxy.upstream and put our automatic local-CA

@@ -128,20 +128,23 @@ sync_remote_desktop_scripts() {
     fi
   done
 
-  # noVNC 现在自己拥有 Web 登录凭据；旧 wayvnc 文件仅作一次迁移来源。
+  # Native RFB owns authentication. Preserve the historical VNC password when
+  # upgrading old rootfs images; noVNC/websockify itself has no HTTP Basic Auth.
   sudo mkdir -p "$DEBIAN_DIR/root/.vnc"
-  if [ ! -s "$DEBIAN_DIR/root/.vnc/novnc.credentials" ]; then
+  if [ ! -s "$DEBIAN_DIR/root/.vnc/vnc.credentials" ]; then
     if [ -s "$DEBIAN_DIR/root/.vnc/wayvnc.credentials" ]; then
-      sudo cp "$DEBIAN_DIR/root/.vnc/wayvnc.credentials" "$DEBIAN_DIR/root/.vnc/novnc.credentials"
+      sudo cp "$DEBIAN_DIR/root/.vnc/wayvnc.credentials" "$DEBIAN_DIR/root/.vnc/vnc.credentials"
+    elif [ -s "$DEBIAN_DIR/root/.vnc/novnc.credentials" ]; then
+      sudo cp "$DEBIAN_DIR/root/.vnc/novnc.credentials" "$DEBIAN_DIR/root/.vnc/vnc.credentials"
     else
       local bootstrap_password
-      bootstrap_password=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' | head -c 32)
-      [ -n "$bootstrap_password" ] || bootstrap_password="newhome-$(date +%s)"
-      printf 'username=newhome\npassword=%s\n' "$bootstrap_password" |
-        sudo tee "$DEBIAN_DIR/root/.vnc/novnc.credentials" >/dev/null
-      log "已生成 noVNC Web 凭据: /root/.vnc/novnc.credentials"
+      bootstrap_password=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' | head -c 8)
+      [ -n "$bootstrap_password" ] || bootstrap_password="newhome"
+      printf 'password=%s\n' "$bootstrap_password" |
+        sudo tee "$DEBIAN_DIR/root/.vnc/vnc.credentials" >/dev/null
+      log "已生成 native VNC 密码文件: /root/.vnc/vnc.credentials"
     fi
-    sudo chmod 0600 "$DEBIAN_DIR/root/.vnc/novnc.credentials"
+    sudo chmod 0600 "$DEBIAN_DIR/root/.vnc/vnc.credentials"
   fi
 }
 
@@ -223,11 +226,22 @@ unmount_newhome_wayland_runtime() {
   ' >/dev/null 2>&1 || true
 }
 
+read_native_vnc_password() {
+  local credentials="$DEBIAN_DIR/root/.vnc/vnc.credentials"
+  local password
+  password=$(sudo sed -n 's/^password=//p' "$credentials" 2>/dev/null | head -1)
+  [ -n "$password" ] || error "native VNC 密码未配置: /root/.vnc/vnc.credentials"
+  printf '%s' "$password"
+}
+
 start_newhome_compositor() {
   log "启动 NewHome Android-side Smithay runtime（headless，不打开 Linux 小窗）..."
+  local rfb_password
+  rfb_password=$(read_native_vnc_password)
   sudo /system/bin/am start-foreground-service --user 0 \
     -n com.example.customlauncher/.linux.LinuxDesktopFloatingService \
-    -a com.example.customlauncher.action.LINUX_RUNTIME_ENSURE >/dev/null 2>&1 || \
+    -a com.example.customlauncher.action.LINUX_RUNTIME_ENSURE \
+    --es rfb_password "$rfb_password" >/dev/null 2>&1 || \
     error "无法启动 NewHome Smithay runtime；请先安装当前 NewHome"
   log "NewHome compositor 已常驻；Linux 小窗 presentation 由快捷工具按需 attach"
 }
