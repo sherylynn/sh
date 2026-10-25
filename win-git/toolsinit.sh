@@ -112,14 +112,11 @@ export no_proxy="$NO_PROXY"
 unset _newhome_no_proxy_host
 LOCALPROXYRC
 
-  # localproxyrc 必须最后加载，避免后续某个工具 rc 重写 NO_PROXY。
-  if grep -Fq "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
-    local tmp_file="${ALLTOOLSRC_FILE}.localproxy.$$"
-    grep -Fv "$source_line" "$ALLTOOLSRC_FILE" >"$tmp_file" || true
-    cat "$tmp_file" >"$ALLTOOLSRC_FILE"
-    rm -f "$tmp_file"
+  # 与 toolsRC 相同：allToolsrc 是增量注册索引，只允许唯一追加。
+  # 绝不能为了排序/去重而重写整个文件，否则一次异常就会让所有工具环境丢失。
+  if ! grep -Fqx "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
+    printf '%s\n' "$source_line" >>"$ALLTOOLSRC_FILE" || return 1
   fi
-  echo "$source_line" >>"$ALLTOOLSRC_FILE"
 }
 
 # toolsinit 每次加载都修复一次已有 allToolsrc。
@@ -160,8 +157,7 @@ toolsRC() {
 
   # 检查是否已存在完全相同的行
   if grep -Fq "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
-    # 已存在完全相同的行时也要把 localhost bypass 重新移动到最后。
-    ensureLocalProxyBypassRC || return 1
+    # 已存在完全相同的行，保持原有增量索引不动。
     echo "$toolsrc"
     return 0
   fi
@@ -187,7 +183,7 @@ toolsRC() {
     return 1
   fi
 
-  # 新增任何工具 rc 后，都把 localhost bypass 保持在 allToolsrc 最后。
+  # 确保 localhost bypass 已注册；仅在缺失时增量追加。
   ensureLocalProxyBypassRC || return 1
 
   echo "$toolsrc"
