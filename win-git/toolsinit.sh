@@ -96,10 +96,10 @@ ensureLocalProxyBypassRC() {
   local bypass_rc="$BASH_DIR/localproxyrc"
   local source_line="test -f ${bypass_rc} && . ${bypass_rc}"
 
-  mkdir -p "$BASH_DIR" || return 1
-  touch "$ALLTOOLSRC_FILE" || return 1
+  /usr/bin/mkdir -p "$BASH_DIR" || return 1
+  /usr/bin/touch "$ALLTOOLSRC_FILE" || return 1
 
-  cat >"$bypass_rc" <<'LOCALPROXYRC'
+  /usr/bin/cat >"$bypass_rc" <<'LOCALPROXYRC'
 # toolsinit.sh 自动维护：本机开发控制通道不得经过 HTTP 代理。
 for _newhome_no_proxy_host in localhost 127.0.0.1 ::1; do
   case ",${NO_PROXY:-}," in
