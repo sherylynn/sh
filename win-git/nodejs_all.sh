@@ -76,16 +76,12 @@ mkdir -p "$NODE_GLOBAL" "$NODE_CACHE"
 # cache_unpacker 会保留归档内的顶层目录，因此沿用原来的 NODE_ROOT 布局。
 NODE_ROOT=${SOFT_HOME}/${SOFT_FILE_NAME}
 if [[ ${PLATFORM} == win ]]; then
-  echo 'export PATH=$PATH:'${NODE_ROOT} >${TOOLSRC}
-  echo 'export PATH=$PATH:'${NODE_GLOBAL} >>${TOOLSRC}
-  export PATH=$PATH:$NODE_ROOT
-  export PATH=$PATH:$NODE_GLOBAL
+  echo 'export PATH='${NODE_ROOT}':'${NODE_GLOBAL}':$PATH' >${TOOLSRC}
+  export PATH=$NODE_ROOT:$NODE_GLOBAL:$PATH
   export NODE_SKIP_PLATFORM_CHECK=1
 else
-  echo 'export PATH=$PATH:'${NODE_ROOT}'/bin' >${TOOLSRC}
-  echo 'export PATH=$PATH:'${NODE_GLOBAL}'/bin' >>${TOOLSRC}
-  export PATH=$PATH:${NODE_ROOT}/bin
-  export PATH=$PATH:${NODE_GLOBAL}/bin
+  echo 'export PATH='${NODE_ROOT}'/bin:'${NODE_GLOBAL}'/bin:$PATH' >${TOOLSRC}
+  export PATH=${NODE_ROOT}/bin:${NODE_GLOBAL}/bin:$PATH
 fi
 echo 'NPM_CONFIG_PREFIX='$NODE_GLOBAL >>${TOOLSRC}
 echo 'NPM_CONFIG_CACHE='$NODE_CACHE >>${TOOLSRC}

@@ -1,4 +1,11 @@
 #!/bin/zsh
+# MSYS shells can be launched with a Windows-only/inherited PATH. Bootstrap
+# core POSIX utilities before toolsinit calls mkdir/touch/grep or any installer.
+case "${OSTYPE:-}" in
+  msys*|cygwin*|mingw*)
+    export PATH="/usr/bin:/bin:${PATH:-}"
+    ;;
+esac
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux* ]]; then
   alias uname=$PREFIX/bin/uname
