@@ -83,8 +83,6 @@ if ! dpkg -s kwin-wayland &>/dev/null; then
   sudo apt install dbus-x11 xfce4 openssh-server xfce4-terminal -y
   if [ -e /dev/kgsl-3d0 ]; then
     zsh ~/sh/win-git/mesa.sh
-    zsh ~/sh/win-git/noVNC.sh || exit 1
-    zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
   else
     echo "非 Android KGSL 主机不由本脚本自动部署历史 VNC/X11 desktop server"
   fi
@@ -98,8 +96,15 @@ fi
 # Work/Chat 开发共用默认 Rust ADB；不覆盖发行版或 SDK 的原生二进制。
 bash ~/sh/win-git/newhome_rust_adb_setup.sh || exit 1
 
+# 兼容已部署的 chroot：停用老 noVNC 服务并取消开机启动。
+# 不清理 NewHome Android native RFB（5900），它不是 noVNC 进程。
+if [ -f /etc/init.d/noVNC ]; then
+  sudo /etc/init.d/noVNC stop >/dev/null 2>&1 || true
+  sudo update-rc.d -f noVNC remove >/dev/null 2>&1 || true
+fi
+
 # Android KGSL chroot 的显示服务端由 NewHome APK 自己提供。
-# chroot 只安装 Wayland/XWayland 客户端、XFCE 和 native-RFB 的 noVNC frontend。
+# chroot 仅安装 Wayland/XWayland 客户端和 XFCE，不再安装 noVNC。
 if [ -e /dev/kgsl-3d0 ]; then
   echo "检测到 Android KGSL chroot，安装 NewHome compositor 客户端依赖"
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -107,15 +112,12 @@ if [ -e /dev/kgsl-3d0 ]; then
     xfce4-notifyd thunar dbus-x11 procps coreutils python3 python3-gi \
     gir1.2-gtk-3.0 libnotify-bin glmark2-wayland
 
-  # 清理旧 framebuffer owners；noVNC 已经只是 native RFB 的 Web frontend，
-  # 必须保留 /etc/init.d/noVNC 与 rc3 链接。
+  # 清理旧 framebuffer owners；noVNC 已退役，不再恢复旧启动链。
   sudo service xrdp stop >/dev/null 2>&1 || true
   sudo update-rc.d xrdp disable >/dev/null 2>&1 || true
   sudo pkill -TERM -x x11vnc >/dev/null 2>&1 || true
   sudo pkill -TERM -x wayvnc >/dev/null 2>&1 || true
   sudo pkill -TERM -x xrdp >/dev/null 2>&1 || true
-  zsh ~/sh/win-git/noVNC.sh || exit 1
-  zsh ~/sh/win-git/init_d_noVNC.sh || exit 1
 fi
 zsh ~/sh/win-git/koreader.sh
 zsh ~/sh/debian/firefox.sh
