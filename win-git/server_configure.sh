@@ -107,6 +107,17 @@ fi
 # chroot 仅安装 Wayland/XWayland 客户端和 XFCE，不再安装 noVNC。
 if [ -e /dev/kgsl-3d0 ]; then
   echo "检测到 Android KGSL chroot，安装 NewHome compositor 客户端依赖"
+  # Android chroot is accessed through local DevSpace; SSH must not expose LAN/IPv6.
+  sudo install -d -m 755 /etc/ssh/sshd_config.d
+  printf 'AddressFamily inet\nListenAddress 127.0.0.1\n' | \
+    sudo tee /etc/ssh/sshd_config.d/00-newhome-loopback.conf >/dev/null
+  sudo chmod 644 /etc/ssh/sshd_config.d/00-newhome-loopback.conf
+  if sudo /usr/sbin/sshd -t; then
+    sudo service ssh restart
+  else
+    echo 'Debian SSH config invalid; refusing to restart SSH' >&2
+    exit 1
+  fi
   sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
     wayland-utils xwayland xfce4-panel xfce4-terminal xfce4-settings \
     xfce4-notifyd thunar dbus-x11 procps coreutils python3 python3-gi \
