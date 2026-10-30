@@ -20,5 +20,6 @@ echo $(whoami)
 #ttyd -p 3000 -t fontSize=18 login
 # login need systemd user $(whoami)
 sshd
-ttyd -p 3333 --ipv6 --client-option enableZmodem=true  --client-option fontSize=18 --writable ssh localhost -p 8022
+# ttyd Web terminal is local-only; access it through SSH/ADB forwarding.
+ttyd -i 127.0.0.1 -p 3333 --client-option enableZmodem=true --client-option fontSize=18 --writable ssh localhost -p 8022
 #su $(whoami) -c 'ttyd -p 3000 -t fontSize=18 ssh localhost'
