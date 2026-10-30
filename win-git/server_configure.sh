@@ -103,11 +103,19 @@ if [ -f /etc/init.d/noVNC ]; then
   sudo update-rc.d -f noVNC remove >/dev/null 2>&1 || true
 fi
 
+# Only constrain SSH on the Android-hosted chroot, never on a regular
+# Debian/VPS deployment. KGSL alone is insufficient to classify the host.
+is_android_chroot=false
+if [ -e /dev/kgsl-3d0 ] && \
+   grep -qi 'android' /proc/sys/kernel/osrelease 2>/dev/null; then
+  is_android_chroot=true
+fi
+
 # Android KGSL chroot 的显示服务端由 NewHome APK 自己提供。
 # chroot 仅安装 Wayland/XWayland 客户端和 XFCE，不再安装 noVNC。
-if [ -e /dev/kgsl-3d0 ]; then
-  echo "检测到 Android KGSL chroot，安装 NewHome compositor 客户端依赖"
-  # Android chroot is accessed through local DevSpace; SSH must not expose LAN/IPv6.
+if [ "$is_android_chroot" = true ]; then
+  echo "检测到 Android chroot，安装 NewHome compositor 客户端依赖"
+  # Local DevSpace is the ingress; SSH stays on IPv4 loopback only.
   sudo install -d -m 755 /etc/ssh/sshd_config.d
   printf 'AddressFamily inet\nListenAddress 127.0.0.1\n' | \
     sudo tee /etc/ssh/sshd_config.d/00-newhome-loopback.conf >/dev/null
