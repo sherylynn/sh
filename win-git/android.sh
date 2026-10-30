@@ -347,7 +347,53 @@ install_decompile_tools() {
 # ============================================================
 # 主流程
 # ============================================================
-if [[ $(platform) == *linux* ]] && [[ $(arch) == aarch64 ]]; then
+platform_name="${NEWHOME_PLATFORM_OVERRIDE:-$(platform)}"
+if [[ "$platform_name" == win ]]; then
+  windows_user_profile="${USERPROFILE:-}"
+  if [[ -n "$windows_user_profile" ]] && command -v cygpath >/dev/null 2>&1; then
+    windows_user_home="$(cygpath -u "$windows_user_profile")"
+  else
+    windows_user_home="$HOME"
+  fi
+
+  windows_sdk="${NEWHOME_ANDROID_SDK_WINDOWS:-}"
+  for candidate in "$windows_sdk" "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" /x/Sdk "$windows_user_home/AppData/Local/Android/Sdk"; do
+    [[ -n "$candidate" && -x "$candidate/platform-tools/adb.exe" ]] || continue
+    windows_sdk="$candidate"
+    break
+  done
+  [[ -n "$windows_sdk" && -x "$windows_sdk/platform-tools/adb.exe" ]] || {
+    echo "[ERROR] 未找到 Windows Android SDK platform-tools/adb.exe；请设置 NEWHOME_ANDROID_SDK_WINDOWS 或 ANDROID_SDK_ROOT" >&2
+    exit 1
+  }
+
+  windows_studio="${NEWHOME_ANDROID_STUDIO_WINDOWS:-/c/Program Files/Android/Android Studio}"
+  windows_java="${NEWHOME_JAVA_HOME_WINDOWS:-}"
+  for candidate in "$windows_java" "${JAVA_HOME:-}" "$windows_studio/jbr"; do
+    [[ -n "$candidate" && -x "$candidate/bin/java.exe" ]] || continue
+    windows_java="$candidate"
+    break
+  done
+  [[ -n "$windows_java" && -x "$windows_java/bin/java.exe" ]] || {
+    echo "[ERROR] 未找到 Windows Android Studio JBR；请设置 NEWHOME_JAVA_HOME_WINDOWS 或 JAVA_HOME" >&2
+    exit 1
+  }
+
+  cat >"$TOOLSRC" <<EOF
+# Android environment for MSYS2/Windows. Managed by sh/win-git/android.sh.
+export ANDROID_STUDIO_HOME="$windows_studio"
+export SDK_HOME="$windows_sdk"
+export ANDROID_HOME="$windows_sdk"
+export ANDROID_SDK_ROOT="$windows_sdk"
+export ANDROID_SDK="$windows_sdk"
+export JAVA_HOME="$windows_java"
+export ANDROID_ABI=arm64-v8a
+export PATH="\$JAVA_HOME/bin:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/cmdline-tools/latest/bin:\$PATH"
+EOF
+  echo "[OK] Windows Android rc 已写入 $TOOLSRC"
+  echo "     SDK=$windows_sdk"
+  echo "     JAVA_HOME=$windows_java"
+elif [[ "$platform_name" == linux ]] && [[ $(arch) == aarch64 ]]; then
   echo "============================================"
   echo "  Android Studio ARM64 安装脚本"
   echo "  基于 Stack Overflow 方案 by Rob Kean"
@@ -387,13 +433,12 @@ if [[ $(platform) == *linux* ]] && [[ $(arch) == aarch64 ]]; then
   # 如果需要在 ARM64 上跑 x86 模拟器，取消下面的注释
   # sudo apt-get install qemu-kvm libvirt-clients libvirt-daemon-system -y
 
-elif [[ $(platform) == *macos* ]]; then
-  # macOS 保持原有的简单配置
+elif [[ "$platform_name" == macos ]]; then
   BREW_JAVA17_HOME="/opt/homebrew/opt/openjdk@17"
   if [[ -d "$BREW_JAVA17_HOME" ]]; then
     export JAVA_HOME=$BREW_JAVA17_HOME
   fi
-  tee $TOOLSRC <<EOF
+  tee "$TOOLSRC" <<EOF
 export JAVA_HOME=$JAVA_HOME
 export ANDROID_HOME=$SOFT_HOME
 EOF
@@ -401,12 +446,11 @@ else
   echo "[INFO] 非 ARM64 Linux 环境，仅写入环境变量配置"
 fi
 
-# --- 写入环境变量 (所有平台通用) ---
-if [[ $(platform) != *macos* ]]; then
-  # 反编译 / 逆向分析工具链 (apktool + jadx)
+# --- 写入 Linux 环境变量 ---
+if [[ "$platform_name" != macos && "$platform_name" != win ]]; then
   install_decompile_tools
 
-  tee $TOOLSRC <<EOF
+  tee "$TOOLSRC" <<EOF
 export ANDROID_STUDIO_HOME=$LIBS_HOME
 export SDK_HOME=$SOFT_HOME
 export ANDROID_HOME=$SOFT_HOME
