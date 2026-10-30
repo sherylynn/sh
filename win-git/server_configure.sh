@@ -52,19 +52,8 @@ if [ -d "/sdcard" ]; then
 fi
 
 sudo apt install zsh -y
-# One persistent SSH-agent socket shared by all login shells (including chroot).
-# The helper uses flock to avoid spawning a new agent per terminal.
+# 部署阶段只安装 SSH Agent 所需依赖，运行时注册统一由 toolsinit.sh 负责。
 sudo apt install -y openssh-client util-linux
-bash ~/sh/win-git/ssh_agent_shared.sh
-mkdir -p ~/tools/rc
-cat > ~/tools/rc/sshagentrc <<'SSH_AGENT_RC'
-if [ -r "$HOME/sh/win-git/ssh_agent_shared.sh" ]; then
-  source "$HOME/sh/win-git/ssh_agent_shared.sh"
-fi
-SSH_AGENT_RC
-if [ -f ~/tools/rc/allToolsrc ] && ! grep -Fq 'sshagentrc' ~/tools/rc/allToolsrc; then
-  printf '\n%s\n' 'test -f ~/tools/rc/sshagentrc && . ~/tools/rc/sshagentrc' >> ~/tools/rc/allToolsrc
-fi
 #修复 zsh compinit: insecure directories 问题
 #通过 zsh 的 compaudit 动态获取实际不安全目录,而非预设
 CURRENT_USER=$(whoami)

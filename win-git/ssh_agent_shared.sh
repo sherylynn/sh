@@ -4,7 +4,7 @@
 _ssh_agent_dir="${HOME}/.ssh"
 _ssh_agent_socket="${_ssh_agent_dir}/agent-shared.sock"
 _ssh_agent_lock="${_ssh_agent_dir}/.agent-shared.lock"
-mkdir -p "$_ssh_agent_dir" || return 1 2>/dev/null || exit 1
+mkdir -p "$_ssh_agent_dir" || { return 1 2>/dev/null || exit 1; }
 chmod 700 "$_ssh_agent_dir"
 # Do not replace a working external agent explicitly supplied by the session.
 if [ -n "${SSH_AUTH_SOCK:-}" ] && SSH_AUTH_SOCK="$SSH_AUTH_SOCK" ssh-add -l >/dev/null 2>&1; then

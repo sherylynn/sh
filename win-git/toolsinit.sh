@@ -119,8 +119,28 @@ LOCALPROXYRC
   fi
 }
 
-# toolsinit 每次加载都修复一次已有 allToolsrc。
+# SSH Agent 运行时入口由 toolsinit 管理，部署脚本只负责依赖安装。
+# 每个 zsh 通过 allToolsrc 连接同一 socket；不自动 ssh-add 私钥。
+ensureSharedSSHAgentRC() {
+  [ -n "$BASH_DIR" ] && [ -n "$ALLTOOLSRC_FILE" ] || return 1
+  local agent_rc="$BASH_DIR/sshagentrc"
+  local source_line="test -f ${agent_rc} && . ${agent_rc}"
+  /usr/bin/mkdir -p "$BASH_DIR" || return 1
+  /usr/bin/touch "$ALLTOOLSRC_FILE" || return 1
+  /usr/bin/cat >"$agent_rc" <<'SSHAGENTRC'
+# Managed by sh/win-git/toolsinit.sh; only run in interactive shells.
+if [[ $- == *i* ]] && [ -r "$HOME/sh/win-git/ssh_agent_shared.sh" ]; then
+  source "$HOME/sh/win-git/ssh_agent_shared.sh"
+fi
+SSHAGENTRC
+  if ! grep -Fqx "$source_line" "$ALLTOOLSRC_FILE" 2>/dev/null; then
+    printf '%s\n' "$source_line" >>"$ALLTOOLSRC_FILE" || return 1
+  fi
+}
+
+# 修复已有 allToolsrc；非交互执行时只注册，不启动 agent。
 ensureLocalProxyBypassRC
+ensureSharedSSHAgentRC
 
 toolsRC() {
   local toolsrc_name="$1"
