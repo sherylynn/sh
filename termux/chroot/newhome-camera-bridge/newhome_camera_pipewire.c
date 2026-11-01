@@ -33,6 +33,8 @@
 #define NH_TYPE_READY 0x82
 #define NH_TYPE_ERROR 0xff
 #define NH_FORMAT_NV21 2
+#define DEFAULT_CONNECT_TIMEOUT_MS 60000U
+#define CONNECT_RETRY_MS 100U
 
 struct __attribute__((packed)) nh_message {
     uint32_t magic;
@@ -520,6 +522,22 @@ static int wait_initial_shm(struct app *a, int camera_count)
     }
 }
 
+static unsigned connect_timeout_ms(void)
+{
+    const char *value = getenv("NEWHOME_CAMERA_CONNECT_TIMEOUT_MS");
+    if (!value || !*value) return DEFAULT_CONNECT_TIMEOUT_MS;
+    char *end = NULL;
+    errno = 0;
+    unsigned long parsed = strtoul(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0' || parsed < CONNECT_RETRY_MS || parsed > 300000UL) {
+        fprintf(stderr,
+                "NewHome camera: ignoring invalid NEWHOME_CAMERA_CONNECT_TIMEOUT_MS=%s\n",
+                value);
+        return DEFAULT_CONNECT_TIMEOUT_MS;
+    }
+    return (unsigned)parsed;
+}
+
 static void usage(const char *argv0)
 {
     fprintf(stderr,
@@ -547,13 +565,26 @@ int main(int argc, char **argv)
         else { usage(argv[0]); return 2; }
     }
 
-    for (int attempt = 0; attempt < 600; ++attempt) {
+    const unsigned timeout_ms = connect_timeout_ms();
+    const unsigned attempts = (timeout_ms + CONNECT_RETRY_MS - 1U) / CONNECT_RETRY_MS;
+    for (unsigned attempt = 0; attempt < attempts; ++attempt) {
         a.sock = connect_server();
         if (a.sock >= 0) break;
-        usleep(100000);
+        if (attempt == 0) {
+            fprintf(stderr,
+                    "NewHome camera: waiting for Android bridge @%s timeout=%ums\n",
+                    SOCKET_NAME, timeout_ms);
+        } else if ((attempt * CONNECT_RETRY_MS) % 5000U == 0U) {
+            fprintf(stderr,
+                    "NewHome camera: still waiting for Android bridge @%s elapsed=%ums\n",
+                    SOCKET_NAME, attempt * CONNECT_RETRY_MS);
+        }
+        usleep(CONNECT_RETRY_MS * 1000U);
     }
     if (a.sock < 0) {
-        fprintf(stderr, "NewHome camera: cannot connect to Android bridge @%s\n", SOCKET_NAME);
+        fprintf(stderr,
+                "NewHome camera: cannot connect to Android bridge @%s after %ums\n",
+                SOCKET_NAME, timeout_ms);
         return 1;
     }
 

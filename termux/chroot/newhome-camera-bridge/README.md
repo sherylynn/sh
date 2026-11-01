@@ -13,6 +13,9 @@ apt install build-essential pkg-config libpipewire-0.3-dev pipewire pipewire-bin
 `debian/termux_chroot_desktop_setup.sh` now installs these dependencies and creates an XFCE autostart entry. The helper starts a small PipeWire core only if the current chroot session does not already have one. It deliberately does **not** replace the existing Termux PulseAudio audio path.
 
 The helper builds the bridge on first use and installs it to `/usr/local/bin/newhome-camera-pipewire`.
+On current NewHome bundles the helper delegates PipeWire/WirePlumber ownership to `/usr/bin/newhome-media-runtime-recover`; this avoids camera/audio starting competing media cores and recovers stale `pipewire-0` sockets after a core crash. Older bundles keep a compatibility fallback.
+
+The producer waits up to 60 seconds for the Android `@newhome.camera` service so an FGS rebuild can recover without restarting Linux. It logs immediately while waiting and every 5 seconds thereafter. For fault injection only, `NEWHOME_CAMERA_CONNECT_TIMEOUT_MS` can shorten that bounded wait.
 
 ## Start
 
@@ -50,7 +53,7 @@ Android chooses the exact YUV_420_888 size when available, otherwise the nearest
 
 Only protocol messages travel through the abstract Unix socket. Video pixels remain in shared memory and are copied once into the PipeWire buffer. The Android camera is opened only while PipeWire marks the source `STREAMING`.
 
-The bridge uses the session's existing `XDG_RUNTIME_DIR`; if it is unset it falls back to `/run/user/<uid>` and creates it with mode 0700. The same value must be visible to the PipeWire client application. XFCE autostart normally satisfies this because the bridge and graphical applications share the same login session environment.
+On current NewHome bundles the bridge follows the live XFCE session's `XDG_RUNTIME_DIR` (normally `/tmp/newhome-runtime-0`) rather than trusting an arbitrary maintenance shell environment; this prevents `XDG_RUNTIME_DIR=/tmp` from connecting to the wrong PipeWire namespace. `NEWHOME_CAMERA_RUNTIME_DIR` is the explicit diagnostic override. Older bundles without the shared media owner retain the `/run/user/<uid>` fallback. The same runtime must be visible to the PipeWire client application.
 
 ## Validation
 
