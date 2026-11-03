@@ -25,6 +25,7 @@ tee "$TOOLSRC" >/dev/null <<EOF
 export RUSTUP_HOME=${RUSTUP_HOME}
 export CARGO_HOME=${CARGO_HOME}
 source ${CARGO_HOME}/env
+export CARGO_FORK_AUTO_UPDATE=0
 export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
 export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
 EOF
@@ -50,6 +51,20 @@ fi
 "$CARGO_HOME/bin/rustup" component add rustfmt clippy --toolchain stable
 
 source "$CARGO_HOME/env"
+
+# Replace rustup's stock Cargo proxy with huacnlee/cargo.  The fork keeps
+# Cargo's CLI/toolchain behavior while sharing build units across worktrees
+# and projects and garbage-collecting old target data.  Keep upgrades owned
+# by this bootstrap script rather than the fork's background daily updater so
+# developer machines only change toolchains when rustup.sh is run explicitly.
+export CARGO_FORK_AUTO_UPDATE=0
+if [[ "$(cargo --version 2>/dev/null || true)" != *"huacnlee/cargo"* ]]; then
+  curl --proto '=https' --tlsv1.2 -fsSL https://huacnlee.github.io/cargo/install.sh | sh
+fi
+if ! cargo --version | grep -q 'huacnlee/cargo'; then
+  echo "failed to activate huacnlee/cargo" >&2
+  exit 1
+fi
 printf 'rustup: '; rustup --version
 printf 'rustc:  '; rustc --version
 printf 'cargo:  '; cargo --version
