@@ -96,10 +96,10 @@ ensureLocalProxyBypassRC() {
   local bypass_rc="$BASH_DIR/localproxyrc"
   local source_line="test -f ${bypass_rc} && . ${bypass_rc}"
 
-  /usr/bin/mkdir -p "$BASH_DIR" || return 1
-  /usr/bin/touch "$ALLTOOLSRC_FILE" || return 1
+  command mkdir -p "$BASH_DIR" || return 1
+  command touch "$ALLTOOLSRC_FILE" || return 1
 
-  /usr/bin/cat >"$bypass_rc" <<'LOCALPROXYRC'
+  command cat >"$bypass_rc" <<'LOCALPROXYRC'
 # toolsinit.sh 自动维护：本机开发控制通道不得经过 HTTP 代理。
 for _newhome_no_proxy_host in localhost 127.0.0.1 ::1; do
   case ",${NO_PROXY:-}," in
@@ -125,9 +125,9 @@ ensureSharedSSHAgentRC() {
   [ -n "$BASH_DIR" ] && [ -n "$ALLTOOLSRC_FILE" ] || return 1
   local agent_rc="$BASH_DIR/sshagentrc"
   local source_line="test -f ${agent_rc} && . ${agent_rc}"
-  /usr/bin/mkdir -p "$BASH_DIR" || return 1
-  /usr/bin/touch "$ALLTOOLSRC_FILE" || return 1
-  /usr/bin/cat >"$agent_rc" <<'SSHAGENTRC'
+  command mkdir -p "$BASH_DIR" || return 1
+  command touch "$ALLTOOLSRC_FILE" || return 1
+  command cat >"$agent_rc" <<'SSHAGENTRC'
 # Managed by sh/win-git/toolsinit.sh; only run in interactive shells.
 if [[ $- == *i* ]] && [ -r "$HOME/sh/win-git/ssh_agent_shared.sh" ]; then
   source "$HOME/sh/win-git/ssh_agent_shared.sh"
