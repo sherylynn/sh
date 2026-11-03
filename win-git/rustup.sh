@@ -26,6 +26,10 @@ export RUSTUP_HOME=${RUSTUP_HOME}
 export CARGO_HOME=${CARGO_HOME}
 if [ -f ${CARGO_HOME}/env ]; then source ${CARGO_HOME}/env; fi
 export CARGO_FORK_AUTO_UPDATE=0
+export PATH=${CARGO_HOME}/bin:\$PATH
+if [[ \$(uname -s) == MSYS* || \$(uname -s) == MINGW* || \$(uname -s) == CYGWIN* ]]; then
+  export RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu
+fi
 export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
 export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
 EOF
@@ -51,6 +55,7 @@ fi
 "$CARGO_HOME/bin/rustup" component add rustfmt clippy --toolchain stable
 
 if [[ -f "$CARGO_HOME/env" ]]; then source "$CARGO_HOME/env"; fi
+export PATH="$CARGO_HOME/bin:$PATH"
 
 # Replace rustup's stock Cargo proxy with huacnlee/cargo.  The fork keeps
 # Cargo's CLI/toolchain behavior while sharing build units across worktrees
@@ -58,14 +63,19 @@ if [[ -f "$CARGO_HOME/env" ]]; then source "$CARGO_HOME/env"; fi
 # by this bootstrap script rather than the fork's background daily updater so
 # developer machines only change toolchains when rustup.sh is run explicitly.
 export CARGO_FORK_AUTO_UPDATE=0
+case "$(uname -s)" in
+  MSYS*|MINGW*|CYGWIN*) export RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu ;;
+esac
 if [[ "$(cargo --version 2>/dev/null || true)" != *"huacnlee/cargo"* ]]; then
   case "$(uname -s)" in
     MSYS*|MINGW*|CYGWIN*)
       # The upstream shell installer rejects Windows.  PowerShell's installer
       # verifies the release checksum and preserves cargo.rustup.exe.
+      # rustup's Windows proxies are HARDLINKS.  Unlink cargo.exe first so
+      # Copy-Item cannot overwrite rustc/rustup/rustfmt through the same inode.
       cargo_home_windows=$(cygpath -w "$CARGO_HOME")
       CARGO_HOME="$cargo_home_windows" powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \
-        '$ErrorActionPreference = "Stop"; Invoke-Expression (Invoke-RestMethod "https://huacnlee.github.io/cargo/install.ps1")'
+        '$ErrorActionPreference = "Stop"; $bin = Join-Path $env:CARGO_HOME "bin"; $cargo = Join-Path $bin "cargo.exe"; $backup = Join-Path $bin "cargo.rustup.exe"; if ((Test-Path $cargo) -and -not (Test-Path $backup)) { Copy-Item $cargo $backup }; if (Test-Path $cargo) { Remove-Item $cargo -Force }; Invoke-Expression (Invoke-RestMethod "https://huacnlee.github.io/cargo/install.ps1")'
       ;;
     *)
       curl --proto '=https' --tlsv1.2 -fsSL https://huacnlee.github.io/cargo/install.sh | sh
