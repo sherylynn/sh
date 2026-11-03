@@ -59,9 +59,20 @@ source "$CARGO_HOME/env"
 # developer machines only change toolchains when rustup.sh is run explicitly.
 export CARGO_FORK_AUTO_UPDATE=0
 if [[ "$(cargo --version 2>/dev/null || true)" != *"huacnlee/cargo"* ]]; then
-  curl --proto '=https' --tlsv1.2 -fsSL https://huacnlee.github.io/cargo/install.sh | sh
+  case "$(uname -s)" in
+    MSYS*|MINGW*|CYGWIN*)
+      # The upstream shell installer rejects Windows.  PowerShell's installer
+      # verifies the release checksum and preserves cargo.rustup.exe.
+      cargo_home_windows=$(cygpath -w "$CARGO_HOME")
+      CARGO_HOME="$cargo_home_windows" powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \
+        '$ErrorActionPreference = "Stop"; Invoke-Expression (Invoke-RestMethod "https://huacnlee.github.io/cargo/install.ps1")'
+      ;;
+    *)
+      curl --proto '=https' --tlsv1.2 -fsSL https://huacnlee.github.io/cargo/install.sh | sh
+      ;;
+  esac
 fi
-if ! cargo --version | grep -q 'huacnlee/cargo'; then
+if ! "$CARGO_HOME/bin/cargo" --version | grep -q 'huacnlee/cargo'; then
   echo "failed to activate huacnlee/cargo" >&2
   exit 1
 fi
