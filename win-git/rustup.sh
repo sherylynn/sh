@@ -24,7 +24,7 @@ export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
 tee "$TOOLSRC" >/dev/null <<EOF
 export RUSTUP_HOME=${RUSTUP_HOME}
 export CARGO_HOME=${CARGO_HOME}
-source ${CARGO_HOME}/env
+if [ -f ${CARGO_HOME}/env ]; then source ${CARGO_HOME}/env; fi
 export CARGO_FORK_AUTO_UPDATE=0
 export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
 export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
@@ -50,7 +50,7 @@ fi
 "$CARGO_HOME/bin/rustup" default stable
 "$CARGO_HOME/bin/rustup" component add rustfmt clippy --toolchain stable
 
-source "$CARGO_HOME/env"
+if [[ -f "$CARGO_HOME/env" ]]; then source "$CARGO_HOME/env"; fi
 
 # Replace rustup's stock Cargo proxy with huacnlee/cargo.  The fork keeps
 # Cargo's CLI/toolchain behavior while sharing build units across worktrees
