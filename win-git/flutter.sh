@@ -192,6 +192,12 @@ ensure_version_tag() {
   fi
 }
 
+is_aarch64_elf() {
+  local binary="$1"
+  [ -x "$binary" ] || return 1
+  file "$binary" 2>/dev/null | grep -Eq 'ELF 64-bit.*ARM aarch64'
+}
+
 ensure_linux_arm64_android_aot() {
   if [ "$(platform)" != "linux" ]; then
     return
@@ -201,35 +207,45 @@ ensure_linux_arm64_android_aot() {
     *) return ;;
   esac
 
-  if ! command -v box64 >/dev/null 2>&1; then
-    echo "Linux ARM64: box64 not found; Android release/profile AOT gen_snapshot is unavailable." >&2
-    return
-  fi
+  # Flutter 3.35.7 ships native Linux ARM64 profile/release gen_snapshot binaries
+  # for desktop AOT, while AndroidGenSnapshotArtifacts still looks for the same
+  # host architecture under android-arm64-{profile,release}/linux-arm64.
+  # On this pinned SDK the native binaries are from the same engine/Dart revision
+  # and have been verified to compile an Android arm64 app-aot-elf directly.
+  # Precache both families so a fresh SDK install always has the native sources.
+  flutter precache --linux --android
 
-  # NewHome Android ships arm64-v8a only. Flutter publishes the matching
-  # android-arm64 AOT gen_snapshot host tool for linux-x64, but not linux-arm64.
-  # Keep the exact SDK/engine version and run that official host tool through box64.
-  # The project pins target-platform=android-arm64, so arm/x64 wrappers are intentionally absent.
-  # bin/cache is disposable Flutter cache, so this does not dirty the SDK Git tree.
-  flutter precache --android
-  local mode base source target
+  local mode source target
   for mode in profile release; do
-    base="$FLUTTER_HOME/bin/cache/artifacts/engine/android-arm64-$mode"
-    source="$base/linux-x64/gen_snapshot"
-    target="$base/linux-arm64/gen_snapshot"
-    if [ ! -x "$source" ]; then
-      echo "Missing Flutter android-arm64 $mode gen_snapshot: $source" >&2
+    source="$FLUTTER_HOME/bin/cache/artifacts/engine/linux-arm64-$mode/gen_snapshot"
+    target="$FLUTTER_HOME/bin/cache/artifacts/engine/android-arm64-$mode/linux-arm64/gen_snapshot"
+
+    if ! is_aarch64_elf "$source"; then
+      echo "错误：Flutter 缺少原生 Linux ARM64 $mode gen_snapshot：$source" >&2
+      exit 1
+    fi
+
+    if is_aarch64_elf "$target" && cmp -s "$source" "$target"; then
+      echo "Linux ARM64 Android AOT $mode gen_snapshot 已就绪。"
       continue
     fi
+
     mkdir -p "$(dirname "$target")"
-    cat > "$target" <<EOF
-#!/bin/sh
-exec "$(command -v box64)" "$source" "\$@"
-EOF
+    cp -f "$source" "$target"
     chmod 755 "$target"
+
+    if ! is_aarch64_elf "$target"; then
+      echo "错误：安装后的 $target 不是 ARM64 ELF。" >&2
+      exit 1
+    fi
+    if ! cmp -s "$source" "$target"; then
+      echo "错误：Android AOT gen_snapshot 与原生 Linux ARM64 源文件不一致。" >&2
+      exit 1
+    fi
+    echo "已安装原生 Linux ARM64 Android AOT $mode gen_snapshot：$target"
   done
 
-  echo "Linux ARM64 Android AOT host wrapper ready for arm64 via box64."
+  echo "Linux ARM64 Android AOT 使用原生 gen_snapshot；不再使用 box64。"
 }
 
 verify_flutter() {
