@@ -245,7 +245,14 @@ ensure_linux_arm64_android_aot() {
     echo "已安装原生 Linux ARM64 Android AOT $mode gen_snapshot：$target"
   done
 
-  echo "Linux ARM64 Android AOT 使用原生 gen_snapshot；不再使用 box64。"
+  # `flutter precache --android` 仍会下载官方 linux-x64 AOT host tool。
+  # ARM64 Linux 已有同 revision 的原生工具后不再保留这份 x64 二进制，
+  # 避免后续脚本或人工调用再次误走 box64/binfmt。
+  for mode in profile release; do
+    rm -f "$FLUTTER_HOME/bin/cache/artifacts/engine/android-arm64-$mode/linux-x64/gen_snapshot"
+  done
+
+  echo "Linux ARM64 Android AOT 使用原生 gen_snapshot；已移除 x64 gen_snapshot，不再使用 box64。"
 }
 
 verify_flutter() {
