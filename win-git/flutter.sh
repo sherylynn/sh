@@ -2,7 +2,7 @@
 
 # Flutter 官方 SDK 安装/升级工具。
 # - Linux/其它平台跟踪官方 stable channel。
-# - macOS 12 ARM64 固定到已实测兼容的 Flutter 3.32.8；后续升级前先验证系统兼容性。
+# - NewHome 各开发平台固定到已实测的 Flutter 3.35.7；后续升级前先完成跨平台验证。
 # - SDK 统一安装到 ~/tools/flutter。
 # - 环境变量统一通过 toolsRC/allToolsrc 管理，不再修改 ~/.bash_profile。
 # - 使用 CFUG Pub/Storage 镜像加速 ARM64 工具链；Git 镜像可通过 FLUTTER_GIT_MIRROR 指定。
@@ -22,9 +22,9 @@ FLUTTER_GIT_MIRROR="${FLUTTER_GIT_MIRROR:-}"
 FLUTTER_FETCH_REPO="${FLUTTER_GIT_MIRROR:-$FLUTTER_REPO}"
 FLUTTER_CHANNEL="stable"
 # NewHome 的 Flutter monitor 在 macOS/Linux 共享 pubspec.lock 与生成资产。
-# 两端统一使用已经实测的 Flutter 3.32.8 / Dart 3.8.1，避免不同 SDK
+# 各端统一使用已经实测的 Flutter 3.35.7 / Dart 3.9.2，避免不同 SDK
 # 重写 package_config/pubspec.lock 后把 framework 与另一套 engine 混编。
-FLUTTER_PINNED_VERSION="3.32.8"
+FLUTTER_PINNED_VERSION="3.35.7"
 
 ensure_git() {
   if ! command -v git >/dev/null 2>&1; then
@@ -64,7 +64,7 @@ install_or_update_flutter() {
 
   if [ ! -e "$FLUTTER_HOME" ]; then
     if [ -n "$FLUTTER_PINNED_VERSION" ]; then
-      echo "正在从 $FLUTTER_FETCH_REPO 安装 Flutter $FLUTTER_PINNED_VERSION（macOS 兼容固定版）..."
+      echo "正在从 $FLUTTER_FETCH_REPO 安装 Flutter $FLUTTER_PINNED_VERSION（NewHome 固定版）..."
       git -c http.version=HTTP/1.1 clone --depth 1 --branch "$FLUTTER_PINNED_VERSION" --single-branch "$FLUTTER_FETCH_REPO" "$FLUTTER_HOME"
       git -C "$FLUTTER_HOME" checkout -B "$FLUTTER_CHANNEL" "$FLUTTER_PINNED_VERSION"
     else
