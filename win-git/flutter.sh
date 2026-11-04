@@ -212,8 +212,8 @@ ensure_linux_arm64_android_aot() {
   # host architecture under android-arm64-{profile,release}/linux-arm64.
   # On this pinned SDK the native binaries are from the same engine/Dart revision
   # and have been verified to compile an Android arm64 app-aot-elf directly.
-  # Precache both families so a fresh SDK install always has the native sources.
-  flutter precache --linux --android
+  # 不主动 precache：安装脚本只复用当前 SDK 已有的原生 ARM64 工具，
+  # 避免额外下载 Android x64 host artifact。
 
   local mode source target
   for mode in profile release; do
@@ -245,8 +245,7 @@ ensure_linux_arm64_android_aot() {
     echo "已安装原生 Linux ARM64 Android AOT $mode gen_snapshot：$target"
   done
 
-  # `flutter precache --android` 仍会下载官方 linux-x64 AOT host tool。
-  # ARM64 Linux 已有同 revision 的原生工具后不再保留这份 x64 二进制，
+  # 清理历史脚本或 Flutter 其它流程遗留的 x64 host tool，
   # 避免后续脚本或人工调用再次误走 box64/binfmt。
   for mode in profile release; do
     rm -f "$FLUTTER_HOME/bin/cache/artifacts/engine/android-arm64-$mode/linux-x64/gen_snapshot"
