@@ -359,6 +359,10 @@ start_newhome_wayland_acceptor() {
 
     mkdir -p /run/newhome-compositor
     chmod 0755 /run/newhome-compositor
+    # One transport owner per namespace. Never unlink a live socket on concurrent tstart.
+    command -v flock >/dev/null 2>&1 || { echo "缺少 flock，拒绝无锁启动 transport" >&2; exit 1; }
+    exec 9>/run/newhome-compositor/transport.lock
+    flock -w 15 9 || { echo "Wayland transport lifecycle busy" >&2; exit 1; }
 
     socket_listening() {
       [ -S "$socket" ] || return 1
@@ -369,25 +373,47 @@ start_newhome_wayland_acceptor() {
       exit 0
     fi
 
-    rm -f "$socket"
     pkill -TERM -f "^/usr/bin/newhome-wayland-acceptor $socket " 2>/dev/null || true
+    i=0
+    while pgrep -f "^/usr/bin/newhome-wayland-acceptor $socket " >/dev/null 2>&1; do
+      [ "$i" -lt 50 ] || { echo "旧 Wayland acceptor 未退出，保留 socket" >&2; exit 1; }
+      i=$((i + 1))
+      sleep 0.05
+    done
+    # A pathname is not liveness; connected remnants are not a listener either.
+    # Recheck under the lifecycle lock before removing only a stale endpoint.
+    if socket_listening; then
+      echo "Wayland socket 有其它 listener，拒绝覆盖" >&2
+      exit 1
+    fi
+    rm -f "$socket"
 
     attempt=0
     while [ "$attempt" -lt 30 ]; do
       attempt=$((attempt + 1))
-      nohup setsid "$acceptor" "$socket" "$endpoint" >"$log_file" 2>&1 </dev/null &
+      # The child must not inherit the lifecycle lock, or all later stops deadlock.
+      nohup setsid "$acceptor" "$socket" "$endpoint" >"$log_file" 2>&1 </dev/null 9>&- &
       pid=$!
 
       i=0
       while [ "$i" -lt 20 ]; do
         if socket_listening; then
-          printf "%s\n" "$pid" > /run/newhome-compositor/wayland-acceptor.pid
+          printf "%s\n" "$pid" > /run/newhome-compositor/wayland-acceptor.pid.new
+          mv -f /run/newhome-compositor/wayland-acceptor.pid.new /run/newhome-compositor/wayland-acceptor.pid
           exit 0
         fi
         kill -0 "$pid" 2>/dev/null || break
         i=$((i + 1))
         sleep 0.1
       done
+      # A live-but-not-listening child used to make wait block forever here.
+      kill -TERM "$pid" 2>/dev/null || true
+      i=0
+      while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 20 ]; do
+        i=$((i + 1))
+        sleep 0.05
+      done
+      kill -KILL "$pid" 2>/dev/null || true
       wait "$pid" 2>/dev/null || true
       sleep 0.1
     done
@@ -444,7 +470,8 @@ start_xfce_wayland_session() {
     # startxfce4 --wayland 会额外启动 labwc；这里必须直接进入 xfce4-session。
     nohup setsid /usr/bin/dbus-run-session --       /usr/bin/newhome-wayland-run /usr/bin/xfce4-session       >"$log_file" 2>&1 </dev/null &
     session_pid=$!
-    printf "%s\n" "$session_pid" > /run/newhome-compositor/xfce-session.pid
+    printf "%s\n" "$session_pid" > /run/newhome-compositor/xfce-session.pid.new
+    mv -f /run/newhome-compositor/xfce-session.pid.new /run/newhome-compositor/xfce-session.pid
 
     i=0
     while [ "$i" -lt 80 ]; do
@@ -495,6 +522,9 @@ start_rooted_newhome_desktop() {
 
 stop_newhome_wayland_desktop() {
   chroot_exec -u root '
+    mkdir -p /run/newhome-compositor
+    exec 9>/run/newhome-compositor/transport.lock
+    flock -w 15 9 || { echo "Wayland transport lifecycle busy" >&2; exit 1; }
     pkill -TERM -x xfce4-session 2>/dev/null || true
     pkill -TERM -x xfce4-panel 2>/dev/null || true
     pkill -TERM -x xfdesktop 2>/dev/null || true
