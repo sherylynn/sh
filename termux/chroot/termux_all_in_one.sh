@@ -34,6 +34,20 @@ set -e
 trap 'log "ERR: 命令失败 行号=$LINENO 命令=\$BASH_COMMAND" >&2' ERR
 log "cli.sh 加载完成, DEBIAN_DIR=$DEBIAN_DIR"
 
+# Never pass XDG_RUNTIME_DIR=/tmp to Wayland/PipeWire descendants. Some runtimes
+# chmod their XDG_RUNTIME_DIR to 0700, which would break the bind-shared /tmp for
+# Debian _apt and Termux. A per-UID child directory is the correct runtime.
+ensure_private_xdg_runtime() {
+  case "${XDG_RUNTIME_DIR:-}" in
+    /tmp|"${PREFIX}/tmp")
+      local runtime="${PREFIX}/tmp/newhome-runtime-$(id -u)"
+      install -d -m 0700 "$runtime" || error "无法创建独立 XDG_RUNTIME_DIR: $runtime"
+      export XDG_RUNTIME_DIR="$runtime"
+      log "隔离 XDG_RUNTIME_DIR: $runtime (不再使用共享 tmp 根目录)"
+      ;;
+  esac
+}
+
 # 检查必要的权限和环境
 check_requirements() {
   log "检查运行环境..."
@@ -497,6 +511,8 @@ start_xfce_wayland_session() {
 }
 
 start_rooted_newhome_desktop() {
+  ensure_shared_chroot_tmp || error "Termux 共享 tmp 无法修复"
+  ensure_private_xdg_runtime
   # server_noVNC is an rc3 frontend and may begin waiting for native :5900 as soon
   # as start_chroot runs. Bring up the canonical compositor stack immediately after.
   sync_remote_desktop_scripts
@@ -608,6 +624,13 @@ check_status() {
     echo "NewHome Smithay runtime service: down"
   fi
   check_chroot_status
+  local shared_tmp_mode
+  shared_tmp_mode=$(sudo stat -c '%a' "${PREFIX}/tmp" 2>/dev/null || true)
+  if [ "$shared_tmp_mode" = 1777 ]; then
+    echo "Termux/chroot 共享 tmp: 1777 (OK)"
+  else
+    echo "Termux/chroot 共享 tmp: ${shared_tmp_mode:-不可访问} (需要 1777)"
+  fi
   echo
   echo "NewHome Wayland transport:"
   chroot_exec -u root 'if grep -Fq " /run/newhome-compositor/wayland-0" /proc/net/unix 2>/dev/null; then echo "  wayland-0: listening"; else echo "  wayland-0: down"; fi' 2>/dev/null || echo "  wayland-0: unavailable"
@@ -624,6 +647,7 @@ check_status() {
 # 进入chroot环境 (调用cli.sh中的函数)
 enter_chroot() {
   log "进入chroot Linux环境..."
+  ensure_shared_chroot_tmp || error "共享 /tmp 权限或挂载异常"
   enter_chroot_shell
 }
 
@@ -633,6 +657,7 @@ exec_in_chroot() {
     error "请提供要执行的命令"
   fi
 
+  ensure_shared_chroot_tmp || error "共享 /tmp 权限或挂载异常"
   exec_chroot_command "$@"
 }
 

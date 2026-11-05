@@ -355,6 +355,39 @@ container_mounted() {
   is_mounted "${CHROOT_DIR}"
 }
 
+# Termux $PREFIX/tmp is bind-mounted into Debian as /tmp. Bind mounts preserve
+# the source inode's mode; if Termux recreates it with 0700, _apt cannot even
+# create its signature/temporary directories. Check the *actual shared inode*,
+# including the already-mounted path used by termux_all_in_one.sh on re-start.
+ensure_shared_chroot_tmp() {
+  local source="${PREFIX}/tmp" target="${CHROOT_DIR}/tmp"
+  local source_mode source_inode target_inode
+  if [ "$source" != "/data/data/com.termux/files/usr/tmp" ] ||
+     [ -L "$source" ] || ! sudo test -d "$source"; then
+    echo "错误：拒绝修复非标准或不存在的 Termux tmp: $source" >&2
+    return 1
+  fi
+
+  source_mode=$(sudo stat -c '%a' "$source") || return 1
+  if [ "$source_mode" != 1777 ]; then
+    echo "修复 Termux/chroot 共享 tmp 权限: $source ($source_mode -> 1777)" >&2
+    sudo chmod 1777 "$source" || return 1
+  fi
+  [ "$(sudo stat -c '%a' "$source")" = 1777 ] || return 1
+
+  if is_mounted "$target"; then
+    source_inode=$(sudo stat -Lc '%d:%i' "$source") || return 1
+    target_inode=$(sudo stat -Lc '%d:%i' "$target") || return 1
+    if [ "$source_inode" != "$target_inode" ]; then
+      echo "错误：chroot /tmp 未指向 Termux tmp ($source_inode != $target_inode)" >&2
+      return 1
+    fi
+  elif container_mounted; then
+    echo "错误：chroot 已挂载但 /tmp bind mount 缺失，拒绝启动服务" >&2
+    return 1
+  fi
+}
+
 mount_part() {
   local part="$1"
 
@@ -1017,6 +1050,8 @@ start_chroot_container() {
   log_info "rootfs 路径: $DEBIAN_DIR"
   log_info "挂载点路径: $CHROOT_DIR"
 
+  ensure_shared_chroot_tmp || return 1
+
   # 检查是否已经挂载。挂载存在 != rc3 服务仍存活：Android/Termux 重启、
   # GhostLock 分阶段恢复或单独杀服务后，都可能留下 mount 但 noVNC/devspace 等
   # 已经退出。tstart 的语义是“确保整套环境可用”，因此已挂载时仍重跑 rc3。
@@ -1038,6 +1073,7 @@ start_chroot_container() {
     log_error "挂载失败"
     return 1
   fi
+  ensure_shared_chroot_tmp || return 1
 
   # 配置网络
   log_debug "配置网络..."
