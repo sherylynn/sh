@@ -206,12 +206,11 @@ wait_remote_desktop_services() {
 }
 
 prepare_newhome_wayland_runtime() {
-  # connected-FD transport means Android never needs the client-visible Wayland
-  # socket path. Keep it entirely inside the chroot; only accepted socket FDs
-  # cross into the Android-side Smithay compositor.
+  # cli.sh establishes the App-owned transport bind in the Termux host mount namespace before
+  # entering chroot. At this point /run/newhome-compositor must already be that shared inode.
   chroot_exec -u root '
     set -eu
-    install -d -m 0755 /run/newhome-compositor
+    test -d /run/newhome-compositor
     cat > /etc/profile.d/newhome-wayland.sh <<"EOF"
 export WAYLAND_DISPLAY=/run/newhome-compositor/wayland-0
 if [ -r /run/newhome-compositor/xdisplay ]; then
@@ -241,13 +240,9 @@ EOF
 }
 
 unmount_newhome_wayland_runtime() {
-  # No Android app-data bind mount exists in Compositor Bridge V2.
-  # The chroot stop path tears down remaining processes; only remove stale files.
-  chroot_exec -u root '
-    if ! grep -Fq " /run/newhome-compositor/wayland-0" /proc/net/unix 2>/dev/null; then
-      rm -f /run/newhome-compositor/wayland-0
-    fi
-  ' >/dev/null 2>&1 || true
+  # The dedicated bind is part of the container mount graph and is removed by container_umount.
+  # Do not unlink App-owned transport files here.
+  :
 }
 
 start_newhome_compositor() {
@@ -304,7 +299,7 @@ wait_newhome_xwayland_ready() {
 mount_newhome_x11_runtime() {
   # Smithay/Xwayland chooses the first free X display dynamically. Do not assume :0:
   # stale locks/sockets can legitimately make a cold runtime become :1/:2/etc.
-  local source=/data/user/0/com.example.customlauncher/files/linux-runtime/.X11-unix
+  local source=/data/user/0/com.example.customlauncher/files/linux-runtime/transport/.X11-unix
   local target="$CHROOT_DIR/tmp/.X11-unix"
   local display="" socket="" i source_sig target_sig
 
@@ -354,90 +349,20 @@ stop_newhome_compositor() {
     -n com.example.customlauncher/.linux.LinuxDesktopFloatingService >/dev/null 2>&1 || true
 }
 
-start_newhome_wayland_acceptor() {
-  log "启动 chroot -> Android Smithay Wayland transport..."
-
-  chroot_exec -u root '
-    set -eu
-    socket=/run/newhome-compositor/wayland-0
-    endpoint=@newhome_compositor_bridge_v2
-    acceptor=/usr/bin/newhome-wayland-acceptor
-    log_file=/tmp/newhome-wayland-acceptor.log
-
-    [ -x "$acceptor" ] || { echo "缺少 $acceptor；请先安装当前 NewHome Linux 包" >&2; exit 1; }
-    [ -x /usr/bin/newhome-wayland-run ] || { echo "缺少 /usr/bin/newhome-wayland-run" >&2; exit 1; }
-    [ -f /usr/lib/newhome-container/libnewhome-wayland-shm-allocator.so ] || {
-      echo "缺少 Android-owned SHM allocator" >&2
-      exit 1
-    }
-
-    mkdir -p /run/newhome-compositor
-    chmod 0755 /run/newhome-compositor
-    # One transport owner per namespace. Never unlink a live socket on concurrent tstart.
-    command -v flock >/dev/null 2>&1 || { echo "缺少 flock，拒绝无锁启动 transport" >&2; exit 1; }
-    exec 9>/run/newhome-compositor/transport.lock
-    flock -w 15 9 || { echo "Wayland transport lifecycle busy" >&2; exit 1; }
-
-    socket_listening() {
-      [ -S "$socket" ] || return 1
-      awk -v socket="$socket" "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == socket { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null
-    }
-
-    if socket_listening; then
-      exit 0
+wait_newhome_persistent_core() {
+  log "等待 NewHome persistent CHROOT core..."
+  local i
+  for i in {1..150}; do
+    if chroot_exec -u root '
+      test -S /run/newhome-compositor/wayland-0 &&
+      grep -Fq " /run/newhome-compositor/wayland-0" /proc/net/unix 2>/dev/null
+    ' >/dev/null 2>&1; then
+      log "Persistent CHROOT core 已就绪: /run/newhome-compositor/wayland-0"
+      return 0
     fi
-
-    pkill -TERM -f "^/usr/bin/newhome-wayland-acceptor $socket " 2>/dev/null || true
-    i=0
-    while pgrep -f "^/usr/bin/newhome-wayland-acceptor $socket " >/dev/null 2>&1; do
-      [ "$i" -lt 50 ] || { echo "旧 Wayland acceptor 未退出，保留 socket" >&2; exit 1; }
-      i=$((i + 1))
-      sleep 0.05
-    done
-    # A pathname is not liveness; connected remnants are not a listener either.
-    # Recheck under the lifecycle lock before removing only a stale endpoint.
-    if socket_listening; then
-      echo "Wayland socket 有其它 listener，拒绝覆盖" >&2
-      exit 1
-    fi
-    rm -f "$socket"
-
-    attempt=0
-    while [ "$attempt" -lt 30 ]; do
-      attempt=$((attempt + 1))
-      # The child must not inherit the lifecycle lock, or all later stops deadlock.
-      nohup setsid "$acceptor" "$socket" "$endpoint" >"$log_file" 2>&1 </dev/null 9>&- &
-      pid=$!
-
-      i=0
-      while [ "$i" -lt 20 ]; do
-        if socket_listening; then
-          printf "%s\n" "$pid" > /run/newhome-compositor/wayland-acceptor.pid.new
-          mv -f /run/newhome-compositor/wayland-acceptor.pid.new /run/newhome-compositor/wayland-acceptor.pid
-          exit 0
-        fi
-        kill -0 "$pid" 2>/dev/null || break
-        i=$((i + 1))
-        sleep 0.1
-      done
-      # A live-but-not-listening child used to make wait block forever here.
-      kill -TERM "$pid" 2>/dev/null || true
-      i=0
-      while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 20 ]; do
-        i=$((i + 1))
-        sleep 0.05
-      done
-      kill -KILL "$pid" 2>/dev/null || true
-      wait "$pid" 2>/dev/null || true
-      sleep 0.1
-    done
-
-    echo "NewHome Wayland acceptor 未能连接 Android compositor" >&2
-    tail -40 "$log_file" >&2 2>/dev/null || true
-    exit 1
-  ' || error "NewHome Wayland transport 启动失败"
-
-  log "Wayland transport 已就绪: /run/newhome-compositor/wayland-0"
+    sleep 0.1
+  done
+  error "Persistent CHROOT core 未能启动；不再回退到 legacy Wayland acceptor"
 }
 
 start_xfce_wayland_session() {
@@ -520,8 +445,8 @@ start_rooted_newhome_desktop() {
   start_chroot
   quiesce_legacy_chroot_display
   prepare_newhome_wayland_runtime
-  start_newhome_wayland_acceptor
   start_newhome_compositor
+  wait_newhome_persistent_core
 
   # NewHome owns speaker output; graphical startup remains independent if audio is unavailable.
   if ! chroot_exec -u root 'newhome-linux-cli audio status' 2>/dev/null | grep -q '"available": true'; then

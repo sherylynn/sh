@@ -388,6 +388,68 @@ ensure_shared_chroot_tmp() {
   fi
 }
 
+# NewHome persistent compositor/session transport is owned by the Android app, but the
+# CHROOT_EXTERNAL Smithay daemon runs inside Debian. Establish this bind in the Termux host mount
+# namespace, exactly like the shared /tmp bridge; mounting /proc/1/root/... from inside chroot is
+# rejected by current Android kernels.
+ensure_newhome_chroot_transport() {
+  local app_runtime="/data/user/0/com.example.customlauncher/files/linux-runtime"
+  local source="${app_runtime}/transport"
+  local target="${CHROOT_DIR}/run/newhome-compositor"
+  local owner source_sig target_sig
+  NEWHOME_TRANSPORT_MOUNT_CHANGED=0
+
+  sudo test -d "$app_runtime" || {
+    echo "错误：NewHome Android runtime 不存在: $app_runtime" >&2
+    return 1
+  }
+  owner=$(sudo stat -Lc '%u:%g' "$app_runtime") || return 1
+  if ! sudo test -d "$source"; then
+    sudo mkdir -p "$source" || return 1
+    sudo chown "$owner" "$source" || return 1
+    sudo chmod 0700 "$source" || return 1
+    sudo /system/bin/restorecon -RF "$source" >/dev/null 2>&1 || true
+  fi
+  [ -L "$source" ] && {
+    echo "错误：拒绝挂载符号链接 NewHome transport: $source" >&2
+    return 1
+  }
+  [ "$(sudo stat -Lc '%a' "$source")" = 700 ] || sudo chmod 0700 "$source" || return 1
+  [ "$(sudo stat -Lc '%u:%g' "$source")" = "$owner" ] || sudo chown "$owner" "$source" || return 1
+
+  sudo mkdir -p "$target" || return 1
+  source_sig=$(sudo stat -Lc '%d:%i' "$source") || return 1
+  target_sig=$(sudo stat -Lc '%d:%i' "$target") || return 1
+  if [ "$source_sig" = "$target_sig" ]; then
+    return 0
+  fi
+  if is_mounted "$target"; then
+    echo "错误：NewHome transport 已挂载到其它目录 ($source_sig != $target_sig)" >&2
+    return 1
+  fi
+
+  # A non-empty, unmounted target can only be retired after the canonical session owner is gone.
+  if sudo $busybox pgrep -f '^/usr/bin/newhome-chroot-session --runtime-dir /run/newhome-compositor' \
+      >/dev/null 2>&1; then
+    echo "错误：旧 NewHome persistent core 仍存活，拒绝覆盖 runtime" >&2
+    return 1
+  fi
+  if sudo find "$target" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+    sudo find "$target" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + || return 1
+  fi
+
+  sudo $busybox mount -o bind "$source" "$target" || {
+    echo "错误：NewHome transport bind mount 失败: $source -> $target" >&2
+    return 1
+  }
+  target_sig=$(sudo stat -Lc '%d:%i' "$target") || return 1
+  [ "$source_sig" = "$target_sig" ] || {
+    echo "错误：NewHome transport bind identity 不一致 ($source_sig != $target_sig)" >&2
+    return 1
+  }
+  NEWHOME_TRANSPORT_MOUNT_CHANGED=1
+}
+
 mount_part() {
   local part="$1"
 
@@ -1056,6 +1118,13 @@ start_chroot_container() {
   # GhostLock 分阶段恢复或单独杀服务后，都可能留下 mount 但 noVNC/devspace 等
   # 已经退出。tstart 的语义是“确保整套环境可用”，因此已挂载时仍重跑 rc3。
   if container_mounted; then
+    ensure_newhome_chroot_transport || return 1
+    if [ "${NEWHOME_TRANSPORT_MOUNT_CHANGED:-0}" = 1 ]; then
+      # The services-only daemon may have chrooted before this new submount existed. Restart only
+      # that bootstrap daemon through a fresh host-side chroot so its root vfsmount includes the
+      # dedicated transport; desktop/application processes are not touched.
+      chroot_exec -u root '/etc/init.d/newhome-linux-services restart' || return 1
+    fi
     log_warn "容器已经挂载，重新确保 rc${INIT_LEVEL} 服务"
     start_init
     return $?
@@ -1074,6 +1143,7 @@ start_chroot_container() {
     return 1
   fi
   ensure_shared_chroot_tmp || return 1
+  ensure_newhome_chroot_transport || return 1
 
   # 配置网络
   log_debug "配置网络..."
