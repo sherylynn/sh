@@ -245,24 +245,6 @@ unmount_newhome_wayland_runtime() {
   :
 }
 
-start_newhome_compositor() {
-  log "启动 NewHome Android-side Smithay runtime（headless，不打开 Linux 小窗）..."
-
-  # Password provisioning belongs to NewHome's root-only abstract control socket.
-  # The CLI reads the 0600 credentials file inside chroot and Base64-encodes the
-  # UTF-8 secret for the framed control command, so the password never appears in
-  # am/ps process arguments. Android persists it with AndroidKeyStore AES-GCM.
-  chroot_exec -u root '/usr/bin/newhome-linux-cli host rfb-password-set --file /root/.vnc/vnc.credentials' \
-      >/dev/null 2>&1 || \
-      error "无法通过 root-only control socket 配置 NewHome native RFB 密码；请更新 newhome-linux-cli"
-  log "NewHome native RFB 密码已通过 root-only control socket 更新"
-
-  sudo /system/bin/am start-foreground-service --user 0 \
-    -n com.example.customlauncher/.linux.LinuxDesktopFloatingService \
-    -a com.example.customlauncher.action.LINUX_RUNTIME_ENSURE >/dev/null 2>&1 || \
-    error "无法启动 NewHome Smithay runtime；请先安装当前 NewHome"
-  log "NewHome compositor 已常驻；Linux 小窗 presentation 由快捷工具按需 attach"
-}
 
 wait_newhome_xwayland_ready() {
   log "验证 managed Xwayland/XWM..."
@@ -296,57 +278,52 @@ wait_newhome_xwayland_ready() {
   log "managed Xwayland/XWM 已就绪: $display"
 }
 
-mount_newhome_x11_runtime() {
-  # Smithay/Xwayland chooses the first free X display dynamically. Do not assume :0:
-  # stale locks/sockets can legitimately make a cold runtime become :1/:2/etc.
-  local source=/data/user/0/com.example.customlauncher/files/linux-runtime/transport/.X11-unix
-  local target="$CHROOT_DIR/tmp/.X11-unix"
-  local display="" socket="" i source_sig target_sig
 
-  for i in {1..150}; do
-    display=$(sudo /system/bin/ps -A -o ARGS 2>/dev/null | awk '
-      /\/usr\/bin\/Xwayland :[0-9]+/ {
-        for (i = 1; i <= NF; i++) if ($i ~ /^:[0-9]+$/) { print $i; exit }
-      }
-    ')
-    if [ -n "$display" ]; then
-      socket="X${display#:}"
-      if sudo /system/bin/ls "$source/$socket" >/dev/null 2>&1; then
-        break
-      fi
+
+# Chroot mount is the Termux owner's only startup responsibility. Rust
+# newhome-serviced is the sole NewHome service Child owner and is bootstrapped
+# directly, not through any rc3/SysV init launcher. The currently selected
+# Linux small-window source remains an explicit Android product choice.
+start_managed_chroot_services() {
+  log "启动/复用 Rust newhome-serviced 管理的 CHROOT 服务（无第二合成器）..."
+  chroot_exec -u root '
+    set -eu
+    [ -x /usr/bin/newhome-serviced-bootstrap ] || {
+      echo "missing /usr/bin/newhome-serviced-bootstrap; update the NewHome CHROOT package" >&2
+      exit 78
+    }
+    /usr/bin/newhome-serviced-bootstrap start
+    newhome-systemctl daemon-reload
+    # Bridges remain available even when the App uses U, allowing the
+    # Linux manager to switch sources without relying on stale rc3 state.
+    newhome-systemctl enable newhome-linux-runtime-bridge.service newhome-linux-service-manager-bridge.service
+    newhome-systemctl start newhome-linux-runtime-bridge.service newhome-linux-service-manager-bridge.service
+    newhome-systemctl is-active newhome-linux-runtime-bridge.service newhome-linux-service-manager-bridge.service
+    # A root-only credential exists only after the authorized Android App
+    # has provisioned the canonical compositor. Do not invent a new token.
+    if [ -r /etc/newhome/wayland-owner.conf ]; then
+      newhome-systemctl enable newhome-wayland-core.service newhome-wayland-desktop.service
+      newhome-systemctl start newhome-wayland-core.service newhome-wayland-desktop.service
+      newhome-systemctl is-active newhome-wayland-core.service newhome-wayland-desktop.service
+    else
+      echo "No CHROOT renderer enrollment yet; open CHROOT from Linux manager to provision"
     fi
-    display=""
-    socket=""
-    sleep 0.1
-  done
-
-  [ -n "$display" ] && [ -n "$socket" ] || error "managed Xwayland 未公布当前 DISPLAY/socket"
-  sudo /system/bin/ls "$source/$socket" >/dev/null 2>&1 ||
-    error "managed Xwayland 未创建当前 app runtime socket: $source/$socket"
-
-  source_sig=$(sudo /system/bin/stat -Lc '%d:%i' "$source/$socket" 2>/dev/null || true)
-  target_sig=$(chroot_exec -u root "stat -Lc '%d:%i' /tmp/.X11-unix/$socket 2>/dev/null" || true)
-  if [ -z "$source_sig" ] || [ "$source_sig" != "$target_sig" ]; then
-    sudo mkdir -p "$target"
-    sudo mount -o bind "$source" "$target" || error "无法挂载当前 NewHome Xwayland socket runtime"
-    target_sig=$(chroot_exec -u root "stat -Lc '%d:%i' /tmp/.X11-unix/$socket 2>/dev/null" || true)
-    [ -n "$source_sig" ] && [ "$source_sig" = "$target_sig" ] ||
-      error "Xwayland socket bind 后仍不是当前 runtime: source=${source_sig:-?} target=${target_sig:-?}"
-    log "当前 Xwayland socket runtime 已映射: $display ($source_sig)"
-  else
-    log "复用当前 Xwayland socket 映射: $display ($source_sig)"
-  fi
-
-  chroot_exec -u root "printf '%s\n' '$display' > /run/newhome-compositor/xdisplay"
+  ' || error "Rust serviced CHROOT service bootstrap failed; never start legacy fallback"
 }
 
-stop_newhome_compositor() {
-  sudo /system/bin/am start-foreground-service --user 0 \
-    -n com.example.customlauncher/.linux.LinuxDesktopFloatingService \
-    -a com.example.customlauncher.action.LINUX_RUNTIME_STOP >/dev/null 2>&1 || true
-  sleep 0.2
-  sudo /system/bin/am stopservice --user 0 \
-    -n com.example.customlauncher/.linux.LinuxDesktopFloatingService >/dev/null 2>&1 || true
+stop_managed_chroot_services() {
+  log "停止 Rust serviced 所拥有的 CHROOT 服务（不使用 pkill/SysV）..."
+  chroot_exec -u root '
+    set -eu
+    [ -x /usr/bin/newhome-serviced-bootstrap ] || exit 78
+    if /usr/bin/newhome-serviced-bootstrap status >/dev/null 2>&1; then
+      for unit in newhome-wayland-desktop.service newhome-wayland-core.service newhome-linux-runtime-bridge.service newhome-linux-service-manager-bridge.service; do
+        newhome-systemctl disable "$unit" || exit
+        newhome-systemctl stop "$unit" || exit
+      done
+      /usr/bin/newhome-serviced-bootstrap stop
+    fi
+  ' || error "Rust serviced CHROOT 关闭未确认，拒绝直接强杀 compositor"
 }
 
 wait_newhome_persistent_core() {
@@ -365,129 +342,33 @@ wait_newhome_persistent_core() {
   error "Persistent CHROOT core 未能启动；不再回退到 legacy Wayland acceptor"
 }
 
-start_xfce_wayland_session() {
-  log "启动 XFCE Wayland 会话（NewHome 是唯一 compositor）..."
-
-  chroot_exec -u root '
-    set -eu
-    socket=/run/newhome-compositor/wayland-0
-    log_file=/tmp/newhome-xfce-wayland.log
-
-    awk -v socket="$socket" "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == socket { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null || {
-      echo "Wayland transport 未监听: $socket" >&2
-      exit 1
-    }
-    command -v xfce4-session >/dev/null 2>&1 || { echo "缺少 xfce4-session" >&2; exit 1; }
-    command -v dbus-run-session >/dev/null 2>&1 || { echo "缺少 dbus-run-session" >&2; exit 1; }
-
-    pkill -TERM -x xfce4-session 2>/dev/null || true
-    pkill -TERM -x xfce4-panel 2>/dev/null || true
-    pkill -TERM -x xfdesktop 2>/dev/null || true
-    pkill -TERM -x xfwm4 2>/dev/null || true
-    sleep 0.3
-
-    runtime=/tmp/newhome-runtime-0
-    mkdir -p "$runtime"
-    chmod 0700 "$runtime"
-
-    export WAYLAND_DISPLAY="$socket"
-    [ -r /run/newhome-compositor/xdisplay ] || { echo "managed Xwayland display file missing" >&2; exit 1; }
-    export DISPLAY="$(cat /run/newhome-compositor/xdisplay)"
-    x11_socket="/tmp/.X11-unix/X${DISPLAY#:}"
-    [ -S "$x11_socket" ] || { echo "managed Xwayland socket missing: $x11_socket" >&2; exit 1; }
-    export XDG_RUNTIME_DIR="$runtime"
-    export XDG_SESSION_TYPE=wayland
-    export XDG_CURRENT_DESKTOP=XFCE
-    export XDG_SESSION_DESKTOP=xfce
-    export GDK_BACKEND=wayland,x11
-    export QT_QPA_PLATFORM="wayland;xcb"
-    unset SDL_VIDEODRIVER
-    export ELECTRON_OZONE_PLATFORM_HINT=auto
-    export MOZ_ENABLE_WAYLAND=1
-    unset PULSE_SERVER # obsolete Termux Pulse endpoint; NewHome uses authenticated dynamic endpoint
-
-    # startxfce4 --wayland 会额外启动 labwc；这里必须直接进入 xfce4-session。
-    nohup setsid /usr/bin/dbus-run-session --       /usr/bin/newhome-wayland-run /usr/bin/xfce4-session       >"$log_file" 2>&1 </dev/null &
-    session_pid=$!
-    printf "%s\n" "$session_pid" > /run/newhome-compositor/xfce-session.pid.new
-    mv -f /run/newhome-compositor/xfce-session.pid.new /run/newhome-compositor/xfce-session.pid
-
-    i=0
-    while [ "$i" -lt 80 ]; do
-      if pgrep -x xfce4-session >/dev/null 2>&1 &&
-         pgrep -x xfce4-panel >/dev/null 2>&1; then
-        exit 0
-      fi
-      kill -0 "$session_pid" 2>/dev/null || {
-        echo "XFCE Wayland session 提前退出" >&2
-        tail -80 "$log_file" >&2 2>/dev/null || true
-        exit 1
-      }
-      i=$((i + 1))
-      sleep 0.1
-    done
-
-    echo "XFCE Wayland session 启动超时" >&2
-    tail -80 "$log_file" >&2 2>/dev/null || true
-    exit 1
-  ' || error "XFCE Wayland 会话启动失败"
-
-  log "XFCE Wayland 桌面已启动"
-}
 
 start_rooted_newhome_desktop() {
   ensure_shared_chroot_tmp || error "Termux 共享 tmp 无法修复"
   ensure_private_xdg_runtime
-  # server_noVNC is an rc3 frontend and may begin waiting for native :5900 as soon
-  # as start_chroot runs. Bring up the canonical compositor stack immediately after.
   sync_remote_desktop_scripts
   disable_legacy_display_autostart
   start_chroot
-  quiesce_legacy_chroot_display
   prepare_newhome_wayland_runtime
-  start_newhome_compositor
-  wait_newhome_persistent_core
+  start_managed_chroot_services
 
-  # NewHome owns speaker output; graphical startup remains independent if audio is unavailable.
-  if ! chroot_exec -u root 'newhome-linux-cli audio status' 2>/dev/null | grep -q '"available": true'; then
-    chroot_exec -u root 'newhome-linux-cli audio restart' >/dev/null 2>&1 ||
-      log "NewHome audio unavailable (newhome-linux-cli audio status)"
-  fi
-
-  mount_newhome_x11_runtime
-  wait_newhome_xwayland_ready
-  start_xfce_wayland_session
-  ensure_native_novnc_service
-  wait_remote_desktop_services
-}
-
-stop_newhome_wayland_desktop() {
-  chroot_exec -u root '
-    mkdir -p /run/newhome-compositor
-    exec 9>/run/newhome-compositor/transport.lock
-    flock -w 15 9 || { echo "Wayland transport lifecycle busy" >&2; exit 1; }
-    pkill -TERM -x xfce4-session 2>/dev/null || true
-    pkill -TERM -x xfce4-panel 2>/dev/null || true
-    pkill -TERM -x xfdesktop 2>/dev/null || true
-    pkill -TERM -x xfwm4 2>/dev/null || true
-    pkill -TERM -f "^/usr/bin/newhome-wayland-acceptor /run/newhome-compositor/wayland-0 " 2>/dev/null || true
-    # Do not let restart race the retiring acceptor. Only a real LISTEN entry counts;
-    # connected sockets can keep the pathname visible after the listener is gone.
-    i=0
-    while [ "$i" -lt 50 ] && awk "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == \"/run/newhome-compositor/wayland-0\" { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null; do
-      i=$((i + 1))
-      sleep 0.05
-    done
-    pkill -KILL -f "^/usr/bin/newhome-wayland-acceptor /run/newhome-compositor/wayland-0 " 2>/dev/null || true
-    rm -f /run/newhome-compositor/xfce-session.pid /run/newhome-compositor/wayland-acceptor.pid
-    if ! awk "\$4 == \"00010000\" && \$5 == \"0001\" && \$6 == \"01\" && \$8 == \"/run/newhome-compositor/wayland-0\" { found = 1; exit } END { exit(found ? 0 : 1) }" /proc/net/unix 2>/dev/null; then
-      rm -f /run/newhome-compositor/wayland-0
+  # Existing CHROOT owner may be running headless before any Android small
+  # window attaches. Do not call LINUX_RUNTIME_ENSURE (it is the U/P App
+  # owner) or manually restart XFCE/XWayland. UI switch performs RendererLease
+  # attestation + attach through the already running Rust service manager.
+  if chroot_exec -u root 'newhome-systemctl is-active newhome-wayland-core.service newhome-wayland-desktop.service' >/dev/null 2>&1; then
+    wait_newhome_persistent_core
+    wait_newhome_xwayland_ready
+    # Old noVNC remains an independent optional frontend during migration;
+    # it is NOT a second desktop/compositor lifecycle owner.
+    if ! ensure_native_novnc_service || ! wait_remote_desktop_services; then
+      log "可选 noVNC 前端未就绪；不影响 Rust serviced CHROOT 与 Linux 小窗"
     fi
-  ' >/dev/null 2>&1 || true
-  if mountpoint -q "$DEBIAN_DIR/tmp/.X11-unix" 2>/dev/null; then
-    sudo umount "$DEBIAN_DIR/tmp/.X11-unix" >/dev/null 2>&1 || true
+  else
+    log "CHROOT 服务桥已就绪；等待 Linux 管理工具显式选择并 provision CHROOT 桌面"
   fi
 }
+
 
 # 启动chroot linux (调用cli.sh中的函数)
 start_chroot() {
@@ -508,11 +389,12 @@ start_chroot() {
 # 停止所有服务
 stop_all() {
   log "停止所有服务..."
-  stop_newhome_wayland_desktop
-  stop_newhome_compositor
-  unmount_newhome_wayland_runtime
-  stop_chroot_container 2>/dev/null || true
-
+  # Explicit operator stop is the only destructive CHROOT shutdown path;
+  # close/reattach of the Linux floating window must never call this.
+  if container_mounted; then
+    stop_managed_chroot_services
+  fi
+  stop_chroot_container || error "CHROOT 容器停止失败"
   if [ -d "$PREFIX/var/service/virgl" ]; then
     sv down "$PREFIX/var/service/virgl" 2>/dev/null || true
   fi
@@ -525,7 +407,7 @@ stop_all() {
 # 自身关闭；XWayland 由 compositor 一并管理，绝不从 Termux 外部 kill。
 stop_user_services() {
   log "停止 Termux 用户基础服务..."
-  stop_newhome_compositor
+  # User-stage stop must not kill an independently supervised CHROOT owner.
   if [ -d "$PREFIX/var/service/virgl" ]; then
     sv down "$PREFIX/var/service/virgl" 2>/dev/null || true
   fi
@@ -543,11 +425,15 @@ check_status() {
   else
     echo "兼容 X11: managed XWayland socket not ready"
   fi
-  if sudo /system/bin/dumpsys activity services com.example.customlauncher 2>/dev/null | grep -q 'LinuxDesktopFloatingService'; then
-    echo "NewHome Smithay runtime service: running"
-  else
-    echo "NewHome Smithay runtime service: down"
-  fi
+  echo "CHROOT NewHome Rust service owner (not Android presentation):"
+  chroot_exec -u root '
+    if [ -x /usr/bin/newhome-serviced-bootstrap ]; then
+      /usr/bin/newhome-serviced-bootstrap status || true
+      newhome-systemctl status newhome-linux-runtime-bridge.service newhome-linux-service-manager-bridge.service newhome-wayland-core.service newhome-wayland-desktop.service || true
+    else
+      echo "  newhome-serviced-bootstrap not installed"
+    fi
+  ' 2>/dev/null || echo "  Rust owner unavailable"
   check_chroot_status
   local shared_tmp_mode
   shared_tmp_mode=$(sudo stat -c '%a' "${PREFIX}/tmp" 2>/dev/null || true)
@@ -620,10 +506,10 @@ Termux 一键启动脚本 - 整体服务编排器
   $0 [命令]
 
 可用命令:
-  start         启动基础服务 + chroot Linux + NewHome compositor + XFCE Wayland
+  start         启动基础服务 + CHROOT + Rust serviced 管理的 Linux
   stop          停止所有服务
   restart       重启所有服务
-  status        查看 NewHome compositor + chroot 状态
+  status        查看 Rust serviced 四项服务 + CHROOT 状态
   enter         进入chroot Linux环境
   exec <命令>   在chroot中执行命令
   install       安装Debian环境
@@ -644,8 +530,9 @@ Termux 一键启动脚本 - 整体服务编排器
   别名: cstart, cstop, cshell, cexec, cforce
 
 职责分工:
-  - termux_all_in_one.sh: 整体服务编排 (基础服务 + chroot + NewHome Wayland + XFCE)
-  - cli.sh: 专业chroot容器管理 (挂载、进程、sysv、配置等)
+  - termux_all_in_one.sh: Termux 基础服务 + CHROOT 挂载 + Rust serviced bootstrap
+  - cli.sh: 容器挂载/进入 + 非 NewHome 的旧 rc3 兼容服务
+  - NewHome Linux 管理: 显式选择 U/P 或 CHROOT；小窗只 attach/detach
 EOF
 }
 
@@ -658,7 +545,7 @@ main() {
       check_requirements
       start_base_services
       start_rooted_newhome_desktop
-      log "所有服务启动完成：chroot + NewHome Wayland + XFCE"
+      log "CHROOT + Rust serviced 启动/复用完成；小窗由 Linux 管理工具显式换源"
       log "使用 '$0 enter' 进入Linux环境"
       ;;
     "stop")

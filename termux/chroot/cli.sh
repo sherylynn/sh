@@ -854,6 +854,12 @@ start_init() {
     echo ":: Starting init (level ${INIT_LEVEL}): "
     local item
     for item in ${services}; do
+      # NewHome's Rust serviced is directly bootstrapped by the Termux owner,
+      # not through rc3. Old SysV wrappers may remain on upgraded rootfs images
+      # until package migration; never run them as competing owners.
+      case "$item" in
+        S[0-9][0-9]newhome-serviced|S[0-9][0-9]newhome-linux-services) continue ;;
+      esac
       local service_name="${item/S[0-9][0-9]/}"
       echo -n "${service_name} ... "
 
@@ -900,6 +906,11 @@ stop_init() {
     echo ":: Stopping init: "
     local item
     for item in ${services}; do
+      # Stopping unrelated legacy services must never terminate the Rust
+      # serviced CHROOT owner or its renderer/Wayland children implicitly.
+      case "$item" in
+        K[0-9][0-9]newhome-serviced|K[0-9][0-9]newhome-linux-services) continue ;;
+      esac
       local service_name="${item/K[0-9][0-9]/}"
       echo -n "${service_name} ... "
 
@@ -1119,11 +1130,11 @@ start_chroot_container() {
   # 已经退出。tstart 的语义是“确保整套环境可用”，因此已挂载时仍重跑 rc3。
   if container_mounted; then
     ensure_newhome_chroot_transport || return 1
+    # The mount graph has been repaired. Let the typed Rust serviced owner
+    # reconcile existing bridge units; never call a legacy SysV restart that
+    # races its Child ownership. The all-in-one command performs bootstrap.
     if [ "${NEWHOME_TRANSPORT_MOUNT_CHANGED:-0}" = 1 ]; then
-      # The services-only daemon may have chrooted before this new submount existed. Restart only
-      # that bootstrap daemon through a fresh host-side chroot so its root vfsmount includes the
-      # dedicated transport; desktop/application processes are not touched.
-      chroot_exec -u root '/etc/init.d/newhome-linux-services restart' || return 1
+      log_info "NewHome transport remounted; Rust serviced bootstrap will reconcile bridges"
     fi
     log_warn "容器已经挂载，重新确保 rc${INIT_LEVEL} 服务"
     start_init

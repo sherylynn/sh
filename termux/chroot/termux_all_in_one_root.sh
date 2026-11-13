@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# GhostLock 临时 root 专用阶段：挂载 chroot 并拉起 NewHome native Wayland/XFCE/noVNC。
+# GhostLock 临时 root 专用阶段：挂载 chroot 并启动/复用 Rust newhome-serviced。
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,7 +25,13 @@ case "${1:-start}" in
     start_rooted_newhome_desktop
     ;;
   stop)
-    stop_chroot_container 2>/dev/null || true
+    # Explicit root stop is destructive. The Rust manager must retire its
+    # Child processes BEFORE the mount owner releases the CHROOT rootfs.
+    # Never unmount beneath a running Smithay/XFCE generation.
+    if container_mounted; then
+      stop_managed_chroot_services
+    fi
+    stop_chroot_container || error "CHROOT container stop failed"
     clean_tmp
     ;;
   *)
