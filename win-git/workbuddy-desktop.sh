@@ -970,6 +970,30 @@ if [[ -r "$FLAGS_FILE" ]]; then
   mapfile -t EXTRA_FLAGS < <(grep -v '^[[:space:]]*#' "$FLAGS_FILE" || true)
 fi
 
+# Prefer native Wayland on a live compositor socket. Chromium/Electron's
+# auto platform hint falls back to Xwayland when DISPLAY=:0 is available, and
+# that X11 output is logical 1237x714 at 96dpi even when Wayland scale=2.
+# Explicit ozone flags or an x11 hint are user overrides. The native Wayland
+# path renders a REAL 2x buffer; force-device-scale-factor=2 on X11 only
+# magnifies a 1x buffer and does not restore Retina source pixels.
+has_ozone_override=0
+for flag in "${EXTRA_FLAGS[@]}" "$@"; do
+  case "$flag" in
+    --ozone-platform=*|--ozone-platform-hint=*) has_ozone_override=1; break ;;
+  esac
+done
+if [[ "$has_ozone_override" -eq 0 &&
+      "${ELECTRON_OZONE_PLATFORM_HINT:-auto}" != "x11" &&
+      -n "${WAYLAND_DISPLAY:-}" ]]; then
+  wayland_socket="$WAYLAND_DISPLAY"
+  if [[ "$wayland_socket" != /* ]]; then
+    wayland_socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$wayland_socket"
+  fi
+  if [[ -S "$wayland_socket" ]]; then
+    EXTRA_FLAGS+=(--ozone-platform=wayland)
+  fi
+fi
+
 # chroot/proot 环境通常无 user namespaces，默认关沙箱；Wayland 可在 flags 文件加
 # --ozone-platform=wayland 切换。
 
