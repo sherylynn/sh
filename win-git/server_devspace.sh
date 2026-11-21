@@ -3,9 +3,27 @@
 # Linux chroot / macOS 共用；start 幂等，所有自启动入口都可以安全调用。
 set -uo pipefail
 
+# Windows Task Scheduler 直接启动 MSYS2 bash 时，继承到的 Windows PATH 里可能没有
+# /usr/bin，导致脚本还没来得及初始化运行环境，dirname/cut/tail 等基础命令就已失败。
+# 这里必须放在第一个外部命令之前；Linux/macOS 前置这两个标准目录同样安全。
+export PATH="/usr/bin:/bin${PATH:+:$PATH}"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OS="$(uname -s)"
+
+# Windows 端统一把 DevSpace/Cloudflared 的运行 HOME 固定在 MSYS64。
+# 不修改系统 USERPROFILE；Node/DevSpace 通过显式 DEVSPACE_CONFIG_DIR 和绝对 stateDir
+# 读取这里的配置，避免计划任务或不同 shell 又回落到 C:\\Users\\lynn。
+WINDOWS_DEVSPACE_HOME_WIN="${WINDOWS_DEVSPACE_HOME_WIN:-C:\\msys64\\home\\lynn}"
+if case "$OS" in MSYS*|MINGW*|CYGWIN*) true ;; *) false ;; esac; then
+  if command -v cygpath >/dev/null 2>&1; then
+    WINDOWS_DEVSPACE_HOME="$(cygpath -u "$WINDOWS_DEVSPACE_HOME_WIN")"
+  else
+    WINDOWS_DEVSPACE_HOME="/home/lynn"
+  fi
+  DEVSPACE_HOME="${DEVSPACE_HOME:-$WINDOWS_DEVSPACE_HOME}"
+fi
 
 if [ "$(id -u)" -eq 0 ]; then
   export HOME="${DEVSPACE_HOME:-/root}"
@@ -13,6 +31,13 @@ fi
 
 RUN_HOME="${DEVSPACE_HOME:-${HOME:-/root}}"
 CONFIG_DIR="${DEVSPACE_CONFIG_DIR:-$RUN_HOME/.devspace}"
+if case "$OS" in MSYS*|MINGW*|CYGWIN*) true ;; *) false ;; esac && command -v cygpath >/dev/null 2>&1; then
+  # 传给 Windows Node 的路径使用原生绝对路径；Bash 自己仍使用 CONFIG_DIR 的 MSYS 路径。
+  export DEVSPACE_CONFIG_DIR="$(cygpath -w "$CONFIG_DIR")"
+  export CODEX_HOME="${CODEX_HOME:-$(cygpath -w "$RUN_HOME/.codex")}"
+else
+  export DEVSPACE_CONFIG_DIR="$CONFIG_DIR"
+fi
 TOKEN_FILE="$CONFIG_DIR/owner-token"
 SERVICE_ENV="$CONFIG_DIR/service.env"
 RUN_DIR="${DEVSPACE_RUN_DIR:-$CONFIG_DIR/run}"
@@ -76,12 +101,28 @@ METRICS_TIMEOUT="${METRICS_TIMEOUT:-3}"
 WORKDIR="${DEVSPACE_WORKDIR:-$REPO_ROOT}"
 PUBLIC_HOST="${PUBLIC_HOST:-${PERSISTED_PUBLIC_HOST:-devspace.sherylynn.win}}"
 
-export PATH="$RUN_HOME/tools/bin:$RUN_HOME/tools/node-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
+export PATH="$RUN_HOME/.local/bin:$RUN_HOME/.local/devspace:$RUN_HOME/tools/bin:$RUN_HOME/tools/node-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
+
+# Windows 的辅助 Node 固定优先使用 MSYS64 HOME 下由 tools 管理的版本，不回落到
+# C:\Program Files\nodejs。DevSpace 自身若在 .local/devspace/node(.exe) 带有与原生
+# 模块匹配的本地 Node，npm wrapper 会优先使用它；Linux/macOS 保持原发现逻辑。
+case "$OS" in
+  MSYS*|MINGW*|CYGWIN*)
+    for _d in "$RUN_HOME"/tools/node/node-*; do
+      [ -x "$_d/node" ] && export PATH="$_d:$PATH" && break
+    done
+    ;;
+esac
 
 if ! command -v node >/dev/null 2>&1; then
   for _d in "$RUN_HOME"/tools/node/node-*/bin; do
     [ -x "$_d/node" ] && export PATH="$_d:$PATH" && break
   done
+  if ! command -v node >/dev/null 2>&1; then
+    for _d in "$RUN_HOME"/tools/node/node-*; do
+      [ -x "$_d/node" ] && export PATH="$_d:$PATH" && break
+    done
+  fi
 fi
 
 is_windows_shell() {
@@ -90,11 +131,8 @@ is_windows_shell() {
 
 windows_native_devspace_bin() {
   is_windows_shell || return 1
-  command -v cygpath >/dev/null 2>&1 || return 1
-  local profile="${USERPROFILE:-}" root candidate
-  [ -n "$profile" ] || return 1
-  root="$(cygpath -u "$profile")"
-  for candidate in "$root/.local/devspace/devspace" "$root/.local/devspace/devspace.cmd"; do
+  local candidate
+  for candidate in "$RUN_HOME/.local/devspace/devspace" "$RUN_HOME/.local/devspace/devspace.cmd"; do
     [ -f "$candidate" ] && { printf '%s\n' "$candidate"; return 0; }
   done
   return 1
@@ -114,6 +152,21 @@ resolve_devspace_bin() {
 DEVSPACE_BIN="${DEVSPACE_BIN:-$(resolve_devspace_bin)}"
 CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-$(command -v cloudflared 2>/dev/null || echo cloudflared)}"
 
+# Codex exec_command must use the MSYS2 shell even when Task Scheduler starts
+# this manager without a login profile. Keep its Node ABI aligned with DevSpace.
+if is_windows_shell; then
+  export HOME="$RUN_HOME"
+  export DEVSPACE_BASH_PATH="$(cygpath -w /usr/bin/bash.exe)"
+  # Native Node needs native Git paths (C:/...), while MSYS Git returns /home/...
+  # from rev-parse. Those POSIX cwd values break DevSpace review checkpoints.
+  if [ -x /c/Program\ Files/Git/cmd/git.exe ]; then
+    export PATH="/c/Program Files/Git/cmd:$PATH"
+  fi
+  if [ -x "$RUN_HOME/.local/devspace/node.exe" ]; then
+    export PATH="$RUN_HOME/.local/devspace:$PATH"
+  fi
+fi
+
 LOCK_FILE="${DEVSPACE_LOCK_FILE:-${TMPDIR:-/tmp}/.devspace-service-$(id -u).lock}"
 LOCK_DIR="${DEVSPACE_LOCK_DIR:-${LOCK_FILE}.d}"
 # mkdir 回退锁在 macOS 上没有失效回收：持有者被 kill/Ctrl-C 后目录会永久留下，
@@ -132,7 +185,15 @@ windows_devspace_pid() {
   is_windows_shell || return 1
   command -v powershell.exe >/dev/null 2>&1 || return 1
   powershell.exe -NoProfile -Command \
-    '$p = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "node.exe" -and $_.CommandLine -like "*@waishnav*devspace*server.js*" } | Select-Object -First 1; if ($null -ne $p) { [Console]::Out.Write($p.ProcessId) }' \
+    '$p = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "node.exe" -and (($_.CommandLine -match "[\\/]dist[\\/]server\.js") -or (($_.CommandLine -match "[\\/]dist[\\/]cli\.js") -and ($_.CommandLine -match "(^|\s)serve(\s|$)"))) } | Select-Object -First 1; if ($null -ne $p) { [Console]::Out.Write($p.ProcessId) }' \
+    2>/dev/null | tr -d '\r'
+}
+
+windows_cloudflared_pid() {
+  is_windows_shell || return 1
+  command -v powershell.exe >/dev/null 2>&1 || return 1
+  DEVSPACE_TUNNEL_NAME_WIN="$TUNNEL_NAME" powershell.exe -NoProfile -Command \
+    '$name = $env:DEVSPACE_TUNNEL_NAME_WIN; $p = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "cloudflared.exe" -and $_.CommandLine -match "tunnel" -and $_.CommandLine -match "run" -and $_.CommandLine -match [regex]::Escape($name) } | Select-Object -First 1; if ($null -ne $p) { [Console]::Out.Write($p.ProcessId) }' \
     2>/dev/null | tr -d '\r'
 }
 
@@ -293,8 +354,11 @@ start_cloudflared_unlocked() {
     return 1
   fi
   [ -f "$CLOUDFLARED_CONFIG" ] || { echo "错误：找不到 Cloudflare 配置：$CLOUDFLARED_CONFIG" >&2; return 1; }
-  if remember_existing_pid "$TUNNEL_PAT" "$TUNNEL_PID_FILE"; then
-    echo "cloudflared 隧道已在运行（PID $(cat "$TUNNEL_PID_FILE")），本次不重复启动"
+  local existing_pid
+  existing_pid="$(tunnel_pid 2>/dev/null || true)"
+  if [ -n "$existing_pid" ]; then
+    printf '%s\n' "$existing_pid" >"$TUNNEL_PID_FILE"
+    echo "cloudflared 隧道已在运行（PID $existing_pid），本次不重复启动"
   else
     local args
     args=(tunnel --config "$CLOUDFLARED_CONFIG" run)
@@ -439,6 +503,11 @@ kill_matching() {
 }
 
 stop_unlocked() {
+  if is_windows_shell; then
+    stop_devspace_unlocked || return $?
+    stop_cloudflared_unlocked
+    return $?
+  fi
   local stopped=1
   stop_pid_file "devspace serve" "$SERVE_PID_FILE" "$SERVE_PAT" && stopped=0 || true
   stop_pid_file "cloudflared 隧道" "$TUNNEL_PID_FILE" "$TUNNEL_PAT" && stopped=0 || true
@@ -473,6 +542,27 @@ stop_devspace_unlocked() {
 }
 
 stop_cloudflared_unlocked() {
+  if is_windows_shell; then
+    local pid tries=0
+    pid="$(windows_cloudflared_pid 2>/dev/null || true)"
+    if [ -z "$pid" ]; then
+      rm -f "$TUNNEL_PID_FILE"
+      echo "cloudflared 隧道未运行"
+      return 0
+    fi
+    powershell.exe -NoProfile -Command "Stop-Process -Id $pid -ErrorAction SilentlyContinue" >/dev/null 2>&1 || true
+    while [ "$tries" -lt 30 ] && [ -n "$(windows_cloudflared_pid 2>/dev/null || true)" ]; do
+      tries=$((tries + 1))
+      sleep 0.1
+    done
+    rm -f "$TUNNEL_PID_FILE"
+    if [ -n "$(windows_cloudflared_pid 2>/dev/null || true)" ]; then
+      echo "错误：cloudflared Windows 进程未停止（PID $pid）" >&2
+      return 1
+    fi
+    echo "cloudflared 隧道已停止（PID $pid）"
+    return 0
+  fi
   stop_pid_file "cloudflared 隧道" "$TUNNEL_PID_FILE" "$TUNNEL_PAT" || kill_matching "cloudflared 隧道" "$TUNNEL_PAT" || echo "cloudflared 隧道未运行"
 }
 
@@ -518,11 +608,50 @@ serve_pid() {
 }
 
 tunnel_pid() {
+  if is_windows_shell; then
+    windows_cloudflared_pid
+    return $?
+  fi
   if pid_matches "$TUNNEL_PID_FILE" "$TUNNEL_PAT"; then
     cat "$TUNNEL_PID_FILE"
     return 0
   fi
   find_matching_pid "$TUNNEL_PAT"
+}
+
+# Windows Task Scheduler 的两个任务保持前台占用，让计划任务自身能够观察退出并按
+# RestartCount/RestartInterval 重启；真正的配置与二进制解析仍由本管理器统一负责。
+task_devspace_foreground() {
+  is_windows_shell || { echo "错误：task-devspace 仅用于 Windows" >&2; return 1; }
+  [ -z "$(serve_pid)" ] || { echo "devspace serve 已在运行，不重复启动"; return 0; }
+  ensure_token
+  export DEVSPACE_OAUTH_OWNER_TOKEN="$(cat "$TOKEN_FILE")"
+  [ -x "$DEVSPACE_BIN" ] || { echo "错误：找不到 devspace 可执行文件（${DEVSPACE_BIN}）" >&2; return 1; }
+  sync_devspace_config_v1 || return $?
+  [ -d "$WORKDIR" ] || { echo "错误：DevSpace 工作目录不存在：$WORKDIR" >&2; return 1; }
+  mkdir -p "$(dirname "$SERVE_LOG")"
+  cd "$WORKDIR" || return 1
+  exec "$DEVSPACE_BIN" serve >>"$SERVE_LOG" 2>&1
+}
+
+task_cloudflared_foreground() {
+  is_windows_shell || { echo "错误：task-cloudflared 仅用于 Windows" >&2; return 1; }
+  [ -z "$(tunnel_pid)" ] || { echo "cloudflared 隧道已在运行，不重复启动"; return 0; }
+  [ -x "$CLOUDFLARED_BIN" ] || { echo "错误：找不到 cloudflared（${CLOUDFLARED_BIN}）" >&2; return 1; }
+  [ -f "$CLOUDFLARED_CONFIG" ] || { echo "错误：找不到 Cloudflare 配置：$CLOUDFLARED_CONFIG" >&2; return 1; }
+  local args
+  args=(tunnel --config "$CLOUDFLARED_CONFIG" run)
+  case "$CLOUDFLARED_PROTOCOL" in
+    ""|auto) ;;
+    *) args+=(--protocol "$CLOUDFLARED_PROTOCOL") ;;
+  esac
+  args+=("$TUNNEL_NAME")
+  case "$CLOUDFLARED_METRICS" in
+    ""|auto|off) ;;
+    *) export TUNNEL_METRICS="$CLOUDFLARED_METRICS" ;;
+  esac
+  mkdir -p "$(dirname "$TUNNEL_LOG")"
+  exec "$CLOUDFLARED_BIN" "${args[@]}" >>"$TUNNEL_LOG" 2>&1
 }
 
 # connected | disconnected | stopped | unknown
@@ -638,6 +767,18 @@ states() {
 
 status_one() {
   local name="$1" file="$2" pat="$3" pid
+  if is_windows_shell; then
+    case "$file" in
+      "$SERVE_PID_FILE") pid="$(serve_pid)" ;;
+      "$TUNNEL_PID_FILE") pid="$(tunnel_pid)" ;;
+    esac
+    if [ -n "$pid" ]; then
+      echo "$name: 运行中（PID $pid）"
+      return 0
+    fi
+    echo "$name: 未运行"
+    return 1
+  fi
   if pid_matches "$file" "$pat"; then
     echo "$name: 运行中（PID $(cat "$file")）"
     return 0
@@ -698,11 +839,13 @@ case "${1:-start}" in
   start-cloudflared) start_cloudflared ;;
   stop-cloudflared) stop_cloudflared ;;
   restart-cloudflared) stop_cloudflared; sleep 1; start_cloudflared ;;
+  task-devspace) task_devspace_foreground ;;
+  task-cloudflared) task_cloudflared_foreground ;;
   autostart-start) autostart_start ;;
   status) status ;;
   states) states ;;
   tunnel-state) tunnel_state ;;
   tunnel-info) tunnel_info ;;
   token) ensure_token; cat "$TOKEN_FILE"; echo ;;
-  *) echo "usage: $0 {start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|autostart-start|status|states|tunnel-state|tunnel-info|token}" >&2; exit 1 ;;
+  *) echo "usage: $0 {start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|task-devspace|task-cloudflared|autostart-start|status|states|tunnel-state|tunnel-info|token}" >&2; exit 1 ;;
 esac

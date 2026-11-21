@@ -6,6 +6,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")"; pwd)"
 SERVER_SCRIPT="$SCRIPT_DIR/server_devspace.sh"
 INIT_SCRIPT="$SCRIPT_DIR/init_d_devspace.sh"
 OS="$(uname -s)"
+WINDOWS_DEVSPACE_HOME_WIN="${WINDOWS_DEVSPACE_HOME_WIN:-C:\\msys64\\home\\lynn}"
+if case "$OS" in MSYS*|MINGW*|CYGWIN*) true ;; *) false ;; esac; then
+  if command -v cygpath >/dev/null 2>&1; then
+    WINDOWS_DEVSPACE_HOME="$(cygpath -u "$WINDOWS_DEVSPACE_HOME_WIN")"
+  else
+    WINDOWS_DEVSPACE_HOME="/home/lynn"
+  fi
+  DEVSPACE_HOME="${DEVSPACE_HOME:-$WINDOWS_DEVSPACE_HOME}"
+fi
 RUN_HOME="${DEVSPACE_HOME:-$HOME}"
 MIGRATION_VERSION=1
 
@@ -28,6 +37,16 @@ windows_startup_file() {
   [ -n "$appdata" ] || return 1
   WINDOWS_STARTUP_FILE="$(cygpath -u "$appdata")/Microsoft/Windows/Start Menu/Programs/Startup/newhome-devspace.cmd"
   printf '%s\n' "$WINDOWS_STARTUP_FILE"
+}
+
+windows_powershell_bin() {
+  local p
+  p="$(command -v powershell.exe 2>/dev/null || true)"
+  if [ -z "$p" ] && [ -x /c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe ]; then
+    p=/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+  fi
+  [ -n "$p" ] || return 1
+  printf '%s\n' "$p"
 }
 
 usage() {
@@ -63,6 +82,8 @@ EOF
 
 TOOLS_BIN="$RUN_HOME/tools/bin"
 NODE_GLOBAL_BIN="$RUN_HOME/tools/node-global/bin"
+WINDOWS_LOCAL_BIN="$RUN_HOME/.local/bin"
+WINDOWS_DEVSPACE_DIR="$RUN_HOME/.local/devspace"
 # 1.1 beta introduces the Codex tool surface (apply_patch/exec_command/write_stdin)
 # and becomes the baseline for new deployments. Override DEVSPACE_PKG to pin another build.
 DEVSPACE_PKG="${DEVSPACE_PKG:-@waishnav/devspace@1.1.0-beta.4}"
@@ -71,11 +92,8 @@ CLOUDFLARED_INSTALLER="$SCRIPT_DIR/cloudflared.sh"
 
 windows_native_devspace_bin() {
   case "$OS" in MSYS*|MINGW*|CYGWIN*) ;; *) return 1 ;; esac
-  command -v cygpath >/dev/null 2>&1 || return 1
-  local profile="${USERPROFILE:-}" root candidate
-  [ -n "$profile" ] || return 1
-  root="$(cygpath -u "$profile")"
-  for candidate in "$root/.local/devspace/devspace" "$root/.local/devspace/devspace.cmd"; do
+  local candidate
+  for candidate in "$RUN_HOME/.local/devspace/devspace" "$RUN_HOME/.local/devspace/devspace.cmd"; do
     [ -f "$candidate" ] && { printf '%s\n' "$candidate"; return 0; }
   done
   return 1
@@ -177,6 +195,7 @@ is_brew_cloudflared() {
 # 只认官方 GitHub 独立二进制（~/tools/bin）；macOS 上 Homebrew 瓶装不算可用
 cloudflared_available() {
   [ -x "$TOOLS_BIN/cloudflared" ] && return 0
+  [ -x "$WINDOWS_LOCAL_BIN/cloudflared.exe" ] && return 0
   local found
   found="$(command -v cloudflared 2>/dev/null || true)"
   [ -n "$found" ] || return 1
@@ -214,12 +233,12 @@ ensure_node() {
 
 ensure_devspace_cli() {
   local npm_bin current_version="" installed_bin
-  installed_bin="$(command -v devspace 2>/dev/null || true)"
+  installed_bin="$(windows_native_devspace_bin 2>/dev/null || true)"
+  if [ -z "$installed_bin" ]; then
+    installed_bin="$(command -v devspace 2>/dev/null || true)"
+  fi
   if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
     installed_bin="$NODE_GLOBAL_BIN/devspace"
-  fi
-  if [ -z "$installed_bin" ]; then
-    installed_bin="$(windows_native_devspace_bin 2>/dev/null || true)"
   fi
   if [ -n "$installed_bin" ]; then
     current_version="$($installed_bin --version 2>/dev/null | head -1 | tr -d '\r' || true)"
@@ -242,12 +261,12 @@ ensure_devspace_cli() {
   "$npm_bin" install -g "$DEVSPACE_PKG" \
     || { echo "错误：$DEVSPACE_PKG 安装失败" >&2; return 1; }
 
-  installed_bin="$(command -v devspace 2>/dev/null || true)"
+  installed_bin="$(windows_native_devspace_bin 2>/dev/null || true)"
+  if [ -z "$installed_bin" ]; then
+    installed_bin="$(command -v devspace 2>/dev/null || true)"
+  fi
   if [ -z "$installed_bin" ] && [ -x "$NODE_GLOBAL_BIN/devspace" ]; then
     installed_bin="$NODE_GLOBAL_BIN/devspace"
-  fi
-  if [ -z "$installed_bin" ]; then
-    installed_bin="$(windows_native_devspace_bin 2>/dev/null || true)"
   fi
   if [ -z "$installed_bin" ]; then
     echo "错误：devspace CLI 安装后仍不可用（预期路径：$NODE_GLOBAL_BIN/devspace）" >&2
@@ -424,22 +443,43 @@ disable_macos_autostart() {
 
 install_windows_autostart() {
   ensure_runtime
-  local startup bash_win server_win
-  startup="$(windows_startup_file)" || { echo "错误：无法定位 Windows Startup 目录" >&2; return 1; }
-  mkdir -p "$(dirname "$startup")"
+  local bash_win server_win server_posix workdir_win powershell_bin
+  powershell_bin="$(windows_powershell_bin)" || { echo "错误：找不到 Windows PowerShell" >&2; return 1; }
   bash_win="$(cygpath -w /usr/bin/bash.exe)"
   server_win="$(cygpath -w "$SERVER_SCRIPT")"
-  cat >"$startup" <<EOF
-@echo off
-"$bash_win" "$server_win" autostart-start
-EOF
-  echo "Windows Startup: $startup"
+  server_posix="$SERVER_SCRIPT"
+  workdir_win="$(cygpath -w "$RUN_HOME/sh")"
+  WINDOWS_BASH_WIN="$bash_win" WINDOWS_SERVER_POSIX="$server_posix" WINDOWS_WORKDIR_WIN="$workdir_win" \
+    "$powershell_bin" -NoProfile -Command '
+      $ErrorActionPreference = "Stop"
+      $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+      $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+      $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Hidden
+      $specs = @(
+        @{ Name="DevSpace-Windows"; Arg=($env:WINDOWS_SERVER_POSIX + " task-devspace") },
+        @{ Name="DevSpace-Cloudflare"; Arg=($env:WINDOWS_SERVER_POSIX + " task-cloudflared") }
+      )
+      foreach ($spec in $specs) {
+        $action = New-ScheduledTaskAction -Execute $env:WINDOWS_BASH_WIN -Argument $spec.Arg -WorkingDirectory $env:WINDOWS_WORKDIR_WIN
+        Register-ScheduledTask -TaskName $spec.Name -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+      }
+    '
+  echo "Windows Task Scheduler: DevSpace-Windows + DevSpace-Cloudflare -> $server_win"
 }
 
 disable_windows_autostart() {
+  local powershell_bin
+  powershell_bin="$(windows_powershell_bin)" || return 0
+  "$powershell_bin" -NoProfile -Command '
+    foreach ($name in @("DevSpace-Windows","DevSpace-Cloudflare")) {
+      if (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName $name -Confirm:$false
+      }
+    }
+  ' >/dev/null
   local startup
-  startup="$(windows_startup_file)" || return 0
-  rm -f "$startup"
+  startup="$(windows_startup_file 2>/dev/null || true)"
+  [ -n "$startup" ] && rm -f "$startup"
   echo "Windows 自动启动已关闭"
 }
 
@@ -618,9 +658,13 @@ autostart_enabled() {
       [ -f "$LAUNCH_AGENT_FILE" ]
       ;;
     MSYS*|MINGW*|CYGWIN*)
-      local startup
-      startup="$(windows_startup_file)" || return 1
-      [ -f "$startup" ]
+      local powershell_bin
+      powershell_bin="$(windows_powershell_bin)" || return 1
+      "$powershell_bin" -NoProfile -Command '
+        $a = Get-ScheduledTask -TaskName "DevSpace-Windows" -ErrorAction SilentlyContinue
+        $b = Get-ScheduledTask -TaskName "DevSpace-Cloudflare" -ErrorAction SilentlyContinue
+        if ($null -ne $a -and $null -ne $b) { exit 0 } else { exit 1 }
+      ' >/dev/null 2>&1
       ;;
     *) return 1 ;;
   esac
