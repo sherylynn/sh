@@ -1,4 +1,13 @@
 #!/bin/zsh
+# Windows can launch MSYS2 zsh before /etc/profile has added its utilities.
+# .zshenv sources this file first, including in non-login shells.
+if [[ ${OSTYPE:-} == msys* ]]; then
+  case ":${PATH:-}:" in
+    *:/usr/bin:*) ;;
+    *) export PATH="/usr/bin${PATH:+:$PATH}" ;;
+  esac
+fi
+
 # uname Linux .bashrc uname Darwin MINGW64 .bash_profile
 if [[ $PREFIX == *termux* ]]; then
   alias uname=$PREFIX/bin/uname
