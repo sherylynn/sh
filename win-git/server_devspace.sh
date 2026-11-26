@@ -43,6 +43,7 @@ SERVICE_ENV="$CONFIG_DIR/service.env"
 RUN_DIR="${DEVSPACE_RUN_DIR:-$CONFIG_DIR/run}"
 SERVE_PID_FILE="$RUN_DIR/devspace.pid"
 TUNNEL_PID_FILE="$RUN_DIR/cloudflared.pid"
+TUNNEL_DESIRED_FILE="$CONFIG_DIR/cloudflared.desired"
 
 SERVE_LOG="${DEVSPACE_SERVE_LOG:-$CONFIG_DIR/devspace-serve.log}"
 TUNNEL_LOG="${DEVSPACE_TUNNEL_LOG:-$CONFIG_DIR/cloudflared.log}"
@@ -308,7 +309,7 @@ remember_existing_pid() {
 start_background() {
   local pid_file="$1" log_file="$2"
   shift 2
-  nohup "$@" </dev/null >>"$log_file" 2>&1 &
+  nohup "$@" 9>&- </dev/null >>"$log_file" 2>&1 &
   printf '%s\n' "$!" >"$pid_file"
 }
 
@@ -348,6 +349,50 @@ start_devspace_unlocked() {
   fi
 }
 
+# macOS 守护仅恢复已退出的进程。网络断开交由 cloudflared 自行重连，
+# /ready 短暂异常时不终止仍在运行的进程。
+mac_boot_epoch() {
+  /usr/sbin/sysctl -n kern.boottime 2>/dev/null | sed -nE 's/^\{ sec = ([0-9]+),.*$/\1/p'
+}
+
+set_tunnel_desired_unlocked() {
+  [ "$OS" = Darwin ] || return 0
+  local tmp desired="$1" boot
+  if [ "$desired" = running ]; then
+    boot="$(mac_boot_epoch)"
+    [ -n "$boot" ] || return 1
+    desired="running $boot"
+  fi
+  tmp="$(mktemp "${TUNNEL_DESIRED_FILE}.XXXXXX")" || return 1
+  if ! printf '%s\n' "$desired" >"$tmp" || ! mv -f "$tmp" "$TUNNEL_DESIRED_FILE"; then
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+tunnel_wanted_unlocked() {
+  local desired
+  desired="$(cat "$TUNNEL_DESIRED_FILE" 2>/dev/null || true)"
+  case "$desired" in
+    "running "*)
+      [ "$desired" = "running $(mac_boot_epoch)" ] || [ "$CLOUDFLARED_AUTOSTART" = 1 ] ;;
+    stopped) return 1 ;;
+    *) [ "$CLOUDFLARED_AUTOSTART" = 1 ] ;;
+  esac
+}
+
+watch_cloudflared_unlocked() {
+  [ "$OS" = Darwin ] || return 0
+  tunnel_wanted_unlocked || return 0
+  pid_matches "$TUNNEL_PID_FILE" "$TUNNEL_PAT" && return 0
+  start_cloudflared_unlocked
+}
+
+manual_start_cloudflared_unlocked() {
+  set_tunnel_desired_unlocked running || return 1
+  start_cloudflared_unlocked
+}
+
 start_cloudflared_unlocked() {
   if ! command -v "$CLOUDFLARED_BIN" >/dev/null 2>&1 && [ ! -x "$CLOUDFLARED_BIN" ]; then
     echo "错误：找不到 cloudflared（${CLOUDFLARED_BIN}）" >&2
@@ -361,7 +406,9 @@ start_cloudflared_unlocked() {
     echo "cloudflared 隧道已在运行（PID $existing_pid），本次不重复启动"
   else
     local args
-    args=(tunnel --config "$CLOUDFLARED_CONFIG" run)
+    args=(tunnel --config "$CLOUDFLARED_CONFIG")
+    if [ "$OS" = Darwin ]; then args+=(--no-autoupdate); fi
+    args+=(run)
     case "$CLOUDFLARED_PROTOCOL" in
       ""|auto) ;;
       *) args+=(--protocol "$CLOUDFLARED_PROTOCOL") ;;
@@ -382,7 +429,7 @@ start_cloudflared_unlocked() {
 
 start_unlocked() {
   start_devspace_unlocked || return $?
-  start_cloudflared_unlocked
+  manual_start_cloudflared_unlocked
 }
 
 with_lock() {
@@ -461,7 +508,7 @@ autostart_start_unlocked() {
     start_devspace_unlocked || return $?
     started=1
   fi
-  if [ "$CLOUDFLARED_AUTOSTART" = "1" ]; then
+  if [ "$CLOUDFLARED_AUTOSTART" = "1" ] && { [ "$OS" != Darwin ] || tunnel_wanted_unlocked; }; then
     start_cloudflared_unlocked || return $?
     started=1
   fi
@@ -471,7 +518,7 @@ autostart_start_unlocked() {
 autostart_start() { with_lock autostart_start_unlocked; }
 
 start_devspace() { with_lock start_devspace_unlocked; }
-start_cloudflared() { with_lock start_cloudflared_unlocked; }
+start_cloudflared() { with_lock manual_start_cloudflared_unlocked; }
 
 stop_pid_file() {
   local name="$1" file="$2" pat="$3" pid tries=0
@@ -503,6 +550,7 @@ kill_matching() {
 }
 
 stop_unlocked() {
+  set_tunnel_desired_unlocked stopped || return 1
   if is_windows_shell; then
     stop_devspace_unlocked || return $?
     stop_cloudflared_unlocked
@@ -542,6 +590,7 @@ stop_devspace_unlocked() {
 }
 
 stop_cloudflared_unlocked() {
+  set_tunnel_desired_unlocked stopped || return 1
   if is_windows_shell; then
     local pid tries=0
     pid="$(windows_cloudflared_pid 2>/dev/null || true)"
@@ -845,6 +894,7 @@ case "${1:-start}" in
   status) status ;;
   states) states ;;
   tunnel-state) tunnel_state ;;
+  watch-cloudflared) with_lock watch_cloudflared_unlocked ;;
   tunnel-info) tunnel_info ;;
   token) ensure_token; cat "$TOKEN_FILE"; echo ;;
   *) echo "usage: $0 {start|stop|restart|start-devspace|stop-devspace|restart-devspace|start-cloudflared|stop-cloudflared|restart-cloudflared|task-devspace|task-cloudflared|autostart-start|status|states|tunnel-state|tunnel-info|token}" >&2; exit 1 ;;
